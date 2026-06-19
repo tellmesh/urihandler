@@ -68,6 +68,69 @@ execution needs both an allow rule and `allowShellTemplates: true`.
 This makes existing repositories behave like URI packages without manually
 writing every endpoint.
 
+## HTML app
+
+```bash
+bash v8/examples/html_uri_app/run.sh
+```
+
+The app renders routes and forms from `bindings.json`, then calls the Python v8
+runtime through `POST /api/run`.
+
+Execution is disabled by default. Use `v8/examples/html_uri_app/.env.example`
+as the local `.env` template when you want to enable real argv or shell
+execution.
+
+## Docker URI flow
+
+`v8/examples/docker_uri_flow` demonstrates multiple Docker services
+communicating through URI-addressed resources:
+
+- `python://python-worker/text/normalize`
+- `node://node-worker/text/slugify`
+- `shell://shell-worker/report/write`
+- `python://python-worker/report/summary`
+
+Run it with:
+
+```bash
+bash v8/examples/docker_uri_flow/run.sh
+```
+
+The orchestrator reads a compact YAML flow similar to
+`uri2flow/examples/33_office_workflows`, resolves `_from` references between
+steps, and dispatches each URI to the service named by the URI target.
+
+## Generators from other languages
+
+`v8/examples/generators` contains small generators for:
+
+- plain JavaScript,
+- Node.js scripts,
+- TypeScript decorator-style declarations,
+- PHP 8 attributes.
+
+All of them produce the same v8 JSON contract. The runtime consumes the JSON,
+not the source language.
+
+## One-line binding generation
+
+Append a PyPI install binding to a v8 binding document:
+
+```bash
+PYTHONPATH=adapters/python python -m urihandler.v8 add-pypi urihandler \
+  --out urihandler.bindings.v8.json
+```
+
+Append a generic command binding:
+
+```bash
+PYTHONPATH=adapters/python python -m urihandler.v8 add-command 'util://local/echo/message' \
+  --argv 'python3 -c "import sys; print(sys.argv[1])" {text}' \
+  --param text:string:required \
+  --out urihandler.bindings.v8.json
+```
+
 ## CLI
 
 ```bash

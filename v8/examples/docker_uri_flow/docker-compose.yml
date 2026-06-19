@@ -1,0 +1,45 @@
+services:
+  python-worker:
+    build:
+      context: ./python-worker
+    image: urihandler-v8-python-worker:local
+    labels:
+      io.tellmesh.urihandler.manifest: /app/bindings.json
+    networks: [uri-flow]
+
+  node-worker:
+    build:
+      context: ./node-worker
+    image: urihandler-v8-node-worker:local
+    labels:
+      io.tellmesh.urihandler.manifest: /app/bindings.json
+    networks: [uri-flow]
+
+  shell-worker:
+    build:
+      context: ./shell-worker
+    image: urihandler-v8-shell-worker:local
+    labels:
+      io.tellmesh.urihandler.manifest: /app/bindings.json
+    networks: [uri-flow]
+    volumes:
+      - reports:/data
+
+  orchestrator:
+    build:
+      context: ./orchestrator
+    image: urihandler-v8-flow-orchestrator:local
+    depends_on:
+      - python-worker
+      - node-worker
+      - shell-worker
+    networks: [uri-flow]
+    volumes:
+      - ./flows:/flows:ro
+    command: ["python", "/app/flow_runner.py", "/flows/cross_service_report.yaml"]
+
+networks:
+  uri-flow:
+
+volumes:
+  reports:

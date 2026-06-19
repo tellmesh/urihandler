@@ -9,7 +9,7 @@ help: ## Show available commands.
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_.-]+:.*##/ {printf "%-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 .PHONY: test
-test: test-js test-python test-c test-examples test-v2 test-v3 test-v4 test-v5 test-v6 test-v7 ## Run all checks.
+test: test-js test-python test-c test-examples test-v2 test-v3 test-v4 test-v5 test-v6 test-v7 test-v8 ## Run all checks.
 
 .PHONY: test-js
 test-js: ## Run JavaScript adapter tests.
@@ -100,6 +100,17 @@ test-v7: ## Run urihandler v7 parameter-binding, docker, and shell checks.
 	PYTHONPATH=adapters/python $(PYTHON) -m urihandler.v7 list /tmp/urihandler-v7.registry.json --allow 'media://**'
 	$(NODE) v7/examples/html_uri_app/test.mjs
 
+.PHONY: test-v8
+test-v8: ## Run urihandler v8 schema/decorator, artifact, and MCP/A2A checks.
+	PYTHONPATH=adapters/python $(PYTHON) -m unittest discover -s v8/examples/python -p 'test_*.py'
+	$(NODE) v8/examples/generators/nodejs/generate-bindings.mjs >/tmp/urihandler-v8-gen.json
+	$(NODE) v8/examples/html_uri_app/test.mjs
+	$(PYTHON) -m json.tool v8/examples/json/bindings.v8.example.json >/tmp/urihandler-v8-bindings.json
+	PYTHONPATH=adapters/python $(PYTHON) -m urihandler.v8 compile v8/examples/json/bindings.v8.example.json --out /tmp/urihandler-v8.registry.json
+	PYTHONPATH=adapters/python $(PYTHON) -m urihandler.v8_mcp tools /tmp/urihandler-v8.registry.json >/tmp/urihandler-v8-mcp.json
+	PYTHONPATH=adapters/python $(PYTHON) -m urihandler.v8_mcp card /tmp/urihandler-v8.registry.json >/tmp/urihandler-v8-a2a.json
+	command -v php >/dev/null 2>&1 && php v8/examples/generators/php/example.php >/tmp/urihandler-v8-php.json || echo "php not installed; skipping PHP generator"
+
 .PHONY: clean
 clean: ## Remove local generated cache files.
-	rm -rf node_modules .pytest_cache adapters/python/tests/__pycache__ adapters/python/urihandler/__pycache__ adapters/python/*.egg-info adapters/python/build examples/__pycache__ v2/examples/python/__pycache__ v3/examples/python/__pycache__ v4/examples/python/__pycache__ v5/examples/python/__pycache__ v6/examples/python/__pycache__ v7/examples/python/__pycache__ __pycache__
+	rm -rf node_modules .pytest_cache adapters/python/tests/__pycache__ adapters/python/urihandler/__pycache__ adapters/python/*.egg-info adapters/python/build examples/__pycache__ v2/examples/python/__pycache__ v3/examples/python/__pycache__ v4/examples/python/__pycache__ v5/examples/python/__pycache__ v6/examples/python/__pycache__ v7/examples/python/__pycache__ v8/examples/python/__pycache__ __pycache__

@@ -413,6 +413,131 @@ def build_binding_document(bindings: list[dict], generated_at: str | None = None
     }
 
 
+def _bindings_as_map(doc) -> dict:
+    entries = expand_bindings(doc)["bindings"]
+    return {entry["uri"]: _strip_runtime_only(entry) for entry in entries}
+
+
+def merge_binding_document(existing, binding: dict) -> dict:
+    bindings = _bindings_as_map(existing) if existing else {}
+    normalized = expand_binding(binding.get("uri"), binding)
+    bindings[normalized["uri"]] = normalized
+    return {"version": VERSION, "bindings": bindings}
+
+
+def write_or_emit_binding(path: str, binding: dict) -> None:
+    if path == "-":
+        v4._emit_json({"version": VERSION, "bindings": {binding["uri"]: expand_binding(binding["uri"], binding)}}, "-")
+        return
+    output = Path(path)
+    existing = v4.load_json(output) if output.exists() else None
+    v4.write_json(output, merge_binding_document(existing, binding))
+
+
+def _coerce_default(value: str, schema_type: str):
+    if schema_type == "integer":
+        return int(value)
+    if schema_type == "number":
+        return float(value)
+    if schema_type == "boolean":
+        return value.lower() in {"1", "true", "yes", "on"}
+    return value
+
+
+def parse_param_declaration(declaration: str) -> tuple[str, dict, bool]:
+    """Parse a compact CLI param declaration.
+
+    Supported forms:
+    - ``name``
+    - ``name:type``
+    - ``name:type:required``
+    - ``name:type=default``
+    - ``name=default``
+    """
+    required = False
+    default = None
+    left = declaration
+    if "=" in declaration:
+        left, default = declaration.split("=", 1)
+    parts = left.split(":")
+    name = parts[0].strip()
+    if not name:
+        raise ValueError(f"Invalid param declaration: {declaration}")
+    raw_type = parts[1].strip() if len(parts) > 1 and parts[1].strip() else "string"
+    if len(parts) > 2:
+        required = parts[2].strip().lower() in {"required", "req", "true", "1"}
+    schema_type = {
+        "str": "string",
+        "string": "string",
+        "int": "integer",
+        "integer": "integer",
+        "float": "number",
+        "number": "number",
+        "bool": "boolean",
+        "boolean": "boolean",
+    }.get(raw_type)
+    if not schema_type:
+        raise ValueError(f"Unsupported param type '{raw_type}' in {declaration}")
+    schema = {"type": schema_type}
+    if default is not None:
+        schema["default"] = _coerce_default(default, schema_type)
+    return name, schema, required
+
+
+def input_schema_from_params(param_declarations: list[str]) -> dict:
+    properties: dict[str, dict] = {}
+    required: list[str] = []
+    for declaration in param_declarations:
+        name, schema, is_required = parse_param_declaration(declaration)
+        properties[name] = schema
+        if is_required:
+            required.append(name)
+    schema = {"type": "object", "properties": properties, "additionalProperties": False}
+    if required:
+        schema["required"] = required
+    return schema
+
+
+def command_binding_from_cli(
+    uri: str,
+    *,
+    argv: str | None = None,
+    shell: str | None = None,
+    params: list[str] | None = None,
+    label: str | None = None,
+) -> dict:
+    if bool(argv) == bool(shell):
+        raise ValueError("Pass exactly one of --argv or --shell")
+    binding = {
+        "uri": uri,
+        "inputSchema": input_schema_from_params(params or []),
+        "meta": {"label": label} if label else {},
+    }
+    if argv:
+        binding.update({"kind": "command", "adapter": "argv-template", "argv": shlex.split(argv)})
+    else:
+        binding.update({"kind": "shell", "adapter": "shell-template", "shell": shell})
+    return binding
+
+
+def pypi_binding(name: str, version: str | None = None, uri: str | None = None) -> dict:
+    requirement = f"{name}=={version}" if version else name
+    return {
+        "uri": uri or f"package://pypi/{v5.slugify(name)}/install",
+        "kind": "command",
+        "adapter": "argv-template",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "requirement": {"type": "string", "default": requirement},
+            },
+            "additionalProperties": False,
+        },
+        "argv": ["python3", "-m", "pip", "install", "{requirement}"],
+        "meta": {"label": f"Install {name} from PyPI", "standard": "PyPI requirement specifier"},
+    }
+
+
 def load_registry_arg(arg: str, openapi_base_url: str = "") -> dict:
     path = Path(arg)
     if path.is_dir():
@@ -695,6 +820,20 @@ def main(argv: list[str] | None = None) -> int:
     validate_parser.add_argument("source")
     validate_parser.add_argument("--json", action="store_true")
 
+    add_command_parser = subparsers.add_parser("add-command", help="Append one argv/shell binding to a v8 bindings file")
+    add_command_parser.add_argument("uri")
+    add_command_parser.add_argument("--argv")
+    add_command_parser.add_argument("--shell")
+    add_command_parser.add_argument("--param", action="append", default=[], metavar="DECL")
+    add_command_parser.add_argument("--label")
+    add_command_parser.add_argument("--out", default="urihandler.bindings.v8.json")
+
+    add_pypi_parser = subparsers.add_parser("add-pypi", help="Append a PyPI install binding in one line")
+    add_pypi_parser.add_argument("name")
+    add_pypi_parser.add_argument("--version")
+    add_pypi_parser.add_argument("--uri")
+    add_pypi_parser.add_argument("--out", default="urihandler.bindings.v8.json")
+
     def add_source(p, with_uri=True):
         if with_uri:
             p.add_argument("uri")
@@ -739,6 +878,18 @@ def main(argv: list[str] | None = None) -> int:
             for error in result["errors"]:
                 print(f"{error.get('uri')}: {error['error']}")
         return 0 if result["ok"] else 1
+
+    if args.command == "add-command":
+        try:
+            binding = command_binding_from_cli(args.uri, argv=args.argv, shell=args.shell, params=args.param, label=args.label)
+        except ValueError as exc:
+            parser.error(str(exc))
+        write_or_emit_binding(args.out, binding)
+        return 0
+
+    if args.command == "add-pypi":
+        write_or_emit_binding(args.out, pypi_binding(args.name, version=args.version, uri=args.uri))
+        return 0
 
     registry = load_registry_arg(args.source or args.registry)
     policy = v6.build_policy(getattr(args, "policy", None), args.allow, args.deny)

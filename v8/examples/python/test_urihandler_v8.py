@@ -1,9 +1,13 @@
 import json
+import os
+import socket
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
+from urllib import request
 
 from urihandler.v8 import (
     compile_registry,
@@ -19,6 +23,7 @@ from urihandler.v8 import (
 ROOT = Path(__file__).resolve().parents[1]
 BINDINGS = ROOT / "json" / "bindings.v8.example.json"
 ARTIFACTS = ROOT / "artifacts"
+HTML_APP = ROOT / "html_uri_app"
 ALLOW_ALL = {"execute": {"allow": ["*"]}, "allowShellTemplates": True}
 
 
@@ -184,6 +189,124 @@ class ArtifactAdoptionTests(unittest.TestCase):
             )
 
         self.assertEqual(json.loads(result.stdout)["result"]["command"][-1], "Ada")
+
+    def test_cli_add_pypi_and_command_binding_in_one_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bindings_path = Path(tmp) / "bindings.json"
+            registry_path = Path(tmp) / "registry.json"
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "urihandler.v8",
+                    "add-pypi",
+                    "sampleproject",
+                    "--out",
+                    str(bindings_path),
+                ],
+                check=True,
+            )
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "urihandler.v8",
+                    "add-command",
+                    "util://local/echo/message",
+                    "--argv",
+                    f'{sys.executable} -c "import sys; print(sys.argv[1])" {{text}}',
+                    "--param",
+                    "text:string:required",
+                    "--out",
+                    str(bindings_path),
+                ],
+                check=True,
+            )
+            subprocess.run(
+                [sys.executable, "-m", "urihandler.v8", "validate", str(bindings_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                [sys.executable, "-m", "urihandler.v8", "compile", str(bindings_path), "--out", str(registry_path)],
+                check=True,
+            )
+            rendered = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "urihandler.v8",
+                    "run",
+                    "package://pypi/sampleproject/install",
+                    "--registry",
+                    str(registry_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(json.loads(rendered.stdout)["result"]["command"][-1], "sampleproject")
+
+
+class HtmlAppTests(unittest.TestCase):
+    def test_html_backend_dispatches_v8_runtime(self):
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+
+        env = os.environ.copy()
+        env.update(
+            {
+                "HTML_URI_APP_HOST": "127.0.0.1",
+                "HTML_URI_APP_PORT": str(port),
+                "HTML_URI_APP_ALLOW_EXECUTE": "true",
+                "HTML_URI_APP_ALLOW_SHELL": "true",
+            }
+        )
+        proc = subprocess.Popen(
+            [sys.executable, str(HTML_APP / "backend.py")],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
+        )
+        try:
+            for _ in range(50):
+                try:
+                    with request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=0.2) as response:
+                        self.assertEqual(response.status, 200)
+                        break
+                except OSError:
+                    time.sleep(0.1)
+            else:
+                self.fail("HTML app backend did not start")
+
+            payload = json.dumps(
+                {
+                    "uri": "say://local/echo/message",
+                    "payload": {"text": "hello-http"},
+                    "execute": True,
+                }
+            ).encode("utf-8")
+            req = request.Request(
+                f"http://127.0.0.1:{port}/api/run",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with request.urlopen(req, timeout=3) as response:
+                result = json.loads(response.read().decode("utf-8"))
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["result"]["stdout"].strip(), "hello-http")
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=3)
 
 
 if __name__ == "__main__":

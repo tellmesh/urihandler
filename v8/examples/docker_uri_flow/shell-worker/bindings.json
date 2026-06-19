@@ -1,0 +1,20 @@
+{
+  "version": "urihandler.bindings.v8",
+  "bindings": {
+    "shell://shell-worker/report/write": {
+      "kind": "command",
+      "adapter": "shell-script",
+      "inputSchema": {
+        "type": "object",
+        "required": ["slug", "text"],
+        "properties": {
+          "slug": { "type": "string" },
+          "text": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "argv": ["/bin/sh", "/app/write_report.sh", "{slug}", "{text}"],
+      "meta": { "label": "Write report via shell", "language": "shell" }
+    }
+  }
+}

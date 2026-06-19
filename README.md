@@ -39,6 +39,7 @@ Then adapt that descriptor to existing functions, methods, classes, MQTT topics,
 - `v5/` - simple bindings-first scanner for existing projects, services, CLI, shell, code, and GitHub repos
 - `v6/` - execution and policy runtime: real `run`/`check` with a default-deny, default-dry-run safety gate
 - `v7/` - parameter binding (`{name}` from payload/query), string shorthand, Docker adapters, and `env`/`stdin`/`cwd`/`timeout`
+- `v8/` - schema-first command packages (JSON Schema inputs, multi-language decorators, artifact adoption) + MCP/A2A interop for LLM/agent discovery
 - `examples/` - end-to-end examples
 - `github/` - GitHub integration notes
 
@@ -172,6 +173,28 @@ target (`{target}`):
   "media://local/video/transcode": "ffmpeg -i {input} -vf scale={width}:{height} {output}"
 }}
 ```
+
+## v8 schema-first packages + MCP/A2A interop
+
+v8 makes each endpoint a schema-first package: the input contract is JSON Schema
+(authored by hand, by `add-pypi`/`add-command`, or by decorators in Python, JS,
+TS and PHP). Because that schema is exactly what agents need, the same registry
+projects to **MCP tools** and an **A2A agent card**, so an LLM or another agent
+can discover and call the endpoints — still through the policy gate.
+
+```bash
+# add a binding from a PyPI package in one line, then compile
+python -m urihandler.v8 add-pypi sampleproject --out urihandler.bindings.v8.json
+python -m urihandler.v8 compile urihandler.bindings.v8.json --out registry.json
+
+# project the registry to MCP / A2A, or serve MCP over stdio
+python -m urihandler.v8_mcp tools registry.json     # MCP tools/list manifest
+python -m urihandler.v8_mcp card  registry.json     # A2A agent card
+python -m urihandler.v8_mcp serve registry.json     # MCP stdio server (dry-run by default)
+```
+
+Multi-language authoring lives in `v8/examples/generators/` (JS, Node.js, TS,
+PHP), the HTTP console with live MCP/A2A discovery in `v8/examples/html_uri_app/`.
 
 ## License
 
