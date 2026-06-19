@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 from urllib import request
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 
 def parse_scalar(value: str):
@@ -107,12 +107,29 @@ def route_key(uri: str) -> tuple[str, str, str]:
     return parsed.scheme, segments[0], segments[1]
 
 
+def normalize_uri(uri: str) -> str:
+    parsed = urlparse(uri)
+    if not parsed.scheme or not parsed.netloc:
+        raise ValueError(f"Invalid URI: {uri}")
+    target = unquote(parsed.netloc)
+    segments = [unquote(part) for part in parsed.path.split("/") if part]
+    return f"{parsed.scheme}://{target}/{'/'.join(quote(segment, safe='') for segment in segments)}"
+
+
 def registry_has_uri(registry: dict, uri: str) -> bool:
+    index = registry.get("index") or {}
+    if index:
+        normalized = normalize_uri(uri)
+        return any(meta.get("uri") == normalized for meta in index.values())
     package, resource, operation = route_key(uri)
     return operation in registry.get("routes", {}).get(package, {}).get(resource, {})
 
 
 def registry_route_count(registry: dict) -> int:
+    if isinstance(registry.get("index"), dict):
+        return len(registry["index"])
+    if isinstance(registry.get("routeCount"), int):
+        return registry["routeCount"]
     count = 0
     for resources in registry.get("routes", {}).values():
         for operations in resources.values():

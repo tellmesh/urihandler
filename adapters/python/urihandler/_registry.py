@@ -89,6 +89,7 @@ def route_from_uri(uri: str, route_entry: dict | None = None, source: dict | Non
         "uri": descriptor["normalized"],
         "route": translation["route"],
         "package": translation["package"],
+        "target": translation["target"],
         "resource": translation["resource"],
         "operation": translation["operation"],
         "routeEntry": entry,
@@ -184,7 +185,7 @@ def flatten_registry_document(document: dict, source: dict | None = None) -> lis
         entries.append(
             {
                 "uri": meta.get("uri") or route_from_parts(route[0], route[1], route[2])["uri"],
-                "routeEntry": _get_route_entry(routes, route),
+                "routeEntry": meta.get("routeEntry") or _get_route_entry(routes, route),
                 "source": meta.get("source") or source or {"type": "registry"},
             }
         )
@@ -235,7 +236,21 @@ def build_registry_document(
         add_route(routes, route["route"], route["routeEntry"], on_conflict=on_conflict)
         route_hash = hash_uri(route["uri"])
         source = route.get("source") or {}
-        index[route_hash] = {"uri": route["uri"], "route": route["route"], "source": source}
+        existing = index.get(route_hash)
+        if existing and not _route_entry_equal(existing.get("routeEntry"), route["routeEntry"]):
+            if on_conflict == "replace":
+                pass
+            elif on_conflict == "keep":
+                continue
+            else:
+                raise ValueError(f"URI conflict: {route['uri']}")
+        index[route_hash] = {
+            "uri": route["uri"],
+            "route": route["route"],
+            "target": route.get("target"),
+            "routeEntry": route["routeEntry"],
+            "source": source,
+        }
         source_key = json.dumps(source, sort_keys=True, default=str)
         if source and source_key not in seen_sources:
             seen_sources.add(source_key)
@@ -428,6 +443,14 @@ def registry_tree(registry: dict) -> dict:
 
 
 def resolve_route(translation: dict, registry: dict) -> dict:
+    descriptor = translation.get("descriptor") or {}
+    normalized = descriptor.get("normalized")
+    index = registry.get("index") if isinstance(registry, dict) else None
+    if normalized and isinstance(index, dict):
+        meta = index.get(hash_uri(normalized))
+        if meta and isinstance(meta.get("routeEntry"), dict):
+            return meta["routeEntry"]
+
     tree = registry_tree(registry)
     route_entry = tree.get(translation["package"], {}).get(translation["resource"], {}).get(translation["operation"])
     if not route_entry:
