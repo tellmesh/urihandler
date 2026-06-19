@@ -3,13 +3,13 @@
 Install directly from GitHub:
 
 ```bash
-pip install "git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
+pip install "git+https://github.com/tellmesh/urihandler.git@main#subdirectory=adapters/python"
 ```
 
 Or install a GitHub Release wheel:
 
 ```bash
-pip install "https://github.com/tellmesh/urirun/releases/download/v0.3.4/urirun-0.3.4-py3-none-any.whl"
+pip install "https://github.com/tellmesh/urihandler/releases/download/v0.3.4/urirun-0.3.4-py3-none-any.whl"
 ```
 
 PyPI publishing is not required. The distribution is named `urirun`; the Python
@@ -29,13 +29,12 @@ urirun run 'cli://local/git/status' .urirun/registry.merged.json
 ```
 
 `urirun-v7` and `urirun-v8` are also installed as explicit versioned entry
-points. Compatibility aliases `urirun-v7` and `urirun-v8` are kept for
-existing v7/v8 scripts.
+points for scripts that need a stable major-version command.
 
 The optional v8 gRPC transport can be installed with:
 
 ```bash
-pip install "urirun[grpc] @ git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
+pip install "urirun[grpc] @ git+https://github.com/tellmesh/urihandler.git@main#subdirectory=adapters/python"
 ```
 
 v8 can generate schema-first bindings and a compiled registry from existing

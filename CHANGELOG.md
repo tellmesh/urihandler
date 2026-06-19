@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Add `docs/` with current urirun quick start, naming, commands, registry,
+  transports, logo notes, and roadmap.
+- Add `www/` PHP documentation site wired to the generated SVG logo assets.
+- Add generated `logo/` SVG assets for icon, wordmark, favicon, horizontal,
+  stacked, and logo sheet variants.
+- Add a curated `TODO.md` focused on urirun usability work.
+
+### Changed
+- Update README for the current `urirun` runtime name while keeping the GitHub
+  repository URL as `tellmesh/urihandler`.
+- Refresh the PHP project site with current positioning, workflow, transport,
+  examples, docs, and roadmap content.
+- Rename the portable spec path to `spec/urirun-spec.md`.
+- Align examples and docs on `urirun` imports, schema versions, Docker labels,
+  C adapter files, and CLI commands.
+- Keep `tellmesh/urihandler` only where it refers to the actual GitHub
+  repository URL or historical changelog entries.
+
+### Fixed
+- Fix stale references to a non-existing `tellmesh/urirun` GitHub repository in
+  examples.
+
+## [0.3.6] - 2026-06-19
+
+### Docs
+- Update CHANGELOG.md
+- Update README.md
+- Update TODO.md
+- Update adapters/python/README.md
+- Update docs/commands.md
+- Update docs/getting-started.md
+- Update docs/index.md
+- Update docs/logo.md
+- Update docs/naming.md
+- Update docs/registry-and-bindings.md
+- ... and 7 more files
+
+### Other
+- Update adapters/c/urirun.c
+- Update adapters/c/urirun.h
+- Update adapters/c/urirun_test.c
+- Update adapters/python/pyproject.toml
+- Update examples/reference_adapters/firmware-pseudo.c
+- Update v7/examples/html_uri_app/bindings.json
+- Update v7/examples/html_uri_app/test.mjs
+- Update v7/examples/js/urirun-v7.js
+- Update v7/examples/js/urirun-v7.test.js
+- Update v7/examples/python/test_extend.py
+- ... and 7 more files
+
 ## [0.1.10] - 2026-06-19
 
 ### Fixed
@@ -45,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix magic-numbers issues (ticket-4d1e8444)
 - Fix ai-boilerplate issues (ticket-3d1e91c1)
 
-## [Unreleased]
+## [Pre-0.3.5 Notes]
 
 ### Docs
 - Document v8 generated registry workflow for Docker URI flows.

@@ -42,7 +42,7 @@
       "adapter": "fetch",
       "method": "GET",
       "url": "https://api.github.com/repos/{owner}/{repo}",
-      "params": { "owner": { "default": "tellmesh" }, "repo": { "default": "urirun" } },
+      "params": { "owner": { "default": "tellmesh" }, "repo": { "default": "urihandler" } },
       "meta": { "label": "GitHub repo (real GET)" }
     },
 

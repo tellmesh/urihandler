@@ -5,8 +5,9 @@ functions, scripts, Docker services, HTTP endpoints, MQTT topics, firmware
 commands, and package entry points as stable URI routes compiled into one
 registry.
 
-The repository is still named `tellmesh/urihandler` for compatibility. The
-user-facing Python distribution and CLI are named `urirun`.
+The GitHub repository is still `tellmesh/urihandler` for compatibility. The
+runtime, CLI, Python import namespace, JS package name, schema prefix, Docker
+labels, and C adapter names are now `urirun`.
 
 ## Goal
 
@@ -35,16 +36,17 @@ Then adapt that descriptor to existing functions, methods, classes, MQTT topics,
 
 ## Naming
 
-- `urirun` is the CLI and Python distribution name.
-- `urihandler` remains the Python import namespace, JS package name, JSON schema
-  prefix, Docker/OCI label prefix, and C adapter filename for compatibility.
+- `urirun` is the runtime name used by the CLI, Python import namespace, JS
+  package name, JSON schema prefix, Docker/OCI label prefix, and C adapter files.
+- `tellmesh/urihandler` remains the GitHub repository URL and may still appear
+  in historical changelog entries.
 - New user-facing commands should use `urirun`, `urirun-v7`, or `urirun-v8`.
-- Do not globally replace `urihandler` inside imports, schema versions, labels,
-  tests, or package metadata unless a compatibility migration is added first.
+- Do not change the GitHub remote URL unless the repository is actually renamed
+  or moved on GitHub.
 
 ## Repository layout
 
-- `spec/urihandler-spec.md` - portable specification
+- `spec/urirun-spec.md` - portable specification
 - `adapters/js/` - JavaScript reference adapter
 - `adapters/python/` - Python reference adapter
 - `adapters/c/` - C firmware-style reference adapter
@@ -52,7 +54,7 @@ Then adapt that descriptor to existing functions, methods, classes, MQTT topics,
 - `v8/` - schema-first command packages (JSON Schema inputs, multi-language decorators, artifact adoption) + MCP/A2A interop for LLM/agent discovery
 - `examples/reference_adapters/` - minimal base adapter examples for JS, Python, C/firmware, and browser usage
 - `docs/` - current documentation for naming, quick start, CLI, registry, and transports
-- `www/` - small PHP documentation site using the generated urirun logo assets
+- `www/` - PHP project site and documentation viewer using generated urirun logo assets
 - `logo/` - generated SVG logo family for icon, wordmark, horizontal and stacked marks
 - `project/` - generated architecture maps and analysis artifacts, including `map.toon.yaml`
 - `github/` - GitHub integration notes
@@ -66,8 +68,8 @@ npm install github:tellmesh/urihandler
 ```
 
 ```js
-import { parseUri } from "urihandler";
-import { compileRegistry, run as runV7 } from "urihandler/v7/js";
+import { parseUri } from "urirun";
+import { compileRegistry, run as runV7 } from "urirun/v7/js";
 ```
 
 or vendor the adapter folder directly into your repo.
@@ -86,7 +88,7 @@ Or install a GitHub Release wheel:
 pip install "https://github.com/tellmesh/urihandler/releases/download/v0.3.4/urirun-0.3.4-py3-none-any.whl"
 ```
 
-The distribution is named `urirun`; the import package remains `urihandler`.
+The distribution and import package are named `urirun`.
 The Python package installs the v8-first `urirun` CLI and versioned v7/v8
 entrypoints:
 
@@ -107,7 +109,7 @@ pip install "urirun[grpc] @ git+https://github.com/tellmesh/urihandler.git@main#
 
 ### C / firmware
 
-Copy `adapters/c/urihandler.c` and `adapters/c/urihandler.h` into your firmware project.
+Copy `adapters/c/urirun.c` and `adapters/c/urirun.h` into your firmware project.
 
 ## Verify
 
@@ -119,7 +121,7 @@ make test
 
 - [docs/index.md](docs/index.md) - documentation index
 - [docs/getting-started.md](docs/getting-started.md) - shortest path to a registry and URI run
-- [docs/naming.md](docs/naming.md) - exact `urirun` vs `urihandler` rules
+- [docs/naming.md](docs/naming.md) - exact package, import, schema, and repo naming rules
 - [docs/commands.md](docs/commands.md) - CLI command reference
 - [docs/registry-and-bindings.md](docs/registry-and-bindings.md) - binding and registry lifecycle
 - [docs/transports.md](docs/transports.md) - local, HTTP, gRPC, Docker, MCP/A2A and browser use
@@ -176,14 +178,14 @@ urirun add-pypi sampleproject --out urirun.bindings.v8.json
 urirun compile urirun.bindings.v8.json --out registry.json
 
 # adopt the CLI commands installed packages ship (PyPI console_scripts, npm bin)
-python -m urihandler.v8_adopt add-python-package black --out urirun.bindings.v8.json
-python -m urihandler.v8_adopt add-npm-package prettier --out urirun.bindings.v8.json
-python -m urihandler.v8_adopt init .   # scan project -> bindings + registry in one command
+python -m urirun.v8_adopt add-python-package black --out urirun.bindings.v8.json
+python -m urirun.v8_adopt add-npm-package prettier --out urirun.bindings.v8.json
+python -m urirun.v8_adopt init .   # scan project -> bindings + registry in one command
 
 # project the registry to MCP / A2A, or serve MCP over stdio
-python -m urihandler.v8_mcp tools registry.json     # MCP tools/list manifest
-python -m urihandler.v8_mcp card  registry.json     # A2A agent card
-python -m urihandler.v8_mcp serve registry.json     # MCP stdio server (dry-run by default)
+python -m urirun.v8_mcp tools registry.json     # MCP tools/list manifest
+python -m urirun.v8_mcp card  registry.json     # A2A agent card
+python -m urirun.v8_mcp serve registry.json     # MCP stdio server (dry-run by default)
 ```
 
 Multi-language authoring lives in `v8/examples/generators/` (JS, Node.js, TS,
@@ -206,7 +208,7 @@ The generated files are local artifacts under `generated/`:
 - `routes.txt` - human-readable list of generated URI routes
 
 This keeps the URI registry reproducible: a service can ship a Dockerfile label
-such as `io.tellmesh.urihandler.manifest=/app/bindings.json`, and the scanner
+such as `io.tellmesh.urirun.manifest=/app/bindings.json`, and the scanner
 will connect the image artifact to the service's URI contract.
 
 ## License

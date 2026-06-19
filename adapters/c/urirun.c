@@ -1,4 +1,4 @@
-#include "urihandler.h"
+#include "urirun.h"
 #include <string.h>
 
 static int copy_token(char* dst, const char* start, size_t len) {
@@ -13,7 +13,7 @@ static int is_path_end(char value) {
   return value == '\0' || value == '?' || value == '#';
 }
 
-int urihandler_parse(const char* uri, urihandler_descriptor_t* out) {
+int urirun_parse(const char* uri, urirun_descriptor_t* out) {
   if (!uri || !out) return -1;
   memset(out, 0, sizeof(*out));
 

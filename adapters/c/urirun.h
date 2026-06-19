@@ -8,6 +8,6 @@ typedef struct {
   char target[URIHANDLER_MAX_TEXT];
   char segments[URIHANDLER_MAX_SEGMENTS][URIHANDLER_MAX_TEXT];
   size_t segment_count;
-} urihandler_descriptor_t;
-int urihandler_parse(const char* uri, urihandler_descriptor_t* out);
+} urirun_descriptor_t;
+int urirun_parse(const char* uri, urirun_descriptor_t* out);
 #endif

@@ -1,4 +1,4 @@
-# urihandler spec v0.1
+# urirun spec v0.1
 
 ## URI form
 
