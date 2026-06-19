@@ -13,14 +13,14 @@ function h(string $value): string
 
 function doc_url(string $slug): string
 {
-    return 'docs.html#' . rawurlencode($slug);
+    return 'docs/' . rawurlencode($slug) . '.html';
 }
 
 function inline_md(string $text): string
 {
     $text = htmlspecialchars($text, ENT_QUOTES);
     $text = preg_replace_callback('/\[([^\]]+)\]\(([a-z0-9-]+)\.md\)/i', static function (array $m): string {
-        return '<a href="#' . rawurlencode($m[2]) . '">' . $m[1] . '</a>';
+        return '<a href="' . rawurlencode($m[2]) . '.html">' . $m[1] . '</a>';
     }, $text);
     $text = preg_replace('/`([^`]+)`/', '<code>$1</code>', $text);
     $text = preg_replace('/\*\*([^*]+)\*\*/', '<strong>$1</strong>', $text);
@@ -102,9 +102,9 @@ function render_md(string $markdown): string
     return $html;
 }
 
-function build_docs_page(array $site, string $repoUrl): string
+function docs_file_map(): array
 {
-    $docFiles = [
+    return [
         'index' => 'index.md',
         'getting-started' => 'getting-started.md',
         'naming' => 'naming.md',
@@ -114,38 +114,56 @@ function build_docs_page(array $site, string $repoUrl): string
         'logo' => 'logo.md',
         'roadmap' => 'roadmap.md',
     ];
+}
+
+/**
+ * Build one HTML page per doc under www/docs/. Asset/home links use ../ because
+ * the pages live in a subfolder.
+ */
+function build_doc_pages(array $site, string $repoUrl): array
+{
+    $docFiles = docs_file_map();
     $titles = ['index' => 'Docs index'];
     foreach ($site['docs'] as $slug => $doc) {
         $titles[$slug] = $doc['title'];
     }
 
-    $html = "<!doctype html>\n<html lang=\"en\">\n<head>\n";
-    $html .= "  <meta charset=\"utf-8\">\n";
-    $html .= "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
-    $html .= "  <title>urirun docs</title>\n";
-    $html .= "  <meta name=\"description\" content=\"urirun documentation: getting started, naming, commands, registry, transports, and roadmap.\">\n";
-    $html .= "  <link rel=\"icon\" href=\"assets/urirun-favicon.svg\" type=\"image/svg+xml\">\n";
-    $html .= "  <link rel=\"stylesheet\" href=\"style.css\">\n";
-    $html .= "</head>\n<body>\n";
-    $html .= "  <header class=\"topbar\">\n";
-    $html .= "    <a class=\"brand\" href=\"index.html\" aria-label=\"urirun home\"><img src=\"assets/urirun-horizontal.svg\" alt=\"urirun\"></a>\n";
-    $html .= "    <nav>\n";
-    $html .= "      <a href=\"index.html\">Home</a>\n";
-    $html .= "      <a href=\"" . h($repoUrl) . "\">GitHub</a>\n";
-    $html .= "    </nav>\n";
-    $html .= "  </header>\n";
-    $html .= "  <main class=\"docs-layout\">\n    <aside>\n";
+    $sidebar = "    <aside>\n";
     foreach ($docFiles as $slug => $file) {
-        $html .= '      <a href="#' . h($slug) . '"><span>' . h($titles[$slug] ?? $slug) . "</span></a>\n";
+        $sidebar .= '      <a data-slug="' . h($slug) . '" href="' . h($slug) . '.html"><span>' . h($titles[$slug] ?? $slug) . "</span></a>\n";
     }
-    $html .= "    </aside>\n    <article class=\"doc-body\">\n";
+    $sidebar .= "    </aside>\n";
+
+    $pages = [];
     foreach ($docFiles as $slug => $file) {
         $path = __DIR__ . '/../docs/' . $file;
         $markdown = is_file($path) ? file_get_contents($path) : '# Missing document';
-        $html .= '<section id="' . h($slug) . "\">\n" . render_md($markdown) . "</section>\n";
+        $title = $titles[$slug] ?? $slug;
+
+        $html = "<!doctype html>\n<html lang=\"en\">\n<head>\n";
+        $html .= "  <meta charset=\"utf-8\">\n";
+        $html .= "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
+        $html .= '  <title>urirun docs: ' . h($title) . "</title>\n";
+        $html .= '  <meta name="description" content="urirun documentation - ' . h($title) . "\">\n";
+        $html .= "  <link rel=\"icon\" href=\"../assets/urirun-favicon.svg\" type=\"image/svg+xml\">\n";
+        $html .= "  <link rel=\"stylesheet\" href=\"../style.css\">\n";
+        $html .= "</head>\n<body>\n";
+        $html .= "  <header class=\"topbar\">\n";
+        $html .= "    <a class=\"brand\" href=\"../index.html\" aria-label=\"urirun home\"><img src=\"../assets/urirun-horizontal.svg\" alt=\"urirun\"></a>\n";
+        $html .= "    <nav>\n";
+        $html .= "      <a href=\"../index.html\">Home</a>\n";
+        $html .= "      <a href=\"index.html\">Docs</a>\n";
+        $html .= "      <a href=\"" . h($repoUrl) . "\">GitHub</a>\n";
+        $html .= "    </nav>\n";
+        $html .= "  </header>\n";
+        // mark the active sidebar entry for this page
+        $aside = str_replace('data-slug="' . $slug . '" href', 'class="active" data-slug="' . $slug . '" href', $sidebar);
+        $html .= "  <main class=\"docs-layout\">\n" . $aside;
+        $html .= "    <article class=\"doc-body\">\n" . render_md($markdown) . "    </article>\n";
+        $html .= "  </main>\n</body>\n</html>\n";
+        $pages[$slug] = $html;
     }
-    $html .= "    </article>\n  </main>\n</body>\n</html>\n";
-    return $html;
+    return $pages;
 }
 
 function render_doc_cards(array $docs): string
@@ -284,10 +302,10 @@ function render_page(array $page, array $site, string $baseUrl, string $repoUrl)
     $canonical = $baseUrl . ($isPl ? '' : 'index.en.html');
     $plUrl = $baseUrl;
     $enUrl = $baseUrl . 'index.en.html';
-    $docsUrl = 'docs.html';
-    $quickstartUrl = 'docs.html#getting-started';
-    $commandsUrl = 'docs.html#commands';
-    $namingUrl = 'docs.html#naming';
+    $docsUrl = 'docs/index.html';
+    $quickstartUrl = 'docs/getting-started.html';
+    $commandsUrl = 'docs/commands.html';
+    $namingUrl = 'docs/naming.html';
 
     $nav = $page['nav'];
     $html = '<!doctype html>' . "\n";
@@ -824,5 +842,11 @@ foreach ($pages as $page) {
     echo 'Wrote ' . basename($page['file']) . PHP_EOL;
 }
 
-file_put_contents(__DIR__ . '/docs.html', build_docs_page($site, $repoUrl));
-echo 'Wrote docs.html' . PHP_EOL;
+$docsDir = __DIR__ . '/docs';
+if (!is_dir($docsDir)) {
+    mkdir($docsDir, 0o755, true);
+}
+foreach (build_doc_pages($site, $repoUrl) as $slug => $docHtml) {
+    file_put_contents($docsDir . '/' . $slug . '.html', $docHtml);
+    echo 'Wrote docs/' . $slug . '.html' . PHP_EOL;
+}
