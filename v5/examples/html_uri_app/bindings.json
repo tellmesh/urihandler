@@ -11,9 +11,9 @@
       "ref": "devices.telemetryLatest"
     },
     "log://frontend/session/write/event": {
-      "kind": "function",
-      "adapter": "local-function",
-      "ref": "logs.write"
+      "kind": "http",
+      "adapter": "backend-dispatch",
+      "url": "/api/dispatch"
     },
     "log://backend/logs/query/recent": {
       "kind": "http",
@@ -28,7 +28,8 @@
     },
     "shell://local/system/restart/nginx": {
       "kind": "shell",
-      "adapter": "shell-template",
+      "adapter": "backend-dispatch",
+      "url": "/api/dispatch",
       "template": "systemctl restart {0}"
     },
     "service://api/user/create/basic": {

@@ -62,19 +62,28 @@ const adapters = {
     if (!fn) throw new Error(`Missing ref: ${entry.ref}`);
     return fn({ entry, translation, payload });
   },
-  fetch: async ({ entry, translation, payload }) => {
-    if (entry.config.method === 'GET' && entry.config.url === '/api/logs/recent') {
-      return { ok: true, type: 'http', logs: state.logs };
-    }
+  fetch: async ({ entry, translation, payload, descriptor }) => {
+    const method = entry.config.method || 'POST';
     appendLog('http.fetch', { method: entry.config.method, url: entry.config.url, payload });
-    return {
-      ok: true,
-      simulated: true,
-      type: 'http',
-      method: entry.config.method || 'POST',
-      url: entry.config.url,
-      body: { target: translation.target, args: translation.args, payload },
-    };
+    const response = await fetch(entry.config.url, {
+      method,
+      headers: method === 'GET' ? undefined : { 'Content-Type': 'application/json' },
+      body: method === 'GET' ? undefined : JSON.stringify({ uri: descriptor.raw, target: translation.target, args: translation.args, ...payload }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    return result;
+  },
+  'backend-dispatch': async ({ entry, descriptor, payload }) => {
+    const response = await fetch(entry.config.url || '/api/dispatch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uri: descriptor.raw, payload }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    appendLog('backend.dispatch', { uri: descriptor.raw, ok: result.ok });
+    return result;
   },
   'mqtt-publish': async ({ entry, translation, payload }) => {
     const topic = [entry.config.topicPrefix, translation.target, ...translation.args].filter(Boolean).join('/');
@@ -137,6 +146,12 @@ document.addEventListener('click', async (event) => {
 async function run(uri, payload) {
   try {
     const result = await runtime.dispatch(uri, payload);
+    if (!uri.startsWith('log://')) {
+      await runtime.dispatch('log://frontend/session/write/event', {
+        event: 'frontend.dispatch',
+        detail: { uri, ok: result.ok !== false },
+      });
+    }
     outputEl.textContent = JSON.stringify({ uri, result }, null, 2);
   } catch (error) {
     outputEl.textContent = JSON.stringify({ uri, error: error.message }, null, 2);

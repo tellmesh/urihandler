@@ -2,6 +2,12 @@
 set -eu
 
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-PORT="${PORT:-41735}"
+ENV_FILE="${ENV_FILE:-$DIR/.env}"
 
-python3 -m http.server "$PORT" --bind 127.0.0.1 --directory "$DIR"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  . "$ENV_FILE"
+  set +a
+fi
+
+python3 "$DIR/backend.py"

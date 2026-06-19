@@ -17,6 +17,15 @@ runtime.dispatch(uri, payload)
 
 The runtime resolves the URI through `bindings.json`, picks the adapter and executes a local demo adapter.
 
+The Python backend serves the static files and handles backend-addressed URI calls:
+
+- `POST /api/dispatch` - execute a URI from the frontend
+- `POST /api/logs/write` - append a backend log entry
+- `GET /api/logs/recent` - read backend logs
+- `POST /api/users` - simulated service endpoint
+
+Shell commands are simulated by default. Set `HTML_URI_APP_ALLOW_SHELL=true` only in a safe local environment if you want the backend to execute the rendered shell command.
+
 ## Run
 
 ```bash
@@ -26,8 +35,18 @@ bash v5/examples/html_uri_app/run.sh
 Open:
 
 ```txt
-http://127.0.0.1:41735/
+http://127.0.0.1:41810/
 ```
+
+Port and host are loaded from `.env`:
+
+```env
+HTML_URI_APP_HOST=127.0.0.1
+HTML_URI_APP_PORT=41810
+HTML_URI_APP_ALLOW_SHELL=false
+```
+
+If the configured port is busy, the backend automatically tries the next free port and prints the actual URL.
 
 ## Test
 

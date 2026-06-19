@@ -27,6 +27,20 @@ function readPath(object, path) {
 const adapters = {
   'local-function': async ({ entry, translation, payload }) => refs[entry.ref]({ translation, payload }),
   fetch: async ({ entry }) => ({ ok: true, type: 'http', url: entry.config.url }),
+  'backend-dispatch': async ({ entry, descriptor, translation, payload }) => {
+    if (descriptor.package === 'log') {
+      state.logs.push({ uri: descriptor.raw, payload });
+      return { ok: true, written: true };
+    }
+    if (descriptor.package === 'shell') {
+      return {
+        ok: true,
+        simulated: true,
+        command: entry.config.template.replace(/\{(\d+)\}/g, (_, index) => translation.args[Number(index)] || ''),
+      };
+    }
+    return { ok: true, uri: descriptor.raw, payload };
+  },
   'mqtt-publish': async ({ entry, translation }) => ({
     ok: true,
     topic: [entry.config.topicPrefix, translation.target, ...translation.args].filter(Boolean).join('/'),

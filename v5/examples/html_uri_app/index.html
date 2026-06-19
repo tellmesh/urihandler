@@ -51,6 +51,22 @@
             <code>service://api/user/create/basic</code>
           </button>
 
+          <button
+            class="action service"
+            data-uri="log://frontend/session/write/event"
+            data-payload='{"event":"frontend.manual-log","detail":{"from":"button"}}'
+          >
+            <span>L</span>
+            <strong>Write backend log</strong>
+            <code>log://frontend/session/write/event</code>
+          </button>
+
+          <a class="action service" href="#log://backend/logs/query/recent">
+            <span>L</span>
+            <strong>Read backend logs</strong>
+            <code>log://backend/logs/query/recent</code>
+          </a>
+
           <a class="action mqtt" href="#mqtt://broker/publish/home/kitchen/light/on">
             <span>M</span>
             <strong>MQTT publish</strong>
