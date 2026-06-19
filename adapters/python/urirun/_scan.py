@@ -16,7 +16,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback.
 
 from urirun import _registry as reglib
 
-BINDINGS_VERSION = "urirun.bindings.v7"
+BINDINGS_VERSION = "urirun.bindings.v1"
 DEFAULT_MANIFEST_NAMES = {
     "urirun.bindings.json",
     "urirun.routes.json",
@@ -580,7 +580,7 @@ def main(argv: list[str] | None = None) -> int:
 
     scan = subparsers.add_parser("scan", help="Scan a project and generate bindings")
     scan.add_argument("path")
-    scan.add_argument("--out", default=".urirun/bindings.v7.json")
+    scan.add_argument("--out", default=".urirun/bindings.v1.json")
     scan.add_argument("--registry-out")
     scan.add_argument("--generated-at")
     scan.add_argument("--openapi-base-url", default="")
@@ -588,7 +588,7 @@ def main(argv: list[str] | None = None) -> int:
 
     scan_github_parser = subparsers.add_parser("scan-github", help="Clone a GitHub repo and scan it")
     scan_github_parser.add_argument("repo")
-    scan_github_parser.add_argument("--out", default=".urirun/bindings.v7.json")
+    scan_github_parser.add_argument("--out", default=".urirun/bindings.v1.json")
     scan_github_parser.add_argument("--registry-out")
     scan_github_parser.add_argument("--generated-at")
     scan_github_parser.add_argument("--openapi-base-url", default="")

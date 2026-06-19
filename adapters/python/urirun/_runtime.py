@@ -1,4 +1,4 @@
-"""Execution and policy runtime shared by urirun v7/v8.
+"""Execution and policy runtime shared by urirun v1/v2.
 
 - it actually executes routes (spawn / fetch / shell / local function),
 - but only after a policy gate approves the call,
@@ -19,7 +19,7 @@ from pathlib import Path
 
 from urirun import _registry as reglib, _scan as scan
 
-POLICY_VERSION = "urirun.policy.v7"
+POLICY_VERSION = "urirun.policy.v1"
 OUTPUT_LIMIT = 4000
 DEFAULT_TIMEOUT = 30
 

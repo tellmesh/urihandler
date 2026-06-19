@@ -1,0 +1,19 @@
+{
+  "version": "urirun.policy.v1",
+  "defaultMode": "dry-run",
+  "execute": {
+    "allow": [
+      "cli://**",
+      "media://**",
+      "img://**",
+      "container://**",
+      "api://**",
+      "ops://**"
+    ],
+    "deny": [
+      "shell://**"
+    ]
+  },
+  "allowShellTemplates": false,
+  "maxArgs": 16
+}

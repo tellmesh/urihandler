@@ -13,7 +13,7 @@ from importlib import metadata
 from pathlib import Path
 from urllib.parse import parse_qsl, quote, unquote
 
-REGISTRY_VERSION = "urirun.registry.v7"
+REGISTRY_VERSION = "urirun.registry.v1"
 URI_RE = re.compile(
     r"^(?P<scheme>[a-z][a-z0-9+.-]*)://(?P<target>[^/?#]+)(?P<path>/[^?#]*)?(?:\?(?P<query>[^#]*))?(?:#(?P<fragment>.*))?$",
     re.I,

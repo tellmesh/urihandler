@@ -1,58 +1,58 @@
-# code2llm call graph | /home/tom/github/tellmesh/urirun
-# generated in 0.16s
-# nodes: 342 | edges: 396 | modules: 28
+# code2llm call graph | /home/tom/github/tellmesh/urihandler
+# generated in 0.17s
+# nodes: 392 | edges: 467 | modules: 30
 # CC̄=3.7
 
 HUBS[20]:
-  adapters.python.urihandler._scan.scan_path
+  adapters.python.urirun._scan.scan_path
     CC=15  in:4  out:27  total:31
-  adapters.python.urihandler._scan.normalize_binding
+  adapters.python.urirun._scan.normalize_binding
     CC=11  in:17  out:12  total:29
-  v8.examples.docker_uri_flow.orchestrator.flow_runner.parse_flow
+  v2.examples.docker_uri_flow.orchestrator.flow_runner.parse_flow
     CC=24  in:1  out:26  total:27
-  adapters.python.urihandler.v8.validate_binding_document
+  adapters.python.urirun.v2.validate_binding_document
     CC=12  in:2  out:24  total:26
-  v8.examples.transports.transport_lib.start_http_worker
+  v2.examples.transports.transport_lib.start_http_worker
     CC=1  in:1  out:24  total:25
-  adapters.python.urihandler.v8_mcp.serve_mcp
+  adapters.python.urirun.v2_mcp.serve_mcp
     CC=15  in:1  out:23  total:24
-  adapters.python.urihandler.v7.run
+  adapters.python.urirun.v1.run
     CC=14  in:1  out:23  total:24
-  adapters.python.urihandler.v8.run
-    CC=15  in:1  out:22  total:23
-  adapters.python.urihandler.v8.scan_artifacts
+  adapters.python.urirun.v2.scan_artifacts
     CC=11  in:4  out:19  total:23
-  adapters.python.urihandler._runtime.evaluate_policy
+  adapters.python.urirun.v2.run
+    CC=15  in:1  out:22  total:23
+  v2.examples.device_mesh_lab.www.app.escapeHtml
+    CC=1  in:20  out:2  total:22
+  adapters.python.urirun._runtime.evaluate_policy
     CC=16  in:3  out:19  total:22
-  v8.examples.html_uri_app.backend.Handler.do_GET
+  v2.examples.html_uri_app.backend.Handler.do_GET
     CC=8  in:0  out:21  total:21
-  adapters.python.urihandler._runtime.run
-    CC=10  in:1  out:20  total:21
-  adapters.python.urihandler._registry.discover_manifest
+  adapters.python.urirun._registry.discover_manifest
     CC=14  in:2  out:19  total:21
-  adapters.python.urihandler._registry.discover_docker_labels
+  adapters.python.urirun._runtime.run
+    CC=10  in:1  out:20  total:21
+  adapters.python.urirun._registry.discover_docker_labels
     CC=14  in:2  out:18  total:20
-  adapters.python.urihandler._scan.load_bindings_from_manifest
-    CC=14  in:3  out:16  total:19
-  adapters.python.urihandler._registry.coerce_route_source
-    CC=11  in:5  out:14  total:19
-  v8.examples.html_uri_app.backend.json_response
+  v2.examples.html_uri_app.backend.json_response
     CC=1  in:10  out:9  total:19
-  adapters.python.urihandler._registry.build_registry_document
+  adapters.python.urirun._registry.coerce_route_source
+    CC=11  in:5  out:14  total:19
+  adapters.python.urirun._scan.load_bindings_from_manifest
+    CC=14  in:3  out:16  total:19
+  adapters.python.urirun._registry.build_registry_document
     CC=10  in:2  out:16  total:18
-  adapters.python.urihandler.v8_grpc.serve
-    CC=2  in:1  out:17  total:18
-  adapters.python.urihandler._scan._read_toml
-    CC=12  in:1  out:17  total:18
+  adapters.python.urirun._registry.parse_uri
+    CC=8  in:2  out:16  total:18
 
 MODULES:
-  adapters.c.urihandler  [5 funcs]
+  adapters.c.urirun  [5 funcs]
     copy_token  CC=2  out:1
     is_path_end  CC=3  out:0
     memcpy  CC=1  out:1
     memset  CC=5  out:0
-    urihandler_parse  CC=20  out:5
-  adapters.c.urihandler_test  [2 funcs]
+    urirun_parse  CC=20  out:5
+  adapters.c.urirun_test  [2 funcs]
     assert  CC=1  out:0
     main  CC=2  out:3
   adapters.js  [5 funcs]
@@ -61,11 +61,11 @@ MODULES:
     fn  CC=2  out:1
     match  CC=2  out:1
     parseUri  CC=8  out:9
-  adapters.python.urihandler  [3 funcs]
+  adapters.python.urirun  [3 funcs]
     build_invocation  CC=1  out:2
     dispatch  CC=4  out:10
     parse_uri  CC=7  out:13
-  adapters.python.urihandler._registry  [35 funcs]
+  adapters.python.urirun._registry  [35 funcs]
     _default_openapi_route  CC=9  out:11
     _discover_python_module  CC=1  out:2
     _emit_json  CC=3  out:3
@@ -76,7 +76,7 @@ MODULES:
     _route_entry_equal  CC=2  out:2
     _walk_route_entries  CC=5  out:3
     add_route  CC=5  out:6
-  adapters.python.urihandler._runtime  [11 funcs]
+  adapters.python.urirun._runtime  [11 funcs]
     _matches_any  CC=3  out:1
     _truncate  CC=3  out:2
     check  CC=1  out:7
@@ -87,7 +87,7 @@ MODULES:
     run  CC=10  out:20
     run_local_function  CC=2  out:6
     run_shell_template  CC=3  out:11
-  adapters.python.urihandler._scan  [33 funcs]
+  adapters.python.urirun._scan  [33 funcs]
     _read_toml  CC=12  out:17
     binding_to_route_source  CC=3  out:3
     build_binding_document  CC=3  out:6
@@ -98,7 +98,7 @@ MODULES:
     iter_project_files  CC=5  out:4
     list_bindings  CC=2  out:3
     load_binding_source  CC=5  out:11
-  adapters.python.urihandler.v7  [19 funcs]
+  adapters.python.urirun.v1  [19 funcs]
     _binding_pairs  CC=8  out:11
     _env_flags  CC=3  out:5
     _has_placeholders  CC=2  out:3
@@ -109,7 +109,7 @@ MODULES:
     expand_binding  CC=7  out:6
     expand_bindings  CC=2  out:2
     load_registry_arg  CC=4  out:9
-  adapters.python.urihandler.v8  [43 funcs]
+  adapters.python.urirun.v2  [43 funcs]
     _apply_defaults  CC=14  out:12
     _binding_pairs  CC=8  out:11
     _bindings_as_map  CC=2  out:2
@@ -120,13 +120,13 @@ MODULES:
     _load_manifest  CC=1  out:2
     _load_many  CC=3  out:7
     _manifest_candidates  CC=2  out:3
-  adapters.python.urihandler.v8_adopt  [5 funcs]
+  adapters.python.urirun.v2_adopt  [5 funcs]
     _command_binding  CC=2  out:2
     installed_python_bindings  CC=4  out:3
     npm_package_bindings  CC=4  out:12
     passthrough_schema  CC=2  out:1
     python_package_bindings  CC=4  out:6
-  adapters.python.urihandler.v8_grpc  [8 funcs]
+  adapters.python.urirun.v2_grpc  [8 funcs]
     _method  CC=2  out:1
     _route_list  CC=2  out:5
     _validate  CC=5  out:4
@@ -135,7 +135,7 @@ MODULES:
     list_routes  CC=1  out:3
     serve  CC=2  out:17
     stream  CC=4  out:7
-  adapters.python.urihandler.v8_mcp  [9 funcs]
+  adapters.python.urirun.v2_mcp  [9 funcs]
     _input_schema  CC=4  out:3
     build_tool_index  CC=2  out:1
     call_tool  CC=3  out:4
@@ -145,7 +145,7 @@ MODULES:
     to_mcp_manifest  CC=4  out:2
     to_mcp_tools  CC=4  out:7
     tool_name  CC=1  out:4
-  adapters.python.urihandler.v8_service  [3 funcs]
+  adapters.python.urirun.v2_service  [3 funcs]
     _post  CC=3  out:10
     call  CC=9  out:10
     service_base  CC=3  out:4
@@ -158,7 +158,7 @@ MODULES:
     writeJson  CC=1  out:4
   examples.reference_adapters.python-server  [1 funcs]
     do_POST  CC=5  out:11
-  v7.examples.html_uri_app.app  [21 funcs]
+  v1.examples.html_uri_app.app  [21 funcs]
     active  CC=1  out:1
     appendLog  CC=1  out:4
     badge  CC=1  out:1
@@ -169,7 +169,7 @@ MODULES:
     executeMode  CC=5  out:0
     inputs  CC=4  out:4
     items  CC=4  out:4
-  v7.examples.html_uri_app.uri-runtime-v7  [29 funcs]
+  v1.examples.html_uri_app.uri-runtime-v7  [29 funcs]
     activePolicy  CC=1  out:1
     adapter  CC=3  out:1
     allowed  CC=4  out:1
@@ -180,7 +180,7 @@ MODULES:
     entries  CC=1  out:0
     evaluatePolicy  CC=18  out:3
     expandBinding  CC=10  out:1
-  v7.examples.js.urihandler-v7  [35 funcs]
+  v1.examples.js.urirun-v7  [34 funcs]
     DEFAULT_TIMEOUT  CC=5  out:11
     OUTPUT_LIMIT  CC=5  out:11
     allow  CC=2  out:2
@@ -191,18 +191,29 @@ MODULES:
     deny  CC=2  out:2
     envFlags  CC=3  out:4
     evaluatePolicy  CC=6  out:4
-  v8.examples.decorators.example  [3 funcs]
+  v2.examples.decorators.example  [3 funcs]
     echo_message  CC=1  out:1
     shell_echo  CC=1  out:1
     transcode  CC=1  out:1
-  v8.examples.docker_uri_flow.node-worker.server  [6 funcs]
+  v2.examples.device_mesh_lab.www.app  [49 funcs]
+    appendTimeline  CC=3  out:3
+    data  CC=2  out:1
+    defaultValueFor  CC=20  out:2
+    description  CC=3  out:1
+    deviceRows  CC=2  out:1
+    escapeHtml  CC=1  out:2
+    extractRunResult  CC=10  out:0
+    filter  CC=3  out:1
+    frontendRows  CC=1  out:1
+    groups  CC=6  out:6
+  v2.examples.docker_uri_flow.node-worker.server  [6 funcs]
     body  CC=2  out:1
     readBody  CC=2  out:4
     send  CC=1  out:4
     server  CC=10  out:4
     slug  CC=1  out:1
     slugify  CC=1  out:4
-  v8.examples.docker_uri_flow.orchestrator.flow_runner  [16 funcs]
+  v2.examples.docker_uri_flow.orchestrator.flow_runner  [16 funcs]
     get_path  CC=2  out:1
     json_get  CC=1  out:4
     json_post  CC=1  out:7
@@ -213,19 +224,19 @@ MODULES:
     parse_scalar  CC=3  out:2
     registry_has_uri  CC=4  out:9
     registry_route_count  CC=5  out:9
-  v8.examples.docker_uri_flow.python-worker.server  [5 funcs]
+  v2.examples.docker_uri_flow.python-worker.server  [5 funcs]
     do_GET  CC=3  out:3
     do_POST  CC=6  out:11
     dispatch  CC=3  out:2
     normalize  CC=1  out:6
     summary  CC=1  out:2
-  v8.examples.docker_uri_flow.shell-worker.server  [2 funcs]
+  v2.examples.docker_uri_flow.shell-worker.server  [2 funcs]
     do_GET  CC=3  out:3
     do_POST  CC=6  out:11
-  v8.examples.generators.php.example  [2 funcs]
+  v2.examples.generators.php.example  [2 funcs]
     bindingFromFunction  CC=2  out:9
     schemaType  CC=2  out:3
-  v8.examples.html_uri_app.app  [15 funcs]
+  v2.examples.html_uri_app.app  [15 funcs]
     card  CC=2  out:2
     classFor  CC=1  out:2
     data  CC=2  out:1
@@ -236,7 +247,7 @@ MODULES:
     payloadDefaults  CC=4  out:0
     refreshLogs  CC=5  out:7
     renderActions  CC=5  out:5
-  v8.examples.html_uri_app.backend  [14 funcs]
+  v2.examples.html_uri_app.backend  [14 funcs]
     do_GET  CC=8  out:21
     do_POST  CC=4  out:10
     log_message  CC=1  out:1
@@ -247,7 +258,7 @@ MODULES:
     env_bool  CC=1  out:2
     json_response  CC=1  out:9
     load_env  CC=6  out:10
-  v8.examples.transports.transport_lib  [7 funcs]
+  v2.examples.transports.transport_lib  [7 funcs]
     available_transports  CC=4  out:1
     grpc_available  CC=2  out:0
     run_inprocess  CC=2  out:1
@@ -255,55 +266,58 @@ MODULES:
     run_via  CC=6  out:16
     serverless_handler  CC=1  out:2
     start_http_worker  CC=1  out:24
+  www.docs  [2 funcs]
+    inline_markdown  CC=1  out:4
+    render_markdown  CC=15  out:13
 
 EDGES:
-  v7.examples.js.urihandler-v7.DEFAULT_TIMEOUT → v7.examples.js.urihandler-v7.match
-  v7.examples.js.urihandler-v7.OUTPUT_LIMIT → v7.examples.js.urihandler-v7.match
-  v7.examples.js.urihandler-v7.parseUri → v7.examples.js.urihandler-v7.match
-  v7.examples.js.urihandler-v7.setRoute → v7.examples.js.urihandler-v7.translate
-  v7.examples.js.urihandler-v7.setRoute → v7.examples.js.urihandler-v7.parseUri
-  v7.examples.js.urihandler-v7.compileRegistryDocument → v7.examples.js.urihandler-v7.setRoute
-  v7.examples.js.urihandler-v7.routeRows → v7.examples.js.urihandler-v7.registryTree
-  v7.examples.js.urihandler-v7.evaluatePolicy → v7.examples.js.urihandler-v7.mergePolicy
-  v7.examples.js.urihandler-v7.evaluatePolicy → v7.examples.js.urihandler-v7.globMatch
-  v7.examples.js.urihandler-v7.merged → v7.examples.js.urihandler-v7.routeRows
-  v7.examples.js.urihandler-v7.merged → v7.examples.js.urihandler-v7.evaluatePolicy
-  v7.examples.js.urihandler-v7.deny → v7.examples.js.urihandler-v7.globMatch
-  v7.examples.js.urihandler-v7.allow → v7.examples.js.urihandler-v7.globMatch
-  v7.examples.js.urihandler-v7.check → v7.examples.js.urihandler-v7.parseUri
-  v7.examples.js.urihandler-v7.check → v7.examples.js.urihandler-v7.translate
-  v7.examples.js.urihandler-v7.check → v7.examples.js.urihandler-v7.registryTree
-  v7.examples.js.urihandler-v7.check → v7.examples.js.urihandler-v7.evaluatePolicy
-  v7.examples.js.urihandler-v7.check → v7.examples.js.urihandler-v7.mergePolicy
-  v7.examples.js.urihandler-v7.renderCommand → v7.examples.js.urihandler-v7.renderValue
-  v7.examples.js.urihandler-v7.renderedEnv → v7.examples.js.urihandler-v7.renderValue
-  v7.examples.js.urihandler-v7.runProcess → v7.examples.js.urihandler-v7.renderedEnv
-  v7.examples.js.urihandler-v7.runProcess → v7.examples.js.urihandler-v7.truncate
-  v7.examples.js.urihandler-v7.envFlags → v7.examples.js.urihandler-v7.renderValue
-  v7.examples.js.urihandler-v7.tokens → v7.examples.js.urihandler-v7.runProcess
-  v7.examples.js.urihandler-v7.inner → v7.examples.js.urihandler-v7.renderValue
-  v7.examples.js.urihandler-v7.run → v7.examples.js.urihandler-v7.mergePolicy
-  v7.examples.js.urihandler-v7.run → v7.examples.js.urihandler-v7.parseUri
-  v7.examples.js.urihandler-v7.run → v7.examples.js.urihandler-v7.translate
-  v7.examples.js.urihandler-v7.run → v7.examples.js.urihandler-v7.registryTree
-  v7.examples.js.urihandler-v7.run → v7.examples.js.urihandler-v7.resolveParams
-  v7.examples.js.urihandler-v7.run → v7.examples.js.urihandler-v7.evaluatePolicy
-  v7.examples.js.urihandler-v7.run → v7.examples.js.urihandler-v7.executor
-  v7.examples.js.urihandler-v7.listRoutes → v7.examples.js.urihandler-v7.mergePolicy
-  v7.examples.js.urihandler-v7.listRoutes → v7.examples.js.urihandler-v7.routeRows
-  v7.examples.js.urihandler-v7.listRoutes → v7.examples.js.urihandler-v7.evaluatePolicy
-  v7.examples.js.urihandler-v7.expandBinding → v7.examples.js.urihandler-v7.tokenize
-  v7.examples.js.urihandler-v7.expandBinding → v7.examples.js.urihandler-v7.inferKind
-  v7.examples.js.urihandler-v7.expandBinding → v7.examples.js.urihandler-v7.defaultAdapter
-  v7.examples.js.urihandler-v7.expandBindings → v7.examples.js.urihandler-v7.expandBinding
-  v7.examples.js.urihandler-v7.compileRegistry → v7.examples.js.urihandler-v7.compileRegistryDocument
-  v7.examples.js.urihandler-v7.compileRegistry → v7.examples.js.urihandler-v7.expandBindings
-  v7.examples.html_uri_app.uri-runtime-v7.parseUri → v7.examples.html_uri_app.uri-runtime-v7.match
-  v7.examples.html_uri_app.uri-runtime-v7.routeKey → v7.examples.html_uri_app.uri-runtime-v7.translate
-  v7.examples.html_uri_app.uri-runtime-v7.routeKey → v7.examples.html_uri_app.uri-runtime-v7.parseUri
-  v7.examples.html_uri_app.uri-runtime-v7.expandBinding → v7.examples.html_uri_app.uri-runtime-v7.tokenize
-  v7.examples.html_uri_app.uri-runtime-v7.compileBindings → v7.examples.html_uri_app.uri-runtime-v7.entries
-  v7.examples.html_uri_app.uri-runtime-v7.compileBindings → v7.examples.html_uri_app.uri-runtime-v7.routeKey
-  v7.examples.html_uri_app.uri-runtime-v7.compileBindings → v7.examples.html_uri_app.uri-runtime-v7.expandBinding
-  v7.examples.html_uri_app.uri-runtime-v7.resolveParams → v7.examples.html_uri_app.uri-runtime-v7.entries
-  v7.examples.html_uri_app.uri-runtime-v7.renderCommand → v7.examples.html_uri_app.uri-runtime-v7.renderValue
+  adapters.js.parseUri → adapters.js.match
+  adapters.js.dispatch → adapters.js.parseUri
+  adapters.js.dispatch → adapters.js.buildInvocation
+  adapters.js.dispatch → adapters.js.fn
+  examples.reference_adapters.node-server.server → examples.reference_adapters.node-server.writeJson
+  examples.reference_adapters.node-server.server → examples.reference_adapters.node-server.readJson
+  examples.reference_adapters.firmware-pseudo.handle_uri → examples.reference_adapters.firmware-pseudo.led_set
+  v2.examples.docker_uri_flow.node-worker.server.server → v2.examples.docker_uri_flow.node-worker.server.send
+  v2.examples.docker_uri_flow.node-worker.server.server → v2.examples.docker_uri_flow.node-worker.server.readBody
+  v2.examples.docker_uri_flow.node-worker.server.server → v2.examples.docker_uri_flow.node-worker.server.slugify
+  v2.examples.docker_uri_flow.node-worker.server.body → v2.examples.docker_uri_flow.node-worker.server.send
+  v2.examples.docker_uri_flow.node-worker.server.slug → v2.examples.docker_uri_flow.node-worker.server.send
+  v2.examples.generators.php.example.UriCommand.bindingFromFunction → v2.examples.generators.php.example.UriCommand.schemaType
+  adapters.c.urirun.urirun_parse → adapters.c.urirun.memset
+  adapters.c.urirun.urirun_parse → adapters.c.urirun.copy_token
+  adapters.c.urirun.urirun_parse → adapters.c.urirun.is_path_end
+  www.docs.render_markdown → www.docs.inline_markdown
+  v2.examples.html_uri_app.app.routeResponse → v2.examples.html_uri_app.app.renderActions
+  v2.examples.html_uri_app.app.routeResponse → v2.examples.html_uri_app.app.renderForm
+  v2.examples.html_uri_app.app.renderActions → v2.examples.html_uri_app.app.classFor
+  v2.examples.html_uri_app.app.renderActions → v2.examples.html_uri_app.app.escapeHtml
+  v2.examples.html_uri_app.app.renderActions → v2.examples.html_uri_app.app.iconFor
+  v2.examples.html_uri_app.app.renderForm → v2.examples.html_uri_app.app.schemaFor
+  v2.examples.html_uri_app.app.renderForm → v2.examples.html_uri_app.app.payloadDefaults
+  v2.examples.html_uri_app.app.renderForm → v2.examples.html_uri_app.app.escapeHtml
+  v2.examples.html_uri_app.app.required → v2.examples.html_uri_app.app.escapeHtml
+  v2.examples.html_uri_app.app.defaults → v2.examples.html_uri_app.app.escapeHtml
+  v2.examples.html_uri_app.app.inputType → v2.examples.html_uri_app.app.escapeHtml
+  v2.examples.html_uri_app.app.refreshLogs → v2.examples.html_uri_app.app.escapeHtml
+  v2.examples.html_uri_app.app.data → v2.examples.html_uri_app.app.escapeHtml
+  v2.examples.html_uri_app.app.card → v2.examples.html_uri_app.app.renderToolList
+  v2.examples.html_uri_app.app.renderToolList → v2.examples.html_uri_app.app.escapeHtml
+  v2.examples.html_uri_app.app.iconFor → v2.examples.html_uri_app.app.classFor
+  adapters.c.urirun.copy_token → adapters.c.urirun.memcpy
+  adapters.c.urirun.memcpy → adapters.c.urirun.is_path_end
+  adapters.c.urirun_test.main → adapters.c.urirun_test.assert
+  v2.examples.device_mesh_lab.www.app.recordActivity → v2.examples.device_mesh_lab.www.app.renderActivityLog
+  v2.examples.device_mesh_lab.www.app.routeBadge → v2.examples.device_mesh_lab.www.app.isRouteSafe
+  v2.examples.device_mesh_lab.www.app.renderDevices → v2.examples.device_mesh_lab.www.app.filter
+  v2.examples.device_mesh_lab.www.app.renderDevices → v2.examples.device_mesh_lab.www.app.escapeHtml
+  v2.examples.device_mesh_lab.www.app.reachable → v2.examples.device_mesh_lab.www.app.escapeHtml
+  v2.examples.device_mesh_lab.www.app.installable → v2.examples.device_mesh_lab.www.app.escapeHtml
+  v2.examples.device_mesh_lab.www.app.novncUrlFor → v2.examples.device_mesh_lab.www.app.novncEntryFor
+  v2.examples.device_mesh_lab.www.app.renderNovnc → v2.examples.device_mesh_lab.www.app.novncUrlFor
+  v2.examples.device_mesh_lab.www.app.renderNovnc → v2.examples.device_mesh_lab.www.app.escapeHtml
+  v2.examples.device_mesh_lab.www.app.url → v2.examples.device_mesh_lab.www.app.escapeHtml
+  v2.examples.device_mesh_lab.www.app.status → v2.examples.device_mesh_lab.www.app.escapeHtml
+  v2.examples.device_mesh_lab.www.app.renderRoutes → v2.examples.device_mesh_lab.www.app.filter
+  v2.examples.device_mesh_lab.www.app.renderRoutes → v2.examples.device_mesh_lab.www.app.escapeHtml
+  v2.examples.device_mesh_lab.www.app.renderRoutes → v2.examples.device_mesh_lab.www.app.routeBadge

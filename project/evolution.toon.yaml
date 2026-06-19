@@ -1,16 +1,16 @@
-# code2llm/evolution | 221 func | 14f | 2026-06-19
+# code2llm/evolution | 224 func | 16f | 2026-06-19
 # generated in 0.00s
 
-NEXT[8] (ranked by impact):
-  [1] !! SPLIT           adapters/python/urihandler/v8.py
+NEXT[9] (ranked by impact):
+  [1] !! SPLIT           adapters/python/urirun/v2.py
       WHY: 955L, 0 classes, max CC=21
       EFFORT: ~4h  IMPACT: 20055
 
-  [2] !! SPLIT           adapters/python/urihandler/_scan.py
+  [2] !! SPLIT           adapters/python/urirun/_scan.py
       WHY: 667L, 0 classes, max CC=15
       EFFORT: ~4h  IMPACT: 10005
 
-  [3] !! SPLIT           adapters/python/urihandler/_registry.py
+  [3] !! SPLIT           adapters/python/urirun/_registry.py
       WHY: 679L, 0 classes, max CC=14
       EFFORT: ~4h  IMPACT: 9506
 
@@ -22,29 +22,33 @@ NEXT[8] (ranked by impact):
       WHY: CC=15 exceeds 15
       EFFORT: ~1h  IMPACT: 285
 
-  [6] !  SPLIT-FUNC      run  CC=15  fan=14
+  [6] !  SPLIT-FUNC      serve_mcp  CC=15  fan=14
       WHY: CC=15 exceeds 15
       EFFORT: ~1h  IMPACT: 210
 
-  [7] !  SPLIT-FUNC      serve_mcp  CC=15  fan=14
+  [7] !  SPLIT-FUNC      run  CC=15  fan=14
       WHY: CC=15 exceeds 15
       EFFORT: ~1h  IMPACT: 210
 
-  [8] !  SPLIT-FUNC      evaluate_policy  CC=16  fan=8
+  [8] !  SPLIT-FUNC      render_markdown  CC=15  fan=13
+      WHY: CC=15 exceeds 15
+      EFFORT: ~1h  IMPACT: 195
+
+  [9] !  SPLIT-FUNC      evaluate_policy  CC=16  fan=8
       WHY: CC=16 exceeds 15
       EFFORT: ~1h  IMPACT: 128
 
 
 RISKS[3]:
-  ⚠ Splitting adapters/python/urihandler/v8.py may break 49 import paths
-  ⚠ Splitting adapters/python/urihandler/_registry.py may break 41 import paths
-  ⚠ Splitting adapters/python/urihandler/_scan.py may break 36 import paths
+  ⚠ Splitting adapters/python/urirun/v2.py may break 49 import paths
+  ⚠ Splitting adapters/python/urirun/_registry.py may break 41 import paths
+  ⚠ Splitting adapters/python/urirun/_scan.py may break 36 import paths
 
 METRICS-TARGET:
   CC̄:          4.7 → ≤3.3
   max-CC:      21 → ≤10
   god-modules: 4 → 0
-  high-CC(≥15): 7 → ≤3
+  high-CC(≥15): 8 → ≤4
   hub-types:   0 → ≤0
 
 PATTERNS (language parser shared logic):

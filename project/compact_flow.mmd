@@ -3,10 +3,12 @@ flowchart TD
     adapters__js["adapters.js<br/>12 funcs"]
     adapters__python["adapters.python<br/>202 funcs"]
     examples__reference_adapters["examples.reference_adapters<br/>11 funcs"]
-    v7__examples["v7.examples<br/>152 funcs"]
-    v8__examples["v8.examples<br/>123 funcs"]
-    v8__examples ==>|16| v7__examples
-    v8__examples ==>|9| adapters__python
-    adapters__python ==>|7| v7__examples
+    v1__examples["v1.examples<br/>152 funcs"]
+    v2__examples["v2.examples<br/>210 funcs"]
+    v2__examples ==>|9| adapters__python
+    adapters__python ==>|7| v1__examples
     adapters__python ==>|4| adapters__js
-    examples__reference_adapters -->|1| v7__examples
+    adapters__python -->|3| v2__examples
+    v2__examples -->|3| adapters__js
+    v2__examples -->|2| v1__examples
+    examples__reference_adapters -->|1| adapters__js
