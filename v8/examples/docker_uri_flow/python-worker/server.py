@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -64,4 +65,4 @@ class Handler(BaseHTTPRequestHandler):
         response(self, 200 if result.get("ok") else 404, result)
 
 
-ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+ThreadingHTTPServer(("0.0.0.0", int(os.getenv("WORKER_PORT", "8080"))), Handler).serve_forever()

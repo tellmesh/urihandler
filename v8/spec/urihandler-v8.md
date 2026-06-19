@@ -83,6 +83,31 @@ LABEL io.tellmesh.urihandler.manifest="urihandler.manifest.json"
 The image/build artifact points to the URI manifest; the manifest describes the
 actual URI contract.
 
+## Generated Registry Lifecycle
+
+The registry can be generated from artifacts instead of maintained by hand:
+
+```bash
+urihandler-v8 scan ./project \
+  --out generated/bindings.v8.json \
+  --registry-out generated/registry.json
+
+urihandler-v8 validate generated/bindings.v8.json
+urihandler-v8 list generated/registry.json
+```
+
+This creates two different artifacts:
+
+- `bindings.v8.json` - the schema-first package contract, suitable for review
+  and reuse across languages.
+- `registry.json` - the compiled route tree used by runtimes and dispatchers.
+
+The scanner is allowed to emit bindings from multiple standards in the same
+project. A single registry can therefore contain Docker image routes, package
+scripts, shell scripts, Makefile targets, and explicit service manifests. The
+compiled registry is still the only source used during dispatch; the generated
+binding file is kept so the registry remains reproducible.
+
 ## CLI-generated bindings
 
 v8 can append bindings without hand-editing JSON:
@@ -219,3 +244,11 @@ For Dockerfiles, an image-level label such as
 `io.tellmesh.urihandler.manifest=/app/bindings.json` points the scanner to the
 service URI contract. If the label points to a container path, the scanner also
 checks the Dockerfile directory for a file with the same basename.
+
+A Docker flow should validate its flow document against the generated registry
+before making network calls. The recommended runtime sequence is:
+
+1. scan artifacts into `generated/bindings.v8.json`;
+2. compile `generated/registry.json`;
+3. validate every `steps[].uri` from the flow against the registry;
+4. dispatch each URI through the transport adapter selected by its target.

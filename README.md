@@ -1,5 +1,20 @@
 # urihandler
 
+
+## AI Cost Tracking
+
+![PyPI](https://img.shields.io/badge/pypi-costs-blue) ![Version](https://img.shields.io/badge/version-0.1.31-blue) ![Python](https://img.shields.io/badge/python-3.9+-blue) ![License](https://img.shields.io/badge/license-Apache--2.0-green)
+![AI Cost](https://img.shields.io/badge/AI%20Cost-$0.65-orange) ![Human Time](https://img.shields.io/badge/Human%20Time-3.4h-blue) ![Model](https://img.shields.io/badge/Model-openrouter%2Fqwen%2Fqwen3--coder--next-lightgrey)
+
+- 🤖 **LLM usage:** $0.6484 (9 commits)
+- 👤 **Human dev:** ~$338 (3.4h @ $100/h, 30min dedup)
+
+Generated on 2026-06-19 using [openrouter/qwen/qwen3-coder-next](https://openrouter.ai/qwen/qwen3-coder-next)
+
+---
+
+
+
 A small, language-agnostic URI-to-handler translator for integrating URI commands with existing code in any runtime.
 
 ## Goal
@@ -200,6 +215,26 @@ python -m urihandler.v8_mcp serve registry.json     # MCP stdio server (dry-run 
 
 Multi-language authoring lives in `v8/examples/generators/` (JS, Node.js, TS,
 PHP), the HTTP console with live MCP/A2A discovery in `v8/examples/html_uri_app/`.
+
+v8 also includes a Docker Compose flow where URI packages are discovered from
+real artifacts before the flow starts:
+
+```bash
+cd v8/examples/docker_uri_flow
+make registry   # Dockerfile/package/script artifacts -> generated registry
+make run        # generate registry, build services, validate flow URIs, dispatch
+```
+
+The generated files are local artifacts under `generated/`:
+
+- `bindings.v8.json` - flat URI bindings discovered from Dockerfiles,
+  manifests, package metadata, Makefile targets and scripts
+- `registry.json` - compiled registry used by the orchestrator
+- `routes.txt` - human-readable list of generated URI routes
+
+This keeps the URI registry reproducible: a service can ship a Dockerfile label
+such as `io.tellmesh.urihandler.manifest=/app/bindings.json`, and the scanner
+will connect the image artifact to the service's URI contract.
 
 ## License
 

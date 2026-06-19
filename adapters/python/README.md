@@ -18,3 +18,19 @@ urihandler call 'cli://local/git/status' --registry .urihandler/registry.merged.
 
 `urihandler-v4`, `urihandler-v5`, `urihandler-v6`, `urihandler-v7`, and
 `urihandler-v8` are also installed as explicit versioned entry points.
+
+v8 can generate schema-first bindings and a compiled registry from existing
+artifacts:
+
+```bash
+urihandler-v8 scan ./project \
+  --out generated/bindings.v8.json \
+  --registry-out generated/registry.json
+urihandler-v8 validate generated/bindings.v8.json
+urihandler-v8 list generated/registry.json
+```
+
+
+## License
+
+Licensed under Apache-2.0.

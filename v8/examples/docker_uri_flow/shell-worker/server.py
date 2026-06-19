@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -22,7 +23,7 @@ def dispatch(uri: str, payload: dict) -> dict:
     if uri != "shell://shell-worker/report/write":
         return {"ok": False, "service": "shell-worker", "uri": uri, "error": "route not found"}
     completed = subprocess.run(
-        ["/bin/sh", "/app/write_report.sh", str(payload["slug"]), str(payload["text"])],
+        ["/bin/sh", str(ROOT / "write_report.sh"), str(payload["slug"]), str(payload["text"])],
         check=False,
         capture_output=True,
         text=True,
@@ -60,4 +61,4 @@ class Handler(BaseHTTPRequestHandler):
         response(self, 200 if result.get("ok") else 404, result)
 
 
-ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+ThreadingHTTPServer(("0.0.0.0", int(os.getenv("WORKER_PORT", "8080"))), Handler).serve_forever()

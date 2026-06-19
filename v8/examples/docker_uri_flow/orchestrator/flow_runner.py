@@ -88,6 +88,14 @@ def service_url(uri: str) -> str:
     parsed = urlparse(uri)
     if not parsed.scheme or not parsed.netloc:
         raise ValueError(f"Invalid URI: {uri}")
+    # URI_SERVICE_MAP lets the same flow run outside Docker DNS (or against any
+    # topology): a JSON map of {host: base-url}. In Compose it is unset and the
+    # service name resolves on the network at port 8080.
+    mapping = os.getenv("URI_SERVICE_MAP")
+    if mapping:
+        table = json.loads(mapping)
+        if parsed.netloc in table:
+            return str(table[parsed.netloc]).rstrip("/")
     return f"http://{parsed.netloc}:8080"
 
 

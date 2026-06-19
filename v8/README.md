@@ -68,6 +68,26 @@ execution needs both an allow rule and `allowShellTemplates: true`.
 This makes existing repositories behave like URI packages without manually
 writing every endpoint.
 
+The generated registry workflow is:
+
+```bash
+# scan artifacts and write a binding document
+urihandler-v8 scan ./project --out generated/bindings.v8.json
+
+# scan and compile the registry in one command
+urihandler-v8 scan ./project \
+  --out generated/bindings.v8.json \
+  --registry-out generated/registry.json
+
+# check the binding contract, then list the runtime routes
+urihandler-v8 validate generated/bindings.v8.json
+urihandler-v8 list generated/registry.json
+```
+
+The binding document is the portable package contract. The registry is the
+runtime lookup tree used by dispatchers, orchestrators, HTTP backends, shell
+clients, MCP servers, or Docker services.
+
 ## HTML app
 
 ```bash
@@ -91,17 +111,23 @@ communicating through URI-addressed resources:
 - `shell://shell-worker/report/write`
 - `python://python-worker/report/summary`
 
-Run it with:
-
-```bash
-bash v8/examples/docker_uri_flow/run.sh
-```
-
-Generate only the registry from supplied Docker/package/script artifacts:
+Generate the registry from supplied Docker/package/script artifacts:
 
 ```bash
 cd v8/examples/docker_uri_flow
 make registry
+```
+
+That command runs `urihandler-v8 scan`, validates the generated bindings, and
+writes a route listing to `generated/routes.txt`. It discovers service contracts
+referenced by Dockerfile labels, worker `bindings.json` manifests, image build
+routes, shell scripts, and Makefile targets.
+
+Run the full Docker flow with:
+
+```bash
+cd v8/examples/docker_uri_flow
+make run
 ```
 
 The orchestrator reads a compact YAML flow similar to

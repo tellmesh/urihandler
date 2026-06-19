@@ -1,7 +1,8 @@
 const http = require('node:http');
 const fs = require('node:fs');
+const path = require('node:path');
 
-const bindings = JSON.parse(fs.readFileSync('/app/bindings.json', 'utf8'));
+const bindings = JSON.parse(fs.readFileSync(path.join(__dirname, 'bindings.json'), 'utf8'));
 
 function send(res, status, payload) {
   const data = JSON.stringify(payload, null, 2);
@@ -48,4 +49,4 @@ const server = http.createServer(async (req, res) => {
   send(res, 404, { ok: false, error: 'not found' });
 });
 
-server.listen(8080, '0.0.0.0');
+server.listen(Number(process.env.WORKER_PORT) || 8080, '0.0.0.0');

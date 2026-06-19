@@ -1,5 +1,5 @@
 # goal.yaml - Goal configuration file
-# Generated: 2026-06-19 12:51:17
+# Generated: 2026-06-19 14:36:59
 # Documentation: https://github.com/wronai/goal#configuration
 #
 # This file configures Goal's behavior for:
@@ -15,13 +15,12 @@ version: '1.0'
 project:
   name: urihandler
   type:
-  - nodejs
+  - python
   description: Language-agnostic URI to handler adapter
 versioning:
   strategy: semver
   files:
-  - VERSION
-  - package.json:version
+  - pyproject.toml:version
   bump_rules:
     patch: 10
     minor: 50
@@ -219,6 +218,20 @@ git:
     enabled: true
     prefix: v
     format: '{prefix}{version}'
+publishing:
+  enabled: true
+  registries:
+  - pypi
+  dry_run: false
+  fallback:
+    github_release:
+      enabled: true
+      owner: ''
+      repo: ''
+      repo_map: {}
+      token_env: GITHUB_TOKEN
+      skip_pypi_retries_on_block: true
+      asset_glob: dist/*
 strategies:
   python:
     test: pytest tests/ -v

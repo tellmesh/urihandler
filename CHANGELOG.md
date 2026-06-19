@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+- Document v8 generated registry workflow for Docker URI flows.
+
 ## [0.3.2] - 2026-06-19
 
 ### Docs
@@ -39,4 +42,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update package-lock.json
 - Update v6/examples/json/policy.example.json
 - Update v6/examples/python/example.py
-

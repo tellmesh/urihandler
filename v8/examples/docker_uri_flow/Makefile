@@ -8,6 +8,7 @@ run:
 
 test: registry
 	python3 test_flow_runner.py
+	python3 test_flow_e2e.py
 	docker compose config >/tmp/urihandler-v8-docker-uri-flow.compose.yaml
 
 clean:

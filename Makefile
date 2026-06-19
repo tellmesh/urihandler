@@ -113,6 +113,8 @@ test-v8: ## Run urihandler v8 schema/decorator, artifact, and MCP/A2A checks.
 	PYTHONPATH=adapters/python $(PYTHON) -m urihandler.v8 compile /tmp/urihandler-v8-adopt.bindings.json --out /tmp/urihandler-v8-adopt.registry.json
 	PYTHONPATH=adapters/python $(PYTHON) -m urihandler.v8 run 'cli://pip/pip/run' --registry /tmp/urihandler-v8-adopt.registry.json --payload '{"args":["--version"]}' >/tmp/urihandler-v8-adopt-run.json
 	command -v php >/dev/null 2>&1 && php v8/examples/generators/php/example.php >/tmp/urihandler-v8-php.json || echo "php not installed; skipping PHP generator"
+	$(PYTHON) v8/examples/docker_uri_flow/test_flow_runner.py
+	$(PYTHON) v8/examples/docker_uri_flow/test_flow_e2e.py
 
 .PHONY: clean
 clean: ## Remove local generated cache files.
