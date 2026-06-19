@@ -1,0 +1,64 @@
+{
+  "version": "urihandler.bindings.v8",
+  "bindings": {
+    "media://local/video/transcode": {
+      "kind": "command",
+      "adapter": "argv-template",
+      "inputSchema": {
+        "type": "object",
+        "required": ["input", "output"],
+        "properties": {
+          "input": { "type": "string" },
+          "output": { "type": "string" },
+          "width": { "type": "integer", "default": 1280 },
+          "height": { "type": "integer", "default": 720 }
+        },
+        "additionalProperties": false
+      },
+      "argv": ["ffmpeg", "-i", "{input}", "-vf", "scale={width}:{height}", "{output}"]
+    },
+    "say://local/echo/message": {
+      "kind": "command",
+      "adapter": "argv-template",
+      "inputSchema": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "argv": ["python3", "-c", "import sys; print(sys.argv[1])", "{text}"]
+    },
+    "shell://local/echo/message": {
+      "kind": "shell",
+      "adapter": "shell-template",
+      "inputSchema": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "shell": "printf '%s\\n' '{text}'"
+    },
+    "img://ffmpeg/video/thumbnail": {
+      "kind": "docker",
+      "adapter": "docker-run",
+      "image": "jrottenberg/ffmpeg",
+      "mount": ".",
+      "inputSchema": {
+        "type": "object",
+        "required": ["input", "output"],
+        "properties": {
+          "input": { "type": "string" },
+          "output": { "type": "string" },
+          "at": { "type": "string", "default": "00:00:01" }
+        },
+        "additionalProperties": false
+      },
+      "command": ["-i", "{input}", "-ss", "{at}", "-vframes", "1", "{output}"]
+    }
+  }
+}

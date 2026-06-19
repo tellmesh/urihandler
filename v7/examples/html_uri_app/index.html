@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>URI policy console (v6)</title>
+    <title>URI parameter console (v7)</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="./styles.css">
   </head>
@@ -11,8 +11,8 @@
     <main class="app">
       <header class="topbar">
         <div>
-          <p class="eyebrow">urihandler v6</p>
-          <h1>URI Policy Console</h1>
+          <p class="eyebrow">urihandler v7</p>
+          <h1>URI Parameter Console</h1>
         </div>
         <div class="metric">
           <span id="route-count">0</span>
@@ -21,14 +21,8 @@
       </header>
 
       <section class="controls">
-        <label class="switch">
-          <input type="checkbox" id="execute-toggle">
-          <span>Execute <small>(off = dry-run)</small></span>
-        </label>
-        <label class="switch">
-          <input type="checkbox" id="confirm-toggle">
-          <span>Confirm destructive</span>
-        </label>
+        <label class="switch"><input type="checkbox" id="execute-toggle"><span>Execute <small>(off = dry-run)</small></span></label>
+        <label class="switch"><input type="checkbox" id="confirm-toggle"><span>Confirm destructive</span></label>
         <div class="allow-box">
           <input type="text" id="allow-input" placeholder="allow glob, e.g. shell://**">
           <button id="add-allow" type="button">Add allow</button>
@@ -38,12 +32,9 @@
       </section>
 
       <section class="grid">
-        <nav class="actions" id="actions" aria-label="URI actions"></nav>
+        <nav class="actions" id="actions" aria-label="URI endpoints"></nav>
 
-        <section class="panel">
-          <h2>State</h2>
-          <pre id="state">{}</pre>
-        </section>
+        <section class="panel detail" id="detail"></section>
 
         <section class="panel result">
           <h2>Result envelope</h2>

@@ -16,4 +16,5 @@ urihandler build-registry /tmp/manifest.registry.json --out .urihandler/registry
 urihandler call 'cli://local/git/status' --registry .urihandler/registry.merged.json
 ```
 
-`urihandler-v4` and `urihandler-v5` are also installed as explicit versioned entry points.
+`urihandler-v4`, `urihandler-v5`, `urihandler-v6`, `urihandler-v7`, and
+`urihandler-v8` are also installed as explicit versioned entry points.

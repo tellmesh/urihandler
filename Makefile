@@ -98,6 +98,7 @@ test-v7: ## Run urihandler v7 parameter-binding, docker, and shell checks.
 	PYTHONPATH=adapters/python $(PYTHON) -m urihandler.v7 compile v7/examples/json/bindings.v7.example.json --out /tmp/urihandler-v7.registry.json --generated-at 2026-06-19T00:00:00.000Z
 	PYTHONPATH=adapters/python $(PYTHON) -m urihandler.v7 run 'media://local/video/transcode' --registry /tmp/urihandler-v7.registry.json --payload '{"input":"a.mp4","output":"b.mp4"}' >/tmp/urihandler-v7-ffmpeg.json
 	PYTHONPATH=adapters/python $(PYTHON) -m urihandler.v7 list /tmp/urihandler-v7.registry.json --allow 'media://**'
+	$(NODE) v7/examples/html_uri_app/test.mjs
 
 .PHONY: clean
 clean: ## Remove local generated cache files.

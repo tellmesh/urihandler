@@ -1,0 +1,6 @@
+{
+  "bindings": {
+    "cli://local/git/status": "git status",
+    "cli://local/git/log": "git log --oneline -n {count}"
+  }
+}
