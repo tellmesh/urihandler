@@ -219,7 +219,7 @@ for common requests such as process listing, logs, browser open, `which python3`
 Install the optional dependency when the host should manage work items:
 
 ```bash
-pip install "urirun[planfile] @ git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
+pip install "urirun[planfile] @ git+https://github.com/tellmesh/urirun.git@v0.3.5#subdirectory=adapters/python"
 ```
 
 `urirun host task` keeps tasks in planfile's `.planfile/` store and uses

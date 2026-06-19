@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-06-20
+
 ### Added
 - Add `urirun.v2.connector_bindings()` for connector packages that generate
   serializable v2 bindings from `@uri_command` decorated functions.

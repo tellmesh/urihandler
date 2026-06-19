@@ -81,13 +81,13 @@ or vendor the adapter folder directly into your repo.
 PyPI publishing is intentionally not required. Install directly from GitHub:
 
 ```bash
-pip install "git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
+pip install "git+https://github.com/tellmesh/urirun.git@v0.3.5#subdirectory=adapters/python"
 ```
 
 Or install a GitHub Release wheel:
 
 ```bash
-pip install "https://github.com/tellmesh/urirun/releases/download/v0.3.4/urirun-0.3.4-py3-none-any.whl"
+pip install "https://github.com/tellmesh/urirun/releases/download/v0.3.5/urirun-0.3.5-py3-none-any.whl"
 ```
 
 The distribution and import package are named `urirun`.
@@ -106,19 +106,19 @@ urirun-v2 --help
 Optional transports stay optional. For the v2 gRPC transport install:
 
 ```bash
-pip install "urirun[grpc] @ git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
+pip install "urirun[grpc] @ git+https://github.com/tellmesh/urirun.git@v0.3.5#subdirectory=adapters/python"
 ```
 
 For planfile-backed host tasks install the optional task dependency:
 
 ```bash
-pip install "urirun[planfile] @ git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
+pip install "urirun[planfile] @ git+https://github.com/tellmesh/urirun.git@v0.3.5#subdirectory=adapters/python"
 ```
 
 For the full host task planner with optional LiteLLM support:
 
 ```bash
-pip install "urirun[host] @ git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
+pip install "urirun[host] @ git+https://github.com/tellmesh/urirun.git@v0.3.5#subdirectory=adapters/python"
 ```
 
 ## Host / Node Mesh
