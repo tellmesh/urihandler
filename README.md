@@ -5,7 +5,7 @@ functions, scripts, Docker services, HTTP endpoints, MQTT topics, firmware
 commands, and package entry points as stable URI routes compiled into one
 registry.
 
-The GitHub repository is still `tellmesh/urihandler` for compatibility. The
+The GitHub repository is still `tellmesh/urirun` for compatibility. The
 runtime, CLI, Python import namespace, JS package name, schema prefix, Docker
 labels, and C adapter names are now `urirun`.
 
@@ -38,7 +38,7 @@ Then adapt that descriptor to existing functions, methods, classes, MQTT topics,
 
 - `urirun` is the runtime name used by the CLI, Python import namespace, JS
   package name, JSON schema prefix, Docker/OCI label prefix, and C adapter files.
-- `tellmesh/urihandler` remains the GitHub repository URL and may still appear
+- `tellmesh/urirun` remains the GitHub repository URL and may still appear
   in historical changelog entries.
 - New user-facing commands should use `urirun`, `urirun-v7`, or `urirun-v8`.
 - Do not change the GitHub remote URL unless the repository is actually renamed
@@ -64,7 +64,7 @@ Then adapt that descriptor to existing functions, methods, classes, MQTT topics,
 ### JavaScript / Node
 
 ```bash
-npm install github:tellmesh/urihandler
+npm install github:tellmesh/urirun
 ```
 
 ```js
@@ -79,13 +79,13 @@ or vendor the adapter folder directly into your repo.
 PyPI publishing is intentionally not required. Install directly from GitHub:
 
 ```bash
-pip install "git+https://github.com/tellmesh/urihandler.git@main#subdirectory=adapters/python"
+pip install "git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
 ```
 
 Or install a GitHub Release wheel:
 
 ```bash
-pip install "https://github.com/tellmesh/urihandler/releases/download/v0.3.4/urirun-0.3.4-py3-none-any.whl"
+pip install "https://github.com/tellmesh/urirun/releases/download/v0.3.4/urirun-0.3.4-py3-none-any.whl"
 ```
 
 The distribution and import package are named `urirun`.
@@ -104,7 +104,7 @@ urirun-v8 --help
 Optional transports stay optional. For the v8 gRPC transport install:
 
 ```bash
-pip install "urirun[grpc] @ git+https://github.com/tellmesh/urihandler.git@main#subdirectory=adapters/python"
+pip install "urirun[grpc] @ git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
 ```
 
 ### C / firmware

@@ -26,7 +26,7 @@ function h(string $value): string
       <a href="docs.php?doc=getting-started">Docs</a>
       <a href="#workflow">Workflow</a>
       <a href="#examples">Examples</a>
-      <a href="https://github.com/tellmesh/urihandler">GitHub</a>
+      <a href="https://github.com/tellmesh/urirun">GitHub</a>
     </nav>
   </header>
 
@@ -47,7 +47,7 @@ function h(string $value): string
           <span>quickstart</span>
           <strong>GitHub install</strong>
         </div>
-        <pre><code>pip install "git+https://github.com/tellmesh/urihandler.git@main#subdirectory=adapters/python"
+        <pre><code>pip install "git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
 urirun scan ./project \
   --out generated/bindings.v8.json \
   --registry-out generated/registry.json
@@ -58,7 +58,7 @@ urirun run 'tool://local/report/render' --registry generated/registry.json</code
 
     <section class="facts" aria-label="Project facts">
       <div><span>Runtime</span><strong>urirun</strong></div>
-      <div><span>Repository</span><strong>tellmesh/urihandler</strong></div>
+      <div><span>Repository</span><strong>tellmesh/urirun</strong></div>
       <div><span>Default contract</span><strong>v8 JSON Schema</strong></div>
       <div><span>Execution</span><strong>dry-run first</strong></div>
     </section>
@@ -157,7 +157,7 @@ urirun run 'tool://local/report/render' --registry generated/registry.json</code
 
   <footer>
     <span>Runtime: urirun</span>
-    <span>Repo: tellmesh/urihandler</span>
+    <span>Repo: tellmesh/urirun</span>
     <span><a href="docs.php?doc=naming">Naming rules</a></span>
   </footer>
 </body>

@@ -3,7 +3,7 @@
 
 ## Overview
 
-- **Project**: /home/tom/github/tellmesh/urihandler
+- **Project**: /home/tom/github/tellmesh/urirun
 - **Primary Language**: json
 - **Languages**: json: 22, python: 21, javascript: 15, shell: 12, yaml: 5
 - **Analysis Mode**: static

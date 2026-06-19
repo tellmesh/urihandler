@@ -38,7 +38,7 @@ class ExtendRegistryTests(unittest.TestCase):
     def test_http_request_url_is_templated(self):
         result = run("api://github/repo/get", self.registry, payload={"owner": "tellmesh", "repo": "urihandler"})
         self.assertEqual(result["result"]["method"], "GET")
-        self.assertEqual(result["result"]["url"], "https://api.github.com/repos/tellmesh/urihandler")
+        self.assertEqual(result["result"]["url"], "https://api.github.com/repos/tellmesh/urirun")
 
     def test_http_missing_param_is_a_params_error(self):
         result = run("api://github/repo/get", self.registry, payload={"owner": "tellmesh"})

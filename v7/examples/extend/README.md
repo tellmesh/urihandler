@@ -86,7 +86,7 @@ or the query string:
 ```bash
 urirun run 'api://github/repo/get' /tmp/extend.registry.json \
   --payload '{"owner":"tellmesh","repo":"urihandler"}'
-#   GET https://api.github.com/repos/tellmesh/urihandler   (dry-run)
+#   GET https://api.github.com/repos/tellmesh/urirun   (dry-run)
 
 # add --allow 'api://**' --execute to perform the real request
 ```

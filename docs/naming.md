@@ -1,7 +1,7 @@
 # Naming
 
 The public runtime name is `urirun`. The GitHub repository URL is still
-`tellmesh/urihandler`.
+`tellmesh/urirun`.
 
 ## Use `urirun` for runtime surfaces
 
@@ -54,19 +54,19 @@ import { parseUri } from "urirun";
 LABEL io.tellmesh.urirun.manifest="/app/bindings.json"
 ```
 
-## Keep `urihandler` only for the repository URL
+## `urihandler` is now only historical
 
-The current remote is:
+The repository was renamed to `tellmesh/urirun`, so everything user-facing is
+`urirun`, including the remote and install commands:
 
 ```txt
-git@github.com:tellmesh/urihandler.git
+git@github.com:tellmesh/urirun.git
 ```
-
-That is why install commands still use:
 
 ```bash
-pip install "git+https://github.com/tellmesh/urihandler.git@main#subdirectory=adapters/python"
-npm install github:tellmesh/urihandler
+pip install "git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
+npm install github:tellmesh/urirun
 ```
 
-Historical changelog entries can also mention `urihandler`.
+GitHub keeps a redirect from the old `tellmesh/urihandler` URL, and historical
+changelog entries can still mention `urihandler`.

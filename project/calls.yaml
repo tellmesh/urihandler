@@ -1,4 +1,4 @@
-project: /home/tom/github/tellmesh/urihandler
+project: /home/tom/github/tellmesh/urirun
 generated_from: code2llm call graph analysis
 stats:
   total_nodes: 342

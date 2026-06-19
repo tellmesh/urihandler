@@ -49,6 +49,6 @@ assert.equal(shell.ok, false);
 assert.equal(shell.error.type, 'policy');
 
 // http endpoint renders the URL in dry-run.
-assert.equal(runtime.preview('api://github/repo/get', {}), 'https://api.github.com/repos/tellmesh/urihandler');
+assert.equal(runtime.preview('api://github/repo/get', {}), 'https://api.github.com/repos/tellmesh/urirun');
 
 console.log('PASS html_uri_app v7');

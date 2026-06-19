@@ -36,7 +36,7 @@ registry, so frontend actions use the same URI names as backend actions.
 and stream-style calls. Install the optional dependency set when using it:
 
 ```bash
-pip install "urirun[grpc] @ git+https://github.com/tellmesh/urihandler.git@main#subdirectory=adapters/python"
+pip install "urirun[grpc] @ git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
 ```
 
 ## MCP and A2A

@@ -23,7 +23,7 @@ agent tool projection.
 Use v8 for new projects:
 
 ```bash
-pip install "git+https://github.com/tellmesh/urihandler.git@main#subdirectory=adapters/python"
+pip install "git+https://github.com/tellmesh/urirun.git@main#subdirectory=adapters/python"
 urirun scan ./project --out generated/bindings.v8.json --registry-out generated/registry.json
 urirun list generated/registry.json
 ```

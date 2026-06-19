@@ -134,7 +134,7 @@ function inline_markdown(string $text): string
     <nav>
       <a href="index.php">Home</a>
       <a href="docs.php?doc=commands">Commands</a>
-      <a href="https://github.com/tellmesh/urihandler">GitHub</a>
+      <a href="https://github.com/tellmesh/urirun">GitHub</a>
     </nav>
   </header>
   <main class="docs-layout">
