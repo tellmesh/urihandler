@@ -1,5 +1,5 @@
 # goal.yaml - Goal configuration file
-# Generated: 2026-06-19 14:36:59
+# Generated: 2026-06-19 14:46:01
 # Documentation: https://github.com/wronai/goal#configuration
 #
 # This file configures Goal's behavior for:
@@ -13,14 +13,16 @@
 
 version: '1.0'
 project:
-  name: urihandler
+  name: urirun
   type:
   - python
   description: Language-agnostic URI to handler adapter
 versioning:
   strategy: semver
   files:
+  - VERSION
   - pyproject.toml:version
+  - .venv/lib/python3.13/site-packages/attrs/__init__.py:__version__
   bump_rules:
     patch: 10
     minor: 50
@@ -236,7 +238,7 @@ strategies:
   python:
     test: pytest tests/ -v
     build: python -m build
-    publish: twine upload dist/urihandler-{version}*
+    publish: twine upload dist/urirun-{version}*
     publish_enabled: true
     dependencies:
       file: requirements.txt

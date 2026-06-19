@@ -4,16 +4,14 @@
 ## AI Cost Tracking
 
 ![PyPI](https://img.shields.io/badge/pypi-costs-blue) ![Version](https://img.shields.io/badge/version-0.1.31-blue) ![Python](https://img.shields.io/badge/python-3.9+-blue) ![License](https://img.shields.io/badge/license-Apache--2.0-green)
-![AI Cost](https://img.shields.io/badge/AI%20Cost-$0.65-orange) ![Human Time](https://img.shields.io/badge/Human%20Time-3.4h-blue) ![Model](https://img.shields.io/badge/Model-openrouter%2Fqwen%2Fqwen3--coder--next-lightgrey)
+![AI Cost](https://img.shields.io/badge/AI%20Cost-$0.73-orange) ![Human Time](https://img.shields.io/badge/Human%20Time-3.5h-blue) ![Model](https://img.shields.io/badge/Model-openrouter%2Fqwen%2Fqwen3--coder--next-lightgrey)
 
-- 🤖 **LLM usage:** $0.6484 (9 commits)
-- 👤 **Human dev:** ~$338 (3.4h @ $100/h, 30min dedup)
+- 🤖 **LLM usage:** $0.7255 (10 commits)
+- 👤 **Human dev:** ~$349 (3.5h @ $100/h, 30min dedup)
 
 Generated on 2026-06-19 using [openrouter/qwen/qwen3-coder-next](https://openrouter.ai/qwen/qwen3-coder-next)
 
 ---
-
-
 
 A small, language-agnostic URI-to-handler translator for integrating URI commands with existing code in any runtime.
 
@@ -58,7 +56,7 @@ Then adapt that descriptor to existing functions, methods, classes, MQTT topics,
 - `examples/` - end-to-end examples
 - `github/` - GitHub integration notes
 
-## Install from GitHub only
+## Install
 
 ### JavaScript / Node
 
@@ -80,18 +78,26 @@ or vendor the adapter folder directly into your repo.
 ### Python
 
 ```bash
+pip install urirun
+```
+
+The PyPI distribution is named `urirun` because `urihandler` is already used by
+another project on PyPI. The Python import package remains `urihandler`.
+
+Install directly from GitHub:
+
+```bash
 pip install "git+https://github.com/tellmesh/urihandler.git@main#subdirectory=adapters/python"
 ```
 
-The Python package also installs the v5 CLI. It keeps v4 commands such as
-`discover` and `build-registry` compatible:
+The Python package installs the v8-first `urirun` CLI. It also keeps versioned
+compatibility commands such as `urihandler-v4` through `urihandler-v8`:
 
 ```bash
-urihandler scan ./project --out .urihandler/bindings.v5.json --registry-out .urihandler/registry.merged.json
-urihandler compile .urihandler/bindings.v5.json --out .urihandler/registry.merged.json
-urihandler discover manifest ./urihandler-routes.json --out /tmp/routes.registry.json
-urihandler build-registry /tmp/routes.registry.json --out .urihandler/registry.merged.json
-urihandler call 'cli://local/git/status' --registry .urihandler/registry.merged.json
+urirun scan ./project --out .urihandler/bindings.v8.json --registry-out .urihandler/registry.merged.json
+urirun validate .urihandler/bindings.v8.json
+urirun list .urihandler/registry.merged.json
+urirun run 'cli://local/git/status' .urihandler/registry.merged.json
 ```
 
 ### C / firmware

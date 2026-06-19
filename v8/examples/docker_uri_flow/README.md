@@ -105,6 +105,9 @@ cd v8/examples/docker_uri_flow
 WORKER_PORT=18080 python3 python-worker/server.py
 ```
 
+If `18080` is already in use, choose another free port and use the same value in
+the browser URL and shell commands below.
+
 Open the routes endpoint:
 
 ```txt

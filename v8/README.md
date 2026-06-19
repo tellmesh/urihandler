@@ -72,16 +72,16 @@ The generated registry workflow is:
 
 ```bash
 # scan artifacts and write a binding document
-urihandler-v8 scan ./project --out generated/bindings.v8.json
+urirun scan ./project --out generated/bindings.v8.json
 
 # scan and compile the registry in one command
-urihandler-v8 scan ./project \
+urirun scan ./project \
   --out generated/bindings.v8.json \
   --registry-out generated/registry.json
 
 # check the binding contract, then list the runtime routes
-urihandler-v8 validate generated/bindings.v8.json
-urihandler-v8 list generated/registry.json
+urirun validate generated/bindings.v8.json
+urirun list generated/registry.json
 ```
 
 The binding document is the portable package contract. The registry is the
@@ -118,7 +118,7 @@ cd v8/examples/docker_uri_flow
 make registry
 ```
 
-That command runs `urihandler-v8 scan`, validates the generated bindings, and
+That command runs `urirun scan`, validates the generated bindings, and
 writes a route listing to `generated/routes.txt`. It discovers service contracts
 referenced by Dockerfile labels, worker `bindings.json` manifests, image build
 routes, shell scripts, and Makefile targets.

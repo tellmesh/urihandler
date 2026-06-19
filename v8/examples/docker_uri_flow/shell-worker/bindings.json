@@ -3,7 +3,7 @@
   "bindings": {
     "shell://shell-worker/report/write": {
       "kind": "command",
-      "adapter": "shell-script",
+      "adapter": "service",
       "inputSchema": {
         "type": "object",
         "required": ["slug", "text"],

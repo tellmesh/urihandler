@@ -88,12 +88,12 @@ actual URI contract.
 The registry can be generated from artifacts instead of maintained by hand:
 
 ```bash
-urihandler-v8 scan ./project \
+urirun scan ./project \
   --out generated/bindings.v8.json \
   --registry-out generated/registry.json
 
-urihandler-v8 validate generated/bindings.v8.json
-urihandler-v8 list generated/registry.json
+urirun validate generated/bindings.v8.json
+urirun list generated/registry.json
 ```
 
 This creates two different artifacts:
@@ -113,9 +113,9 @@ binding file is kept so the registry remains reproducible.
 v8 can append bindings without hand-editing JSON:
 
 ```bash
-urihandler-v8 add-pypi urihandler --out urihandler.bindings.v8.json
+urirun add-pypi urihandler --out urihandler.bindings.v8.json
 
-urihandler-v8 add-command 'util://local/echo/message' \
+urirun add-command 'util://local/echo/message' \
   --argv 'python3 -c "import sys; print(sys.argv[1])" {text}' \
   --param text:string:required \
   --out urihandler.bindings.v8.json
@@ -156,7 +156,7 @@ python -m urihandler.v8_adopt init . --out urihandler.bindings.v8.json --registr
 Then call it like any other URI, passing arbitrary arguments through the array:
 
 ```bash
-urihandler-v8 run 'cli://black/black/run' --payload '{"args":["--check","src/"]}'
+urirun run 'cli://black/black/run' --payload '{"args":["--check","src/"]}'
 ```
 
 The `{...name}` spread placeholder expands an array param in place inside an
@@ -235,9 +235,9 @@ point, an npm script, or another Docker image.
 The registry can be generated from supplied artifacts before the flow starts:
 
 ```bash
-urihandler-v8 scan . --out generated/bindings.v8.json --registry-out generated/registry.json
-urihandler-v8 validate generated/bindings.v8.json
-urihandler-v8 list generated/registry.json
+urirun scan . --out generated/bindings.v8.json --registry-out generated/registry.json
+urirun validate generated/bindings.v8.json
+urirun list generated/registry.json
 ```
 
 For Dockerfiles, an image-level label such as

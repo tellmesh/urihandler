@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 - Document v8 generated registry workflow for Docker URI flows.
+- Document Python package installation as `urirun`.
+
+### Changed
+- Rename the Python distribution from `urihandler` to `urirun` for PyPI.
 
 ## [0.3.2] - 2026-06-19
 

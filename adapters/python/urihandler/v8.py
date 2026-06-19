@@ -837,7 +837,9 @@ def main(argv: list[str] | None = None) -> int:
     if argv and argv[0] in {"discover", "build-registry", "call"}:
         return v5.main(argv)
 
-    parser = argparse.ArgumentParser(prog="urihandler-v8")
+    executable = Path(sys.argv[0]).name
+    prog = executable if executable in {"urirun", "urirun-v8", "urihandler-v8"} else "urirun"
+    parser = argparse.ArgumentParser(prog=prog)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     scan_parser = subparsers.add_parser("scan", help="Adopt Dockerfile, package.json, pyproject, Makefile and scripts")
