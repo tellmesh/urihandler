@@ -114,6 +114,9 @@ function isRouteSafe(route) {
 }
 
 function routeBadge(route) {
+  if (route.enabled === false) {
+    return '<span class="badge locked">blocked</span>';
+  }
   const safe = isRouteSafe(route);
   return `<span class="badge ${safe ? "safe" : "locked"}">${safe ? "safe" : "locked"}</span>`;
 }
