@@ -21,6 +21,7 @@ import json
 import re
 import shlex
 import sys
+from importlib import metadata
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
@@ -30,6 +31,7 @@ from pydantic import Field, create_model
 from urirun import _registry as reglib, _scan as scan, _runtime as runtime, v1
 
 VERSION = "urirun.bindings.v2"
+ENTRY_POINT_GROUP = "urirun.bindings"
 OCI_MANIFEST_LABEL = "io.tellmesh.urirun.manifest"
 PLACEHOLDER_RE = re.compile(r"\{([a-zA-Z0-9_.]+)\}")
 CONFIG_KEYS = {
@@ -187,6 +189,52 @@ def connector_bindings(
             schema.setdefault("additionalProperties", additional_properties)
         bindings[uri] = binding
     return {"version": VERSION, "bindings": bindings}
+
+
+def _select_entry_points(group: str):
+    eps = metadata.entry_points()
+    if hasattr(eps, "select"):
+        return eps.select(group=group)
+    if hasattr(eps, "get"):
+        return eps.get(group, [])
+    return [entry_point for entry_point in eps if getattr(entry_point, "group", group) == group]
+
+
+def entry_point_bindings(group: str = ENTRY_POINT_GROUP) -> list[dict]:
+    """Load v2 binding documents exposed by installed connector packages."""
+    bindings: list[dict] = []
+    for entry_point in _select_entry_points(group):
+        obj = entry_point.load()
+        document = obj() if callable(obj) else obj
+        for binding in expand_bindings(document)["bindings"]:
+            source = dict(binding.get("source") or {})
+            source.update(
+                {
+                    "type": "python-entry-point",
+                    "group": group,
+                    "name": entry_point.name,
+                    "value": getattr(entry_point, "value", ""),
+                }
+            )
+            binding["source"] = source
+            bindings.append(binding)
+    return bindings
+
+
+def entry_point_binding_document(
+    group: str = ENTRY_POINT_GROUP,
+    generated_at: str | None = None,
+) -> dict:
+    return build_binding_document(entry_point_bindings(group=group), generated_at=generated_at)
+
+
+def entry_point_registry(
+    group: str = ENTRY_POINT_GROUP,
+    generated_at: str | None = None,
+    on_conflict: str = "keep",
+) -> dict:
+    doc = entry_point_binding_document(group=group, generated_at=generated_at)
+    return compile_registry(doc, generated_at=generated_at, on_conflict=on_conflict)
 
 
 # --------------------------------------------------------------------------- #
@@ -907,7 +955,12 @@ def scan_artifacts(path: str | Path) -> list[dict]:
 # --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
-def _load_many(sources: list[str]) -> list[dict]:
+def _load_many(
+    sources: list[str],
+    *,
+    include_entry_points: bool = False,
+    entry_point_group: str = ENTRY_POINT_GROUP,
+) -> list[dict]:
     bindings: list[dict] = []
     for source in sources:
         path = Path(source)
@@ -915,6 +968,8 @@ def _load_many(sources: list[str]) -> list[dict]:
             bindings.extend(scan_artifacts(path))
         else:
             bindings.extend(expand_bindings(reglib.load_json(path))["bindings"])
+    if include_entry_points:
+        bindings.extend(entry_point_bindings(group=entry_point_group))
     return bindings
 
 
@@ -925,16 +980,27 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog=prog)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    scan_parser = subparsers.add_parser("scan", help="Adopt Dockerfile, package.json, pyproject, Makefile and scripts")
-    scan_parser.add_argument("path")
+    scan_parser = subparsers.add_parser("scan", help="Adopt project artifacts and optionally installed connector bindings")
+    scan_parser.add_argument("path", nargs="?", default=".")
     scan_parser.add_argument("--out", default="-")
     scan_parser.add_argument("--registry-out")
+    scan_parser.add_argument("--entry-points", action="store_true", help="Include installed connector bindings")
+    scan_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
 
-    compile_parser = subparsers.add_parser("compile", help="Compile v2 bindings or adopted artifact dirs")
-    compile_parser.add_argument("sources", nargs="+")
+    compile_parser = subparsers.add_parser("compile", help="Compile v2 bindings, adopted artifact dirs, and optional connector entry points")
+    compile_parser.add_argument("sources", nargs="*")
     compile_parser.add_argument("--out", default=".urirun/reglib.merged.json")
     compile_parser.add_argument("--generated-at")
     compile_parser.add_argument("--on-conflict", choices=["error", "keep", "replace"], default="keep")
+    compile_parser.add_argument("--entry-points", action="store_true", help="Include installed connector bindings")
+    compile_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
+
+    discover_parser = subparsers.add_parser("discover", help="Emit installed connector bindings from Python entry points")
+    discover_parser.add_argument("--out", default="-")
+    discover_parser.add_argument("--registry-out")
+    discover_parser.add_argument("--generated-at")
+    discover_parser.add_argument("--on-conflict", choices=["error", "keep", "replace"], default="keep")
+    discover_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
 
     validate_parser = subparsers.add_parser("validate", help="Validate v2 bindings and schemas")
     validate_parser.add_argument("source")
@@ -953,6 +1019,24 @@ def main(argv: list[str] | None = None) -> int:
     add_pypi_parser.add_argument("--version")
     add_pypi_parser.add_argument("--uri")
     add_pypi_parser.add_argument("--out", default="urirun.bindings.v2.json")
+
+    connectors_parser = subparsers.add_parser("connectors", help="Browse and install connectors from connect.ifuri.com")
+    connectors_sub = connectors_parser.add_subparsers(dest="connectors_command", required=True)
+    connectors_common = argparse.ArgumentParser(add_help=False)
+    connectors_common.add_argument("--catalog", default="https://connect.ifuri.com", help="Catalog base URL")
+    connectors_list = connectors_sub.add_parser("list", parents=[connectors_common], help="List catalog connectors")
+    connectors_list.add_argument("--available", action="store_true", help="Only show installable connectors")
+    connectors_list.add_argument("--json", action="store_true")
+    connectors_show = connectors_sub.add_parser("show", parents=[connectors_common], help="Show one connector contract")
+    connectors_show.add_argument("id")
+    connectors_show.add_argument("--json", action="store_true")
+    connectors_install = connectors_sub.add_parser("install", parents=[connectors_common], help="Install connector packages with pip")
+    connectors_install.add_argument("ids", nargs="+")
+    connectors_install.add_argument("--execute", action="store_true", help="Actually run pip (default: dry-run)")
+    connectors_install.add_argument("--json", action="store_true")
+    connectors_check = connectors_sub.add_parser("check", parents=[connectors_common], help="Check a local connector manifest against the hub catalog")
+    connectors_check.add_argument("manifest", help="Path to a connector.manifest.json")
+    connectors_check.add_argument("--json", action="store_true")
 
     host_parser = subparsers.add_parser("host", help="Configure a host that controls URI nodes")
     host_sub = host_parser.add_subparsers(dest="host_command", required=True)
@@ -1254,20 +1338,44 @@ def main(argv: list[str] | None = None) -> int:
 
     list_parser = subparsers.add_parser("list", help="List available URIs")
     add_source(list_parser, with_uri=False)
+    list_parser.add_argument("--entry-points", action="store_true", help="Include installed connector bindings")
+    list_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
     list_parser.add_argument("--json", action="store_true")
 
     args = parser.parse_args(argv)
 
     if args.command == "scan":
-        doc = build_binding_document(scan_artifacts(args.path))
+        bindings = scan_artifacts(args.path)
+        if args.entry_points:
+            bindings.extend(entry_point_bindings(group=args.entry_point_group))
+        doc = build_binding_document(bindings)
         reglib._emit_json(doc, args.out)
         if args.registry_out:
             reglib.write_json(args.registry_out, compile_registry(doc))
         return 0
 
     if args.command == "compile":
-        doc = build_binding_document(_load_many(args.sources), generated_at=args.generated_at)
+        if not args.sources and not args.entry_points:
+            parser.error("compile requires at least one source or --entry-points")
+        doc = build_binding_document(
+            _load_many(
+                args.sources,
+                include_entry_points=args.entry_points,
+                entry_point_group=args.entry_point_group,
+            ),
+            generated_at=args.generated_at,
+        )
         reglib._emit_json(compile_registry(doc, generated_at=args.generated_at, on_conflict=args.on_conflict), args.out)
+        return 0
+
+    if args.command == "discover":
+        doc = entry_point_binding_document(group=args.entry_point_group, generated_at=args.generated_at)
+        reglib._emit_json(doc, args.out)
+        if args.registry_out:
+            reglib.write_json(
+                args.registry_out,
+                compile_registry(doc, generated_at=args.generated_at, on_conflict=args.on_conflict),
+            )
         return 0
 
     if args.command == "validate":
@@ -1294,6 +1402,11 @@ def main(argv: list[str] | None = None) -> int:
         write_or_emit_binding(args.out, pypi_binding(args.name, version=args.version, uri=args.uri))
         return 0
 
+    if args.command == "connectors":
+        from urirun import connect_catalog
+
+        return connect_catalog.connectors_command(args)
+
     if args.command == "host":
         from urirun import mesh
 
@@ -1304,7 +1417,21 @@ def main(argv: list[str] | None = None) -> int:
 
         return mesh.node_command(args)
 
-    registry = load_registry_arg(args.source or args.registry)
+    source = args.source or args.registry
+    if args.command == "list" and args.entry_points:
+        sources = []
+        if args.source:
+            sources.append(args.source)
+        elif args.registry and Path(args.registry).exists():
+            sources.append(args.registry)
+        bindings = _load_many(
+            sources,
+            include_entry_points=True,
+            entry_point_group=args.entry_point_group,
+        )
+        registry = compile_registry(build_binding_document(bindings))
+    else:
+        registry = load_registry_arg(source)
     policy = runtime.build_policy(getattr(args, "policy", None), args.allow, args.deny)
 
     if args.command == "run":

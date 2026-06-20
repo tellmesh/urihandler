@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 
 import pytest
 
@@ -114,6 +115,43 @@ def test_show_json(monkeypatch, capsys):
     rc = connect_catalog.connectors_command(_args(connectors_command="show", id="planfile", json=True))
     assert rc == 0
     assert '"id": "planfile"' in capsys.readouterr().out
+
+
+def test_diff_manifest_in_sync():
+    entry = CATALOG["connectors"][0]
+    assert connect_catalog.diff_manifest(entry, entry) == []
+
+
+def test_diff_manifest_detects_route_and_pipspec_drift():
+    local = json.loads(json.dumps(CATALOG["connectors"][0]))
+    local["routes"] = local["routes"] + ["task://host/extra/query/new"]
+    local["install"]["pipSpec"] = "urirun-connector-planfile @ git+https://example/planfile@v9"
+    diffs = connect_catalog.diff_manifest(local, CATALOG["connectors"][0])
+    fields = {d["field"] for d in diffs}
+    assert "routes" in fields
+    assert "install.pipSpec" in fields
+    routes_diff = next(d for d in diffs if d["field"] == "routes")
+    assert routes_diff["onlyLocal"] == ["task://host/extra/query/new"]
+
+
+def test_check_in_sync(monkeypatch, tmp_path, capsys):
+    manifest = tmp_path / "connector.manifest.json"
+    manifest.write_text(json.dumps(CATALOG["connectors"][0]), encoding="utf-8")
+    monkeypatch.setattr(connect_catalog, "fetch_connector", lambda cid, base="": {"connector": CATALOG["connectors"][0]})
+    rc = connect_catalog.connectors_command(_args(connectors_command="check", manifest=str(manifest), json=False))
+    assert rc == 0
+    assert "in sync" in capsys.readouterr().out
+
+
+def test_check_drift_returns_1(monkeypatch, tmp_path, capsys):
+    drifted = json.loads(json.dumps(CATALOG["connectors"][0]))
+    drifted["install"]["pipSpec"] = "urirun-connector-planfile @ git+https://example/planfile@vOLD"
+    manifest = tmp_path / "connector.manifest.json"
+    manifest.write_text(json.dumps(drifted), encoding="utf-8")
+    monkeypatch.setattr(connect_catalog, "fetch_connector", lambda cid, base="": {"connector": CATALOG["connectors"][0]})
+    rc = connect_catalog.connectors_command(_args(connectors_command="check", manifest=str(manifest), json=False))
+    assert rc == 1
+    assert "mismatch" in capsys.readouterr().err
 
 
 def test_catalog_network_error_returns_1(monkeypatch):

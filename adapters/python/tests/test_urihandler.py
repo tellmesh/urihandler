@@ -114,6 +114,56 @@ class UriHandlerTests(unittest.TestCase):
             v2.DECORATED_BINDINGS.clear()
             v2.DECORATED_BINDINGS.update(previous)
 
+    def test_entry_point_bindings_generate_registry(self):
+        def provider():
+            return {
+                "version": v2.VERSION,
+                "bindings": {
+                    "demo://host/http/query/status": {
+                        "kind": "command",
+                        "adapter": "argv-template",
+                        "inputSchema": {
+                            "type": "object",
+                            "required": ["url"],
+                            "properties": {
+                                "url": {"type": "string"},
+                                "expectStatus": {"type": "integer", "default": 200},
+                            },
+                            "additionalProperties": False,
+                        },
+                        "argv": ["demo-http-check", "{url}", "{expectStatus}"],
+                        "meta": {"connector": "demo-tools"},
+                    }
+                },
+            }
+
+        class EntryPoint:
+            name = "demo-tools"
+            value = "demo_tools:urirun_bindings"
+
+            def load(self):
+                return provider
+
+        original = v2.metadata.entry_points
+        v2.metadata.entry_points = lambda: [EntryPoint()]
+        try:
+            document = urirun.entry_point_binding_document()
+            self.assertEqual(document["bindingCount"], 1)
+            binding = document["bindings"][0]
+            self.assertEqual(binding["uri"], "demo://host/http/query/status")
+            self.assertEqual(binding["source"]["type"], "python-entry-point")
+            self.assertEqual(binding["source"]["group"], "urirun.bindings")
+
+            registry = urirun.compile_registry(document)
+            result = urirun.run("demo://host/http/query/status", registry, {"url": "https://example.com"})
+            self.assertTrue(result["ok"])
+            self.assertEqual(
+                result["result"]["command"],
+                ["demo-http-check", "https://example.com", "200"],
+            )
+        finally:
+            v2.metadata.entry_points = original
+
 
 if __name__ == "__main__":
     unittest.main()

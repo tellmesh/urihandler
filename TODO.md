@@ -2,6 +2,8 @@
 
 ## Manual runtime TODO - 2026-06-20
 
+- [ ] Implement IFURI-015: remove compatibility modules from core once
+      downstream app/docs/examples/connectors import external packages.
 - [ ] Keep `urirun` core focused on `URI -> binding -> adapter -> executor`.
 - [x] Add a regression test that proves minimal `urirun` imports do not load
       host/dashboard/domain/planfile/transport modules.
@@ -21,6 +23,8 @@
       package once the public API is stable.
 - [ ] Add stable connector discovery commands, for example `urirun connector
       list/install/info`.
+- [ ] Add a release gate that fails if active install snippets point outside
+      `github.com/if-uri/urirun`.
 - [ ] Add an entry-point convention for connector packages and document the
       expected `urirun_bindings()` export.
 - [ ] Keep downstream noVNC and full E2E examples green after runtime changes.

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `urirun connectors` command group that reads the connect.ifuri.com catalog:
+  `list` (optionally `--available`), `show <id>`, `install <id...>` and
+  `check <manifest>`. Install resolves each id against the catalog's `install`
+  block (pip spec / bundled / planned), defaults to a shell-safe dry run and
+  only runs pip with `--execute`. Check diffs a local
+  `connector.manifest.json` against the hub entry (id, status, uriSchemes,
+  routes, install) and exits non-zero on drift, for use as a connector-repo CI
+  guard. Implemented in `urirun/connect_catalog.py` using stdlib `urllib`;
+  `--catalog` overrides the hub base URL.
+
+### Changed
+- Record IFURI-015 follow-up work: remove remaining host/domain/app
+  compatibility modules from core after downstream migration.
+- Point active runtime install references at the `if-uri/urirun` namespace.
+
 ## [0.1.10] - 2026-06-19
 
 ### Fixed

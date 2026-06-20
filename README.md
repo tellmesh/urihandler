@@ -109,6 +109,17 @@ urirun-v1 --help
 urirun-v2 --help
 ```
 
+Browse and install connectors straight from the [connect.ifuri.com](https://connect.ifuri.com)
+catalog:
+
+```bash
+urirun connectors list --available          # catalog connectors that ship a package
+urirun connectors show planfile             # routes, install spec and one-liner
+urirun connectors install planfile          # dry-run: prints the pip command
+urirun connectors install planfile --execute  # actually run pip
+urirun connectors check path/to/connector.manifest.json  # CI guard: package vs hub
+```
+
 Optional transports stay optional. For the v2 gRPC transport install:
 
 ```bash

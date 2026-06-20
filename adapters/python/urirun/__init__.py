@@ -79,6 +79,35 @@ def connector_bindings(*, routes=None, connector=None, additional_properties: bo
     )
 
 
+def entry_point_bindings(group: str = "urirun.bindings"):
+    """Load bindings exposed by installed connector entry points."""
+    from urirun.v2 import entry_point_bindings as _entry_point_bindings
+
+    return _entry_point_bindings(group=group)
+
+
+def entry_point_binding_document(group: str = "urirun.bindings", generated_at: str | None = None):
+    """Build a v2 binding document from installed connector entry points."""
+    from urirun.v2 import entry_point_binding_document as _entry_point_binding_document
+
+    return _entry_point_binding_document(group=group, generated_at=generated_at)
+
+
+def entry_point_registry(
+    group: str = "urirun.bindings",
+    generated_at: str | None = None,
+    on_conflict: str = "keep",
+):
+    """Compile installed connector entry points into a registry document."""
+    from urirun.v2 import entry_point_registry as _entry_point_registry
+
+    return _entry_point_registry(
+        group=group,
+        generated_at=generated_at,
+        on_conflict=on_conflict,
+    )
+
+
 def compile_registry(doc, generated_at: str | None = None, on_conflict: str = "keep"):
     """Compile a v2 binding document through the stable top-level API."""
     from urirun.v2 import compile_registry as _compile_registry

@@ -88,6 +88,36 @@ def pip_install_command(pip_specs: list[str]) -> list[str]:
     return [sys.executable, "-m", "pip", "install", *pip_specs]
 
 
+def diff_manifest(local: dict, hub: dict) -> list[dict]:
+    """Return field-level mismatches between a local manifest and a hub entry.
+
+    The hub catalog is generated from package manifests, so a connector package
+    in sync produces an empty diff. ``uriSchemes`` and ``routes`` compare by
+    membership (a reorder is not a drift); scalars and install fields compare
+    exactly. Useful as a CI guard inside each connector repo.
+    """
+    diffs: list[dict] = []
+    for field in ("id", "status"):
+        if str(local.get(field) or "") != str(hub.get(field) or ""):
+            diffs.append({"field": field, "local": local.get(field), "hub": hub.get(field)})
+    for field in ("uriSchemes", "routes"):
+        local_set = {str(item) for item in (local.get(field) or [])}
+        hub_set = {str(item) for item in (hub.get(field) or [])}
+        if local_set != hub_set:
+            diffs.append({"field": field, "onlyLocal": sorted(local_set - hub_set), "onlyHub": sorted(hub_set - local_set)})
+    raw_install = local.get("install")
+    hub_install = hub.get("install") if isinstance(hub.get("install"), dict) else {}
+    if isinstance(raw_install, dict):
+        for key in ("mode", "pipSpec"):
+            if str(raw_install.get(key) or "") != str(hub_install.get(key) or ""):
+                diffs.append({"field": f"install.{key}", "local": raw_install.get(key), "hub": hub_install.get(key)})
+    elif hub_install:
+        # Legacy packages declare install as a "pip install ..." string instead
+        # of the structured {mode, pipSpec} the hub catalog standardizes on.
+        diffs.append({"field": "install", "local": raw_install, "hub": hub_install, "note": "legacy string install; hub expects {mode, pipSpec}"})
+    return diffs
+
+
 # --- CLI -------------------------------------------------------------------
 
 def _emit_json(payload) -> int:
@@ -168,8 +198,29 @@ def _cmd_install(args: argparse.Namespace) -> int:
     return result.returncode
 
 
+def _cmd_check(args: argparse.Namespace) -> int:
+    with open(args.manifest, encoding="utf-8") as handle:
+        local = json.load(handle)
+    connector_id = str(local.get("id") or "")
+    if not connector_id:
+        print(f"{args.manifest}: manifest has no id", file=sys.stderr)
+        return 2
+    document = fetch_connector(connector_id, args.catalog)
+    hub = document.get("connector") if isinstance(document.get("connector"), dict) else document
+    diffs = diff_manifest(local, hub)
+    if args.json:
+        return _emit_json({"ok": not diffs, "id": connector_id, "diffs": diffs})
+    if not diffs:
+        print(f"{connector_id}: in sync with {args.catalog}")
+        return 0
+    print(f"{connector_id}: {len(diffs)} mismatch(es) vs hub catalog:", file=sys.stderr)
+    for diff in diffs:
+        print(f"  {diff}", file=sys.stderr)
+    return 1
+
+
 def connectors_command(args: argparse.Namespace) -> int:
-    handlers = {"list": _cmd_list, "show": _cmd_show, "install": _cmd_install}
+    handlers = {"list": _cmd_list, "show": _cmd_show, "install": _cmd_install, "check": _cmd_check}
     handler = handlers.get(getattr(args, "connectors_command", None))
     if handler is None:
         print("unknown connectors subcommand", file=sys.stderr)
