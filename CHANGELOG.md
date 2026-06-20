@@ -147,6 +147,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `urirun-connector-domain-monitor` v0.2.1, where the connector owns its
   HTTP/DNS/log/check runtime and provider-specific `dns://` mutation routes
   live in `urirun-connector-namecheap-dns`.
+- Align the preferred SQLite Context connector documentation with
+  `urirun-connector-sqlite-context` v0.1.1, where the connector owns its SQLite
+  dataset/artifact/check/log runtime.
 
 ### Changed
 - Update README for the current `urirun` runtime name; the GitHub repository is

@@ -37,7 +37,7 @@ Runtime-boundary audit:
 - `adapters/python/urirun/planfile_adapter.py` - task store integration; covered
   by `if-uri/urirun-connector-planfile`.
 - `adapters/python/urirun/host_db.py` - app/host data store; covered by
-  `if-uri/urirun-connector-sqlite-context`.
+  `if-uri/urirun-connector-sqlite-context` v0.1.1.
 - `adapters/python/urirun/host_dashboard.py`, `mesh.py`, `scheduler.py`,
   `task_planner.py` - ifURI host/app layer, not runtime core. Move to
   `if-uri/app` or a dedicated host package after CLI compatibility is settled.

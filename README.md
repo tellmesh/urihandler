@@ -123,7 +123,7 @@ installed without expanding the core runtime:
 pip install "urirun-connector-planfile @ git+https://github.com/if-uri/urirun-connector-planfile.git@v0.1.1"
 pip install "urirun-connector-domain-monitor @ git+https://github.com/if-uri/urirun-connector-domain-monitor.git@v0.2.1"
 pip install "urirun-connector-namecheap-dns @ git+https://github.com/if-uri/urirun-connector-namecheap-dns.git@v0.1.0"
-pip install "urirun-connector-sqlite-context @ git+https://github.com/if-uri/urirun-connector-sqlite-context.git@v0.1.0"
+pip install "urirun-connector-sqlite-context @ git+https://github.com/if-uri/urirun-connector-sqlite-context.git@v0.1.1"
 ```
 
 For the legacy full host task planner with optional LiteLLM support:
