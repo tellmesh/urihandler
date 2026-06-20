@@ -32,7 +32,7 @@ Runtime-boundary audit:
   covered by `if-uri/urirun-connector-namecheap-dns`.
 - `adapters/python/urirun/domain_monitor.py` - domain workflow plus host-db and
   planfile side effects; URI bindings are now covered by
-  `if-uri/urirun-connector-domain-monitor` v0.2.0 and provider-specific DNS
+  `if-uri/urirun-connector-domain-monitor` v0.2.1 and provider-specific DNS
   mutation routes are delegated to `if-uri/urirun-connector-namecheap-dns`.
 - `adapters/python/urirun/planfile_adapter.py` - task store integration; covered
   by `if-uri/urirun-connector-planfile`.
