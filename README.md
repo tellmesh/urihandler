@@ -113,19 +113,22 @@ urirun-v2 --help
 Optional transports stay optional. For the v2 gRPC transport install:
 
 ```bash
-pip install "urirun[grpc] @ git+https://github.com/tellmesh/urirun.git@v0.3.14#subdirectory=adapters/python"
+pip install "urirun[grpc] @ git+https://github.com/if-uri/urirun.git@v0.3.14#subdirectory=adapters/python"
 ```
 
-For planfile-backed host tasks install the optional task dependency:
+For task and domain workflows prefer external connector packages. They generate
+their own bindings with `@urirun.command`/`urirun.connector(...)` and can be
+installed without expanding the core runtime:
 
 ```bash
-pip install "urirun[planfile] @ git+https://github.com/tellmesh/urirun.git@v0.3.14#subdirectory=adapters/python"
+pip install "urirun-connector-planfile @ git+https://github.com/if-uri/urirun-connector-planfile.git@v0.1.1"
+pip install "urirun-connector-domain-monitor @ git+https://github.com/if-uri/urirun-connector-domain-monitor.git@v0.1.0"
 ```
 
-For the full host task planner with optional LiteLLM support:
+For the legacy full host task planner with optional LiteLLM support:
 
 ```bash
-pip install "urirun[host] @ git+https://github.com/tellmesh/urirun.git@v0.3.14#subdirectory=adapters/python"
+pip install "urirun[host] @ git+https://github.com/if-uri/urirun.git@v0.3.14#subdirectory=adapters/python"
 ```
 
 ## Host / Node Mesh
@@ -167,6 +170,13 @@ and `node serve` executes only when started with `--execute` or configured with
 `execute: true`.
 
 ## Planfile-backed host tasks
+
+Preferred path: use the external Planfile connector package:
+
+```bash
+urirun-planfile bindings > .urirun/planfile.bindings.v2.json
+urirun compile .urirun/planfile.bindings.v2.json --out .urirun/planfile.registry.json
+```
 
 `urirun host task` uses `planfile` as the task, sprint, status and execution
 state store. Tasks live in `.planfile/`; SQLite or other stores can still hold
@@ -292,6 +302,13 @@ urirun run 'data://host/records/query/search' .urirun/data.registry.json \
 ```
 
 ## Domain Monitor Flow
+
+Preferred path: use the external Domain Monitor connector package:
+
+```bash
+urirun-domain-monitor bindings > .urirun/domain-monitor.bindings.v2.json
+urirun compile .urirun/domain-monitor.bindings.v2.json --out .urirun/domain-monitor.registry.json
+```
 
 `urirun host monitor` provides the first operational flow: HTTP status, current
 DNS records, screenshot artifacts on failure, daily logs and review tickets for
@@ -451,6 +468,7 @@ def status(url: str):
 
 bindings = urirun.connector_bindings(connector="demo-tools")
 registry = urirun.compile_registry(bindings)
+result = urirun.run("demo://host/http/query/status", registry, {"url": "https://ifuri.com"})
 ```
 
 For larger connector packages, `urirun.connector(...)` gives you short route

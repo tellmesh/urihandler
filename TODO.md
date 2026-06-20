@@ -7,6 +7,13 @@
       host/dashboard/domain/planfile/transport modules.
 - [x] Move host/domain v2 binding implementations out of `v2.py` into a lazy
       compatibility module before extracting them to packages.
+- [x] Publish `urirun-connector-planfile` as the preferred Planfile task
+      connector package.
+- [x] Publish `urirun-connector-domain-monitor` as the preferred HTTP/DNS,
+      Namecheap, log and daily domain flow connector package.
+- [ ] Move Planfile, domain monitor and Namecheap runtime code fully out of the
+      core package after downstream users migrate to connector packages.
+- [ ] Extract host SQLite data bindings into a dedicated connector package.
 - [ ] Move host/app-specific modules into `if-uri/app` or a dedicated host
       package once the public API is stable.
 - [ ] Add stable connector discovery commands, for example `urirun connector

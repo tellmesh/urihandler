@@ -56,11 +56,13 @@ class UriHandlerTests(unittest.TestCase):
         previous = dict(v2.DECORATED_BINDINGS)
         v2.DECORATED_BINDINGS.clear()
         try:
-            @urirun.command("demo://host/http/query/status", meta={"connector": "demo"})
+            from urirun import command
+
+            @command("demo://host/http/query/status", meta={"connector": "demo"})
             def demo_status(url: str, expectStatus: int = 200):
                 return ["demo-http-check", "{url}", "{expectStatus}"]
 
-            @v2.uri_command("other://host/example/command/run", meta={"connector": "other"})
+            @urirun.command("other://host/example/command/run", meta={"connector": "other"})
             def other_command(name: str):
                 return ["echo", "{name}"]
 
@@ -73,8 +75,8 @@ class UriHandlerTests(unittest.TestCase):
             self.assertEqual(route["inputSchema"]["required"], ["url"])
             self.assertFalse(route["inputSchema"]["additionalProperties"])
 
-            registry = v2.compile_registry(document)
-            routes = v2.list_routes(registry)
+            registry = urirun.compile_registry(document)
+            routes = urirun.list_routes(registry)
             self.assertEqual([route["uri"] for route in routes], ["demo://host/http/query/status"])
         finally:
             v2.DECORATED_BINDINGS.clear()
@@ -102,8 +104,8 @@ class UriHandlerTests(unittest.TestCase):
             self.assertEqual(route["inputSchema"]["required"], ["url"])
             self.assertFalse(route["inputSchema"]["additionalProperties"])
 
-            registry = v2.compile_registry(document)
-            result = v2.run("demo://host/http/query/status", registry, {"url": "https://example.com"})
+            registry = urirun.compile_registry(document)
+            result = urirun.run("demo://host/http/query/status", registry, {"url": "https://example.com"})
             self.assertEqual(result["result"]["command"], ["demo-http-check", "https://example.com", "200"])
         finally:
             v2.DECORATED_BINDINGS.clear()

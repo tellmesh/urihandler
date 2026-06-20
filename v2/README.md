@@ -36,6 +36,7 @@ tests do not need versioned imports:
 bindings = urirun.connector_bindings(connector="media-tools")
 registry = urirun.compile_registry(bindings)
 routes = urirun.list_routes(registry)
+result = urirun.run("media://local/video/transcode", registry, {"input": "a.mp4", "output": "b.mp4"})
 ```
 
 Shell routes are real shell execution, but they stay behind the policy gate:

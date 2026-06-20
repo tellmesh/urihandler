@@ -9,8 +9,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from urirun import host_db, mesh, planfile_adapter
-
 
 INDEX_HTML = r"""<!doctype html>
 <html lang="en">
@@ -435,9 +433,27 @@ def _first(query: dict[str, list[str]], name: str, default: str | None = None) -
     return values[0] if values else default
 
 
+def _host_db():
+    from urirun import host_db
+
+    return host_db
+
+
+def _mesh():
+    from urirun import mesh
+
+    return mesh
+
+
+def _planfile_adapter():
+    from urirun import planfile_adapter
+
+    return planfile_adapter
+
+
 def _safe_tickets(project: str, sprint: str = "current", status: str | None = None, queue: str | None = None) -> tuple[list[dict], str | None]:
     try:
-        return planfile_adapter.list_tickets(project, sprint=sprint, status=status, queue=queue), None
+        return _planfile_adapter().list_tickets(project, sprint=sprint, status=status, queue=queue), None
     except Exception as exc:  # noqa: BLE001 - dashboard should stay up while optional stores are missing.
         return [], str(exc)
 
@@ -452,6 +468,8 @@ def _task_counts(tickets: list[dict]) -> dict[str, int]:
 
 def summary(project: str, db: str | None, config: str | None) -> dict:
     tickets, task_error = _safe_tickets(project, sprint="all")
+    host_db = _host_db()
+    mesh = _mesh()
     try:
         discovered = mesh.discover_mesh(mesh.load_host_config(config))
     except Exception as exc:  # noqa: BLE001
@@ -481,6 +499,7 @@ def summary(project: str, db: str | None, config: str | None) -> dict:
 
 
 def task_action(project: str, ticket_id: str, action: str, payload: dict) -> dict:
+    planfile_adapter = _planfile_adapter()
     if action == "start":
         ticket = planfile_adapter.start_ticket(project, ticket_id, assigned_to=payload.get("assigned_to"))
     elif action == "complete":
@@ -521,20 +540,25 @@ def create_handler(project: str, db: str | None = None, config: str | None = Non
                     _json_response(self, 200, {"ok": error is None, "tickets": tickets, "error": error})
                     return
                 if parsed.path == "/api/nodes":
+                    mesh = _mesh()
                     discovered = mesh.discover_mesh(mesh.load_host_config(config))
                     _json_response(self, 200, {"ok": True, "nodes": discovered.get("nodes") or []})
                     return
                 if parsed.path == "/api/routes":
+                    mesh = _mesh()
                     discovered = mesh.discover_mesh(mesh.load_host_config(config))
                     _json_response(self, 200, {"ok": True, "routes": discovered.get("routes") or []})
                     return
                 if parsed.path == "/api/checks":
+                    host_db = _host_db()
                     _json_response(self, 200, {"ok": True, "checks": host_db.recent_checks(db, subject=_first(query, "subject"), limit=int(_first(query, "limit", "20") or 20))})
                     return
                 if parsed.path == "/api/logs":
+                    host_db = _host_db()
                     _json_response(self, 200, {"ok": True, "logs": host_db.recent_logs(db, stream=_first(query, "stream"), limit=int(_first(query, "limit", "20") or 20))})
                     return
                 if parsed.path == "/api/artifacts":
+                    host_db = _host_db()
                     _json_response(self, 200, {"ok": True, "artifacts": host_db.list_artifacts(db, kind=_first(query, "kind"), limit=int(_first(query, "limit", "20") or 20))})
                     return
                 _json_response(self, 404, {"ok": False, "error": "not found"})

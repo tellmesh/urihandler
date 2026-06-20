@@ -82,9 +82,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Align root, Python and JavaScript package metadata to the same runtime
   version and add a CI version check.
-- Expose `compile_registry`, `list_routes` and `validate_binding_document` from
-  the top-level Python API so connector packages can avoid versioned imports in
-  normal smoke tests.
+- Expose `compile_registry`, `list_routes`, `validate_binding_document` and
+  `run` from the top-level Python API so connector packages can avoid versioned
+  imports in normal smoke tests.
 
 ### Added
 - Add `urirun.connector(...)`, a convention helper for connector packages. It
@@ -122,12 +122,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   host, dashboard, domain-monitor, planfile and optional transport modules.
 - Add `urirun.host_integrations` as the compatibility home for host, planfile
   and domain-monitor v2 bindings while those integrations move out of core.
+- Document the external `urirun-connector-planfile` and
+  `urirun-connector-domain-monitor` packages as the preferred task/domain
+  workflow path.
 
 ### Changed
 - Load host dashboard and Namecheap/domain-monitor dependencies lazily at call
   time, keeping the minimal `urirun` runtime boundary smaller.
 - Keep `urirun.v2` host/domain public functions as thin lazy wrappers instead
   of storing the integration implementations directly in the core module.
+- Point active README install examples at the `if-uri/urirun` repository.
 - Add generated `logo/` SVG assets for icon, wordmark, favicon, horizontal,
   stacked, and logo sheet variants.
 - Add a curated `TODO.md` focused on urirun usability work.

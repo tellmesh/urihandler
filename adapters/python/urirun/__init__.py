@@ -76,6 +76,50 @@ def connector_bindings(*, routes=None, connector=None, additional_properties: bo
     )
 
 
+def compile_registry(doc, generated_at: str | None = None, on_conflict: str = "keep"):
+    """Compile a v2 binding document through the stable top-level API."""
+    from urirun.v2 import compile_registry as _compile_registry
+
+    return _compile_registry(doc, generated_at=generated_at, on_conflict=on_conflict)
+
+
+def list_routes(registry: dict, policy: dict | None = None) -> list[dict]:
+    """List routes from a compiled registry through the stable top-level API."""
+    from urirun.v2 import list_routes as _list_routes
+
+    return _list_routes(registry, policy=policy)
+
+
+def validate_binding_document(doc) -> dict:
+    """Validate a v2 binding document through the stable top-level API."""
+    from urirun.v2 import validate_binding_document as _validate_binding_document
+
+    return _validate_binding_document(doc)
+
+
+def run(
+    uri: str,
+    registry: dict,
+    payload=None,
+    mode: str = "dry-run",
+    policy: dict | None = None,
+    confirm: bool = False,
+    executors: dict | None = None,
+) -> dict:
+    """Run a URI route through the stable top-level API."""
+    from urirun.v2 import run as _run
+
+    return _run(
+        uri,
+        registry,
+        payload=payload,
+        mode=mode,
+        policy=policy,
+        confirm=confirm,
+        executors=executors,
+    )
+
+
 @dataclass(frozen=True)
 class Connector:
     """Small convention helper for connector packages.

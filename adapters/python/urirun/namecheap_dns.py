@@ -15,12 +15,16 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from urirun import domain_monitor
-
 
 API_PROD = "https://api.namecheap.com/xml.response"
 API_SANDBOX = "https://api.sandbox.namecheap.com/xml.response"
 SUPPORTED_RECORD_KEYS = ("Name", "Type", "Address", "TTL", "MXPref", "EmailType", "Flag", "Tag")
+
+
+def _domain_monitor():
+    from urirun import domain_monitor
+
+    return domain_monitor
 
 
 def split_domain(domain: str) -> tuple[str, str]:
@@ -222,7 +226,7 @@ def sethosts_params(records: list[dict]) -> dict[str, str]:
 def backup(domain: str, records: list[dict], db: str | None = None, out_dir: str | None = None) -> dict:
     from urirun import host_db
 
-    timestamp = domain_monitor.now_id()
+    timestamp = _domain_monitor().now_id()
     directory = Path(out_dir or "~/.urirun/artifacts/namecheap").expanduser()
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{domain}-{timestamp}.dns-backup.json"
@@ -266,7 +270,7 @@ def run_uri_route(ctx: dict, execute: bool) -> dict:
     if ctx["translation"]["operation"] == "query" and action == "current":
         return {"type": "namecheap-dns", "action": action, "domain": domain, "records": current_records(domain, payload)}
     if ctx["translation"]["operation"] == "query" and action == "expected":
-        return {"type": "namecheap-dns", "action": action, "domain": domain, "expectedRecords": domain_monitor.expected_records(payload)}
+        return {"type": "namecheap-dns", "action": action, "domain": domain, "expectedRecords": _domain_monitor().expected_records(payload)}
 
     if ctx["translation"]["operation"] != "command":
         raise ValueError(f"unsupported Namecheap DNS action: {action}")
