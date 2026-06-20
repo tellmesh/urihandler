@@ -27,6 +27,8 @@ import sys
 import urllib.error
 import urllib.request
 
+from urirun import errors
+
 DEFAULT_CATALOG_BASE = "https://connect.ifuri.com"
 _USER_AGENT = "urirun-connect-catalog"
 
@@ -37,11 +39,13 @@ def _get_json(url: str, timeout: float = 10.0) -> dict:
         return json.loads(response.read().decode("utf-8") or "{}")
 
 
+@errors.capture(scheme="connect")
 def fetch_catalog(base: str = DEFAULT_CATALOG_BASE, timeout: float = 10.0) -> dict:
     """Return the parsed ``connectors.json`` catalog document."""
     return _get_json(base.rstrip("/") + "/connectors.json", timeout=timeout)
 
 
+@errors.capture(scheme="connect")
 def fetch_connector(connector_id: str, base: str = DEFAULT_CATALOG_BASE, timeout: float = 10.0) -> dict:
     """Return the parsed ``connectors/<id>.json`` contract document."""
     return _get_json(f"{base.rstrip('/')}/connectors/{connector_id}.json", timeout=timeout)
