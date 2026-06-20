@@ -1149,6 +1149,9 @@ def main(argv: list[str] | None = None) -> int:
         help="recent | info <code> | search <q> | ticket <code> | bindings",
     )
 
+    compat_parser = subparsers.add_parser("compat", help="Inspect legacy modules that are moving out of urirun core")
+    compat_parser.add_argument("compat_args", nargs=argparse.REMAINDER, help="list | check")
+
     host_parser = subparsers.add_parser("host", help="Configure a host that controls URI nodes")
     host_sub = host_parser.add_subparsers(dest="host_command", required=True)
     host_common = argparse.ArgumentParser(add_help=False)
@@ -1520,6 +1523,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "errors":
         return uri_errors.main(args.errors_args)
+
+    if args.command == "compat":
+        from urirun import compat
+
+        return compat.main(args.compat_args)
 
     if args.command == "host":
         from urirun import mesh

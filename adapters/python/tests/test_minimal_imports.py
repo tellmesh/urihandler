@@ -19,6 +19,7 @@ import urirun
 import urirun.v2
 
 forbidden = [
+    "urirun.compat",
     "urirun.domain_monitor",
     "urirun.host_dashboard",
     "urirun.host_db",
@@ -61,6 +62,7 @@ v2.domain_monitor_bindings()
 
 required = ["urirun.host_integrations"]
 forbidden = [
+    "urirun.compat",
     "urirun.domain_monitor",
     "urirun.host_db",
     "urirun.namecheap_dns",

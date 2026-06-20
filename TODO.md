@@ -21,12 +21,16 @@
 - [x] Extract host SQLite data bindings into a dedicated connector package.
 - [ ] Move host/app-specific modules into `if-uri/app` or a dedicated host
       package once the public API is stable.
-- [ ] Add stable connector discovery commands, for example `urirun connector
-      list/install/info`.
+- [x] Add stable connector catalog commands: `urirun connectors
+      list/show/install/check`.
+- [x] Add `urirun compat list/check` as the migration guard for legacy modules
+      moving from core to connector packages or `if-uri/app`.
 - [ ] Add a release gate that fails if active install snippets point outside
       `github.com/if-uri/urirun`.
-- [ ] Add an entry-point convention for connector packages and document the
+- [x] Add an entry-point convention for connector packages and document the
       expected `urirun_bindings()` export.
+- [x] Promote `error://` to a built-in runtime diagnostic resource with CLI,
+      registry bindings, search/info/recent routes and planfile ticket creation.
 - [ ] Keep downstream noVNC and full E2E examples green after runtime changes.
 - [ ] Align README install commands with the latest published GitHub release tag.
 

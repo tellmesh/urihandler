@@ -115,6 +115,13 @@ def error_bindings(target: str = "local") -> dict:
     return errors.bindings(target=target)
 
 
+def compat_report() -> dict:
+    """Return migration status for legacy compatibility modules."""
+    from urirun import compat
+
+    return compat.report()
+
+
 def compile_registry(doc, generated_at: str | None = None, on_conflict: str = "keep"):
     """Compile a v2 binding document through the stable top-level API."""
     from urirun.v2 import compile_registry as _compile_registry
@@ -226,3 +233,24 @@ def connector(
 ):
     """Create a convention-based connector declaration helper."""
     return Connector(connector_id, scheme=scheme, target=target, meta=dict(meta or {}))
+
+
+def load_manifest(package: str, name: str = "connector.manifest.json") -> dict:
+    """Load a connector's bundled JSON manifest (connector authoring helper)."""
+    from urirun.connector_sdk import load_manifest as _load_manifest
+
+    return _load_manifest(package, name)
+
+
+def connector_emit(payload) -> None:
+    """Print a payload as the stable sorted JSON connectors emit on stdout."""
+    from urirun.connector_sdk import emit as _emit
+
+    _emit(payload)
+
+
+def connector_cli(prog: str, **kwargs) -> int:
+    """Build the standard connector CLI (domain commands + manifest/bindings)."""
+    from urirun.connector_sdk import connector_cli as _connector_cli
+
+    return _connector_cli(prog, **kwargs)

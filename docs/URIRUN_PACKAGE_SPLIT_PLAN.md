@@ -113,6 +113,18 @@ urirun connectors bindings --out generated/bindings.json
 urirun connectors registry --out generated/registry.json
 ```
 
+Aktualny guard migracyjny:
+
+```bash
+urirun compat list
+urirun compat check --json
+```
+
+`compat` jest metadata-only: nie importuje `mesh`, dashboardu, host DB ani
+connector runtime. Pokazuje, ktory legacy modul nadal istnieje w core, jaka
+paczka go zastapi i czy replacement jest widoczny jako import oraz entry point
+`urirun.bindings`.
+
 ## Mapowanie obecnych modulow
 
 | Obecny modul | Docelowa paczka | Uzasadnienie |

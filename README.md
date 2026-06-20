@@ -120,6 +120,55 @@ urirun connectors install planfile --execute  # actually run pip
 urirun connectors check path/to/connector.manifest.json  # CI guard: package vs hub
 ```
 
+Before removing old imports from a downstream project, inspect the compatibility
+surface that is moving out of the core runtime:
+
+```bash
+urirun compat list
+urirun compat list --json
+urirun compat check --json   # non-zero until every replacement is installed
+```
+
+Installed connector packages expose their URI bindings through the
+`urirun.bindings` Python entry-point group. That means a host can build a
+registry from installed capabilities without manually concatenating JSON files:
+
+```bash
+# bindings and registry from installed connector packages
+urirun discover --out .urirun/connectors.bindings.v2.json \
+  --registry-out .urirun/connectors.registry.json
+
+# same idea, merged with local Dockerfile/package/Makefile/script adoption
+urirun scan . --entry-points \
+  --out .urirun/bindings.v2.json \
+  --registry-out .urirun/registry.merged.json
+
+# registry-only and operator list views
+urirun compile --entry-points --out .urirun/connectors.registry.json
+urirun list --entry-points
+```
+
+## Runtime errors as URI resources
+
+Failed runs are stamped with a stable code, category, severity, help URL and
+`error://` address, then stored in `~/.urirun/errors.jsonl` by default:
+
+```bash
+urirun errors recent
+urirun errors search policy
+urirun errors info E-ce9b1dd4
+urirun errors ticket E-ce9b1dd4 .
+```
+
+The same diagnostics can be used inside a registry and flow:
+
+```bash
+urirun errors bindings > error-bindings.json
+urirun compile error-bindings.json --out error-registry.json
+urirun run 'error://local/errors/query/recent' error-registry.json
+urirun run 'error://local/E-ce9b1dd4/query/info' error-registry.json
+```
+
 Optional transports stay optional. For the v2 gRPC transport install:
 
 ```bash

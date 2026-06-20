@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `urirun.connector_sdk` authoring helpers that move per-connector boilerplate
+  into the runtime: `urirun.load_manifest(package)` (bundled manifest loader),
+  `urirun.connector_emit(payload)` (stable sorted-JSON stdout) and
+  `urirun.connector_cli(prog, manifest=, bindings=, register=, dispatch=)`
+  (wires `manifest`/`bindings` subcommands so a connector CLI only declares its
+  domain commands). All 9 connectors had duplicated copies of these.
 - `urirun connectors` command group that reads the connect.ifuri.com catalog:
   `list` (optionally `--available`), `show <id>`, `install <id...>` and
   `check <manifest>`. Install resolves each id against the catalog's `install`
@@ -17,6 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   routes, install) and exits non-zero on drift, for use as a connector-repo CI
   guard. Implemented in `urirun/connect_catalog.py` using stdlib `urllib`;
   `--catalog` overrides the hub base URL.
+- Connector entry-point discovery via the `urirun.bindings` group. Installed
+  connector packages can expose `urirun_bindings()` and the runtime can build
+  bindings/registries with `urirun discover`, `urirun scan --entry-points`,
+  `urirun compile --entry-points` and `urirun list --entry-points`.
+- Built-in `error://` diagnostics: failed `urirun.v2.run` envelopes now get
+  stable codes/categories/help URLs, `urirun errors ...` wraps the error store,
+  `urirun errors bindings` emits registry-ready routes, and the `error-store`
+  executor supports `recent`, `search`, `info` and `ticket` actions.
+- `urirun compat list/check` for IFURI-015 migration work. The report lists
+  legacy core modules, their connector/app replacements, supported schemes,
+  Python entry-point status and whether each replacement is installed.
 
 ### Changed
 - Record IFURI-015 follow-up work: remove remaining host/domain/app
