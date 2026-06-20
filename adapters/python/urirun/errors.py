@@ -88,7 +88,29 @@ TYPE_CATEGORY: dict[str, str] = {
     "TimeoutExpired": "DEADLINE_EXCEEDED",
     "ConnectionError": "UNAVAILABLE",
     "ConnectionRefusedError": "UNAVAILABLE",
+    "ConnectionResetError": "UNAVAILABLE",
+    "BrokenPipeError": "UNAVAILABLE",
+    "URLError": "UNAVAILABLE",
+    "HTTPError": "UNAVAILABLE",
     "NotImplementedError": "UNIMPLEMENTED",
+    # data / parsing
+    "JSONDecodeError": "INVALID_ARGUMENT",
+    "UnicodeError": "INVALID_ARGUMENT",
+    "UnicodeDecodeError": "INVALID_ARGUMENT",
+    "ValidationError": "INVALID_ARGUMENT",
+    # sqlite / db
+    "IntegrityError": "ALREADY_EXISTS",
+    "OperationalError": "UNAVAILABLE",
+    "DatabaseError": "INTERNAL",
+    # lookup / range / resources
+    "ModuleNotFoundError": "NOT_FOUND",
+    "ProcessLookupError": "NOT_FOUND",
+    "IndexError": "OUT_OF_RANGE",
+    "OverflowError": "OUT_OF_RANGE",
+    "MemoryError": "RESOURCE_EXHAUSTED",
+    "RecursionError": "RESOURCE_EXHAUSTED",
+    "InterruptedError": "CANCELLED",
+    "AssertionError": "FAILED_PRECONDITION",
     "OSError": "INTERNAL",  # refined by errno / message
 }
 
@@ -130,12 +152,16 @@ def classify(error_type: str, message: str, errno_name: str | None = None) -> st
         return ERRNO_CATEGORY[found.group(1)]
     if "executor not found" in low or "no executor" in low or "not implemented" in low:
         return "UNIMPLEMENTED"
-    if "no such file" in low:
+    if "no such file" in low or "not found" in low:
         return "NOT_FOUND"
+    if "already exists" in low or "unique constraint" in low:
+        return "ALREADY_EXISTS"
     if "default deny" in low or "not allowed" in low or "permission denied" in low:
         return "PERMISSION_DENIED"
-    if "connection refused" in low or "unreachable" in low or "unavailable" in low:
+    if "database is locked" in low or "connection refused" in low or "unreachable" in low or "unavailable" in low:
         return "UNAVAILABLE"
+    if "no space left" in low or "disk full" in low or "out of memory" in low or "quota" in low:
+        return "RESOURCE_EXHAUSTED"
     if "timed out" in low or "timeout" in low:
         return "DEADLINE_EXCEEDED"
     mapped = TYPE_CATEGORY.get(error_type)

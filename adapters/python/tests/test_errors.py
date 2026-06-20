@@ -203,6 +203,21 @@ class StandardizationTests(unittest.TestCase):
         self.assertEqual(errors.classify("ValueError", "Executor not found: x"), "UNIMPLEMENTED")
         self.assertEqual(errors.classify("Whatever", "connection refused"), "UNAVAILABLE")
 
+    def test_classify_not_found_message_beats_generic_type(self):
+        # host_db.get_dataset raises ValueError("dataset not found: x")
+        self.assertEqual(errors.classify("ValueError", "dataset not found: domains"), "NOT_FOUND")
+
+    def test_classify_sqlite_and_resource_messages(self):
+        self.assertEqual(errors.classify("OperationalError", "database is locked"), "UNAVAILABLE")
+        self.assertEqual(errors.classify("IntegrityError", "UNIQUE constraint failed"), "ALREADY_EXISTS")
+        self.assertEqual(errors.classify("OSError", "No space left on device"), "RESOURCE_EXHAUSTED")
+
+    def test_classify_extended_type_map(self):
+        self.assertEqual(errors.classify("JSONDecodeError", "Expecting value"), "INVALID_ARGUMENT")
+        self.assertEqual(errors.classify("IndexError", "list index out of range"), "OUT_OF_RANGE")
+        self.assertEqual(errors.classify("MemoryError", ""), "RESOURCE_EXHAUSTED")
+        self.assertEqual(errors.classify("ModuleNotFoundError", "No module named x"), "NOT_FOUND")
+
     def test_every_category_has_meta(self):
         for cat in errors.CATEGORIES:
             status, severity, desc = errors.category_meta(cat)

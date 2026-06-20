@@ -20,6 +20,8 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from urirun import errors
+
 
 DEFAULT_DB = "~/.urirun/host.db"
 
@@ -136,6 +138,7 @@ def rows_dict(rows) -> list[dict]:
     return [row_dict(row) for row in rows]
 
 
+@errors.capture(scheme="data")
 def init_db(path: str | None = None) -> dict:
     with connection(path) as conn:
         conn.executescript(SCHEMA)
@@ -178,6 +181,7 @@ def list_datasets(path: str | None = None) -> list[dict]:
         return rows_dict(conn.execute("SELECT * FROM datasets ORDER BY name").fetchall())
 
 
+@errors.capture(scheme="data")
 def get_dataset(path: str | None, name_or_id: str) -> dict:
     init_db(path)
     with connection(path) as conn:
