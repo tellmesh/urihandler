@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `connector_sdk`; the JS/Go/PHP skeletons emit a v2 bindings document and a CLI
   the argv-template adapter invokes. Every generated skeleton's `bindings`
   output passes `urirun validate` out of the box.
+- `urirun connectors smoke <bindings>` collapses the repeated connector smoke
+  recipe (validate -> compile -> run -> MCP tools -> A2A card) into one
+  language-agnostic command. `<cli> bindings | urirun connectors smoke - --run
+  <uri> --payload <json> --allow <glob>` works for connectors in any language.
+- Reusable connector CI workflow at `.github/workflows/connector-ci.yml`
+  (`workflow_call`, `lang` input for python/js/go/php) so each connector repo's
+  `ci.yml` is a thin caller instead of a duplicated job.
 - `urirun connectors` command group that reads the connect.ifuri.com catalog:
   `list` (optionally `--available`), `show <id>`, `install <id...>` and
   `check <manifest>`. Install resolves each id against the catalog's `install`
