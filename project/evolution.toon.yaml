@@ -1,18 +1,18 @@
-# code2llm/evolution | 401 func | 23f | 2026-06-20
+# code2llm/evolution | 575 func | 43f | 2026-06-21
 # generated in 0.00s
 
 NEXT[10] (ranked by impact):
-  [1] !! SPLIT           adapters/python/urirun/mesh.py
-      WHY: 1071L, 0 classes, max CC=52
-      EFFORT: ~4h  IMPACT: 55692
+  [1] !! SPLIT           adapters/python/urirun/runtime/v2.py
+      WHY: 1602L, 0 classes, max CC=38
+      EFFORT: ~4h  IMPACT: 60876
 
-  [2] !! SPLIT           adapters/python/urirun/v2.py
-      WHY: 1655L, 0 classes, max CC=31
-      EFFORT: ~4h  IMPACT: 51305
+  [2] !! SPLIT           adapters/python/urirun/node/mesh.py
+      WHY: 1092L, 0 classes, max CC=52
+      EFFORT: ~4h  IMPACT: 56784
 
-  [3] !  SPLIT-FUNC      main  CC=23  fan=100
-      WHY: CC=23 exceeds 15
-      EFFORT: ~1h  IMPACT: 2300
+  [3] !! SPLIT-FUNC      main  CC=38  fan=122
+      WHY: CC=38 exceeds 15
+      EFFORT: ~1h  IMPACT: 4636
 
   [4] !! SPLIT-FUNC      task_command  CC=52  fan=35
       WHY: CC=52 exceeds 15
@@ -30,29 +30,29 @@ NEXT[10] (ranked by impact):
       WHY: CC=31 exceeds 15
       EFFORT: ~1h  IMPACT: 775
 
-  [8] !! SPLIT-FUNC      build_ticket_payload  CC=35  fan=13
+  [8] !  SPLIT-FUNC      main  CC=17  fan=29
+      WHY: CC=17 exceeds 15
+      EFFORT: ~1h  IMPACT: 493
+
+  [9] !! SPLIT-FUNC      build_ticket_payload  CC=35  fan=13
       WHY: CC=35 exceeds 15
       EFFORT: ~1h  IMPACT: 455
 
-  [9] !  SPLIT-FUNC      host_command  CC=19  fan=18
-      WHY: CC=19 exceeds 15
-      EFFORT: ~1h  IMPACT: 342
-
-  [10] !  SPLIT-FUNC      heuristic_plan_chat_request  CC=22  fan=15
-      WHY: CC=22 exceeds 15
-      EFFORT: ~1h  IMPACT: 330
+  [10] !  SPLIT-FUNC      run_error_store  CC=23  fan=15
+      WHY: CC=23 exceeds 15
+      EFFORT: ~1h  IMPACT: 345
 
 
 RISKS[3]:
-  ⚠ Splitting adapters/python/urirun/v2.py may break 62 import paths
-  ⚠ Splitting adapters/python/urirun/mesh.py may break 51 import paths
+  ⚠ Splitting adapters/python/urirun/runtime/v2.py may break 66 import paths
+  ⚠ Splitting adapters/python/urirun/node/mesh.py may break 51 import paths
   ⚠ Splitting planfile.yaml may break 0 import paths
 
 METRICS-TARGET:
-  CC̄:          4.9 → ≤3.4
+  CC̄:          4.4 → ≤3.1
   max-CC:      52 → ≤20
-  god-modules: 7 → 0
-  high-CC(≥15): 20 → ≤10
+  god-modules: 8 → 0
+  high-CC(≥15): 26 → ≤13
   hub-types:   0 → ≤0
 
 PATTERNS (language parser shared logic):
@@ -80,4 +80,4 @@ PATTERNS (language parser shared logic):
     - Standardized FunctionInfo/ClassInfo models
 
 HISTORY:
-  prev CC̄=4.7 → now CC̄=4.9
+  prev CC̄=4.9 → now CC̄=4.4

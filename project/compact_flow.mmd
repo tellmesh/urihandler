@@ -1,7 +1,11 @@
 flowchart TD
 %% generated in 0.01s
+    adapters__java["adapters.java<br/>4 funcs"]
     adapters__js["adapters.js<br/>12 funcs"]
-    adapters__python["adapters.python<br/>382 funcs"]
-    v1__examples["v1.examples<br/>54 funcs"]
-    adapters__python ==>|6| v1__examples
-    adapters__python ==>|4| adapters__js
+    adapters__perl["adapters.perl<br/>4 funcs"]
+    adapters__python["adapters.python<br/>461 funcs"]
+    v1__js["v1.js<br/>54 funcs"]
+    adapters__python ==>|6| adapters__js
+    adapters__python ==>|6| v1__js
+    adapters__python -->|1| adapters__perl
+    adapters__python -->|1| adapters__java
