@@ -228,6 +228,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compatibility modules from core after downstream migration.
 - Point active runtime install references at the `if-uri/urirun` namespace.
 
+## [0.4.1] - 2026-06-21
+
+### Docs
+- Update SUMD.md
+- Update SUMR.md
+- Update TODO.md
+- Update project/README.md
+- Update project/context.md
+
+### Other
+- Update adapters/python/tests/test_mesh.py
+- Update adapters/python/tests/test_secrets.py
+- Update adapters/python/urirun/node/mesh.py
+- Update adapters/python/urirun/runtime/_runtime.py
+- Update adapters/python/urirun/runtime/secrets.py
+- Update adapters/python/urirun/runtime/v2.py
+- Update app.doql.less
+- Update package-lock.json
+- Update planfile.yaml
+- Update project/analysis.toon.yaml
+- ... and 17 more files
+
 ## [0.3.18] - 2026-06-21
 
 ### Other

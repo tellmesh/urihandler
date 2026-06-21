@@ -1,10 +1,10 @@
-# urirun | 83f 13225L | python:67,shell:5,javascript:4,go:2,rust:2,typescript:2,less:1 | 2026-06-21
-# stats: 496 func | 20 cls | 83 mod | CC̄=4.7 | critical:58 | cycles:0
-# alerts[5]: CC task_command=52; CC run_uri_route=46; CC run_uri_route=45; CC main=38; CC classify=36
-# hotspots[5]: main fan=42; task_command fan=34; run_planfile_task fan=25; main fan=23; main fan=23
+# urirun | 92f 14258L | python:76,shell:5,javascript:4,go:2,rust:2,typescript:2,less:1 | 2026-06-21
+# stats: 540 func | 23 cls | 92 mod | CC̄=4.7 | critical:62 | cycles:0
+# alerts[5]: CC task_command=52; CC run_uri_route=46; CC run_uri_route=45; CC main=40; CC classify=36
+# hotspots[5]: main fan=44; task_command fan=34; run_planfile_task fan=25; main fan=23; run_fetch fan=23
 # evolution: baseline
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
-M[83]:
+M[92]:
   adapters/bash/example/hash-connector.sh,10
   adapters/bash/urirun.sh,18
   adapters/conformance.py,149
@@ -13,19 +13,24 @@ M[83]:
   adapters/js/index.js,34
   adapters/js/index.test.js,53
   adapters/new-connector.sh,169
+  adapters/python/tests/test_adopt_pack.py,76
+  adapters/python/tests/test_agent_command.py,58
   adapters/python/tests/test_compat.py,100
   adapters/python/tests/test_connect_catalog.py,166
   adapters/python/tests/test_connector_scaffold.py,60
   adapters/python/tests/test_connector_sdk.py,63
   adapters/python/tests/test_connector_smoke.py,83
+  adapters/python/tests/test_declarative.py,103
   adapters/python/tests/test_domain_monitor.py,162
   adapters/python/tests/test_errors.py,291
   adapters/python/tests/test_host_dashboard.py,97
   adapters/python/tests/test_host_db.py,113
   adapters/python/tests/test_mesh.py,64
   adapters/python/tests/test_minimal_imports.py,91
+  adapters/python/tests/test_param_routing.py,59
   adapters/python/tests/test_planfile_adapter.py,343
   adapters/python/tests/test_scheduler.py,62
+  adapters/python/tests/test_secrets.py,93
   adapters/python/tests/test_urihandler.py,170
   adapters/python/tests/test_v2_mcp.py,47
   adapters/python/urirun/__init__.py,257
@@ -42,6 +47,7 @@ M[83]:
   adapters/python/urirun/connectors/connector_scaffold.py,387
   adapters/python/urirun/connectors/connector_sdk.py,88
   adapters/python/urirun/connectors/connector_smoke.py,82
+  adapters/python/urirun/connectors/declarative.py,96
   adapters/python/urirun/domain_monitor.py,6
   adapters/python/urirun/errors.py,9
   adapters/python/urirun/host/__init__.py,2
@@ -60,13 +66,16 @@ M[83]:
   adapters/python/urirun/node/mesh.py,1093
   adapters/python/urirun/planfile_adapter.py,6
   adapters/python/urirun/runtime/__init__.py,2
-  adapters/python/urirun/runtime/_registry.py,683
-  adapters/python/urirun/runtime/_runtime.py,423
+  adapters/python/urirun/runtime/_registry.py,702
+  adapters/python/urirun/runtime/_runtime.py,475
   adapters/python/urirun/runtime/_scan.py,671
+  adapters/python/urirun/runtime/adopt_pack.py,174
+  adapters/python/urirun/runtime/agent.py,108
   adapters/python/urirun/runtime/compat.py,200
   adapters/python/urirun/runtime/errors.py,512
+  adapters/python/urirun/runtime/secrets.py,150
   adapters/python/urirun/runtime/v1.py,424
-  adapters/python/urirun/runtime/v2.py,1603
+  adapters/python/urirun/runtime/v2.py,1628
   adapters/python/urirun/runtime/v2_adopt.py,196
   adapters/python/urirun/runtime/v2_grpc.py,206
   adapters/python/urirun/runtime/v2_mcp.py,206
@@ -83,7 +92,7 @@ M[83]:
   adapters/rust/src/lib.rs,40
   adapters/ts/example/hash-connector.ts,11
   adapters/ts/urirun.ts,42
-  app.doql.less,91
+  app.doql.less,111
   project.sh,66
   test/urirun.test.js,11
   tree.sh,5
@@ -94,6 +103,16 @@ D:
     essential(doc)
     python_reference()
     main()
+  adapters/python/tests/test_adopt_pack.py:
+    e: AdoptPackTests
+    AdoptPackTests: test_manifest_maps_to_bindings(0),test_side_effects_and_approval_become_policy(0),test_document_validates_and_compiles(0),test_hydrated_route_executes(0)
+  adapters/python/tests/test_agent_command.py:
+    e: _registry,test_action_space_marks_query_and_command,test_run_plan_runs_query_and_gates_command,test_run_plan_allows_command_with_permission,test_load_planner_resolves_module_function
+    _registry()
+    test_action_space_marks_query_and_command()
+    test_run_plan_runs_query_and_gates_command()
+    test_run_plan_allows_command_with_permission()
+    test_load_planner_resolves_module_function()
   adapters/python/tests/test_compat.py:
     e: _healthy_importable,CompatReportTests
     CompatReportTests: test_backend_layer_is_kept(0),test_namecheap_is_extracted(0),test_top_level_api_exposes_compat_report(0),test_cli_list_json_reports_node_layer(0),test_cli_check_ok_when_layers_present_and_namecheap_extracted(0),test_cli_check_nonzero_when_namecheap_replacement_missing(0),test_cli_check_nonzero_when_backend_layer_missing(0)
@@ -138,6 +157,12 @@ D:
     test_smoke_run_executes_route(tmp_path)
     test_smoke_run_failure_marks_not_ok(tmp_path)
     test_smoke_command_returns_exit_code(tmp_path;capsys)
+  adapters/python/tests/test_declarative.py:
+    e: test_bindings_from_spec_expands_envs_and_uses_fetch,test_bindings_from_spec_compiles_and_validates,test_run_fetch_resolves_env_and_templates,test_run_fetch_get_sends_no_body
+    test_bindings_from_spec_expands_envs_and_uses_fetch()
+    test_bindings_from_spec_compiles_and_validates()
+    test_run_fetch_resolves_env_and_templates(monkeypatch)
+    test_run_fetch_get_sends_no_body(monkeypatch)
   adapters/python/tests/test_domain_monitor.py:
     e: local_http,_StatusHandler,DomainMonitorTests
     _StatusHandler: do_GET(0),log_message(1)
@@ -164,12 +189,25 @@ D:
   adapters/python/tests/test_minimal_imports.py:
     e: MinimalImportTests
     MinimalImportTests: test_core_import_keeps_host_and_domain_modules_lazy(0),test_host_binding_generation_keeps_executors_lazy(0)
+  adapters/python/tests/test_param_routing.py:
+    e: ParamRoutingTests
+    ParamRoutingTests: setUp(0),_run(1),test_concrete_param_resolves_templated_route(0),test_bound_param_reaches_handler(0),test_exact_match_still_wins_over_param(0),test_unknown_route_still_raises(0)
   adapters/python/tests/test_planfile_adapter.py:
     e: PlanfileAdapterTests
     PlanfileAdapterTests: test_create_next_and_complete_ticket(0),test_dsl_create_ticket(0),test_cli_host_task_create_and_list(0),test_host_task_run_updates_ticket(0),test_v2_task_uri_bindings_create_and_list_ticket(0),test_v2_task_uri_complete_and_fail_record_outputs(0),test_v2_task_uri_rejects_invalid_payload(0),test_host_task_run_dispatches_executor_handler(0),test_fail_or_retry_requeues_until_max_attempts(0),test_fail_or_retry_default_max_attempts_fails_terminally(0),test_host_task_loop_retries_failing_flow_until_exhausted(0),test_chat_plan_domain_prompt_creates_ticket(0),test_chat_plan_ambiguous_prompt_waits_for_input(0),test_chat_plan_destructive_prompt_requires_review(0)
   adapters/python/tests/test_scheduler.py:
     e: SchedulerTests
     SchedulerTests: test_systemd_preview_and_install(0),test_cli_schedule_cron_preview(0)
+  adapters/python/tests/test_secrets.py:
+    e: test_secretstr_is_redacted,test_resolve_env,test_dry_run_never_resolves,test_deny_by_default,test_fill_secrets_dry_run_redacts,test_fill_secrets_execute_injects,test_run_fetch_injects_secret_into_header_only,test_run_fetch_secret_denied_without_allow
+    test_secretstr_is_redacted()
+    test_resolve_env(monkeypatch)
+    test_dry_run_never_resolves()
+    test_deny_by_default()
+    test_fill_secrets_dry_run_redacts(monkeypatch)
+    test_fill_secrets_execute_injects(monkeypatch)
+    test_run_fetch_injects_secret_into_header_only(monkeypatch)
+    test_run_fetch_secret_denied_without_allow(monkeypatch)
   adapters/python/tests/test_urihandler.py:
     e: UriHandlerTests
     UriHandlerTests: test_parse_uri(0),test_build_invocation(0),test_dispatch(0),test_missing_registry_entries(0),test_v2_connector_bindings_from_decorators(0),test_connector_helper_uses_human_defaults(0),test_entry_point_bindings_generate_registry(0)
@@ -246,6 +284,11 @@ D:
     _load(path)
     smoke(bindings)
     smoke_command(args)
+  adapters/python/urirun/connectors/declarative.py:
+    e: load_spec,bindings_from_spec,from_spec_command
+    load_spec(path)
+    bindings_from_spec(spec)
+    from_spec_command(args)
   adapters/python/urirun/domain_monitor.py:
   adapters/python/urirun/errors.py:
   adapters/python/urirun/host/__init__.py:
@@ -481,8 +524,10 @@ D:
     _discover_python_module(module_name)
     main(argv)
   adapters/python/urirun/runtime/_runtime.py:
-    e: default_policy,merge_policy,_matches_any,_looks_destructive,evaluate_policy,_truncate,run_spawn,run_shell_template,run_fetch,run_local_function,run_mqtt_publish,run,check,load_registry_arg,build_policy,list_routes,format_route_table,main,PolicyError
+    e: _fetch_fill,_fetch_render,default_policy,merge_policy,_matches_any,_looks_destructive,evaluate_policy,_truncate,run_spawn,run_shell_template,run_fetch,run_local_function,run_mqtt_publish,run,check,load_registry_arg,build_policy,list_routes,format_route_table,main,PolicyError
     PolicyError:  # Raised when a route is blocked by policy in execute mode.
+    _fetch_fill(text;payload)
+    _fetch_render(value;payload)
     default_policy()
     merge_policy(policy)
     _matches_any(uri;patterns)
@@ -497,7 +542,7 @@ D:
     run(uri;registry;payload;mode;policy;confirm;executors)
     check(uri;registry;policy)
     load_registry_arg(arg;openapi_base_url)
-    build_policy(policy_file;allow;deny)
+    build_policy(policy_file;allow;deny;secret_allow)
     list_routes(registry;policy)
     format_route_table(items;show_decision)
     main(argv)
@@ -539,6 +584,23 @@ D:
     list_bindings(paths;include_shell;openapi_base_url)
     format_binding_table(bindings)
     main(argv)
+  adapters/python/urirun/runtime/adopt_pack.py:
+    e: _load,_policy,manifest_bindings,adopt_document,_tool_urirun,installed_manifest_path,adopt,main
+    _load(path)
+    _policy(pattern)
+    manifest_bindings(manifest)
+    adopt_document(path)
+    _tool_urirun(pyproject)
+    installed_manifest_path(package)
+    adopt(target)
+    main(argv)
+  adapters/python/urirun/runtime/agent.py:
+    e: action_space,_parse_stdout,run_plan,_load_planner,agent_command
+    action_space(registry)
+    _parse_stdout(result)
+    run_plan(registry;steps)
+    _load_planner(spec)
+    agent_command(args)
   adapters/python/urirun/runtime/compat.py:
     e: _entry_point_names,_importable,module_status,report,_print_table,main
     _entry_point_names(group)
@@ -570,6 +632,18 @@ D:
     bindings(target)
     capture(scheme)
     main(argv)
+  adapters/python/urirun/runtime/secrets.py:
+    e: redact,_provider_env,_provider_dotenv,_provider_keyring,_parse_ref,allowed,resolve,fill_secrets,has_secret,SecretStr
+    SecretStr: __init__(2),reveal(0),ref(0),__str__(0),__repr__(0),__bool__(0)  # An opaque secret value. ``str``/``repr``/JSON show ``****``;
+    redact(value)
+    _provider_env(location;field)
+    _provider_dotenv(location;field)
+    _provider_keyring(location;field)
+    _parse_ref(ref)
+    allowed(ref;allow)
+    resolve(ref)
+    fill_secrets(text)
+    has_secret(text)
   adapters/python/urirun/runtime/v1.py:
     e: _params_spec,resolve_params,render_value,render_command,_has_placeholders,_proc_env,_run_process,_env_flags,run_spawn,run_shell_template,run_docker_exec,run_docker_run,run_fetch,run_local_function,run_mqtt_publish,run,check,list_routes,expand_binding,_binding_pairs,expand_bindings,compile_registry,load_registry_arg,main
     _params_spec(route_entry)

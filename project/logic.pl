@@ -1,5 +1,5 @@
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.3.14', 'javascript').
+project_metadata('urirun', '0.3.18', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -10,19 +10,24 @@ project_file('adapters/go/urirun.go', 81, 'go').
 project_file('adapters/js/index.js', 34, 'javascript').
 project_file('adapters/js/index.test.js', 53, 'javascript').
 project_file('adapters/new-connector.sh', 169, 'shell').
+project_file('adapters/python/tests/test_adopt_pack.py', 76, 'python').
+project_file('adapters/python/tests/test_agent_command.py', 58, 'python').
 project_file('adapters/python/tests/test_compat.py', 100, 'python').
 project_file('adapters/python/tests/test_connect_catalog.py', 166, 'python').
 project_file('adapters/python/tests/test_connector_scaffold.py', 60, 'python').
 project_file('adapters/python/tests/test_connector_sdk.py', 63, 'python').
 project_file('adapters/python/tests/test_connector_smoke.py', 83, 'python').
+project_file('adapters/python/tests/test_declarative.py', 103, 'python').
 project_file('adapters/python/tests/test_domain_monitor.py', 162, 'python').
 project_file('adapters/python/tests/test_errors.py', 291, 'python').
 project_file('adapters/python/tests/test_host_dashboard.py', 97, 'python').
 project_file('adapters/python/tests/test_host_db.py', 113, 'python').
 project_file('adapters/python/tests/test_mesh.py', 64, 'python').
 project_file('adapters/python/tests/test_minimal_imports.py', 91, 'python').
+project_file('adapters/python/tests/test_param_routing.py', 59, 'python').
 project_file('adapters/python/tests/test_planfile_adapter.py', 343, 'python').
 project_file('adapters/python/tests/test_scheduler.py', 62, 'python').
+project_file('adapters/python/tests/test_secrets.py', 93, 'python').
 project_file('adapters/python/tests/test_urihandler.py', 170, 'python').
 project_file('adapters/python/tests/test_v2_mcp.py', 47, 'python').
 project_file('adapters/python/urirun/__init__.py', 257, 'python').
@@ -39,6 +44,7 @@ project_file('adapters/python/urirun/connectors/connect_catalog.py', 237, 'pytho
 project_file('adapters/python/urirun/connectors/connector_scaffold.py', 387, 'python').
 project_file('adapters/python/urirun/connectors/connector_sdk.py', 88, 'python').
 project_file('adapters/python/urirun/connectors/connector_smoke.py', 82, 'python').
+project_file('adapters/python/urirun/connectors/declarative.py', 96, 'python').
 project_file('adapters/python/urirun/domain_monitor.py', 6, 'python').
 project_file('adapters/python/urirun/errors.py', 9, 'python').
 project_file('adapters/python/urirun/host/__init__.py', 2, 'python').
@@ -57,13 +63,16 @@ project_file('adapters/python/urirun/node/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/node/mesh.py', 1093, 'python').
 project_file('adapters/python/urirun/planfile_adapter.py', 6, 'python').
 project_file('adapters/python/urirun/runtime/__init__.py', 2, 'python').
-project_file('adapters/python/urirun/runtime/_registry.py', 683, 'python').
-project_file('adapters/python/urirun/runtime/_runtime.py', 423, 'python').
+project_file('adapters/python/urirun/runtime/_registry.py', 702, 'python').
+project_file('adapters/python/urirun/runtime/_runtime.py', 475, 'python').
 project_file('adapters/python/urirun/runtime/_scan.py', 671, 'python').
+project_file('adapters/python/urirun/runtime/adopt_pack.py', 174, 'python').
+project_file('adapters/python/urirun/runtime/agent.py', 108, 'python').
 project_file('adapters/python/urirun/runtime/compat.py', 200, 'python').
 project_file('adapters/python/urirun/runtime/errors.py', 512, 'python').
+project_file('adapters/python/urirun/runtime/secrets.py', 150, 'python').
 project_file('adapters/python/urirun/runtime/v1.py', 424, 'python').
-project_file('adapters/python/urirun/runtime/v2.py', 1603, 'python').
+project_file('adapters/python/urirun/runtime/v2.py', 1628, 'python').
 project_file('adapters/python/urirun/runtime/v2_adopt.py', 196, 'python').
 project_file('adapters/python/urirun/runtime/v2_grpc.py', 206, 'python').
 project_file('adapters/python/urirun/runtime/v2_mcp.py', 206, 'python').
@@ -80,7 +89,7 @@ project_file('adapters/rust/examples/hash_connector.rs', 13, 'rust').
 project_file('adapters/rust/src/lib.rs', 40, 'rust').
 project_file('adapters/ts/example/hash-connector.ts', 11, 'typescript').
 project_file('adapters/ts/urirun.ts', 42, 'typescript').
-project_file('app.doql.less', 91, 'less').
+project_file('app.doql.less', 111, 'less').
 project_file('project.sh', 66, 'shell').
 project_file('test/urirun.test.js', 11, 'javascript').
 project_file('tree.sh', 5, 'shell').
@@ -90,6 +99,11 @@ project_file('v1/js/urirun-v1.js', 335, 'javascript').
 python_function('adapters/conformance.py', 'essential', 1, 3, 4).
 python_function('adapters/conformance.py', 'python_reference', 0, 1, 5).
 python_function('adapters/conformance.py', 'main', 0, 17, 23).
+python_function('adapters/python/tests/test_agent_command.py', '_registry', 0, 1, 1).
+python_function('adapters/python/tests/test_agent_command.py', 'test_action_space_marks_query_and_command', 0, 4, 2).
+python_function('adapters/python/tests/test_agent_command.py', 'test_run_plan_runs_query_and_gates_command', 0, 3, 2).
+python_function('adapters/python/tests/test_agent_command.py', 'test_run_plan_allows_command_with_permission', 0, 2, 2).
+python_function('adapters/python/tests/test_agent_command.py', 'test_load_planner_resolves_module_function', 0, 2, 1).
 python_function('adapters/python/tests/test_compat.py', '_healthy_importable', 1, 5, 2).
 python_function('adapters/python/tests/test_connect_catalog.py', '_args', 0, 1, 2).
 python_function('adapters/python/tests/test_connect_catalog.py', 'test_resolve_install_buckets', 0, 5, 1).
@@ -123,9 +137,21 @@ python_function('adapters/python/tests/test_connector_smoke.py', 'test_smoke_inv
 python_function('adapters/python/tests/test_connector_smoke.py', 'test_smoke_run_executes_route', 1, 5, 3).
 python_function('adapters/python/tests/test_connector_smoke.py', 'test_smoke_run_failure_marks_not_ok', 1, 3, 3).
 python_function('adapters/python/tests/test_connector_smoke.py', 'test_smoke_command_returns_exit_code', 2, 3, 6).
+python_function('adapters/python/tests/test_declarative.py', 'test_bindings_from_spec_expands_envs_and_uses_fetch', 0, 5, 2).
+python_function('adapters/python/tests/test_declarative.py', 'test_bindings_from_spec_compiles_and_validates', 0, 3, 5).
+python_function('adapters/python/tests/test_declarative.py', 'test_run_fetch_resolves_env_and_templates', 1, 6, 6).
+python_function('adapters/python/tests/test_declarative.py', 'test_run_fetch_get_sends_no_body', 1, 4, 4).
 python_function('adapters/python/tests/test_domain_monitor.py', 'local_http', 1, 1, 6).
 python_function('adapters/python/tests/test_host_dashboard.py', 'get_json', 1, 1, 4).
 python_function('adapters/python/tests/test_host_dashboard.py', 'post_json', 2, 1, 7).
+python_function('adapters/python/tests/test_secrets.py', 'test_secretstr_is_redacted', 0, 5, 6).
+python_function('adapters/python/tests/test_secrets.py', 'test_resolve_env', 1, 2, 3).
+python_function('adapters/python/tests/test_secrets.py', 'test_dry_run_never_resolves', 0, 2, 4).
+python_function('adapters/python/tests/test_secrets.py', 'test_deny_by_default', 0, 1, 2).
+python_function('adapters/python/tests/test_secrets.py', 'test_fill_secrets_dry_run_redacts', 1, 2, 2).
+python_function('adapters/python/tests/test_secrets.py', 'test_fill_secrets_execute_injects', 1, 2, 2).
+python_function('adapters/python/tests/test_secrets.py', 'test_run_fetch_injects_secret_into_header_only', 1, 4, 6).
+python_function('adapters/python/tests/test_secrets.py', 'test_run_fetch_secret_denied_without_allow', 1, 1, 3).
 python_function('adapters/python/tests/test_v2_mcp.py', 'test_v2_mcp_tool_names_are_unique_for_cqrs_uri_args', 0, 5, 4).
 python_function('adapters/python/tests/test_v2_mcp.py', 'test_v2_mcp_preserves_single_route_tool_name', 0, 2, 2).
 python_function('adapters/python/urirun/__init__.py', 'parse_uri', 1, 7, 8).
@@ -177,6 +203,9 @@ python_function('adapters/python/urirun/connectors/connector_sdk.py', 'connector
 python_function('adapters/python/urirun/connectors/connector_smoke.py', '_load', 1, 3, 4).
 python_function('adapters/python/urirun/connectors/connector_smoke.py', 'smoke', 1, 6, 13).
 python_function('adapters/python/urirun/connectors/connector_smoke.py', 'smoke_command', 1, 2, 4).
+python_function('adapters/python/urirun/connectors/declarative.py', 'load_spec', 1, 2, 4).
+python_function('adapters/python/urirun/connectors/declarative.py', 'bindings_from_spec', 1, 14, 6).
+python_function('adapters/python/urirun/connectors/declarative.py', 'from_spec_command', 1, 1, 4).
 python_function('adapters/python/urirun/host/domain_monitor.py', 'now_id', 0, 1, 2).
 python_function('adapters/python/urirun/host/domain_monitor.py', '_list', 1, 6, 5).
 python_function('adapters/python/urirun/host/domain_monitor.py', '_domain', 2, 2, 2).
@@ -365,7 +394,7 @@ python_function('adapters/python/urirun/runtime/_registry.py', '_iter_module_exp
 python_function('adapters/python/urirun/runtime/_registry.py', 'discover_python_modules', 1, 5, 6).
 python_function('adapters/python/urirun/runtime/_registry.py', 'discover_entry_points', 1, 6, 9).
 python_function('adapters/python/urirun/runtime/_registry.py', 'registry_tree', 1, 2, 2).
-python_function('adapters/python/urirun/runtime/_registry.py', 'resolve_route', 2, 8, 6).
+python_function('adapters/python/urirun/runtime/_registry.py', 'resolve_route', 2, 18, 7).
 python_function('adapters/python/urirun/runtime/_registry.py', '_walk_route_entries', 1, 5, 3).
 python_function('adapters/python/urirun/runtime/_registry.py', 'hydrate_registry', 2, 4, 5).
 python_function('adapters/python/urirun/runtime/_registry.py', 'exec_local_function', 1, 2, 3).
@@ -380,6 +409,8 @@ python_function('adapters/python/urirun/runtime/_registry.py', '_emit_json', 2, 
 python_function('adapters/python/urirun/runtime/_registry.py', '_load_sources', 1, 2, 3).
 python_function('adapters/python/urirun/runtime/_registry.py', '_discover_python_module', 1, 1, 2).
 python_function('adapters/python/urirun/runtime/_registry.py', 'main', 1, 9, 17).
+python_function('adapters/python/urirun/runtime/_runtime.py', '_fetch_fill', 2, 1, 4).
+python_function('adapters/python/urirun/runtime/_runtime.py', '_fetch_render', 2, 6, 4).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'default_policy', 0, 1, 0).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'merge_policy', 1, 7, 5).
 python_function('adapters/python/urirun/runtime/_runtime.py', '_matches_any', 2, 3, 1).
@@ -388,13 +419,13 @@ python_function('adapters/python/urirun/runtime/_runtime.py', 'evaluate_policy',
 python_function('adapters/python/urirun/runtime/_runtime.py', '_truncate', 1, 3, 1).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'run_spawn', 2, 5, 5).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'run_shell_template', 2, 3, 7).
-python_function('adapters/python/urirun/runtime/_runtime.py', 'run_fetch', 2, 7, 16).
+python_function('adapters/python/urirun/runtime/_runtime.py', 'run_fetch', 2, 17, 23).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'run_local_function', 2, 2, 6).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'run_mqtt_publish', 2, 3, 2).
-python_function('adapters/python/urirun/runtime/_runtime.py', 'run', 7, 10, 12).
+python_function('adapters/python/urirun/runtime/_runtime.py', 'run', 7, 12, 13).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'check', 3, 1, 6).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'load_registry_arg', 2, 4, 8).
-python_function('adapters/python/urirun/runtime/_runtime.py', 'build_policy', 3, 10, 4).
+python_function('adapters/python/urirun/runtime/_runtime.py', 'build_policy', 4, 13, 4).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'list_routes', 2, 4, 8).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'format_route_table', 2, 13, 8).
 python_function('adapters/python/urirun/runtime/_runtime.py', 'main', 1, 10, 18).
@@ -434,6 +465,19 @@ python_function('adapters/python/urirun/runtime/_scan.py', 'load_registry_arg', 
 python_function('adapters/python/urirun/runtime/_scan.py', 'list_bindings', 3, 2, 3).
 python_function('adapters/python/urirun/runtime/_scan.py', 'format_binding_table', 1, 11, 8).
 python_function('adapters/python/urirun/runtime/_scan.py', 'main', 1, 10, 19).
+python_function('adapters/python/urirun/runtime/adopt_pack.py', '_load', 1, 2, 6).
+python_function('adapters/python/urirun/runtime/adopt_pack.py', '_policy', 1, 3, 1).
+python_function('adapters/python/urirun/runtime/adopt_pack.py', 'manifest_bindings', 1, 9, 4).
+python_function('adapters/python/urirun/runtime/adopt_pack.py', 'adopt_document', 1, 2, 3).
+python_function('adapters/python/urirun/runtime/adopt_pack.py', '_tool_urirun', 1, 4, 3).
+python_function('adapters/python/urirun/runtime/adopt_pack.py', 'installed_manifest_path', 1, 13, 11).
+python_function('adapters/python/urirun/runtime/adopt_pack.py', 'adopt', 1, 7, 11).
+python_function('adapters/python/urirun/runtime/adopt_pack.py', 'main', 1, 2, 8).
+python_function('adapters/python/urirun/runtime/agent.py', 'action_space', 1, 6, 5).
+python_function('adapters/python/urirun/runtime/agent.py', '_parse_stdout', 1, 6, 3).
+python_function('adapters/python/urirun/runtime/agent.py', 'run_plan', 2, 7, 9).
+python_function('adapters/python/urirun/runtime/agent.py', '_load_planner', 1, 2, 4).
+python_function('adapters/python/urirun/runtime/agent.py', 'agent_command', 1, 7, 9).
 python_function('adapters/python/urirun/runtime/compat.py', '_entry_point_names', 1, 4, 5).
 python_function('adapters/python/urirun/runtime/compat.py', '_importable', 1, 3, 1).
 python_function('adapters/python/urirun/runtime/compat.py', 'module_status', 1, 8, 5).
@@ -461,6 +505,15 @@ python_function('adapters/python/urirun/runtime/errors.py', 'to_ticket', 3, 7, 4
 python_function('adapters/python/urirun/runtime/errors.py', 'bindings', 1, 1, 0).
 python_function('adapters/python/urirun/runtime/errors.py', 'capture', 1, 1, 7).
 python_function('adapters/python/urirun/runtime/errors.py', 'main', 1, 16, 13).
+python_function('adapters/python/urirun/runtime/secrets.py', 'redact', 1, 6, 3).
+python_function('adapters/python/urirun/runtime/secrets.py', '_provider_env', 2, 3, 1).
+python_function('adapters/python/urirun/runtime/secrets.py', '_provider_dotenv', 2, 7, 9).
+python_function('adapters/python/urirun/runtime/secrets.py', '_provider_keyring', 2, 5, 4).
+python_function('adapters/python/urirun/runtime/secrets.py', '_parse_ref', 1, 4, 4).
+python_function('adapters/python/urirun/runtime/secrets.py', 'allowed', 2, 3, 2).
+python_function('adapters/python/urirun/runtime/secrets.py', 'resolve', 1, 5, 7).
+python_function('adapters/python/urirun/runtime/secrets.py', 'fill_secrets', 1, 1, 5).
+python_function('adapters/python/urirun/runtime/secrets.py', 'has_secret', 1, 1, 3).
 python_function('adapters/python/urirun/runtime/v1.py', '_params_spec', 1, 4, 1).
 python_function('adapters/python/urirun/runtime/v1.py', 'resolve_params', 4, 11, 11).
 python_function('adapters/python/urirun/runtime/v1.py', 'render_value', 2, 1, 4).
@@ -550,7 +603,7 @@ python_function('adapters/python/urirun/runtime/v2.py', '_manifest_candidates', 
 python_function('adapters/python/urirun/runtime/v2.py', '_scan_dockerfile', 2, 7, 12).
 python_function('adapters/python/urirun/runtime/v2.py', 'scan_artifacts', 1, 11, 15).
 python_function('adapters/python/urirun/runtime/v2.py', '_load_many', 1, 4, 7).
-python_function('adapters/python/urirun/runtime/v2.py', 'main', 1, 38, 42).
+python_function('adapters/python/urirun/runtime/v2.py', 'main', 1, 40, 44).
 python_function('adapters/python/urirun/runtime/v2_adopt.py', 'passthrough_schema', 1, 2, 1).
 python_function('adapters/python/urirun/runtime/v2_adopt.py', '_command_binding', 5, 2, 2).
 python_function('adapters/python/urirun/runtime/v2_adopt.py', 'python_package_bindings', 1, 4, 5).
@@ -585,6 +638,11 @@ python_function('adapters/python/urirun/runtime/v2_service.py', '_post', 3, 3, 7
 python_function('adapters/python/urirun/runtime/v2_service.py', 'call', 6, 9, 9).
 
 % ── Python Classes ───────────────────────────────────────
+python_class('adapters/python/tests/test_adopt_pack.py', 'AdoptPackTests').
+python_method('AdoptPackTests', 'test_manifest_maps_to_bindings', 0, 2, 4).
+python_method('AdoptPackTests', 'test_side_effects_and_approval_become_policy', 0, 2, 2).
+python_method('AdoptPackTests', 'test_document_validates_and_compiles', 0, 3, 12).
+python_method('AdoptPackTests', 'test_hydrated_route_executes', 0, 1, 12).
 python_class('adapters/python/tests/test_compat.py', 'CompatReportTests').
 python_method('CompatReportTests', 'test_backend_layer_is_kept', 0, 3, 5).
 python_method('CompatReportTests', 'test_namecheap_is_extracted', 0, 3, 6).
@@ -654,6 +712,13 @@ python_method('MeshTests', 'test_registry_from_remote_routes', 0, 1, 3).
 python_class('adapters/python/tests/test_minimal_imports.py', 'MinimalImportTests').
 python_method('MinimalImportTests', 'test_core_import_keeps_host_and_domain_modules_lazy', 0, 2, 7).
 python_method('MinimalImportTests', 'test_host_binding_generation_keeps_executors_lazy', 0, 2, 7).
+python_class('adapters/python/tests/test_param_routing.py', 'ParamRoutingTests').
+python_method('ParamRoutingTests', 'setUp', 0, 1, 4).
+python_method('ParamRoutingTests', '_run', 1, 1, 1).
+python_method('ParamRoutingTests', 'test_concrete_param_resolves_templated_route', 0, 1, 3).
+python_method('ParamRoutingTests', 'test_bound_param_reaches_handler', 0, 1, 3).
+python_method('ParamRoutingTests', 'test_exact_match_still_wins_over_param', 0, 2, 4).
+python_method('ParamRoutingTests', 'test_unknown_route_still_raises', 0, 1, 2).
 python_class('adapters/python/tests/test_planfile_adapter.py', 'PlanfileAdapterTests').
 python_method('PlanfileAdapterTests', 'test_create_next_and_complete_ticket', 0, 1, 7).
 python_method('PlanfileAdapterTests', 'test_dsl_create_ticket', 0, 1, 6).
@@ -691,6 +756,13 @@ python_class('adapters/python/urirun/host/planfile_adapter.py', 'PlanfileUnavail
 python_class('adapters/python/urirun/host/task_planner.py', 'PlannedTicket').
 python_class('adapters/python/urirun/host/task_planner.py', 'TaskPlanningResult').
 python_class('adapters/python/urirun/runtime/_runtime.py', 'PolicyError').
+python_class('adapters/python/urirun/runtime/secrets.py', 'SecretStr').
+python_method('SecretStr', '__init__', 2, 1, 0).
+python_method('SecretStr', 'reveal', 0, 2, 1).
+python_method('SecretStr', 'ref', 0, 1, 0).
+python_method('SecretStr', '__str__', 0, 1, 0).
+python_method('SecretStr', '__repr__', 0, 1, 0).
+python_method('SecretStr', '__bool__', 0, 1, 0).
 
 % ── Dependencies ─────────────────────────────────────────
 
@@ -704,6 +776,9 @@ makefile_target('test-c', '').
 makefile_target('conformance', '').
 makefile_target('test-v1', '').
 makefile_target('test-v2', '').
+makefile_target('build', '').
+makefile_target('publish', '').
+makefile_target('release', '').
 makefile_target('clean', '').
 
 % ── Taskfile Tasks ───────────────────────────────────────
@@ -744,6 +819,17 @@ sumd_workflow('conformance', 'manual').
 sumd_workflow_step('conformance', 1, '$(PYTHON) adapters/conformance.py').
 sumd_workflow('test-v1', 'manual').
 sumd_workflow('test-v2', 'manual').
+sumd_workflow('build', 'manual').
+sumd_workflow_step('build', 1, 'rm -rf adapters/python/dist').
+sumd_workflow_step('build', 2, 'cd adapters/python && $(PYTHON) -m build').
+sumd_workflow('publish', 'manual').
+sumd_workflow_step('publish', 1, 'cd adapters/python && $(PYTHON) -m twine upload dist/*').
+sumd_workflow('release', 'manual').
+sumd_workflow_step('release', 1, 'v=$$(cat adapters/python/VERSION)').
+sumd_workflow_step('release', 2, 'if git rev-parse "v$$v" >/dev/null 2>&1').
+sumd_workflow_step('release', 3, 'git tag -a "v$$v" -m "urirun v$$v"').
+sumd_workflow_step('release', 4, 'git push origin "v$$v"').
+sumd_workflow_step('release', 5, 'echo "pushed tag v$$v -> release.yml builds + publishes to PyPI"').
 sumd_workflow('clean', 'manual').
-sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/python/tests/__pycache__ adapters/python/urirun/__pycache__ adapters/python/*.egg-info adapters/python/build __pycache__').
+sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/python/tests/__pycache__ adapters/python/urirun/__pycache__ adapters/python/*.egg-info adapters/python/build adapters/python/dist __pycache__').
 

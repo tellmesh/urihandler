@@ -1059,6 +1059,14 @@ def scan_artifacts(path: str | Path) -> list[dict]:
 # --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
+def _load_json_arg(arg: str):
+    """Load a JSON document from a path, or from stdin when ``arg`` is ``-``."""
+    if arg == "-":
+        import sys
+        return json.loads(sys.stdin.read())
+    return reglib.load_json(Path(arg))
+
+
 def _load_many(
     sources: list[str],
     *,
@@ -1071,7 +1079,7 @@ def _load_many(
         if path.is_dir():
             bindings.extend(scan_artifacts(path))
         else:
-            bindings.extend(expand_bindings(reglib.load_json(path))["bindings"])
+            bindings.extend(expand_bindings(_load_json_arg(source))["bindings"])
     if include_entry_points:
         bindings.extend(entry_point_bindings(group=entry_point_group))
     return bindings
@@ -1123,6 +1131,12 @@ def main(argv: list[str] | None = None) -> int:
     add_pypi_parser.add_argument("--version")
     add_pypi_parser.add_argument("--uri")
     add_pypi_parser.add_argument("--out", default="urirun.bindings.v2.json")
+
+    add_openapi_parser = subparsers.add_parser("add-openapi", help="Import an OpenAPI doc (file or URL) into declarative fetch routes")
+    add_openapi_parser.add_argument("spec", help="Path or URL to an openapi.json")
+    add_openapi_parser.add_argument("--scheme", required=True, help="URI scheme for the generated routes, e.g. ksef")
+    add_openapi_parser.add_argument("--target", default="api", help="URI target / environment name (default: api)")
+    add_openapi_parser.add_argument("--base-url", default=None, help="Override base URL (else taken from servers[0])")
 
     adopt_pack_parser = subparsers.add_parser("adopt-pack", help="Adopt a capability-pack manifest (file, project dir, or installed package) as bindings")
     adopt_pack_parser.add_argument("target", help="manifest file, project dir ([tool.urirun]), or installed package name")
@@ -1540,8 +1554,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "validate":
-        path = Path(args.source)
-        doc = build_binding_document(scan_artifacts(path)) if path.is_dir() else reglib.load_json(path)
+        if args.source == "-":
+            doc = _load_json_arg("-")
+        else:
+            path = Path(args.source)
+            doc = build_binding_document(scan_artifacts(path)) if path.is_dir() else reglib.load_json(path)
         result = validate_binding_document(doc)
         if args.json:
             reglib._emit_json(result, "-")
@@ -1562,6 +1579,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "add-pypi":
         write_or_emit_binding(args.out, pypi_binding(args.name, version=args.version, uri=args.uri))
         return 0
+
+    if args.command == "add-openapi":
+        from urirun.connectors import openapi_import
+
+        return openapi_import.add_openapi_command(args)
 
     if args.command == "agent":
         from urirun.runtime import agent as agent_mod

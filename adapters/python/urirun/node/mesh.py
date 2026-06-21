@@ -402,6 +402,36 @@ def make_flow(prompt: str, mesh: dict, selected_nodes: list[str] | None = None, 
     return normalize_flow(flow, allowed), {"provider": "heuristic", "fallback": True, "reason": "LLM disabled"}
 
 
+def _dig_path(data: Any, dotted: str) -> Any:
+    """Resolve a dotted path (e.g. ``step.result.slug``) through nested dicts/lists."""
+    cur = data
+    for part in dotted.split("."):
+        if isinstance(cur, dict):
+            cur = cur[part]
+        elif isinstance(cur, (list, tuple)):
+            cur = cur[int(part)]
+        else:
+            raise KeyError(f"cannot resolve '{dotted}' at '{part}'")
+    return cur
+
+
+def resolve_step_payload(payload: dict, results: dict) -> dict:
+    """Resolve ``<key>_from`` references against prior step results.
+
+    A flow step may chain a previous step's output:
+    ``payload: {slug_from: "slugify_text.result.slug"}`` becomes
+    ``payload: {slug: <results.slugify_text.result.slug>}``. This is the same
+    convention the orchestrator examples used by hand.
+    """
+    resolved = {}
+    for key, value in (payload or {}).items():
+        if key.endswith("_from") and isinstance(value, str):
+            resolved[key[:-len("_from")]] = _dig_path(results, value)
+        else:
+            resolved[key] = value
+    return resolved
+
+
 def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool) -> dict:
     old_map = os.environ.get("URI_SERVICE_MAP")
     os.environ["URI_SERVICE_MAP"] = json.dumps(mesh["serviceMap"])
@@ -414,7 +444,7 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool) -> dict:
                 raise RuntimeError(f"{step['id']} missing dependencies: {missing}")
             env = v2_service.call(
                 step["uri"],
-                step.get("payload") or {},
+                resolve_step_payload(step.get("payload") or {}, results),
                 registry,
                 mode="execute" if execute else "dry-run",
             )
@@ -1001,7 +1031,8 @@ def read_json(handler: BaseHTTPRequestHandler) -> dict:
     return json.loads(handler.rfile.read(length).decode("utf-8") or "{}")
 
 
-def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, public_url: str | None = None) -> ThreadingHTTPServer:
+def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, public_url: str | None = None,
+               allow_secrets: bool = False) -> ThreadingHTTPServer:
     routes = routes_from_registry(registry)
     public_url = public_url or f"http://{socket.gethostname()}:{port}"
 
@@ -1049,6 +1080,7 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
                 registry,
                 payload=body.get("payload") or {},
                 mode="execute" if execute else "dry-run",
+                policy={"secretsDisabled": not allow_secrets},
             )
             if not result.get("ok"):
                 uri_errors.record(result)  # stamp error:// address + record for /errors
@@ -1086,7 +1118,8 @@ def node_command(args: argparse.Namespace) -> int:
         host = args.host or node.get("host") or "0.0.0.0"
         port = args.port or int(node.get("port") or 8765)
         execute = bool(args.execute or node.get("execute"))
-        server = serve_node(name, registry, host, port, execute, public_url=args.public_url)
+        allow_secrets = bool(getattr(args, "allow_secrets", False) or node.get("allowSecrets"))
+        server = serve_node(name, registry, host, port, execute, public_url=args.public_url, allow_secrets=allow_secrets)
         server.serve_forever()
         return 0
     return 1

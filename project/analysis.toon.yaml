@@ -1,160 +1,164 @@
-# code2llm | 96f 13352L | python:52,json:8,shell:5,yaml:4,csharp:4,javascript:3,toml:2,perl:2,rust:2,typescript:2,php:2,c:2,go:2,java:2,ruby:2,txt:1 | 2026-06-21
+# code2llm | 101f 14289L | python:56,json:8,shell:5,yaml:4,csharp:4,javascript:3,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1,txt:1 | 2026-06-21
 # generated in 0.02s
-# CC̅=4.4 | critical:26/576 | dups:0 | cycles:0
+# CC̅=4.4 | critical:27/608 | dups:0 | cycles:0
 
 HEALTH[20]:
-  🟡 CC    urirun_parse CC=20 (limit:15)
   🟡 CC    main CC=17 (limit:15)
-  🟡 CC    build_ticket_payload CC=35 (limit:15)
-  🟡 CC    run_planfile_task CC=31 (limit:15)
+  🟡 CC    run_uri_route CC=45 (limit:15)
   🟡 CC    check_domain CC=16 (limit:15)
   🟡 CC    run_uri_route CC=46 (limit:15)
-  🟡 CC    run_uri_route CC=45 (limit:15)
-  🟡 CC    serve_mcp CC=15 (limit:15)
-  🟡 CC    diff_manifest CC=18 (limit:15)
-  🟡 CC    resolveParams CC=15 (limit:15)
-  🟡 CC    run CC=19 (limit:15)
-  🟡 CC    evaluate_policy CC=16 (limit:15)
-  🟡 CC    scan_path CC=15 (limit:15)
+  🟡 CC    run_planfile_task CC=31 (limit:15)
+  🟡 CC    heuristic_plan_chat_request CC=22 (limit:15)
+  🟡 CC    build_ticket_payload CC=35 (limit:15)
   🟡 CC    classify CC=36 (limit:15)
   🟡 CC    main CC=16 (limit:15)
-  🟡 CC    run_error_store CC=23 (limit:15)
-  🟡 CC    run CC=18 (limit:15)
-  🟡 CC    expand_binding CC=16 (limit:15)
-  🟡 CC    main CC=38 (limit:15)
+  🟡 CC    serve_mcp CC=15 (limit:15)
+  🟡 CC    scan_path CC=15 (limit:15)
+  🟡 CC    diff_manifest CC=18 (limit:15)
   🟡 CC    heuristic_flow CC=19 (limit:15)
+  🟡 CC    normalize_flow CC=15 (limit:15)
+  🟡 CC    data_command CC=15 (limit:15)
+  🟡 CC    task_command CC=52 (limit:15)
+  🟡 CC    host_command CC=19 (limit:15)
+  🟡 CC    node_command CC=16 (limit:15)
+  🟡 CC    resolveParams CC=15 (limit:15)
+  🟡 CC    run CC=19 (limit:15)
 
 REFACTOR[1]:
   1. split 20 high-CC methods  (CC>15)
 
-PIPELINES[172]:
-  [1] Src [new]: new
+PIPELINES[180]:
+  [1] Src [main]: main → python_reference
       PURITY: 100% pure
-  [2] Src [target]: target
+  [2] Src [result]: result
       PURITY: 100% pure
-  [3] Src [command]: command
+  [3] Src [path]: path
       PURITY: 100% pure
-  [4] Src [bindings_json]: bindings_json
+  [4] Src [segments]: segments
       PURITY: 100% pure
-  [5] Src [main]: main
+  [5] Src [descriptor]: descriptor
       PURITY: 100% pure
-  [6] Src [c]: c
+  [6] Src [invocation]: invocation
       PURITY: 100% pure
-  [7] Src [toJSON]: toJSON → document
+  [7] Src [mod]: mod
       PURITY: 100% pure
-  [8] Src [connector]: connector
+  [8] Src [command]: command
       PURITY: 100% pure
-  [9] Src [result]: result
+  [9] Src [bindingsJson]: bindingsJson
       PURITY: 100% pure
-  [10] Src [path]: path
+  [10] Src [main]: main
       PURITY: 100% pure
-  [11] Src [segments]: segments
+  [11] Src [Target]: Target
       PURITY: 100% pure
-  [12] Src [descriptor]: descriptor
+  [12] Src [Command]: Command
       PURITY: 100% pure
-  [13] Src [invocation]: invocation
+  [13] Src [BindingsJSON]: BindingsJSON → Bindings
       PURITY: 100% pure
-  [14] Src [mod]: mod
+  [14] Src [main]: main
       PURITY: 100% pure
-  [15] Src [command]: command
+  [15] Src [toJSON]: toJSON → document
       PURITY: 100% pure
-  [16] Src [bindingsJson]: bindingsJson → bindings
+  [16] Src [connector]: connector
       PURITY: 100% pure
-  [17] Src [urirun_parse]: urirun_parse → memset
+  [17] Src [c]: c
       PURITY: 100% pure
-  [18] Src [main]: main → assert
+  [18] Src [main]: main
       PURITY: 100% pure
-  [19] Src [main]: main
+  [19] Src [new]: new
       PURITY: 100% pure
-  [20] Src [Target]: Target
+  [20] Src [target]: target
       PURITY: 100% pure
-  [21] Src [Command]: Command
+  [21] Src [command]: command
       PURITY: 100% pure
-  [22] Src [BindingsJSON]: BindingsJSON → Bindings
+  [22] Src [bindings_json]: bindings_json
       PURITY: 100% pure
-  [23] Src [main]: main
+  [23] Src [command]: command
       PURITY: 100% pure
-  [24] Src [command]: command
+  [24] Src [bindingsJson]: bindingsJson → bindings
       PURITY: 100% pure
-  [25] Src [bindingsJson]: bindingsJson
+  [25] Src [main]: main → assert
       PURITY: 100% pure
-  [26] Src [main]: main → python_reference
+  [26] Src [copy_token]: copy_token → memcpy → is_path_end
       PURITY: 100% pure
-  [27] Src [preview]: preview → build_loop_command
+  [27] Src [dispatch]: dispatch → parse_uri
       PURITY: 100% pure
-  [28] Src [install_systemd_user]: install_systemd_user
+  [28] Src [command]: command → uri_command → model_from_function
       PURITY: 100% pure
-  [29] Src [call]: call → _post
+  [29] Src [shell]: shell → uri_shell → uri_command → model_from_function
       PURITY: 100% pure
-  [30] Src [create_ticket]: create_ticket → load_planfile → project_root
+  [30] Src [connector_bindings]: connector_bindings
       PURITY: 100% pure
-  [31] Src [list_tickets]: list_tickets → load_planfile → project_root
+  [31] Src [entry_point_bindings]: entry_point_bindings
       PURITY: 100% pure
-  [32] Src [next_ticket]: next_ticket → ticket_to_dict → _model_dict
+  [32] Src [entry_point_binding_document]: entry_point_binding_document
       PURITY: 100% pure
-  [33] Src [get_ticket]: get_ticket → ticket_to_dict → _model_dict
+  [33] Src [entry_point_registry]: entry_point_registry
       PURITY: 100% pure
-  [34] Src [claim_ticket]: claim_ticket → ticket_to_dict → _model_dict
+  [34] Src [error_bindings]: error_bindings
       PURITY: 100% pure
-  [35] Src [start_ticket]: start_ticket → ticket_to_dict → _model_dict
+  [35] Src [compat_report]: compat_report
       PURITY: 100% pure
-  [36] Src [complete_ticket]: complete_ticket → ticket_to_dict → _model_dict
+  [36] Src [compile_registry]: compile_registry
       PURITY: 100% pure
-  [37] Src [fail_ticket]: fail_ticket → ticket_to_dict → _model_dict
+  [37] Src [list_routes]: list_routes
       PURITY: 100% pure
-  [38] Src [fail_or_retry]: fail_or_retry → load_planfile → project_root
+  [38] Src [validate_binding_document]: validate_binding_document
       PURITY: 100% pure
-  [39] Src [update_ticket]: update_ticket → normalize_priority
+  [39] Src [__post_init__]: __post_init__
       PURITY: 100% pure
-  [40] Src [wait_for_input]: wait_for_input → ticket_to_dict → _model_dict
+  [40] Src [uri]: uri
       PURITY: 100% pure
-  [41] Src [ready_ticket]: ready_ticket → ticket_to_dict → _model_dict
+  [41] Src [_meta]: _meta
       PURITY: 100% pure
-  [42] Src [run_dsl]: run_dsl → project_root
+  [42] Src [bindings]: bindings
       PURITY: 100% pure
-  [43] Src [loads_json]: loads_json
+  [43] Src [connector]: connector → Connector
       PURITY: 100% pure
-  [44] Src [planfile_task_bindings]: planfile_task_bindings
+  [44] Src [load_manifest]: load_manifest → _load_manifest → expand_bindings → expand_binding → ...(1 more)
       PURITY: 100% pure
-  [45] Src [run_planfile_task]: run_planfile_task → _planfile_action
+  [45] Src [connector_emit]: connector_emit
       PURITY: 100% pure
-  [46] Src [host_data_bindings]: host_data_bindings
+  [46] Src [connector_cli]: connector_cli
       PURITY: 100% pure
-  [47] Src [run_host_data]: run_host_data
+  [47] Src [create_llm_session]: create_llm_session → init_db → connection → connect → ...(1 more)
       PURITY: 100% pure
-  [48] Src [domain_monitor_bindings]: domain_monitor_bindings
+  [48] Src [add_llm_message]: add_llm_message → init_db → connection → connect → ...(1 more)
       PURITY: 100% pure
-  [49] Src [run_domain_monitor]: run_domain_monitor
+  [49] Src [run_uri_route]: run_uri_route → route_db_path
       PURITY: 100% pure
   [50] Src [run_uri_route]: run_uri_route → _domain
       PURITY: 100% pure
 
 LAYERS:
   adapters/                       CC̄=4.5    ←in:6  →out:0
-  │ !! v2                        1602L  0C   66m  CC=38     ←1
+  │ !! v2                        1627L  0C   66m  CC=40     ←1
   │ !! mesh                      1092L  0C   51m  CC=52     ←0
-  │ !! _registry                  682L  0C   41m  CC=14     ←0
+  │ !! _registry                  701L  0C   41m  CC=18     ←0
   │ !! _scan                      670L  0C   36m  CC=15     ←0
   │ !! host_dashboard             614L  0C   15m  CC=8      ←0
   │ !! errors                     511L  0C   21m  CC=36     ←0
   │ !! host_db                    475L  0C   27m  CC=45     ←0
-  │ v1                         423L  0C   24m  CC=14     ←1
-  │ !! _runtime                   422L  1C   18m  CC=16     ←1
+  │ !! _runtime                   474L  1C   20m  CC=17     ←1
+  │ v1                         423L  0C   24m  CC=14     ←0
   │ !! domain_monitor             393L  0C   18m  CC=46     ←0
   │ connector_scaffold         386L  0C   10m  CC=3      ←0
   │ !! host_integrations          382L  0C   11m  CC=31     ←0
   │ !! task_planner               344L  2C   13m  CC=22     ←0
   │ !! planfile_adapter           261L  1C   21m  CC=35     ←0
-  │ __init__                   256L  1C   25m  CC=7      ←0
+  │ __init__                   256L  1C   25m  CC=7      ←1
   │ !! connect_catalog            236L  0C   14m  CC=18     ←0
   │ v2_grpc                    205L  0C   11m  CC=9      ←0
   │ !! v2_mcp                     205L  0C   10m  CC=15     ←0
   │ compat                     199L  0C    6m  CC=10     ←0
   │ v2_adopt                   195L  0C    8m  CC=7      ←0
+  │ adopt_pack                 173L  0C    8m  CC=13     ←0
   │ new-connector.sh           168L  0C    1m  CC=0.0    ←0
+  │ secrets                    149L  1C   14m  CC=7      ←0
   │ !! conformance                148L  0C    3m  CC=17     ←0
   │ scheduler                  133L  0C    6m  CC=4      ←0
+  │ agent                      107L  0C    5m  CC=7      ←0
   │ v2_service                 103L  0C    3m  CC=9      ←0
+  │ declarative                 95L  0C    3m  CC=14     ←0
   │ connector_sdk               87L  0C    3m  CC=5      ←1
   │ connector_smoke             81L  0C    3m  CC=6      ←0
   │ urirun.go                   80L  3C    5m  CC=3      ←0
@@ -162,7 +166,6 @@ LAYERS:
   │ project.assets.json         71L  0C    0m  CC=0.0    ←0
   │ urirun-connector.csproj.nuget.dgspec.json    66L  0C    0m  CC=0.0    ←0
   │ pyproject.toml              60L  0C    0m  CC=0.0    ←0
-  │ !! urirun.c                    56L  0C    5m  CC=20     ←0
   │ index.test.js               52L  0C    1m  CC=1      ←0
   │ Urirun.pm                   47L  0C    4m  CC=0.0    ←1
   │ urirun.ts                   41L  2C    4m  CC=4      ←0
@@ -178,62 +181,66 @@ LAYERS:
   │ urirun-connector.csproj.FileListAbsolute.txt    15L  0C    0m  CC=0.0    ←0
   │ hash_connector.pl           14L  0C    0m  CC=0.0    ←0
   │ hash-connector.php          14L  0C    0m  CC=0.0    ←0
+  │ urirun.h                    13L  0C    1m  CC=1      ←0
   │ hash_connector.rs           12L  0C    1m  CC=1      ←0
   │ HashConnector.java          11L  1C    1m  CC=1      ←0
   │ tsconfig.json               11L  0C    0m  CC=0.0    ←0
   │ hash-connector.ts           10L  0C    1m  CC=1      ←0
-  │ package.json                10L  0C    0m  CC=0.0    ←0
   │ Cargo.toml                  10L  0C    0m  CC=0.0    ←0
+  │ package.json                10L  0C    0m  CC=0.0    ←0
   │ hash-connector.sh            9L  0C    0m  CC=0.0    ←0
   │ package.json                 8L  0C    0m  CC=0.0    ←0
   │ v2_service                   8L  0C    0m  CC=0.0    ←0
+  │ v1                           8L  0C    0m  CC=0.0    ←0
+  │ errors                       8L  0C    0m  CC=0.0    ←0
+  │ v2                           8L  0C    0m  CC=0.0    ←0
+  │ _runtime                     8L  0C    0m  CC=0.0    ←0
+  │ v2_grpc                      8L  0C    0m  CC=0.0    ←0
   │ v2_adopt                     8L  0C    0m  CC=0.0    ←0
   │ v2_mcp                       8L  0C    0m  CC=0.0    ←0
   │ _registry                    8L  0C    0m  CC=0.0    ←0
   │ compat                       8L  0C    0m  CC=0.0    ←0
-  │ v2_grpc                      8L  0C    0m  CC=0.0    ←0
   │ _scan                        8L  0C    0m  CC=0.0    ←0
-  │ errors                       8L  0C    0m  CC=0.0    ←0
-  │ _runtime                     8L  0C    0m  CC=0.0    ←0
-  │ v2                           8L  0C    0m  CC=0.0    ←0
   │ hash_connector.rb            8L  0C    0m  CC=0.0    ←0
-  │ v1                           8L  0C    0m  CC=0.0    ←0
   │ composer.json                7L  0C    0m  CC=0.0    ←0
   │ Program.cs                   7L  0C    0m  CC=0.0    ←0
+  │ host_db                      5L  0C    0m  CC=0.0    ←0
+  │ domain_monitor               5L  0C    0m  CC=0.0    ←0
+  │ connector_sdk                5L  0C    0m  CC=0.0    ←0
+  │ host_integrations            5L  0C    0m  CC=0.0    ←0
+  │ connect_catalog              5L  0C    0m  CC=0.0    ←0
+  │ scheduler                    5L  0C    0m  CC=0.0    ←0
+  │ task_planner                 5L  0C    0m  CC=0.0    ←0
+  │ mesh                         5L  0C    0m  CC=0.0    ←0
   │ host_dashboard               5L  0C    0m  CC=0.0    ←0
   │ connector_smoke              5L  0C    0m  CC=0.0    ←0
   │ planfile_adapter             5L  0C    0m  CC=0.0    ←0
   │ connector_scaffold           5L  0C    0m  CC=0.0    ←0
-  │ task_planner                 5L  0C    0m  CC=0.0    ←0
-  │ host_integrations            5L  0C    0m  CC=0.0    ←0
-  │ host_db                      5L  0C    0m  CC=0.0    ←0
-  │ connector_sdk                5L  0C    0m  CC=0.0    ←0
-  │ scheduler                    5L  0C    0m  CC=0.0    ←0
-  │ mesh                         5L  0C    0m  CC=0.0    ←0
-  │ domain_monitor               5L  0C    0m  CC=0.0    ←0
-  │ connect_catalog              5L  0C    0m  CC=0.0    ←0
   │ .NETCoreApp,Version=v8.0.AssemblyAttributes.cs     4L  0C    0m  CC=0.0    ←0
   │ __init__                     1L  0C    0m  CC=0.0    ←0
   │ __init__                     1L  0C    0m  CC=0.0    ←0
   │ __init__                     1L  0C    0m  CC=0.0    ←0
   │ __init__                     1L  0C    0m  CC=0.0    ←0
   │ urirun-connector.sourcelink.json     1L  0C    0m  CC=0.0    ←0
+  │ urirun.c                     0L  0C    4m  CC=5      ←0
   │
   v1/                             CC̄=3.7    ←in:0  →out:0
   │ !! urirun-v1.js               334L  0C   54m  CC=19     ←4
   │
   ./                              CC̄=0.0    ←in:0  →out:0
-  │ !! planfile.yaml              851L  0C    0m  CC=0.0    ←0
-  │ !! goal.yaml                  526L  0C    0m  CC=0.0    ←0
+  │ !! planfile.yaml             1189L  0C    0m  CC=0.0    ←0
+  │ !! goal.yaml                  531L  0C    0m  CC=0.0    ←0
   │ prefact.yaml                94L  0C    0m  CC=0.0    ←0
+  │ Makefile                    73L  0C    0m  CC=0.0    ←0
   │ project.sh                  66L  0C    0m  CC=0.0    ←0
-  │ Makefile                    56L  0C    0m  CC=0.0    ←0
   │ package.json                27L  0C    0m  CC=0.0    ←0
   │ tree.sh                      4L  0C    0m  CC=0.0    ←0
   │
   testql-scenarios/               CC̄=0.0    ←in:0  →out:0
   │ generated-from-pytests.testql.toon.yaml    10L  0C    0m  CC=0.0    ←0
   │
+  ── zero ──
+     adapters/c/urirun.c                       0L
 
 COUPLING:
                    adapters.python         adapters            v1.js    adapters.java    adapters.perl

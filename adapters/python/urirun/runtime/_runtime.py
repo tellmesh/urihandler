@@ -209,10 +209,11 @@ def run_fetch(ctx: dict, policy: dict) -> dict:
     from urirun.runtime import secrets as _secrets
 
     secret_allow = policy.get("secretAllow") if isinstance(policy, dict) else None
+    secrets_disabled = bool(policy.get("secretsDisabled")) if isinstance(policy, dict) else False
 
     def _inject(value):
         if isinstance(value, str):
-            return _secrets.fill_secrets(value, execute=True, allow=secret_allow)
+            return _secrets.fill_secrets(value, execute=True, allow=secret_allow, disabled=secrets_disabled)
         if isinstance(value, dict):
             return {key: _inject(val) for key, val in value.items()}
         if isinstance(value, list):

@@ -2,7 +2,7 @@
 
 app {
   name: urirun;
-  version: 0.3.14;
+  version: 0.3.18;
 }
 
 workflow[name="test"] {
@@ -63,9 +63,29 @@ workflow[name="test-v2"] {
   step-8: run cmd=PYTHONPATH=adapters/python $(PYTHON) -m urirun.v2 run 'cli://pip/pip/run' --registry /tmp/urirun-v2-adopt.registry.json --payload '{"args":["--version"]}' >/tmp/urirun-v2-adopt-run.json;
 }
 
+workflow[name="build"] {
+  trigger: manual;
+  step-1: run cmd=rm -rf adapters/python/dist;
+  step-2: run cmd=cd adapters/python && $(PYTHON) -m build;
+}
+
+workflow[name="publish"] {
+  trigger: manual;
+  step-1: run cmd=cd adapters/python && $(PYTHON) -m twine upload dist/*;
+}
+
+workflow[name="release"] {
+  trigger: manual;
+  step-1: run cmd=v=$$(cat adapters/python/VERSION); \;
+  step-2: run cmd=if git rev-parse "v$$v" >/dev/null 2>&1; then echo "tag v$$v already exists"; exit 1; fi; \;
+  step-3: run cmd=git tag -a "v$$v" -m "urirun v$$v"; \;
+  step-4: run cmd=git push origin "v$$v"; \;
+  step-5: run cmd=echo "pushed tag v$$v -> release.yml builds + publishes to PyPI";
+}
+
 workflow[name="clean"] {
   trigger: manual;
-  step-1: run cmd=rm -rf node_modules .pytest_cache adapters/python/tests/__pycache__ adapters/python/urirun/__pycache__ adapters/python/*.egg-info adapters/python/build __pycache__;
+  step-1: run cmd=rm -rf node_modules .pytest_cache adapters/python/tests/__pycache__ adapters/python/urirun/__pycache__ adapters/python/*.egg-info adapters/python/build adapters/python/dist __pycache__;
 }
 
 tests {

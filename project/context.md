@@ -5,12 +5,12 @@
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 52, json: 8, shell: 5, yaml: 4, csharp: 4
+- **Languages**: python: 56, json: 8, shell: 5, yaml: 4, csharp: 4
 - **Analysis Mode**: static
-- **Total Functions**: 576
-- **Total Classes**: 16
-- **Modules**: 96
-- **Entry Points**: 195
+- **Total Functions**: 608
+- **Total Classes**: 17
+- **Modules**: 100
+- **Entry Points**: 209
 
 ## Architecture by Module
 
@@ -56,14 +56,14 @@
 - **Functions**: 21
 - **File**: `errors.py`
 
+### adapters.python.urirun.runtime._runtime
+- **Functions**: 20
+- **Classes**: 1
+- **File**: `_runtime.py`
+
 ### adapters.python.urirun.host.domain_monitor
 - **Functions**: 18
 - **File**: `domain_monitor.py`
-
-### adapters.python.urirun.runtime._runtime
-- **Functions**: 18
-- **Classes**: 1
-- **File**: `_runtime.py`
 
 ### adapters.python.urirun.host.host_dashboard
 - **Functions**: 15
@@ -72,6 +72,11 @@
 ### adapters.python.urirun.connectors.connect_catalog
 - **Functions**: 14
 - **File**: `connect_catalog.py`
+
+### adapters.python.urirun.runtime.secrets
+- **Functions**: 14
+- **Classes**: 1
+- **File**: `secrets.py`
 
 ### adapters.python.urirun.host.task_planner
 - **Functions**: 13
@@ -94,10 +99,6 @@
 - **Functions**: 11
 - **File**: `v2_grpc.py`
 
-### adapters.python.urirun.runtime.v2_mcp
-- **Functions**: 10
-- **File**: `v2_mcp.py`
-
 ## Key Entry Points
 
 Main execution flows into the system:
@@ -116,6 +117,9 @@ Main execution flows into the system:
 
 ### adapters.python.urirun.runtime._registry.main
 - **Calls**: argparse.ArgumentParser, parser.add_subparsers, subparsers.add_parser, discover.add_subparsers, discover_sub.add_parser, p_manifest.add_argument, p_manifest.add_argument, p_manifest.add_argument
+
+### adapters.python.urirun.runtime._runtime.run_fetch
+- **Calls**: None.get, None.upper, config.get, adapters.python.urirun.runtime._runtime._fetch_fill, urllib.request.Request, isinstance, config.get, ValueError
 
 ### adapters.conformance.main
 - **Calls**: sys.path.insert, outputs.items, contracts.get, sorted, print, None.hexdigest, tempfile.mkstemp, os.write
@@ -144,9 +148,6 @@ Main execution flows into the system:
 ### adapters.python.urirun.connectors.connect_catalog._cmd_show
 - **Calls**: adapters.python.urirun.connectors.connect_catalog.fetch_connector, print, print, print, print, print, document.get, adapters.python.urirun.connectors.connect_catalog._emit_json
 
-### adapters.python.urirun.runtime._runtime.run_fetch
-- **Calls**: None.get, config.get, None.upper, dict, urllib.request.Request, ValueError, None.startswith, PolicyError
-
 ### adapters.python.urirun.runtime.errors.main
 - **Calls**: list, print, adapters.python.urirun.connectors.connector_sdk.emit, json.dumps, adapters.python.urirun.runtime.errors.recent, adapters.python.urirun.connectors.connector_sdk.emit, print, adapters.python.urirun.runtime.errors.info
 
@@ -163,6 +164,9 @@ Main execution flows into the system:
 ### adapters.python.urirun.runtime.v2_mcp.main
 - **Calls**: argparse.ArgumentParser, parser.add_subparsers, parser.parse_args, v2.load_registry_arg, sub.add_parser, p.add_argument, reglib._emit_json, reglib._emit_json
 
+### adapters.python.urirun.runtime.agent.agent_command
+- **Calls**: v2.load_registry_arg, adapters.python.urirun.runtime.agent.action_space, planner, adapters.python.urirun.runtime.agent.run_plan, print, print, print, adapters.python.urirun.runtime.agent._load_planner
+
 ### adapters.python.urirun.connectors.connect_catalog._cmd_check
 - **Calls**: str, adapters.python.urirun.connectors.connect_catalog.fetch_connector, adapters.python.urirun.connectors.connect_catalog.diff_manifest, print, open, json.load, print, isinstance
 
@@ -171,6 +175,9 @@ Main execution flows into the system:
 
 ### adapters.python.urirun.runtime.v1.run_docker_run
 - **Calls**: None.get, config.get, adapters.python.urirun.runtime.v1.render_command, config.get, flags.extend, ValueError, os.path.abspath, flags.extend
+
+### adapters.python.urirun.runtime.secrets._provider_dotenv
+- **Calls**: None.splitlines, KeyError, ValueError, line.strip, line.partition, None.read_text, line.startswith, key.strip
 
 ### adapters.python.urirun.runtime.compat.main
 - **Calls**: argparse.ArgumentParser, parser.add_subparsers, sub.add_parser, list_parser.add_argument, sub.add_parser, check_parser.add_argument, parser.parse_args, adapters.python.urirun.runtime.compat.report
@@ -193,12 +200,6 @@ and s
 
 ### v1.js.urirun-v1.DEFAULT_TIMEOUT
 - **Calls**: v1.js.urirun-v1.String, v1.js.urirun-v1.match, v1.js.urirun-v1.Error, v1.js.urirun-v1.split, v1.js.urirun-v1.filter, v1.js.urirun-v1.map, v1.js.urirun-v1.fromEntries, v1.js.urirun-v1.URLSearchParams
-
-### v1.js.urirun-v1.OUTPUT_LIMIT
-- **Calls**: v1.js.urirun-v1.String, v1.js.urirun-v1.match, v1.js.urirun-v1.Error, v1.js.urirun-v1.split, v1.js.urirun-v1.filter, v1.js.urirun-v1.map, v1.js.urirun-v1.fromEntries, v1.js.urirun-v1.URLSearchParams
-
-### adapters.python.urirun.runtime._runtime.run_shell_template
-- **Calls**: None.get, enumerate, bool, subprocess.run, rendered.replace, policy.get, shlex.split, adapters.python.urirun.runtime._runtime._truncate
 
 ## Process Flows
 
@@ -223,13 +224,19 @@ run_uri_route [adapters.python.urirun.host.domain_monitor]
   └─> _domain
 ```
 
-### Flow 4: run_error_store
+### Flow 4: run_fetch
+```
+run_fetch [adapters.python.urirun.runtime._runtime]
+  └─> _fetch_fill
+```
+
+### Flow 5: run_error_store
 ```
 run_error_store [adapters.python.urirun.runtime.v2]
   └─> _first_payload_value
 ```
 
-### Flow 5: host_command
+### Flow 6: host_command
 ```
 host_command [adapters.python.urirun.node.mesh]
   └─> load_host_config
@@ -241,16 +248,11 @@ host_command [adapters.python.urirun.node.mesh]
           └─> http_json
 ```
 
-### Flow 6: _cmd_show
+### Flow 7: _cmd_show
 ```
 _cmd_show [adapters.python.urirun.connectors.connect_catalog]
   └─> fetch_connector
       └─> _get_json
-```
-
-### Flow 7: run_fetch
-```
-run_fetch [adapters.python.urirun.runtime._runtime]
 ```
 
 ### Flow 8: problem
@@ -285,17 +287,23 @@ Connector authors can declare the package once and
 - **Methods**: 6
 - **Key Methods**: adapters.python.urirun.Connector.__post_init__, adapters.python.urirun.Connector.uri, adapters.python.urirun.Connector._meta, adapters.python.urirun.Connector.command, adapters.python.urirun.Connector.shell, adapters.python.urirun.Connector.bindings
 
+### adapters.python.urirun.runtime.secrets.SecretStr
+> An opaque secret value. ``str``/``repr``/JSON show ``****``; ``reveal()``
+returns the plaintext (cal
+- **Methods**: 6
+- **Key Methods**: adapters.python.urirun.runtime.secrets.SecretStr.__init__, adapters.python.urirun.runtime.secrets.SecretStr.reveal, adapters.python.urirun.runtime.secrets.SecretStr.ref, adapters.python.urirun.runtime.secrets.SecretStr.__str__, adapters.python.urirun.runtime.secrets.SecretStr.__repr__, adapters.python.urirun.runtime.secrets.SecretStr.__bool__
+
 ### adapters.php.Urirun.Urirun.Connector
 - **Methods**: 5
 - **Key Methods**: adapters.php.Urirun.Connector.__construct, adapters.php.Urirun.Connector.target, adapters.php.Urirun.Connector.command, adapters.php.Urirun.Connector.bindings, adapters.php.Urirun.Connector.bindingsJson
 
-### adapters.ts.urirun.Connector
-- **Methods**: 4
-- **Key Methods**: adapters.ts.urirun.Connector.command, adapters.ts.urirun.Connector.document, adapters.ts.urirun.Connector.toJSON, adapters.ts.urirun.Connector.connector
-
 ### adapters.java.Urirun.Urirun
 - **Methods**: 4
 - **Key Methods**: adapters.java.Urirun.Urirun.Connector, adapters.java.Urirun.Urirun.Connector, adapters.java.Urirun.Urirun.command, adapters.java.Urirun.Urirun.bindingsJson
+
+### adapters.ts.urirun.Connector
+- **Methods**: 4
+- **Key Methods**: adapters.ts.urirun.Connector.command, adapters.ts.urirun.Connector.document, adapters.ts.urirun.Connector.toJSON, adapters.ts.urirun.Connector.connector
 
 ### adapters.ruby.urirun.Connector
 - **Methods**: 4
@@ -309,12 +317,6 @@ Connector authors can declare the package once and
 - **Methods**: 1
 - **Key Methods**: adapters.java.example.HashConnector.HashConnector.main
 
-### adapters.rust.src.Connector
-- **Methods**: 0
-
-### adapters.ts.urirun.Schema
-- **Methods**: 0
-
 ### adapters.go.urirun.Schema
 - **Methods**: 0
 
@@ -323,6 +325,20 @@ Connector authors can declare the package once and
 
 ### adapters.go.urirun.Connector
 - **Methods**: 0
+
+### adapters.ts.urirun.Schema
+- **Methods**: 0
+
+### adapters.rust.src.Connector
+- **Methods**: 0
+
+### adapters.python.urirun.host.task_planner.PlannedTicket
+- **Methods**: 0
+- **Inherits**: BaseModel
+
+### adapters.python.urirun.host.task_planner.TaskPlanningResult
+- **Methods**: 0
+- **Inherits**: BaseModel
 
 ### adapters.python.urirun.host.planfile_adapter.PlanfileUnavailable
 > Raised when the optional planfile package is not installed.
@@ -334,14 +350,6 @@ Connector authors can declare the package once and
 - **Methods**: 0
 - **Inherits**: Exception
 
-### adapters.python.urirun.host.task_planner.PlannedTicket
-- **Methods**: 0
-- **Inherits**: BaseModel
-
-### adapters.python.urirun.host.task_planner.TaskPlanningResult
-- **Methods**: 0
-- **Inherits**: BaseModel
-
 ## Data Transformation Functions
 
 Key functions that process and transform data:
@@ -350,38 +358,6 @@ Key functions that process and transform data:
 - **Output to**: adapters.js.String, adapters.js.match, adapters.js.Error, adapters.js.split, adapters.js.filter
 
 ### adapters.c.urirun.urirun_parse
-- **Output to**: adapters.c.urirun.memset, adapters.c.urirun.sizeof, adapters.c.urirun.strstr, adapters.c.urirun.copy_token, adapters.c.urirun.is_path_end
-
-### adapters.python.urirun.runtime.v2_grpc._validate
-> Return an error envelope if the URI/payload is invalid, else None.
-- **Output to**: reglib.parse_uri, reglib.translate, reglib.resolve_route, v2.validate_input
-
-### adapters.python.urirun.host.host_db._validate_record
-- **Output to**: None.validate, dataset.get, Draft202012Validator
-
-### adapters.python.urirun.runtime.v1._run_process
-- **Output to**: subprocess.run, runtime._truncate, runtime._truncate, config.get, config.get
-
-### v1.js.urirun-v1.parseUri
-- **Output to**: v1.js.urirun-v1.String, v1.js.urirun-v1.match, v1.js.urirun-v1.Error, v1.js.urirun-v1.split, v1.js.urirun-v1.filter
-
-### v1.js.urirun-v1.runProcess
-- **Output to**: v1.js.urirun-v1.spawnSync, v1.js.urirun-v1.renderedEnv, v1.js.urirun-v1.truncate
-
-### adapters.python.urirun.runtime._runtime.format_route_table
-- **Output to**: out.extend, None.join, max, None.rstrip, line
-
-### adapters.python.urirun.runtime._scan.parse_compose_label_line
-- **Output to**: None.strip, value.startswith, value.split, key.strip, None.strip
-
-### adapters.python.urirun.runtime._scan.format_binding_table
-- **Output to**: output.extend, None.join, max, None.rstrip, line
-
-### adapters.python.urirun.runtime._registry.parse_uri
-- **Output to**: URI_RE.match, unquote, str, ValueError, unquote
-
-### adapters.python.urirun.runtime._registry._parse_command
-- **Output to**: shlex.split, json.loads, isinstance, str
 
 ### adapters.python.urirun.parse_uri
 - **Output to**: URI_RE.match, str, ValueError, m.group, unquote
@@ -389,6 +365,43 @@ Key functions that process and transform data:
 ### adapters.python.urirun.validate_binding_document
 > Validate a v2 binding document through the stable top-level API.
 - **Output to**: _validate_binding_document
+
+### adapters.python.urirun.host.host_db._validate_record
+- **Output to**: None.validate, dataset.get, Draft202012Validator
+
+### adapters.python.urirun.runtime.v1._run_process
+- **Output to**: subprocess.run, runtime._truncate, runtime._truncate, config.get, config.get
+
+### adapters.python.urirun.runtime.v2_grpc._validate
+> Return an error envelope if the URI/payload is invalid, else None.
+- **Output to**: reglib.parse_uri, reglib.translate, reglib.resolve_route, v2.validate_input
+
+### adapters.python.urirun.runtime._scan.parse_compose_label_line
+- **Output to**: None.strip, value.startswith, value.split, key.strip, None.strip
+
+### adapters.python.urirun.runtime._scan.format_binding_table
+- **Output to**: output.extend, None.join, max, None.rstrip, line
+
+### adapters.python.urirun.node.mesh.format_nodes
+- **Output to**: adapters.python.urirun.node.mesh.format_table, len, len, rows.append, None.get
+
+### adapters.python.urirun.node.mesh.format_routes
+- **Output to**: adapters.python.urirun.node.mesh.format_table, sorted, adapters.python.urirun.node.mesh.safe_route, route.get, route.get
+
+### adapters.python.urirun.node.mesh.format_tickets
+- **Output to**: adapters.python.urirun.node.mesh.format_table, ticket.get, ticket.get, None.get, None.get
+
+### adapters.python.urirun.node.mesh.format_table
+- **Output to**: output.extend, None.join, max, None.rstrip, line
+
+### adapters.python.urirun.node.mesh._parse_json_option
+- **Output to**: json.loads
+
+### v1.js.urirun-v1.parseUri
+- **Output to**: v1.js.urirun-v1.String, v1.js.urirun-v1.match, v1.js.urirun-v1.Error, v1.js.urirun-v1.split, v1.js.urirun-v1.filter
+
+### v1.js.urirun-v1.runProcess
+- **Output to**: v1.js.urirun-v1.spawnSync, v1.js.urirun-v1.renderedEnv, v1.js.urirun-v1.truncate
 
 ### adapters.python.urirun.runtime.v2.validate_input
 - **Output to**: adapters.python.urirun.runtime.v2._input_values, adapters.python.urirun.runtime.v2._schema_for, Draft202012Validator.check_schema, set, adapters.python.urirun.runtime.v2._apply_defaults
@@ -408,27 +421,22 @@ Supported forms:
 ### adapters.python.urirun.runtime.v2._parse_dockerfile_labels
 - **Output to**: re.compile, re.compile, None.splitlines, label_re.match, pair_re.findall
 
-### adapters.python.urirun.node.mesh.format_nodes
-- **Output to**: adapters.python.urirun.node.mesh.format_table, len, len, rows.append, None.get
+### adapters.python.urirun.runtime._runtime.format_route_table
+- **Output to**: out.extend, None.join, max, None.rstrip, line
 
-### adapters.python.urirun.node.mesh.format_routes
-- **Output to**: adapters.python.urirun.node.mesh.format_table, sorted, adapters.python.urirun.node.mesh.safe_route, route.get, route.get
+### adapters.python.urirun.runtime.agent._parse_stdout
+- **Output to**: isinstance, result.get, isinstance, exec_out.get, json.loads
 
-### adapters.python.urirun.node.mesh.format_tickets
-- **Output to**: adapters.python.urirun.node.mesh.format_table, ticket.get, ticket.get, None.get, None.get
+### adapters.python.urirun.runtime._registry.parse_uri
+- **Output to**: URI_RE.match, unquote, str, ValueError, unquote
 
-### adapters.python.urirun.node.mesh.format_table
-- **Output to**: output.extend, None.join, max, None.rstrip, line
+### adapters.python.urirun.runtime._registry._parse_command
+- **Output to**: shlex.split, json.loads, isinstance, str
 
-### adapters.python.urirun.node.mesh._parse_json_option
-- **Output to**: json.loads
+### adapters.python.urirun.runtime.secrets._parse_ref
+- **Output to**: ref.startswith, rest.partition, location.partition, ref.startswith, ValueError
 
 ## Behavioral Patterns
-
-### recursion__walk_route_entries
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun.runtime._registry._walk_route_entries
 
 ### recursion_command
 - **Type**: recursion
@@ -450,6 +458,26 @@ Supported forms:
 - **Confidence**: 0.90
 - **Functions**: adapters.python.urirun.runtime.v2._placeholders_in
 
+### recursion__fetch_render
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun.runtime._runtime._fetch_render
+
+### recursion__walk_route_entries
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun.runtime._registry._walk_route_entries
+
+### recursion_redact
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun.runtime.secrets.redact
+
+### state_machine_Urirun
+- **Type**: state_machine
+- **Confidence**: 0.70
+- **Functions**: adapters.java.Urirun.Urirun.Connector, adapters.java.Urirun.Urirun.Connector, adapters.java.Urirun.Urirun.command, adapters.java.Urirun.Urirun.bindingsJson
+
 ### state_machine_Connector
 - **Type**: state_machine
 - **Confidence**: 0.70
@@ -460,10 +488,10 @@ Supported forms:
 - **Confidence**: 0.70
 - **Functions**: adapters.php.Urirun.Connector.__construct, adapters.php.Urirun.Connector.target, adapters.php.Urirun.Connector.command, adapters.php.Urirun.Connector.bindings, adapters.php.Urirun.Connector.bindingsJson
 
-### state_machine_Urirun
+### state_machine_Connector
 - **Type**: state_machine
 - **Confidence**: 0.70
-- **Functions**: adapters.java.Urirun.Urirun.Connector, adapters.java.Urirun.Urirun.Connector, adapters.java.Urirun.Urirun.command, adapters.java.Urirun.Urirun.bindingsJson
+- **Functions**: adapters.python.urirun.Connector.__post_init__, adapters.python.urirun.Connector.uri, adapters.python.urirun.Connector._meta, adapters.python.urirun.Connector.command, adapters.python.urirun.Connector.shell
 
 ### state_machine_Connector
 - **Type**: state_machine
@@ -475,22 +503,18 @@ Supported forms:
 - **Confidence**: 0.70
 - **Functions**: adapters.ruby.urirun.Connector.initialize, adapters.ruby.urirun.Connector.command, adapters.ruby.urirun.Connector.bindings, adapters.ruby.urirun.Connector.bindings_json
 
-### state_machine_Connector
-- **Type**: state_machine
-- **Confidence**: 0.70
-- **Functions**: adapters.python.urirun.Connector.__post_init__, adapters.python.urirun.Connector.uri, adapters.python.urirun.Connector._meta, adapters.python.urirun.Connector.command, adapters.python.urirun.Connector.shell
-
 ## Public API Surface
 
 Functions exposed as public API (no underscore prefix):
 
-- `adapters.python.urirun.runtime.v2.main` - 379 calls
+- `adapters.python.urirun.runtime.v2.main` - 396 calls
 - `adapters.python.urirun.node.mesh.task_command` - 78 calls
 - `adapters.python.urirun.host.host_integrations.run_planfile_task` - 66 calls
 - `adapters.python.urirun.runtime._scan.main` - 59 calls
 - `adapters.python.urirun.host.domain_monitor.run_uri_route` - 57 calls
 - `adapters.python.urirun.runtime._registry.main` - 56 calls
 - `adapters.python.urirun.host.host_dashboard.create_handler` - 52 calls
+- `adapters.python.urirun.runtime._runtime.run_fetch` - 52 calls
 - `adapters.conformance.main` - 45 calls
 - `adapters.python.urirun.host.host_db.run_uri_route` - 45 calls
 - `adapters.python.urirun.runtime.v1.main` - 44 calls
@@ -502,28 +526,27 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.node.mesh.normalize_flow` - 31 calls
 - `adapters.python.urirun.node.mesh.data_command` - 29 calls
 - `adapters.python.urirun.runtime.v2.run_error_store` - 28 calls
-- `adapters.python.urirun.connectors.connect_catalog.diff_manifest` - 27 calls
-- `adapters.python.urirun.runtime._scan.scan_path` - 27 calls
-- `adapters.python.urirun.runtime.errors.info` - 27 calls
 - `adapters.python.urirun.host.task_planner.heuristic_plan_chat_request` - 27 calls
+- `adapters.python.urirun.runtime.errors.info` - 27 calls
+- `adapters.python.urirun.runtime._scan.scan_path` - 27 calls
+- `adapters.python.urirun.connectors.connect_catalog.diff_manifest` - 27 calls
 - `adapters.python.urirun.node.mesh.host_command` - 26 calls
-- `adapters.python.urirun.runtime.v2_grpc.main` - 25 calls
 - `adapters.python.urirun.host.host_dashboard.summary` - 25 calls
+- `adapters.python.urirun.runtime.v2_grpc.main` - 25 calls
+- `adapters.python.urirun.runtime._runtime.run` - 25 calls
 - `adapters.python.urirun.runtime.v2.validate_binding_document` - 24 calls
-- `adapters.python.urirun.runtime.v2_mcp.serve_mcp` - 23 calls
 - `adapters.python.urirun.runtime.v1.run` - 23 calls
-- `adapters.python.urirun.runtime._runtime.run_fetch` - 23 calls
-- `adapters.python.urirun.runtime._runtime.run` - 23 calls
 - `adapters.python.urirun.runtime.errors.main` - 23 calls
+- `adapters.python.urirun.runtime.v2_mcp.serve_mcp` - 23 calls
 - `adapters.python.urirun.runtime.errors.problem` - 22 calls
 - `adapters.python.urirun.host.host_db.search_records` - 21 calls
 - `adapters.python.urirun.node.mesh.node_command` - 21 calls
 - `adapters.python.urirun.connectors.connector_smoke.smoke` - 20 calls
 - `adapters.python.urirun.host.domain_monitor.check_domain` - 19 calls
+- `adapters.python.urirun.node.mesh.monitor_command` - 19 calls
+- `adapters.python.urirun.runtime.v2.scan_artifacts` - 19 calls
 - `adapters.python.urirun.runtime._runtime.evaluate_policy` - 19 calls
 - `adapters.python.urirun.runtime._registry.discover_manifest` - 19 calls
-- `adapters.python.urirun.runtime.v2.scan_artifacts` - 19 calls
-- `adapters.python.urirun.node.mesh.monitor_command` - 19 calls
 
 ## System Interactions
 
@@ -545,6 +568,10 @@ graph TD
     run_uri_route --> ValueError
     run_uri_route --> _domain
     run_uri_route --> _namecheap_moved
+    run_fetch --> get
+    run_fetch --> upper
+    run_fetch --> _fetch_fill
+    run_fetch --> Request
     main --> insert
     main --> items
     main --> get
@@ -557,10 +584,6 @@ graph TD
     run_error_store --> list
     run_error_store --> get
     run_error_store --> _first_payload_value
-    run_error_store --> ValueError
-    host_command --> load_host_config
-    host_command --> discover_mesh
-    host_command --> command
 ```
 
 ## Reverse Engineering Guidelines

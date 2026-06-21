@@ -11,7 +11,10 @@ every serialized surface (registry, route table, error store, logs, MCP/A2A)
 prints ``****`` instead of the secret.
 
 Providers: ``env`` / ``getv`` (process env), ``dotenv`` (a .env file), ``keyring``
-(OS credential store). ``vault`` / ``oauth`` / ``browser`` are reserved (§2).
+(OS credential store), ``vault`` (HashiCorp Vault KV v2) and ``oauth`` (a cached
+access token with refresh). ``browser`` deliberately refuses (§7): auto-scraping a
+browser's saved logins is the infostealer pattern the OS blocks by design — export
+the one credential you need to your keyring instead.
 """
 
 from __future__ import annotations
@@ -99,7 +102,83 @@ def _provider_keyring(location: str, field: str | None) -> str:
     return value
 
 
-_PROVIDERS = {"env": _provider_env, "getv": _provider_env, "dotenv": _provider_dotenv, "keyring": _provider_keyring}
+def _provider_vault(location: str, field: str | None) -> str:
+    """``secret://vault/<mount>/<path>#<field>`` — HashiCorp Vault KV v2.
+
+    Reads ``$VAULT_ADDR/v1/<mount>/data/<path>`` with ``X-Vault-Token``. Sensitive
+    by nature: gate it behind ``--secret-allow`` (and confirm) per policy."""
+    import json
+    import urllib.request
+
+    addr, token = os.environ.get("VAULT_ADDR"), os.environ.get("VAULT_TOKEN")
+    if not addr or not token:
+        raise RuntimeError("vault provider needs VAULT_ADDR and VAULT_TOKEN")
+    if not field:
+        raise ValueError("vault secret needs a #field fragment")
+    mount, _, path = location.partition("/")
+    request = urllib.request.Request(f"{addr.rstrip('/')}/v1/{mount}/data/{path}",
+                                     headers={"X-Vault-Token": token})
+    with urllib.request.urlopen(request, timeout=15) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    data = ((payload.get("data") or {}).get("data")) or {}
+    if field not in data:
+        raise KeyError(f"{field} not in vault {mount}/{path}")
+    return str(data[field])
+
+
+def _provider_oauth(location: str, field: str | None) -> str:
+    """``secret://oauth/<provider>/<account>`` — a cached OAuth access token, with
+    refresh. The token bundle lives in the keyring under ``oauth:<provider>`` /
+    ``<account>`` as JSON (``access_token``, ``refresh_token``, ``expires_at``,
+    ``token_url``, optional ``client_id``/``client_secret``); refreshes in place
+    when within 60s of expiry."""
+    import json
+    import time
+    import urllib.parse
+    import urllib.request
+
+    try:
+        import keyring
+    except ImportError as exc:
+        raise RuntimeError("oauth provider needs the 'keyring' package (pip install keyring)") from exc
+    provider, _, account = location.partition("/")
+    raw = keyring.get_password(f"oauth:{provider}", account)
+    if not raw:
+        raise KeyError(f"no oauth entry for {provider}/{account}")
+    entry = json.loads(raw)
+    if time.time() < float(entry.get("expires_at", 0)) - 60:
+        return str(entry["access_token"])
+    form = {"grant_type": "refresh_token", "refresh_token": entry["refresh_token"]}
+    for key in ("client_id", "client_secret"):
+        if entry.get(key):
+            form[key] = entry[key]
+    request = urllib.request.Request(entry["token_url"], data=urllib.parse.urlencode(form).encode(),
+                                     headers={"Content-Type": "application/x-www-form-urlencoded"})
+    with urllib.request.urlopen(request, timeout=15) as response:
+        refreshed = json.loads(response.read().decode("utf-8"))
+    entry["access_token"] = refreshed["access_token"]
+    if refreshed.get("refresh_token"):
+        entry["refresh_token"] = refreshed["refresh_token"]
+    entry["expires_at"] = time.time() + float(refreshed.get("expires_in", 3600))
+    keyring.set_password(f"oauth:{provider}", account, json.dumps(entry))
+    return str(entry["access_token"])
+
+
+def _provider_browser(location: str, field: str | None) -> str:
+    """Deliberately refuses (KSeF/secret spec §7). Auto-scraping a browser's saved
+    logins is the infostealer pattern; OS App-Bound Encryption / Keychain block it
+    by design. Export the one credential you need to your keyring instead."""
+    raise PermissionError(
+        "browser secret store is not auto-scraped: that is the infostealer pattern and the OS "
+        "(App-Bound Encryption / Keychain / Secret Service) blocks it by design. Export the specific "
+        f"credential once to your keyring and use secret://keyring/... instead (requested: browser/{location})."
+    )
+
+
+_PROVIDERS = {
+    "env": _provider_env, "getv": _provider_env, "dotenv": _provider_dotenv, "keyring": _provider_keyring,
+    "vault": _provider_vault, "oauth": _provider_oauth, "browser": _provider_browser,
+}
 
 
 def _parse_ref(ref: str) -> tuple[str, str, str | None]:
@@ -132,14 +211,20 @@ def resolve(ref: str, *, execute: bool, allow: list[str] | None = None) -> Secre
     return SecretStr(func(location, field), ref)
 
 
-def fill_secrets(text: str, *, execute: bool, allow: list[str] | None = None) -> str:
+def fill_secrets(text: str, *, execute: bool, allow: list[str] | None = None, disabled: bool = False) -> str:
     """Replace ``{secret:...}`` / ``{getv:...}`` in a string with the value
     (execute) or ``****`` (dry-run). Run payload templating first so nested
-    ``{param}`` slots are already filled."""
+    ``{param}`` slots are already filled.
+
+    ``disabled`` is the node guard: when set, any secret reference is refused
+    outright (a remote ``node serve`` must not resolve the host's local secrets
+    unless its operator explicitly opted in)."""
     def repl(match: re.Match) -> str:
         ref = f"{match.group(1)}://{match.group(2)}"
         if not execute:
             return "****"
+        if disabled:
+            raise PermissionError(f"secret resolution disabled here (node guard): {ref}")
         return resolve(ref, execute=True, allow=allow).reveal()
 
     return SECRET_PLACEHOLDER.sub(repl, str(text))

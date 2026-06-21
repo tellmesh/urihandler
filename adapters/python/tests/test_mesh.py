@@ -58,6 +58,21 @@ class MeshTests(unittest.TestCase):
         self.assertEqual(flattened[0]["uri"], "proc://pc1/process/query/list")
         self.assertEqual(flattened[0]["adapter"], "http-service")
 
+    def test_resolve_step_payload_chains_prior_results(self):
+        results = {"slugify": {"ok": True, "result": {"slug": "june-report"}}}
+        payload = {"text": "hi", "slug_from": "slugify.result.slug"}
+        self.assertEqual(
+            mesh.resolve_step_payload(payload, results),
+            {"text": "hi", "slug": "june-report"},
+        )
+
+    def test_dig_path_indexes_lists(self):
+        data = {"s": {"result": {"items": ["a", "b", "c"]}}}
+        self.assertEqual(mesh._dig_path(data, "s.result.items.2"), "c")
+
+    def test_resolve_step_payload_passthrough_without_from(self):
+        self.assertEqual(mesh.resolve_step_payload({"a": 1, "b": "x"}, {}), {"a": 1, "b": "x"})
+
 
 if __name__ == "__main__":
     unittest.main()

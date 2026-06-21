@@ -83,6 +83,81 @@ def test_run_fetch_injects_secret_into_header_only(monkeypatch):
     assert captured["url"] == "https://api.x/auth"
 
 
+def test_node_guard_disables_secrets_even_when_allowed(monkeypatch):
+    monkeypatch.setenv("T", "v")
+    # the node guard refuses secret resolution even if the policy would allow it
+    with pytest.raises(PermissionError):
+        secrets.fill_secrets("Bearer {getv:T}", execute=True, allow=["getv://*"], disabled=True)
+
+    route_entry = {"config": {"method": "POST", "url": "https://api.x/a",
+                              "headers": {"Authorization": "Bearer {getv:T}"}}}
+    ctx = {"routeEntry": route_entry, "payload": {}, "target": "prod", "args": [], "descriptor": {}}
+    with pytest.raises(PermissionError):
+        _runtime.run_fetch(ctx, {"secretAllow": ["getv://T"], "secretsDisabled": True, "timeout": 5})
+
+
+def _resp(payload):
+    import json as _json
+
+    class _R:
+        def read(self):
+            return _json.dumps(payload).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    return _R()
+
+
+def test_vault_provider(monkeypatch):
+    monkeypatch.setenv("VAULT_ADDR", "https://vault.example")
+    monkeypatch.setenv("VAULT_TOKEN", "vt")
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["url"] = request.full_url
+        captured["hdr"] = {k.lower(): v for k, v in request.header_items()}.get("x-vault-token")
+        return _resp({"data": {"data": {"access_token": "from-vault"}}})
+
+    monkeypatch.setattr(secrets, "_PROVIDERS", dict(secrets._PROVIDERS))  # isolate
+    import urllib.request
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    out = secrets.resolve("secret://vault/kv/ksef#access_token", execute=True, allow=["secret://vault/**"])
+    assert out.reveal() == "from-vault"
+    assert captured["url"] == "https://vault.example/v1/kv/data/ksef"   # Vault KV v2 path
+    assert captured["hdr"] == "vt"
+
+
+def test_oauth_provider_returns_cached_then_refreshes(monkeypatch):
+    import json as _json
+    import time
+    import types
+
+    store = {("oauth:google", "me"): _json.dumps({
+        "access_token": "old", "refresh_token": "r1", "expires_at": time.time() - 10,
+        "token_url": "https://oauth.example/token", "client_id": "cid"})}
+    fake_keyring = types.SimpleNamespace(
+        get_password=lambda s, a: store.get((s, a)),
+        set_password=lambda s, a, v: store.__setitem__((s, a), v))
+    monkeypatch.setitem(__import__("sys").modules, "keyring", fake_keyring)
+
+    import urllib.request
+    monkeypatch.setattr(urllib.request, "urlopen",
+                        lambda request, timeout=None: _resp({"access_token": "new", "expires_in": 3600}))
+    out = secrets.resolve("secret://oauth/google/me", execute=True, allow=["secret://oauth/**"])
+    assert out.reveal() == "new"                                  # expired -> refreshed
+    assert "new" in store[("oauth:google", "me")]                 # cached back to keyring
+
+
+def test_browser_provider_refuses(monkeypatch):
+    with pytest.raises(PermissionError) as exc:
+        secrets.resolve("secret://browser/chrome/example.com", execute=True, allow=["secret://browser/**"])
+    assert "keyring" in str(exc.value)
+
+
 def test_run_fetch_secret_denied_without_allow(monkeypatch):
     monkeypatch.setenv("KSEF_TOKEN", "tok-xyz")
     route_entry = {"config": {"method": "POST", "url": "https://api.x/auth",

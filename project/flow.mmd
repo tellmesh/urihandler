@@ -5,25 +5,25 @@ flowchart TD
     classDef entry fill:#4dabf7,stroke:#1971c2,color:#fff
 
     subgraph Core
+        adapters__conformance__main["main"]
+        adapters__new_connector__main["main"]
         adapters__bash__urirun__urirun_command["urirun_command"]
         adapters__bash__urirun__urirun_document["urirun_document"]
-        adapters__perl__Urirun__new["new"]
-        adapters__perl__Urirun__command["command"]
-        adapters__perl__Urirun__bindings_json["bindings_json"]
-        adapters__new_connector__main["main"]
-        adapters__rust__src__new["new"]
-        adapters__rust__src__target["target"]
-        adapters__rust__src__command["command"]
-        adapters__rust__src__bindings_json["bindings_json"]
-        adapters__rust__examples__hash_connector__main["main"]
-        adapters__ts__example__hash_connector__c["c"]
-        adapters__ts__urirun__Connector__command["command"]
-        adapters__ts__urirun__Connector__toJSON["toJSON"]
-        adapters__ts__urirun__Connector__connector["connector"]
-        ...["+208 more"]
+        adapters__js__index__test__result["result"]
+        adapters__js__path["path"]
+        adapters__js__segments["segments"]
+        adapters__js__functionName["functionName"]
+        adapters__js__descriptor["descriptor"]
+        adapters__js__invocation["invocation"]
+        adapters__js__mod["mod"]
+        adapters__java__Urirun__Urirun__command["command"]
+        adapters__java__Urirun__Urirun__bindingsJson["bindingsJson"]
+        adapters__java__example__HashConnector__HashConnector__main["main"]
+        adapters__go__urirun__NewConnector["NewConnector"]
+        ...["+223 more"]
     end
 
     subgraph Exporters
     end
 
-    class adapters__bash__urirun__urirun_command,adapters__bash__urirun__urirun_document,adapters__perl__Urirun__new,adapters__perl__Urirun__command,adapters__perl__Urirun__bindings_json,adapters__new_connector__main,adapters__rust__src__new,adapters__rust__src__target,adapters__rust__src__command,adapters__rust__src__bindings_json entry
+    class adapters__conformance__main,adapters__new_connector__main,adapters__bash__urirun__urirun_command,adapters__bash__urirun__urirun_document,adapters__js__index__test__result,adapters__js__path,adapters__js__segments,adapters__js__functionName,adapters__js__descriptor,adapters__js__invocation entry
