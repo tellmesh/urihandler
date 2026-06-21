@@ -1153,6 +1153,17 @@ def main(argv: list[str] | None = None) -> int:
     connectors_smoke.add_argument("--allow", default=None, help="Policy allow glob for --run, e.g. 'time://*'")
     connectors_smoke.add_argument("--name", default="connector", help="A2A card name")
 
+    agent_parser = subparsers.add_parser("agent", help="Drive a registry as an LLM/agent action space")
+    agent_sub = agent_parser.add_subparsers(dest="agent_command", required=True)
+    agent_space = agent_sub.add_parser("space", help="Print the action space (routes, kind, inputs)")
+    agent_space.add_argument("registry", help="Path to a compiled registry JSON")
+    agent_run = agent_sub.add_parser("run", help="Run a planner's steps under policy")
+    agent_run.add_argument("registry", help="Path to a compiled registry JSON")
+    agent_run.add_argument("--goal", default="", help="Goal passed to the planner")
+    agent_run.add_argument("--planner", default=None, help="Planner as module:function (goal, space) -> steps")
+    agent_run.add_argument("--allow", action="append", default=None, help="Policy allow glob (repeatable)")
+    agent_run.add_argument("--allow-commands", action="store_true", help="Permit /command/ routes to execute")
+
     errors_parser = subparsers.add_parser("errors", help="Browse error:// runtime errors")
     errors_parser.add_argument(
         "errors_args",
@@ -1526,6 +1537,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "add-pypi":
         write_or_emit_binding(args.out, pypi_binding(args.name, version=args.version, uri=args.uri))
         return 0
+
+    if args.command == "agent":
+        from urirun.runtime import agent as agent_mod
+
+        return agent_mod.agent_command(args)
 
     if args.command == "connectors":
         if getattr(args, "connectors_command", None) == "new":

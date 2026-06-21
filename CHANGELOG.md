@@ -92,6 +92,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `urirun agent space <registry>` / `urirun agent run <registry> --goal ... --planner mod:func` — drive a registry as an LLM/agent action space. `space`
+  prints routes (query/command, inputs); `run` executes a pluggable planner's
+  steps under policy (query routes run freely, command routes need
+  `--allow-commands`). Implemented in `urirun/runtime/agent.py`.
+
 ### Changed
 - Reframed `urirun.runtime.compat` from a "migrate everything out" tracker
   to a backend-layer report: host/node modules are `owner="backend"`
@@ -160,6 +166,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Record IFURI-015 follow-up work: remove remaining host/domain/app
   compatibility modules from core after downstream migration.
 - Point active runtime install references at the `if-uri/urirun` namespace.
+
+## [0.3.15] - 2026-06-21
+
+### Docs
+- Update CHANGELOG.md
+
+### Other
+- Update adapters/python/tests/test_agent_command.py
+- Update adapters/python/urirun/runtime/agent.py
+- Update adapters/python/urirun/runtime/v2.py
+- Update package-lock.json
 
 ## [0.1.10] - 2026-06-19
 

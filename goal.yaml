@@ -1,5 +1,5 @@
 # goal.yaml - Goal configuration file
-# Generated: 2026-06-19 15:31:53
+# Generated: 2026-06-21 21:17:09
 # Documentation: https://github.com/wronai/goal#configuration
 #
 # This file configures Goal's behavior for:
@@ -21,8 +21,9 @@ versioning:
   strategy: semver
   files:
   - VERSION
-  - package.json:version
   - adapters/python/pyproject.toml:version
+  - package.json:version
+  - adapters/rust/Cargo.toml:version
   bump_rules:
     patch: 10
     minor: 50
@@ -272,8 +273,6 @@ hooks:
   post_push: ''
 advanced:
   auto_update_config: true
-  # Opt out of automatic fixing/applying during `goal -a` (respected by goal >= 2.1.255)
-  auto_apply: false
   performance:
     max_files: 50
     timeout_test: 300
@@ -360,6 +359,7 @@ advanced:
         enabled: true
         require_confirmation: true
         prefer_force_with_lease: true
+  auto_apply: false
 quality:
   commit_summary:
     min_value_words: 3
