@@ -16,6 +16,7 @@ project:
   name: urirun
   type:
   - nodejs
+  - python
   description: Language-agnostic URI to handler adapter
 versioning:
   strategy: semver
@@ -224,9 +225,10 @@ git:
     prefix: v
     format: '{prefix}{version}'
 publishing:
-  enabled: false
-  registries: []
-  dry_run: true
+  enabled: true
+  registries:
+  - pypi
+  dry_run: false
   fallback:
     github_release:
       enabled: true
@@ -240,8 +242,8 @@ strategies:
   python:
     test: pytest tests/ -v
     build: cd adapters/python && python -m build
-    publish: gh release upload v{version} adapters/python/dist/urirun-{version}* --clobber
-    publish_enabled: false
+    publish: twine upload --skip-existing adapters/python/dist/urirun-{version}*
+    publish_enabled: true
     dependencies:
       file: requirements.txt
       lock: pip freeze > requirements.txt
