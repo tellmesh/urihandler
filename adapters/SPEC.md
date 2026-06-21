@@ -42,6 +42,9 @@ Each language SDK MUST expose, in its own idiom, three operations:
 | Ruby | `Urirun::Connector.new(id, scheme)` | `c.command(route, schema, argv)` | `c.bindings` |
 | Perl | `Urirun->new(id, scheme)` | `$c->command(route, $schema, $argv)` | `$c->bindings` |
 | Rust | `urirun::Connector::new(id, scheme)` | `c.command(route, schema_json, argv_json)` | `c.bindings_json()` |
+| TypeScript | `connector(id, {scheme})` | `c.command(route, schema, argv)` | `c.toJSON()` |
+| Java | `new Urirun.Connector(id, scheme)` | `c.command(route, schemaJson, argvJson)` | `c.bindingsJson()` |
+| C# | `new Urirun.Connector(id, scheme)` | `c.Command(route, schemaJson, argvJson)` | `c.BindingsJson()` |
 | Bash | `urirun_command scheme target route schema argv` | (same call) | `urirun_document "$members"` |
 | C | (see `adapters/c`) | | |
 

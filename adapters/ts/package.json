@@ -1,0 +1,8 @@
+{
+  "name": "urirun-ts",
+  "version": "0.1.0",
+  "description": "urirun SDK for TypeScript — build urirun.bindings.v2 connector documents",
+  "license": "MIT",
+  "main": "dist/urirun.js",
+  "scripts": { "build": "tsc -p .", "hash": "tsc -p . && node dist/example/hash-connector.js" }
+}

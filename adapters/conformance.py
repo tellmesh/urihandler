@@ -30,6 +30,13 @@ LANGS = [
     {"name": "bash", "tool": "bash", "cmd": ["bash", "example/hash-connector.sh"], "dir": "bash"},
     {"name": "rust", "tool": "cargo", "cmd": ["cargo", "run", "--quiet", "--example", "hash_connector"],
      "dir": "rust", "env": {"CARGO_NET_OFFLINE": "true"}},
+    {"name": "ts", "tool": "tsc",
+     "cmd": ["bash", "-c", "tsc -p . >/dev/null 2>&1 && node dist/example/hash-connector.js"], "dir": "ts"},
+    {"name": "java", "tool": "javac",
+     "cmd": ["bash", "-c", "d=$(mktemp -d); javac -d $d Urirun.java example/HashConnector.java && java -cp $d HashConnector"],
+     "dir": "java"},
+    {"name": "csharp", "tool": "dotnet",
+     "cmd": ["dotnet", "run", "--project", ".", "--verbosity", "quiet"], "dir": "csharp"},
 ]
 
 
