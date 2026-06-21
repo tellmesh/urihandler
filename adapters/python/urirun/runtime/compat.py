@@ -1,11 +1,19 @@
 # Author: Tom Sapletta · https://tom.sapletta.com
 # Part of the ifURI solution.
 
-"""Compatibility surface for modules moving out of the urirun core.
+"""Layer/boundary report for the urirun backend package.
 
-This module is intentionally metadata-only. It must not import host, dashboard,
-domain or connector implementations; it only reports where each legacy module
-is supposed to move and whether the replacement package is visible.
+urirun is a self-contained backend organised in layers — ``runtime``,
+``connectors``, ``host`` and ``node``. External connector packages and the
+``if-uri/app`` operator UI *consume* those layers (connectors reuse
+``urirun.host.*`` directly; the app drives them through the urirun CLI); they do
+not replace them. So the host/node modules stay in core as the single source of
+truth.
+
+This module is metadata-only — it must not import host, dashboard, domain or
+connector implementations. It reports where each formerly-"migrating" module
+lives now and what reuses it. Only ``namecheap_dns`` was fully extracted out of
+core (provider-specific API + secrets), into its own connector.
 """
 
 from __future__ import annotations
@@ -19,87 +27,80 @@ from typing import Any
 
 ENTRY_POINT_GROUP = "urirun.bindings"
 
-COMPAT_MODULES: list[dict[str, Any]] = [
+LAYER_MODULES: list[dict[str, Any]] = [
     {
-        "module": "urirun.planfile_adapter",
-        "owner": "connector",
-        "replacement": "urirun-connector-planfile",
-        "replacementImport": "urirun_connector_planfile",
-        "entryPoint": "planfile",
-        "schemes": ["task", "planfile"],
-        "reason": "Planfile task store integration belongs in an installable connector.",
-    },
-    {
-        "module": "urirun.host_db",
-        "owner": "connector",
-        "replacement": "urirun-connector-sqlite-context",
-        "replacementImport": "urirun_connector_sqlite_context",
-        "entryPoint": "sqlite-context",
+        "module": "urirun.host.host_db",
+        "owner": "backend",
+        "layer": "host",
+        "reusedBy": "urirun-connector-sqlite-context",
         "schemes": ["data", "artifact", "check", "log"],
-        "reason": "SQLite context/log/check storage is a connector capability, not runtime core.",
+        "reason": "SQLite context/log/check store. Backend reused by the sqlite-context connector and the host CLI.",
     },
     {
-        "module": "urirun.domain_monitor",
-        "owner": "connector",
-        "replacement": "urirun-connector-domain-monitor",
-        "replacementImport": "urirun_connector_domain_monitor",
-        "entryPoint": "domain-monitor",
+        "module": "urirun.host.domain_monitor",
+        "owner": "backend",
+        "layer": "host",
+        "reusedBy": "urirun-connector-domain-monitor",
         "schemes": ["monitor", "dns", "browser", "log", "flow"],
-        "reason": "HTTP/DNS/domain workflows are operational integration logic.",
+        "reason": "HTTP/DNS/domain workflow logic. Backend reused by the domain-monitor connector and the host CLI.",
+    },
+    {
+        "module": "urirun.host.planfile_adapter",
+        "owner": "backend",
+        "layer": "host",
+        "reusedBy": "urirun-connector-planfile",
+        "schemes": ["task", "planfile"],
+        "reason": "Planfile task store wrapper. Backend reused by the planfile connector and the host CLI.",
+    },
+    {
+        "module": "urirun.host.host_integrations",
+        "owner": "backend",
+        "layer": "host",
+        "reusedBy": None,
+        "schemes": ["task", "data", "monitor", "dns", "log"],
+        "reason": "Wires host/data/monitor/task bindings to the host backend for the urirun host CLI.",
+    },
+    {
+        "module": "urirun.node.mesh",
+        "owner": "backend",
+        "layer": "node",
+        "reusedBy": "if-uri/app (CLI)",
+        "schemes": ["ifuri", "mcp", "a2a"],
+        "reason": "Host/node discovery and serving. Backend driven by if-uri/app through the urirun CLI.",
+    },
+    {
+        "module": "urirun.host.host_dashboard",
+        "owner": "backend",
+        "layer": "host",
+        "reusedBy": "if-uri/app (CLI)",
+        "schemes": ["ifuri"],
+        "reason": "Operator dashboard server. Backend driven by if-uri/app through the urirun CLI.",
+    },
+    {
+        "module": "urirun.host.scheduler",
+        "owner": "backend",
+        "layer": "host",
+        "reusedBy": "if-uri/app (CLI)",
+        "schemes": ["task"],
+        "reason": "Queue scheduling backend used by the host task loop.",
+    },
+    {
+        "module": "urirun.host.task_planner",
+        "owner": "backend",
+        "layer": "host",
+        "reusedBy": "if-uri/app (CLI)",
+        "schemes": ["task", "flow"],
+        "reason": "NL/chat planning over registry routes; backend used by the host CLI.",
     },
     {
         "module": "urirun.namecheap_dns",
-        "owner": "connector",
+        "owner": "extracted",
+        "layer": "connector",
         "replacement": "urirun-connector-namecheap-dns",
         "replacementImport": "urirun_connector_namecheap_dns",
         "entryPoint": "namecheap-dns",
         "schemes": ["dns"],
-        "reason": "Namecheap API access needs provider-specific package ownership and secrets.",
-    },
-    {
-        "module": "urirun.mesh",
-        "owner": "app",
-        "replacement": "if-uri/app",
-        "replacementImport": "ifuri_app",
-        "entryPoint": None,
-        "schemes": ["ifuri", "mcp", "a2a"],
-        "reason": "Host/node discovery, flow orchestration and node serving are app-layer concerns.",
-    },
-    {
-        "module": "urirun.host_dashboard",
-        "owner": "app",
-        "replacement": "if-uri/app",
-        "replacementImport": "ifuri_app",
-        "entryPoint": None,
-        "schemes": ["ifuri"],
-        "reason": "The operator dashboard belongs to the ifURI app/host layer.",
-    },
-    {
-        "module": "urirun.scheduler",
-        "owner": "app",
-        "replacement": "if-uri/app",
-        "replacementImport": "ifuri_app",
-        "entryPoint": None,
-        "schemes": ["task"],
-        "reason": "Queue scheduling is host application behavior.",
-    },
-    {
-        "module": "urirun.task_planner",
-        "owner": "app",
-        "replacement": "if-uri/app",
-        "replacementImport": "ifuri_app",
-        "entryPoint": None,
-        "schemes": ["task", "flow"],
-        "reason": "NL/chat planning is app behavior built on top of registry routes.",
-    },
-    {
-        "module": "urirun.host_integrations",
-        "owner": "compat",
-        "replacement": "installed connector entry points",
-        "replacementImport": None,
-        "entryPoint": None,
-        "schemes": ["task", "data", "monitor", "dns", "log"],
-        "reason": "Temporary compatibility bridge for old v2 binding helper names.",
+        "reason": "Provider-specific DNS API + secrets. Fully extracted out of core into its own connector.",
     },
 ]
 
@@ -124,51 +125,46 @@ def _importable(name: str | None) -> bool:
 
 def module_status(item: dict[str, Any], *, entry_points: set[str] | None = None) -> dict[str, Any]:
     names = _entry_point_names() if entry_points is None else entry_points
-    replacement_import = item.get("replacementImport")
-    entry_point = item.get("entryPoint")
-    replacement_installed = _importable(replacement_import)
-    entry_point_installed = bool(entry_point and entry_point in names)
-    migrated = item.get("owner") == "app" and replacement_installed
-    if item.get("owner") == "connector":
-        migrated = replacement_installed and entry_point_installed
-    if item.get("owner") == "compat":
-        migrated = False
     out = dict(item)
-    out["currentImportable"] = _importable(item.get("module"))
-    out["replacementInstalled"] = replacement_installed
-    out["entryPointInstalled"] = entry_point_installed if entry_point else None
-    out["migrationReady"] = migrated
-    out["status"] = "bridge" if item.get("owner") == "compat" else ("ready" if migrated else "pending")
+    current = _importable(item.get("module"))
+    out["currentImportable"] = current
+    owner = item.get("owner")
+    if owner == "extracted":
+        replacement_installed = _importable(item.get("replacementImport"))
+        entry_point = item.get("entryPoint")
+        entry_point_installed = bool(entry_point and entry_point in names)
+        out["replacementInstalled"] = replacement_installed
+        out["entryPointInstalled"] = entry_point_installed
+        # healthy when removed from core AND the replacement connector is visible
+        out["status"] = "extracted" if (not current and replacement_installed and entry_point_installed) else "incomplete"
+    else:  # backend layer that stays in urirun
+        out["status"] = "kept" if current else "missing"
     return out
 
 
 def report() -> dict[str, Any]:
     names = _entry_point_names()
-    modules = [module_status(item, entry_points=names) for item in COMPAT_MODULES]
-    ready = sum(1 for item in modules if item["migrationReady"])
-    blocking = [
-        item for item in modules
-        if item.get("owner") in {"connector", "app"} and not item["migrationReady"]
-    ]
+    modules = [module_status(item, entry_points=names) for item in LAYER_MODULES]
+    issues = [item for item in modules if item["status"] in {"missing", "incomplete"}]
     return {
-        "ok": True,
+        "ok": not issues,
         "entryPointGroup": ENTRY_POINT_GROUP,
-        "ready": ready,
-        "pending": len(modules) - ready,
-        "blockingPending": len(blocking),
+        "backendLayers": sum(1 for item in modules if item.get("owner") == "backend"),
+        "extracted": sum(1 for item in modules if item.get("owner") == "extracted"),
+        "issues": len(issues),
         "modules": modules,
     }
 
 
 def _print_table(modules: list[dict[str, Any]]) -> None:
-    rows = [("MODULE", "OWNER", "REPLACEMENT", "ENTRYPOINT", "STATUS")]
+    rows = [("MODULE", "OWNER", "LAYER", "REUSED BY / REPLACEMENT", "STATUS")]
     for item in modules:
         rows.append(
             (
                 item["module"],
                 item["owner"],
-                item["replacement"],
-                item.get("entryPoint") or "-",
+                item.get("layer", "-"),
+                item.get("reusedBy") or item.get("replacement") or "-",
                 item["status"],
             )
         )
@@ -182,9 +178,9 @@ def _print_table(modules: list[dict[str, Any]]) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="urirun compat")
     sub = parser.add_subparsers(dest="command", required=True)
-    list_parser = sub.add_parser("list", help="List legacy compatibility modules and replacements")
+    list_parser = sub.add_parser("list", help="List urirun backend layers and what reuses them")
     list_parser.add_argument("--json", action="store_true")
-    check_parser = sub.add_parser("check", help="Return non-zero until replacement packages are installed")
+    check_parser = sub.add_parser("check", help="Return non-zero if a backend layer is missing or an extracted module is not fully migrated")
     check_parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
@@ -193,9 +189,9 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(data, indent=2, ensure_ascii=False))
     else:
         _print_table(data["modules"])
-        print(f"\nready={data['ready']} pending={data['pending']} blockingPending={data['blockingPending']}")
+        print(f"\nbackendLayers={data['backendLayers']} extracted={data['extracted']} issues={data['issues']}")
     if args.command == "check":
-        return 0 if data["blockingPending"] == 0 else 1
+        return 0 if data["ok"] else 1
     return 0
 
 

@@ -1,7 +1,27 @@
 # urirun package split plan
 
-Cel: odchudzic `urirun` do malego runtime/contract core i wyniesc integracje
-oraz aplikacje hosta do osobnych paczek. Obecny stan miesza trzy warstwy:
+> **AKTUALNY KIERUNEK (2026-06, nadrzędny względem reszty dokumentu).**
+> `urirun` jest **samodzielnym backendem warstwowym**, nie cienkim runtime.
+> Pakiet jest podzielony na foldery-warstwy: `runtime/` (URI, registry, schema,
+> policy, executors, transporty), `connectors/` (SDK + narzędzia connectorów),
+> `host/` (host_db, domain_monitor, planfile_adapter, host_integrations,
+> dashboard, scheduler, task_planner) i `node/` (mesh).
+>
+> **Warstwy host/node ZOSTAJĄ w urirun** jako jedyne źródło prawdy. Konsumują je:
+> zewnętrzne connectory (reużywają `urirun.host.*` bezpośrednio — patrz
+> `docs/generating-connectors.md`) oraz `if-uri/app` (operator UI) przez **CLI
+> urirun**. To odwraca pierwotny plan „wynieś mesh/dashboard do `if-uri/app`":
+> aplikacja jest cienkim klientem backendu, a nie nowym właścicielem logiki.
+>
+> **Faktycznie wyniesiono z core tylko `namecheap_dns`** (API providera + sekrety)
+> do `urirun-connector-namecheap-dns`. Resztę dawnych „kandydatów do wyniesienia"
+> przeklasyfikowano na `owner="backend"` w `urirun.runtime.compat`
+> (`urirun compat list` / `check`). Stara, 7-fazowa „kolejność migracji" poniżej
+> jest zachowana jako kontekst historyczny.
+
+Cel (historyczny): odchudzic `urirun` do malego runtime/contract core i wyniesc
+integracje oraz aplikacje hosta do osobnych paczek. Obecny stan miesza trzy
+warstwy:
 
 - core runtime: URI, registry, schema, policy, executors,
 - connectory: planfile, SQLite, domain monitor, Namecheap,

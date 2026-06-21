@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Reframed `urirun.runtime.compat` from a "migrate everything out" tracker
+  to a backend-layer report: host/node modules are `owner="backend"`
+  (kept as the single source of truth, reused by connectors and the
+  if-uri/app CLI); only `namecheap_dns` is `extracted`. `urirun compat
+  list`/`check` and `URIRUN_PACKAGE_SPLIT_PLAN.md` updated to match.
 - Reorganised the `urirun` package into domain layers: `runtime/` (URI
   parse/translate, registry compile, run, MCP/gRPC transports, errors, compat),
   `connectors/` (connector SDK, scaffold, smoke, catalog client), `host/` (host

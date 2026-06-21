@@ -11,30 +11,49 @@ import urirun
 from urirun import compat
 
 
-class CompatReportTests(unittest.TestCase):
-    def test_report_marks_installed_connector_replacement_ready(self):
-        def importable(name):
-            return name in {"urirun.planfile_adapter", "urirun_connector_planfile"}
+def _healthy_importable(name):
+    # backend host/node layers stay in core; namecheap was extracted (removed),
+    # its connector replacement is installed.
+    if name == "urirun.namecheap_dns":
+        return False
+    if name == "urirun_connector_namecheap_dns":
+        return True
+    return bool(name and (name.startswith("urirun.host.") or name.startswith("urirun.node.")))
 
-        with patch.object(compat, "_entry_point_names", return_value={"planfile"}), \
-             patch.object(compat, "_importable", side_effect=importable):
+
+class CompatReportTests(unittest.TestCase):
+    def test_backend_layer_is_kept(self):
+        with patch.object(compat, "_entry_point_names", return_value={"namecheap-dns"}), \
+             patch.object(compat, "_importable", side_effect=_healthy_importable):
             data = compat.report()
 
-        planfile = next(item for item in data["modules"] if item["module"] == "urirun.planfile_adapter")
-        self.assertEqual(planfile["owner"], "connector")
-        self.assertEqual(planfile["replacement"], "urirun-connector-planfile")
-        self.assertTrue(planfile["replacementInstalled"])
-        self.assertTrue(planfile["entryPointInstalled"])
-        self.assertTrue(planfile["migrationReady"])
+        host_db = next(m for m in data["modules"] if m["module"] == "urirun.host.host_db")
+        self.assertEqual(host_db["owner"], "backend")
+        self.assertEqual(host_db["layer"], "host")
+        self.assertEqual(host_db["reusedBy"], "urirun-connector-sqlite-context")
+        self.assertTrue(host_db["currentImportable"])
+        self.assertEqual(host_db["status"], "kept")
+
+    def test_namecheap_is_extracted(self):
+        with patch.object(compat, "_entry_point_names", return_value={"namecheap-dns"}), \
+             patch.object(compat, "_importable", side_effect=_healthy_importable):
+            data = compat.report()
+
+        nc = next(m for m in data["modules"] if m["module"] == "urirun.namecheap_dns")
+        self.assertEqual(nc["owner"], "extracted")
+        self.assertFalse(nc["currentImportable"])  # removed from core
+        self.assertTrue(nc["replacementInstalled"])
+        self.assertEqual(nc["status"], "extracted")
+        self.assertTrue(data["ok"])
 
     def test_top_level_api_exposes_compat_report(self):
         data = urirun.compat_report()
         self.assertTrue(data["ok"])
-        self.assertTrue(any(item["module"] == "urirun.host_integrations" for item in data["modules"]))
+        self.assertTrue(any(m["module"] == "urirun.host.host_integrations" for m in data["modules"]))
 
-    def test_cli_list_json(self):
-        with patch.object(compat, "_entry_point_names", return_value=set()), \
-             patch.object(compat, "_importable", return_value=False):
+    def test_cli_list_json_reports_node_layer(self):
+        with patch.object(compat, "_entry_point_names", return_value={"namecheap-dns"}), \
+             patch.object(compat, "_importable", side_effect=_healthy_importable):
             buffer = io.StringIO()
             with contextlib.redirect_stdout(buffer):
                 code = compat.main(["list", "--json"])
@@ -42,34 +61,38 @@ class CompatReportTests(unittest.TestCase):
         self.assertEqual(code, 0)
         data = json.loads(buffer.getvalue())
         self.assertTrue(data["ok"])
-        self.assertGreater(data["pending"], 0)
-        self.assertGreater(data["blockingPending"], 0)
-        self.assertTrue(any(item["module"] == "urirun.mesh" for item in data["modules"]))
+        self.assertGreater(data["backendLayers"], 0)
+        self.assertEqual(data["extracted"], 1)
+        mesh = next(m for m in data["modules"] if m["module"] == "urirun.node.mesh")
+        self.assertEqual(mesh["layer"], "node")
 
-    def test_cli_check_returns_non_zero_when_replacements_missing(self):
+    def test_cli_check_ok_when_layers_present_and_namecheap_extracted(self):
+        with patch.object(compat, "_entry_point_names", return_value={"namecheap-dns"}), \
+             patch.object(compat, "_importable", side_effect=_healthy_importable), \
+             contextlib.redirect_stdout(io.StringIO()):
+            code = compat.main(["check"])
+
+        self.assertEqual(code, 0)
+
+    def test_cli_check_nonzero_when_namecheap_replacement_missing(self):
+        def importable(name):
+            # backend present, but the namecheap connector is NOT installed
+            return bool(name and (name.startswith("urirun.host.") or name.startswith("urirun.node.")))
+
         with patch.object(compat, "_entry_point_names", return_value=set()), \
-             patch.object(compat, "_importable", return_value=False), \
+             patch.object(compat, "_importable", side_effect=importable), \
              contextlib.redirect_stdout(io.StringIO()):
             code = compat.main(["check"])
 
         self.assertEqual(code, 1)
 
-    def test_cli_check_ignores_internal_compat_bridge_when_replacements_ready(self):
-        replacement_imports = {
-            "urirun_connector_planfile",
-            "urirun_connector_sqlite_context",
-            "urirun_connector_domain_monitor",
-            "urirun_connector_namecheap_dns",
-            "ifuri_app",
-        }
-        entry_points = {"planfile", "sqlite-context", "domain-monitor", "namecheap-dns"}
-
-        with patch.object(compat, "_entry_point_names", return_value=entry_points), \
-             patch.object(compat, "_importable", side_effect=lambda name: name in replacement_imports), \
+    def test_cli_check_nonzero_when_backend_layer_missing(self):
+        with patch.object(compat, "_entry_point_names", return_value={"namecheap-dns"}), \
+             patch.object(compat, "_importable", return_value=False), \
              contextlib.redirect_stdout(io.StringIO()):
             code = compat.main(["check"])
 
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 1)
 
 
 if __name__ == "__main__":
