@@ -25,7 +25,6 @@ forbidden = [
     "urirun.host_db",
     "urirun.host_integrations",
     "urirun.mesh",
-    "urirun.namecheap_dns",
     "urirun.planfile_adapter",
     "urirun.task_planner",
     "urirun.v2_grpc",
@@ -65,7 +64,6 @@ forbidden = [
     "urirun.compat",
     "urirun.domain_monitor",
     "urirun.host_db",
-    "urirun.namecheap_dns",
     "urirun.planfile_adapter",
     "urirun.task_planner",
 ]

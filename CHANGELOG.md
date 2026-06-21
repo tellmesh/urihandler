@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Reorganised the `urirun` package into domain layers: `runtime/` (URI
+  parse/translate, registry compile, run, MCP/gRPC transports, errors, compat),
+  `connectors/` (connector SDK, scaffold, smoke, catalog client), `host/` (host
+  integrations, dashboard, sqlite store, domain monitor, planfile, scheduler,
+  task planner) and `node/` (mesh). Every moved module keeps a thin top-level
+  back-compat shim (e.g. `urirun.host_db` aliases `urirun.host.host_db`,
+  `urirun.v2` aliases `urirun.runtime.v2` and still works as `python -m
+  urirun.v2` / `urirun.v2:main`), so existing imports, the CLI and external
+  connectors are unaffected. Goal: urirun is a self-contained backend that
+  if-uri/app drives via the CLI.
+
+### Removed
+- Removed `urirun.namecheap_dns` (and its test) from core; Namecheap DNS now
+  lives only in the `urirun-connector-namecheap-dns` package (IFURI-015 Phase 4).
+  `domain_monitor` Namecheap routes return a clear "moved to the connector"
+  error instead of importing the bundled module. `compat report` shows it as
+  migrated (current module gone, replacement installed).
+
 ### Added
 - `urirun.connector_sdk` authoring helpers that move per-connector boilerplate
   into the runtime: `urirun.load_manifest(package)` (bundled manifest loader),

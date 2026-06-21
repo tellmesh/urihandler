@@ -364,7 +364,7 @@ def to_ticket(code: str, project: str | None = None, store: str | None = None) -
     detail = info(code, store=store)
     if not detail.get("found"):
         return {"ok": False, "code": code, "error": "unknown error code"}
-    from . import planfile_adapter
+    from urirun.host import planfile_adapter
 
     payload: dict[str, Any] = {
         "name": f"[{code}] {detail.get('category')}: {(detail.get('message') or '')[:80]}",

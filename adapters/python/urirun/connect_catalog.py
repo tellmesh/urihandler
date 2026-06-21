@@ -1,5 +1,5 @@
-"""Back-compat shim — moved to urirun.connector.connect_catalog. Import from there in new code."""
+"""Back-compat shim — moved to urirun.connectors.connect_catalog. Import from there in new code."""
 import sys as _sys
-from urirun.connector import connect_catalog as _moved
+from urirun.connectors import connect_catalog as _moved
 
 _sys.modules[__name__] = _moved

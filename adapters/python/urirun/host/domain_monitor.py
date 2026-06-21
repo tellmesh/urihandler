@@ -296,6 +296,20 @@ def _provider(ctx: dict, payload: dict) -> str:
     return str(payload.get("provider") or (ctx["routeEntry"].get("config") or {}).get("provider") or "").lower()
 
 
+def _namecheap_moved(descriptor: dict) -> dict:
+    """Namecheap DNS writes moved out of core to urirun-connector-namecheap-dns."""
+    return {
+        "ok": False,
+        "type": "domain-monitor",
+        "error": (
+            "Namecheap DNS support moved out of urirun core to the "
+            "urirun-connector-namecheap-dns package. Install it and use its "
+            "dns:// routes."
+        ),
+        "uri": descriptor.get("normalized"),
+    }
+
+
 def run_uri_route(ctx: dict, execute: bool) -> dict:
     from urirun import host_db
 
@@ -315,18 +329,14 @@ def run_uri_route(ctx: dict, execute: bool) -> dict:
     if package == "dns" and resource == "records" and operation == "query" and action == "current":
         domain = _domain(target, payload)
         if _provider(ctx, payload) == "namecheap":
-            from urirun import namecheap_dns
-
-            return namecheap_dns.run_uri_route(ctx, execute)
+            return _namecheap_moved(descriptor)
         return {"type": "domain-monitor", "dns": dns_records(domain, _list(payload.get("record_types")) or None)}
 
     if package == "dns" and resource == "records" and operation == "query" and action == "expected":
         return {"type": "domain-monitor", "expectedRecords": expected_records(payload)}
 
     if package == "dns" and resource == "records" and operation == "command" and action in {"plan", "backup", "apply"}:
-        from urirun import namecheap_dns
-
-        return namecheap_dns.run_uri_route(ctx, execute)
+        return _namecheap_moved(descriptor)
 
     if package == "browser" and resource == "page" and operation == "command" and action == "screenshot":
         domain = _domain(target, payload)
