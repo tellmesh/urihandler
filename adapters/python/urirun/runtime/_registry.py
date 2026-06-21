@@ -455,10 +455,29 @@ def resolve_route(translation: dict, registry: dict) -> dict:
             return meta["routeEntry"]
 
     tree = registry_tree(registry)
-    route_entry = tree.get(translation["package"], {}).get(translation["resource"], {}).get(translation["operation"])
-    if not route_entry:
+    node = tree
+    params: dict[str, str] = {}
+    for segment in translation["route"]:
+        if not isinstance(node, dict):
+            node = None
+            break
+        if segment in node:
+            node = node[segment]
+            continue
+        # no exact key: fall back to a single templated {param} segment
+        templated = [k for k in node if isinstance(k, str) and len(k) > 2 and k[0] == "{" and k[-1] == "}"]
+        if len(templated) == 1:
+            params[templated[0][1:-1]] = segment
+            node = node[templated[0]]
+        else:
+            node = None
+            break
+    if not node:
         raise KeyError(f"Route not found: {'.'.join(translation['route'])}")
-    return route_entry
+    if params:
+        translation["params"] = params
+        descriptor["params"] = params  # surface bound path params to handlers via ctx
+    return node
 
 
 def _walk_route_entries(node):

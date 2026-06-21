@@ -204,11 +204,26 @@ def run_fetch(ctx: dict, policy: dict) -> dict:
     if not str(url).lower().startswith(("http://", "https://")):
         raise PolicyError(f"refusing non-http url: {url}")
 
-    headers = {key: _fetch_fill(value, payload) for key, value in (config.get("headers") or {}).items()}
+    # secrets are resolved here, at the injection boundary, only in execute, under
+    # the policy allow-list; they go into headers/body (never the returned url).
+    from urirun.runtime import secrets as _secrets
+
+    secret_allow = policy.get("secretAllow") if isinstance(policy, dict) else None
+
+    def _inject(value):
+        if isinstance(value, str):
+            return _secrets.fill_secrets(value, execute=True, allow=secret_allow)
+        if isinstance(value, dict):
+            return {key: _inject(val) for key, val in value.items()}
+        if isinstance(value, list):
+            return [_inject(item) for item in value]
+        return value
+
+    headers = {key: _inject(_fetch_fill(value, payload)) for key, value in (config.get("headers") or {}).items()}
     body = None
     if method not in ("GET", "HEAD"):
         if config.get("body") is not None:
-            body = json.dumps(_fetch_render(config["body"], payload)).encode("utf-8")
+            body = json.dumps(_inject(_fetch_render(config["body"], payload))).encode("utf-8")
             headers.setdefault("Content-Type", "application/json")
         elif ctx["payload"] is not None:
             body = json.dumps(ctx["payload"]).encode("utf-8")
@@ -262,6 +277,9 @@ def run(
     descriptor = reglib.parse_uri(uri)
     translation = reglib.translate(descriptor)
     route_entry = reglib.resolve_route(translation, registry)
+    params = translation.get("params")
+    if params:  # bound path params (e.g. {monitor}) become payload fields; explicit payload wins
+        payload = {**params, **(payload if isinstance(payload, dict) else {})}
     ctx = {
         "routeEntry": route_entry,
         "descriptor": descriptor,
@@ -339,10 +357,11 @@ def load_registry_arg(arg: str, openapi_base_url: str = "") -> dict:
     return scan.compile_registry_document(data)
 
 
-def build_policy(policy_file: str | None, allow: list[str] | None = None, deny: list[str] | None = None) -> dict | None:
-    """Combine an optional policy file with inline --allow / --deny globs."""
+def build_policy(policy_file: str | None, allow: list[str] | None = None, deny: list[str] | None = None,
+                 secret_allow: list[str] | None = None) -> dict | None:
+    """Combine an optional policy file with inline --allow / --deny / --secret-allow globs."""
     raw = reglib.load_json(policy_file) if policy_file else {}
-    if not (allow or deny) and not policy_file:
+    if not (allow or deny or secret_allow) and not policy_file:
         return None
     execute = dict(raw.get("execute") or {})
     merged = dict(raw)
@@ -350,6 +369,7 @@ def build_policy(policy_file: str | None, allow: list[str] | None = None, deny: 
         "allow": list(execute.get("allow") or []) + list(allow or []),
         "deny": list(execute.get("deny") or []) + list(deny or []),
     }
+    merged["secretAllow"] = list(raw.get("secretAllow") or []) + list(secret_allow or [])
     return merged
 
 

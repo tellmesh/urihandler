@@ -51,6 +51,23 @@ test-v2: ## Run urirun v2 schema, runtime, and MCP/A2A smoke checks.
 	PYTHONPATH=adapters/python $(PYTHON) -m urirun.v2 compile /tmp/urirun-v2-adopt.bindings.json --out /tmp/urirun-v2-adopt.registry.json
 	PYTHONPATH=adapters/python $(PYTHON) -m urirun.v2 run 'cli://pip/pip/run' --registry /tmp/urirun-v2-adopt.registry.json --payload '{"args":["--version"]}' >/tmp/urirun-v2-adopt-run.json
 
+.PHONY: build
+build: ## Build the Python adapter (wheel + sdist) into adapters/python/dist/. Needs: pip install build.
+	rm -rf adapters/python/dist
+	cd adapters/python && $(PYTHON) -m build
+
+.PHONY: publish
+publish: version-check build ## Build + upload the Python adapter to PyPI. Needs: pip install twine; TWINE_USERNAME=__token__ TWINE_PASSWORD=$$PYPI_API_TOKEN (or ~/.pypirc).
+	cd adapters/python && $(PYTHON) -m twine upload dist/*
+
+.PHONY: release
+release: version-check ## Tag the current version and push it; CI (release.yml) then builds + publishes to PyPI.
+	@v=$$(cat adapters/python/VERSION); \
+	if git rev-parse "v$$v" >/dev/null 2>&1; then echo "tag v$$v already exists"; exit 1; fi; \
+	git tag -a "v$$v" -m "urirun v$$v"; \
+	git push origin "v$$v"; \
+	echo "pushed tag v$$v -> release.yml builds + publishes to PyPI"
+
 .PHONY: clean
 clean: ## Remove local generated cache files.
-	rm -rf node_modules .pytest_cache adapters/python/tests/__pycache__ adapters/python/urirun/__pycache__ adapters/python/*.egg-info adapters/python/build __pycache__
+	rm -rf node_modules .pytest_cache adapters/python/tests/__pycache__ adapters/python/urirun/__pycache__ adapters/python/*.egg-info adapters/python/build adapters/python/dist __pycache__

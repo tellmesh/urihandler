@@ -21,8 +21,10 @@ versioning:
   strategy: semver
   files:
   - VERSION
+  - adapters/python/VERSION
   - adapters/python/pyproject.toml:version
   - package.json:version
+  - adapters/js/package.json:version
   - adapters/rust/Cargo.toml:version
   bump_rules:
     patch: 10
@@ -272,7 +274,10 @@ hooks:
   pre_push: ''
   post_push: ''
 advanced:
-  auto_update_config: true
+  # Keep goal from re-detecting + overwriting this file on every run (it would
+  # reset versioning.files and drop adapters/* version files, causing version
+  # drift). We maintain goal.yaml by hand.
+  auto_update_config: false
   performance:
     max_files: 50
     timeout_test: 300

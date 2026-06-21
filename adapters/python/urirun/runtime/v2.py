@@ -1467,6 +1467,8 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--policy")
         p.add_argument("--allow", action="append", default=[], metavar="GLOB")
         p.add_argument("--deny", action="append", default=[], metavar="GLOB")
+        p.add_argument("--secret-allow", action="append", default=[], metavar="GLOB",
+                       help="permit a secret:// reference to resolve (deny-by-default)")
 
     run_parser = subparsers.add_parser("run", help="Validate input and run a URI")
     add_source(run_parser)
@@ -1595,7 +1597,8 @@ def main(argv: list[str] | None = None) -> int:
         registry = compile_registry(build_binding_document(bindings))
     else:
         registry = load_registry_arg(source)
-    policy = runtime.build_policy(getattr(args, "policy", None), args.allow, args.deny)
+    policy = runtime.build_policy(getattr(args, "policy", None), args.allow, args.deny,
+                                  getattr(args, "secret_allow", None))
 
     if args.command == "run":
         result = run(
