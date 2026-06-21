@@ -86,17 +86,80 @@ def adopt_document(path: str | Path) -> dict:
     return {"version": v2.VERSION, "bindings": expanded}
 
 
+# --------------------------------------------------------------------------- #
+# Discovery: turn an *installed package name* or a *project dir* into bindings
+# --------------------------------------------------------------------------- #
+def _tool_urirun(pyproject: Path) -> dict:
+    """Read the [tool.urirun] table from a pyproject.toml (source adoption)."""
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # pragma: no cover - py<3.11
+        import tomli as tomllib  # type: ignore
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    return (data.get("tool") or {}).get("urirun") or {}
+
+
+def installed_manifest_path(package: str) -> Path | None:
+    """Locate an installed package's manifest: a ``urirun.packs`` entry point
+    first, then the conventional ``<importable>/manifest.yaml`` package data."""
+    from importlib import metadata, resources
+
+    try:
+        eps = metadata.entry_points(group="urirun.packs")
+    except TypeError:  # pragma: no cover - older API
+        eps = metadata.entry_points().get("urirun.packs", [])  # type: ignore
+    for ep in eps:
+        if ep.name == package:
+            module, _, rel = ep.value.partition(":")
+            try:
+                base = resources.files(module)
+                target = base / (rel or "manifest.yaml")
+                if target.is_file():
+                    return Path(str(target))
+            except (ModuleNotFoundError, FileNotFoundError):
+                pass
+    for module in (package, package.replace("-", "_")):
+        try:
+            target = resources.files(module) / "manifest.yaml"
+            if target.is_file():
+                return Path(str(target))
+        except (ModuleNotFoundError, FileNotFoundError, TypeError):
+            continue
+    return None
+
+
+def adopt(target: str | Path) -> dict:
+    """Adopt a manifest file, a project dir ([tool.urirun] or manifest.yaml),
+    or an installed package name — whichever ``target`` resolves to."""
+    path = Path(target)
+    if path.is_file():
+        return adopt_document(path)
+    if path.is_dir():
+        pyproject = path / "pyproject.toml"
+        if pyproject.exists():
+            cfg = _tool_urirun(pyproject)
+            if cfg.get("manifest"):
+                return adopt_document(path / cfg["manifest"])
+        for candidate in path.glob("*/manifest.yaml"):
+            return adopt_document(candidate)
+        raise FileNotFoundError(f"no [tool.urirun].manifest or */manifest.yaml under {path}")
+    manifest = installed_manifest_path(str(target))
+    if manifest is None:
+        raise FileNotFoundError(f"no manifest for installed package {target!r} (urirun.packs entry point or <pkg>/manifest.yaml)")
+    return adopt_document(manifest)
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
     from urirun import _registry as reglib
 
     parser = argparse.ArgumentParser(prog="urirun-adopt-pack")
-    parser.add_argument("manifest", help="path to a pack manifest.yaml / .json")
+    parser.add_argument("target", help="manifest file, project dir ([tool.urirun]), or installed package name")
     parser.add_argument("--out", default="-", help="bindings.v2 output (default: stdout)")
     args = parser.parse_args(argv)
 
-    document = adopt_document(args.manifest)
+    document = adopt(args.target)
     if args.out == "-":
         print(json.dumps(document, indent=2))
     else:

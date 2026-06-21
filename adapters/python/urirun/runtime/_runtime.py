@@ -13,12 +13,29 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import re
 import shlex
 import subprocess
 import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+_FETCH_PLACEHOLDER = re.compile(r"\{([a-zA-Z0-9_]+)\}")
+
+
+def _fetch_fill(text, payload: dict):
+    return _FETCH_PLACEHOLDER.sub(lambda m: str(payload.get(m.group(1), m.group(0))), str(text))
+
+
+def _fetch_render(value, payload: dict):
+    if isinstance(value, str):
+        return _fetch_fill(value, payload)
+    if isinstance(value, dict):
+        return {key: _fetch_render(val, payload) for key, val in value.items()}
+    if isinstance(value, list):
+        return [_fetch_render(item, payload) for item in value]
+    return value
 
 from urirun import _registry as reglib, _scan as scan
 from urirun import errors as _errors
