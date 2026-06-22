@@ -73,6 +73,10 @@ class EventHub:
         with self._lock:
             return [e for e in self._ring if e.get("_id", 0) > last_id]
 
+    def current_id(self) -> int:
+        with self._lock:
+            return self._seq
+
     def count(self) -> int:
         with self._lock:
             return len(self._subs)
