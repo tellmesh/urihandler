@@ -8,11 +8,13 @@
 #   node://<name>/package/query/list        {match?}           list installed packages
 #   node://<name>/runtime/query/info        {}                 interpreter / venv / platform
 #   node://<name>/connector/command/install {id}               install a urirun-connector-<id>
+#   node://<name>/registry/command/adopt    {scheme?}          make installed connector routes live
 #
 # Handlers run in-process and shell out to THIS node's interpreter (sys.executable), so a
 # host can provision a remote node — add the office connectors, cryptography, anything —
 # over the mesh, no SSH. These are powerful (arbitrary install), so the node server gates
-# every node:// route behind the admin token / enrolled key.
+# every node:// route behind the admin token / enrolled key. The adopt command is advertised
+# here, but handled by the HTTP node server because it mutates the live served registry.
 
 from __future__ import annotations
 
@@ -71,7 +73,7 @@ def connector_install(**payload: Any) -> dict:
         if not res.get("ok"):
             res = _pip(["install", "--upgrade", f"git+https://github.com/if-uri/urirun-connector-{s}.git"])
     res["connector"], res["source"], res["sourceKind"] = s, s, kind
-    res["hint"] = "make routes live: `urirun host deploy <node> --merge` the connector's bindings (see node://…/registry/query/installed)"
+    res["hint"] = "make routes live: run node://<name>/registry/command/adopt or deploy the connector bindings with --merge"
     return res
 
 
@@ -147,6 +149,11 @@ def registry_installed(**payload: Any) -> dict:
     return {"ok": True, "version": v2.VERSION, "bindings": merged, "count": len(merged)}
 
 
+def registry_adopt(**payload: Any) -> dict:
+    """Advertised management route; the live node HTTP handler owns the mutation."""
+    return {"ok": False, "error": "registry/command/adopt must be executed against a managed node"}
+
+
 def package_list(**payload: Any) -> dict:
     res = _pip(["list", "--format=freeze"], timeout=120)
     if not res.get("ok"):
@@ -179,6 +186,7 @@ _ROUTES = [
     ("connector/query/discover", "query", "connector_discover",
      {"match": {"type": "string"}, "scheme": {"type": "string"}, "roots": {"type": ["string", "array"]}}),
     ("registry/query/installed", "query", "registry_installed", {"match": {"type": "string"}, "scheme": {"type": "string"}}),
+    ("registry/command/adopt", "command", "registry_adopt", {"scheme": {"type": "string"}}),
     ("package/query/list", "query", "package_list", {"match": {"type": "string"}}),
     ("runtime/query/info", "query", "runtime_info", {}),
 ]

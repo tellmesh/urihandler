@@ -113,22 +113,43 @@ class NodeClient:
         return {str(r.get("uri", "")).split("://", 1)[0] for r in self.routes()}
 
     def ensure_scheme(self, scheme: str, roots=None, install: bool = True) -> dict:
-        """Make `scheme://` live on the node, acquiring it if missing: use bindings already
+        """Make `scheme://` live on the node, acquiring it if missing: adopt bindings already
         installed in the node venv, else discover a connector (catalog/local ~/github/git)
-        via node:// management, install it, then merge-deploy its routes. Needs --manage +
-        admin token. Returns {ok, scheme, already?, deployed?}."""
+        via node:// management, install it, then adopt its routes. Older nodes fall back to
+        host-side merge-deploy. Needs --manage + admin token."""
         if scheme in self.schemes():
             return {"ok": True, "scheme": scheme, "already": True}
         mgmt = f"node://{self.name}"
-        inst = self.value(self.run(f"{mgmt}/registry/query/installed", {"scheme": scheme})) or {}
+        adopt_uri = f"{mgmt}/registry/command/adopt"
+
+        def try_adopt() -> dict:
+            if not any(str(r.get("uri", "")) == adopt_uri for r in self.routes()):
+                return {"ok": False, "error": "adopt not advertised"}
+            adopt = self.run(adopt_uri, {"scheme": scheme})
+            if not isinstance(adopt, dict):
+                return {"ok": False, "error": "invalid adopt response"}
+            if adopt.get("ok") and scheme in self.schemes():
+                return {"ok": True, "scheme": scheme, "acquired": True, "adopted": adopt.get("adopted")}
+            return adopt
+
+        adopted = try_adopt()
+        if adopted.get("ok"):
+            return adopted
+        inst = self.value(self.run(f"{mgmt}/registry/query/installed", {"scheme": scheme}))
+        inst = inst if isinstance(inst, dict) else {}
         binds = inst.get("bindings") or {}
         if not binds and install:
             disc = self.value(self.run(f"{mgmt}/connector/query/discover",
-                                       {"scheme": scheme, **({"roots": roots} if roots else {})})) or {}
+                                       {"scheme": scheme, **({"roots": roots} if roots else {})}))
+            disc = disc if isinstance(disc, dict) else {}
             sources = [c["source"] for c in disc.get("local", []) if c.get("source")]
             if sources:
                 self.run(f"{mgmt}/connector/command/install", {"source": sources[0], "editable": True})
-                inst = self.value(self.run(f"{mgmt}/registry/query/installed", {"scheme": scheme})) or {}
+                adopted = try_adopt()
+                if adopted.get("ok"):
+                    return adopted
+                inst = self.value(self.run(f"{mgmt}/registry/query/installed", {"scheme": scheme}))
+                inst = inst if isinstance(inst, dict) else {}
                 binds = inst.get("bindings") or {}
         if not binds:
             return {"ok": False, "scheme": scheme, "error": "no installed bindings or local source for scheme"}

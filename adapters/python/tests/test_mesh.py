@@ -699,6 +699,7 @@ class MeshTests(unittest.TestCase):
         b = manage.bindings("lab")["bindings"]
         assert "node://lab/package/command/install" in b
         assert "node://lab/runtime/query/info" in b
+        assert "node://lab/registry/command/adopt" in b
         self.assertEqual(b["node://lab/package/command/install"]["python"]["module"], "urirun.node.manage")
         # install shells out to pip with the right args (mock the pip call)
         calls = []
