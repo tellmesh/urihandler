@@ -113,6 +113,69 @@ class MeshTests(unittest.TestCase):
             server.shutdown()
             _sys.modules.pop("streamer_mod", None)
 
+    def test_argv_template_streams_stdout_to_events_by_run_id(self):
+        # argv-template routes stream stdout lines automatically through the same
+        # /events?run=<id> channel, without handler code calling mesh.emit().
+        import socket as _socket
+        import sys as _sys
+        import threading
+        import urllib.request
+
+        script = (
+            "import time\n"
+            "for i in range(3):\n"
+            "    print('argv-%d' % i, flush=True)\n"
+            "    time.sleep(0.05)\n"
+        )
+        registry = mesh.v2.compile_registry({"version": mesh.v2.VERSION, "bindings": {
+            "proc://p/demo/command/lines": {
+                "kind": "command",
+                "adapter": "argv-template",
+                "argv": [_sys.executable, "-u", "-c", script],
+                "inputSchema": {"type": "object"},
+                "policy": {"allowExecute": True},
+            }}})
+        s = _socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+        server = mesh.serve_node("p", registry, "127.0.0.1", port, execute=True, allow=["proc://**"])
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{port}"
+        try:
+            for _ in range(40):
+                try:
+                    urllib.request.urlopen(base + "/health", timeout=1); break
+                except Exception:
+                    time.sleep(0.1)
+            got, stop = [], threading.Event()
+
+            def watch():
+                r = urllib.request.urlopen(base + "/events?run=runY", timeout=10)
+                for raw in r:
+                    if stop.is_set():
+                        break
+                    line = raw.decode().strip()
+                    if line.startswith("data:"):
+                        got.append(json.loads(line[5:].strip()))
+                        if len([g for g in got if g.get("event") == "progress"]) >= 3:
+                            break
+            tw = threading.Thread(target=watch, daemon=True); tw.start()
+            time.sleep(0.2)
+            req = urllib.request.Request(
+                base + "/run",
+                data=json.dumps({"uri": "proc://p/demo/command/lines", "payload": {}}).encode(),
+                headers={"Content-Type": "application/json", "X-Urirun-Run-Id": "runY"},
+                method="POST",
+            )
+            env = json.loads(urllib.request.urlopen(req, timeout=5).read())
+            self.assertTrue(env["ok"])
+            self.assertTrue(env["result"]["streamed"])
+            self.assertEqual(env["result"]["stdout"].splitlines(), ["argv-0", "argv-1", "argv-2"])
+            tw.join(timeout=3); stop.set()
+            progress = [g for g in got if g.get("event") == "progress"]
+            self.assertEqual([g["line"] for g in progress], ["argv-0", "argv-1", "argv-2"])
+            self.assertTrue(all(g["run"] == "runY" and g["stream"] == "stdout" for g in progress))
+        finally:
+            server.shutdown()
+
     def test_route_source_provenance(self):
         reg = mesh.v2.compile_registry({"version": mesh.v2.VERSION, "bindings": {
             "x://h/a/query/b": {"kind": "query", "adapter": "argv-template",

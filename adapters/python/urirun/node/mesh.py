@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import collections
-import contextvars
 import hashlib
 import hmac
 import importlib
@@ -34,22 +33,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-# Streaming process control: an in-process handler can call `mesh.emit({...})` while it
-# runs to push incremental progress (a subprocess's stdout line, a percent, a stage) to
-# the node's event stream, correlated to the current /run by `run` id. The host streams it
-# live via GET /events?run=<id> — turning a blocking request/response URI into a streamed
-# process. Bound per-request by _handle_run; a no-op (returns False) outside a run or in an
-# out-of-process handler, so handlers can call it unconditionally.
-_RUN_EMIT: contextvars.ContextVar = contextvars.ContextVar("urirun_run_emit", default=None)
+from urirun.runtime import progress
 
-
-def emit(event: dict) -> bool:
-    """Publish a progress event for the current run. Returns True if a sink was bound."""
-    fn = _RUN_EMIT.get()
-    if fn is None:
-        return False
-    fn(event)
-    return True
+# Streaming process control: an in-process handler — or the runtime's subprocess reader
+# (v1._run_process) — calls `mesh.emit({...})` while a process runs to push incremental
+# progress (a stdout line, a percent, a stage) to the node's event stream, correlated to
+# the current /run by `run` id. The host streams it live via GET /events?run=<id> — turning
+# a blocking request/response URI into a streamed process. The sink is bound per-request by
+# _handle_run; a no-op outside a run. Shared via urirun.runtime.progress so the low-level
+# executors can emit without an import cycle.
+emit = progress.emit
 
 
 class EventHub:
@@ -2107,20 +2100,20 @@ class NodeHandler(BaseHTTPRequestHandler):
         # — never escalate: a dry-run node stays dry-run. Lets `host probe` test a
         # surface safely.
         mode = "dry-run" if (body.get("mode") == "dry-run" or not c.execute) else "execute"
-        # bind a progress sink so an in-process handler can stream this run live to
-        # /events?run=<id> by calling mesh.emit({...}); the host correlates by run id.
+        # bind a progress sink so an in-process handler (or the subprocess reader) can
+        # stream this run live to /events?run=<id>; the host correlates by run id.
         run_id = self.headers.get("X-Urirun-Run-Id") or body.get("runId") or f"run-{c.hub.current_id() + 1}"
 
         def _emit(ev: dict) -> None:
             c.hub.publish({"event": "progress", "run": run_id, "uri": uri,
                            "at": time.time(), "service": c.state["name"], **ev})
 
-        token = _RUN_EMIT.set(_emit)
+        token = progress.bind(_emit)
         try:
             result = v2.run(uri, target_reg, payload=body.get("payload") or {},
                             mode=mode, policy=run_policy, executors=c.pool_executors)
         finally:
-            _RUN_EMIT.reset(token)
+            progress.reset(token)
         if not result.get("ok"):
             uri_errors.record(result)  # stamp error:// address + record for /errors
         result["service"] = c.state["name"]

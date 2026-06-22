@@ -78,9 +78,13 @@ incremental `progress` events to the EventHub, correlated to the run; `/run` ret
 host at +0.4s..+2.0s *while* `/run` was still blocking. (branch `feat/uri-process-streaming`)
 
 **Further improvements (prioritized):**
-1. **Subprocess/argv handlers stream too.** `emit` only reaches in-process handlers; the
-   node should capture stdout of `local-function-subprocess` / `argv-template` handlers
-   line-by-line and auto-emit `progress` — so *any* process streams with zero handler code.
+1. **(done) argv/spawn/shell stream automatically.** `runtime/progress.py` holds the
+   shared sink (no import cycle); `v1._run_process` runs the process with Popen and emits
+   each stdout line as `progress` when a sink is bound — so *any* `argv-template`/`spawn`/
+   `shell` command streams with ZERO handler code. Verified live: a 4-line/1.2s argv command
+   streamed line-1..4 to the host at +0.4..+1.3s (`streamed:true`). (local-function-subprocess
+   still returns its result JSON at end — its stdout IS the result; a handler there uses
+   mesh.emit explicitly.)
 2. **Non-blocking run.** `/run` still blocks until the handler returns even while streaming.
    Add `Prefer: respond-async` (or `mode:async`) → 202 + `runId` immediately, final result
    delivered as a terminal `result` event on `/events?run=`. Needed for tail-f / servers.
