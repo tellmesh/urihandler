@@ -295,6 +295,47 @@ def lint_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _import_first_bindings(root: Path, add) -> tuple[dict | None, str | None]:
+    """Import the first child package exposing ``urirun_bindings()`` and return
+    ``(doc, modname)``; records a failed ``import/<pkg>`` check on each import error."""
+    import importlib
+    import sys
+
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    for child in sorted(root.iterdir()):
+        if not (child / "__init__.py").exists():
+            continue
+        try:
+            mod = importlib.import_module(child.name)
+        except Exception as exc:  # noqa: BLE001
+            add(f"import/{child.name}", False, f"{type(exc).__name__}: {exc}")
+            continue
+        if hasattr(mod, "urirun_bindings"):
+            return mod.urirun_bindings(), child.name
+    return None, None
+
+
+def _unresolved_handlers(doc: dict) -> list[str]:
+    """URIs whose ``python: {module, export}`` handler can't be imported/resolved — the
+    'advertised but dead route' class that yields ``ModuleNotFoundError`` after deploy."""
+    import importlib
+
+    unresolved: list[str] = []
+    for uri, binding in (doc.get("bindings") or {}).items():
+        py = binding.get("python") or {}
+        module, export = py.get("module"), py.get("export")
+        if not (module and export):
+            continue  # argv-template / declarative — no python handler to import
+        try:
+            obj = importlib.import_module(module)
+            if not hasattr(obj, export):
+                unresolved.append(f"{uri} -> {module}:{export} (no such attribute)")
+        except Exception as exc:  # noqa: BLE001
+            unresolved.append(f"{uri} -> {module} ({type(exc).__name__})")
+    return unresolved
+
+
 def verify_connector(pkg_dir: str | Path) -> dict:
     """Pre-deploy GATE. Unlike :func:`lint_connector` (which is static), this IMPORTS
     the package and checks it is actually deployable: static lint (no manifest drift)
@@ -304,9 +345,6 @@ def verify_connector(pkg_dir: str | Path) -> dict:
     binding whose ``python: {module, export}`` the node cannot import — which is
     exactly what produces ``ModuleNotFoundError`` after a code-less deploy. A connector
     that passes ``verify`` won't advertise routes it can't run."""
-    import importlib
-    import sys
-
     import urirun
 
     root = Path(pkg_dir).resolve()
@@ -320,21 +358,7 @@ def verify_connector(pkg_dir: str | Path) -> dict:
     add("lint/no-manifest-drift", not (lint.get("hasDrift") or lint.get("hasAdapterDrift")),
         f"in code not in manifest: {lint['drift']['in_code_not_in_manifest']}" if lint.get("hasDrift") else "")
 
-    if str(root) not in sys.path:
-        sys.path.insert(0, str(root))
-    doc = None
-    modname = None
-    for child in sorted(root.iterdir()):
-        if not (child / "__init__.py").exists():
-            continue
-        try:
-            mod = importlib.import_module(child.name)
-        except Exception as exc:  # noqa: BLE001
-            add(f"import/{child.name}", False, f"{type(exc).__name__}: {exc}")
-            continue
-        if hasattr(mod, "urirun_bindings"):
-            doc, modname = mod.urirun_bindings(), child.name
-            break
+    doc, modname = _import_first_bindings(root, add)
     if doc is None:
         add("bindings/found", False, "no importable package exposes urirun_bindings()")
         return report
@@ -348,19 +372,7 @@ def verify_connector(pkg_dir: str | Path) -> dict:
     except Exception as exc:  # noqa: BLE001
         add("registry/compiles", False, f"{type(exc).__name__}: {exc}")
 
-    unresolved = []
-    for uri, binding in (doc.get("bindings") or {}).items():
-        py = binding.get("python") or {}
-        module, export = py.get("module"), py.get("export")
-        if not (module and export):
-            continue  # argv-template / declarative — no python handler to import
-        try:
-            obj = importlib.import_module(module)
-            if not hasattr(obj, export):
-                unresolved.append(f"{uri} -> {module}:{export} (no such attribute)")
-        except Exception as exc:  # noqa: BLE001
-            unresolved.append(f"{uri} -> {module} ({type(exc).__name__})")
-    add("handlers/resolve", not unresolved, "; ".join(unresolved[:5]))
+    add("handlers/resolve", not (unresolved := _unresolved_handlers(doc)), "; ".join(unresolved[:5]))
     return report
 
 
