@@ -12,8 +12,8 @@ help: ## Show available commands.
 test: version-check test-js test-python test-c conformance test-v1 test-v2 ## Run all runtime checks.
 
 .PHONY: version-check
-version-check: ## Verify root, Python and JavaScript package versions match.
-	$(PYTHON) -c 'import json, pathlib, sys, tomllib; root = pathlib.Path("."); versions = {"VERSION": (root / "VERSION").read_text().strip(), "package.json": json.loads((root / "package.json").read_text())["version"], "adapters/python/VERSION": (root / "adapters/python/VERSION").read_text().strip(), "adapters/python/pyproject.toml": tomllib.loads((root / "adapters/python/pyproject.toml").read_text())["project"]["version"], "adapters/js/package.json": json.loads((root / "adapters/js/package.json").read_text())["version"]}; print("urirun versions:", ", ".join(f"{k}={v}" for k, v in versions.items())); sys.exit(0 if len(set(versions.values())) == 1 else 1)'
+version-check: ## Verify root, Python and npm (urirun) package versions match. (urirun-js / adapters/js versions independently.)
+	$(PYTHON) -c 'import json, pathlib, sys, tomllib; root = pathlib.Path("."); versions = {"VERSION": (root / "VERSION").read_text().strip(), "package.json": json.loads((root / "package.json").read_text())["version"], "adapters/python/VERSION": (root / "adapters/python/VERSION").read_text().strip(), "adapters/python/pyproject.toml": tomllib.loads((root / "adapters/python/pyproject.toml").read_text())["project"]["version"]}; print("urirun versions:", ", ".join(f"{k}={v}" for k, v in versions.items())); sys.exit(0 if len(set(versions.values())) == 1 else 1)'
 
 .PHONY: release-bump
 release-bump: ## Set every version file to V=X.Y.Z and open a CHANGELOG section (then: make version-check).
@@ -76,9 +76,10 @@ publish: version-check build ## Build + upload the Python adapter to PyPI. Needs
 release: version-check ## Tag the current version and push it; CI (release.yml) then builds + publishes to PyPI.
 	@v=$$(cat adapters/python/VERSION); \
 	if git rev-parse "v$$v" >/dev/null 2>&1; then echo "tag v$$v already exists"; exit 1; fi; \
+	remote=$$(git remote | grep -qx origin && echo origin || git remote | head -n1); \
 	git tag -a "v$$v" -m "urirun v$$v"; \
-	git push origin "v$$v"; \
-	echo "pushed tag v$$v -> release.yml builds + publishes to PyPI"
+	git push "$$remote" "v$$v"; \
+	echo "pushed tag v$$v to $$remote -> release.yml builds + publishes to PyPI"
 
 .PHONY: clean
 clean: ## Remove local generated cache files.

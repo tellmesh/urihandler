@@ -21,11 +21,12 @@ project:
 versioning:
   strategy: semver
   files:
+  # urirun-js (adapters/js) versions independently of urirun — kept out of the
+  # locked set so a goal bump that misses it can't drift `make version-check`.
   - VERSION
   - adapters/python/VERSION
   - adapters/python/pyproject.toml:version
   - package.json:version
-  - adapters/js/package.json:version
   - adapters/rust/Cargo.toml:version
   bump_rules:
     patch: 10

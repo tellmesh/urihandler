@@ -2,7 +2,8 @@ name: release
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*"]          # explicit release: publishes to PyPI AND cuts a GitHub Release
+    branches: ["main"]    # auto-publish to PyPI whenever adapters/python/VERSION bumps
 
 permissions:
   contents: write
@@ -17,21 +18,41 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Resolve package version
+        id: ver
+        run: echo "version=$(cat adapters/python/VERSION)" >> "$GITHUB_OUTPUT"
+
+      # Idempotent gate: build/publish only when this version is not on PyPI yet, so
+      # every main push doesn't republish — only the first push at a new version does.
+      - name: Decide whether to publish
+        id: gate
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          if curl -fsS "https://pypi.org/pypi/urirun/$V/json" >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "urirun $V already on PyPI — nothing to publish."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "urirun $V not on PyPI — will build and publish."
+          fi
+
       - name: Check version metadata
+        if: steps.gate.outputs.publish == 'true'
         run: make version-check
 
       - name: Check release tag matches package version
-        run: |
-          VERSION="$(cat adapters/python/VERSION)"
-          test "${GITHUB_REF_NAME}" = "v${VERSION}"
+        if: steps.gate.outputs.publish == 'true' && startsWith(github.ref, 'refs/tags/')
+        run: test "${GITHUB_REF_NAME}" = "v${{ steps.ver.outputs.version }}"
 
       - name: Build wheel + sdist
+        if: steps.gate.outputs.publish == 'true'
         working-directory: adapters/python
         run: |
           python -m pip install --upgrade build
           python -m build
 
       - name: Smoke-test the built wheel
+        if: steps.gate.outputs.publish == 'true'
         working-directory: adapters/python
         run: |
           python -m venv /tmp/venv
@@ -39,19 +60,20 @@ jobs:
           /tmp/venv/bin/python -c "import urirun, urirun.v1, urirun.v2; print('urirun', getattr(urirun,'__version__','?'), 'ok')"
           /tmp/venv/bin/urirun --help >/dev/null
 
-      # Publish the Python adapter to PyPI. Runs here while dist/ holds only the
-      # wheel + sdist (the C tarball is added in the next step). Uses PyPI Trusted
-      # Publishing (OIDC) — configure a publisher (or "pending publisher" for the
-      # first release) for if-uri/urirun · workflow release.yml on pypi.org.
-      # continue-on-error keeps the proven GitHub Release working until that's set
-      # up; drop it once PyPI publishing is confirmed.
+      # PyPI Trusted Publishing (OIDC). Configure the publisher on pypi.org for
+      # if-uri/urirun · workflow release.yml (this same file). No token needed.
+      # If this step fails, OIDC isn't configured for this workflow — fix it there;
+      # it is intentionally NOT continue-on-error so a non-publish is loud, not silent.
       - name: Publish to PyPI (Trusted Publishing)
-        continue-on-error: true
+        if: steps.gate.outputs.publish == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: adapters/python/dist
+          skip-existing: true   # tolerate races/re-runs; a real OIDC failure still errors loudly
 
+      # --- GitHub Release assets: only for explicit v* tags ---
       - name: Package C adapter
+        if: steps.gate.outputs.publish == 'true' && startsWith(github.ref, 'refs/tags/')
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           tar -czf "adapters/python/dist/urirun-c-${VERSION}.tar.gz" \
@@ -59,12 +81,14 @@ jobs:
           ls -l adapters/python/dist/urirun-c-*.tar.gz
 
       - name: Checksums
+        if: steps.gate.outputs.publish == 'true' && startsWith(github.ref, 'refs/tags/')
         working-directory: adapters/python/dist
         run: |
           sha256sum urirun-* > sha256sums.txt
           cat sha256sums.txt
 
       - name: Publish GitHub Release
+        if: steps.gate.outputs.publish == 'true' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- MCP tool names now include the route's operation. `v2_mcp.tool_name` builds the name
+  from every URI path segment, so `…/session/command/start` →
+  `…_session_command_start` (was `…_session_command`, dropping the operation) and
+  `…/screen/query/screenshot` → `…_screen_query_screenshot`. CQRS siblings are now
+  self-describing without disambiguation suffixes — what an MCP client/LLM selects on.
+
 ### Added
 - `agent.action_space` now includes each route's **full input JSON Schema** (`schema`),
   not just field names — the same schema the MCP projection exposes. Handing it to an
@@ -16,6 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expose their schema too. See `examples/28-llm-novnc-desktop` (an LLM drives a noVNC
   Docker desktop from an NL intent; the desktop driver is a *connector*, the schema in
   the action space is the only core change).
+
+## [0.4.9] - 2026-06-22
+
+### Docs
+- Update CHANGELOG.md
+- Update README.md
+
+### Other
+- Update Makefile
+- Update adapters/js/package.json
+- Update adapters/python/.urirun/discovered-registry.json
+- Update adapters/python/VERSION
+- Update adapters/python/pyproject.toml
+- Update adapters/python/tests/test_v2_mcp.py
+- Update adapters/python/urirun/runtime/v2_mcp.py
 
 ## [0.4.8] - 2026-06-22
 

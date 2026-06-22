@@ -32,9 +32,12 @@ SERVER_INFO = {"name": "urirun", "version": "0.8.0"}
 
 
 def tool_name(uri: str) -> str:
+    # include every path segment (resource / CQRS verb / operation / args), not just
+    # resource+verb — otherwise the actual operation (…/command/START) is dropped and
+    # tools read like `pkg_target_resource_command`. The full path keeps the operation
+    # in the name, which is what an LLM/MCP client selects on.
     descriptor = reglib.parse_uri(uri)
-    translation = reglib.translate(descriptor)
-    parts = [translation["package"], translation["target"], translation["resource"], translation["operation"]]
+    parts = [descriptor["package"], descriptor["target"], *descriptor["segments"]]
     return re.sub(r"[^a-zA-Z0-9_-]", "_", "_".join(parts))[:64]
 
 

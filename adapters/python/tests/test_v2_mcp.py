@@ -27,7 +27,9 @@ def test_v2_mcp_tool_names_are_unique_for_cqrs_uri_args():
     names = [tool["name"] for tool in tools]
 
     assert len(names) == len(set(names))
-    assert "browser_desktop_page_command" in names
+    # the operation is part of the name (not dropped), so the two CQRS routes are
+    # distinct and self-describing without disambiguation suffixes
+    assert "browser_desktop_page_command_open" in names
     assert "browser_desktop_page_command_screenshot" in names
 
 
@@ -43,4 +45,4 @@ def test_v2_mcp_preserves_single_route_tool_name():
         },
     })
 
-    assert v2_mcp.to_mcp_tools(registry)[0]["name"] == "httpcheck_host_http_query"
+    assert v2_mcp.to_mcp_tools(registry)[0]["name"] == "httpcheck_host_http_query_status"
