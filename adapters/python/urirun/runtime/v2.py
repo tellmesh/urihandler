@@ -1889,6 +1889,8 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
         p.add_argument("--deny", action="append", default=[], metavar="GLOB")
         p.add_argument("--secret-allow", action="append", default=[], metavar="GLOB",
                        help="permit a secret:// reference to resolve (deny-by-default)")
+        p.add_argument("--module", default=None,
+                       help="dispatch from a Python file's @handler/@command routes, no packaging")
 
     run_parser = subparsers.add_parser("run", help="Validate input and run a URI")
     add_source(run_parser)
@@ -2323,6 +2325,31 @@ def _builtin_binding_items(target: str = "local") -> list[dict]:
     return items
 
 
+def _registry_from_module(path: str):
+    """Import a single Python file and compile a runnable registry from the
+    ``@connector.handler``/``@command`` routes it declares — ``urirun run <uri>
+    --module ./core.py`` with no packaging, console-script, or pip install."""
+    import importlib.util
+
+    file = Path(path)
+    if not file.exists():
+        raise SystemExit(f"--module file not found: {path}")
+    # The module's `import urirun` registers into the canonical urirun.runtime.v2; read
+    # from there (under `python -m`, this CLI runs as __main__ — a separate instance with
+    # its own, empty DECORATED_BINDINGS). Diff before/after so the registry is exactly the
+    # routes THIS file adds, not whatever else the process already imported.
+    canonical = importlib.import_module("urirun.runtime.v2")
+    before = set(canonical.decorated_bindings()["bindings"])
+    spec = importlib.util.spec_from_file_location("_urirun_run_module", str(file.resolve()))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)              # decorators register as a side effect
+    bindings = canonical.decorated_bindings()["bindings"]
+    added = {uri: binding for uri, binding in bindings.items() if uri not in before}
+    if not added:
+        raise SystemExit(f"no urirun routes in {path} (decorate with @connector.handler / @command)")
+    return canonical.compile_registry({"version": canonical.VERSION, "bindings": added})
+
+
 def _resolve_list_registry(args):
     """Build the registry for list/run.
 
@@ -2333,6 +2360,9 @@ def _resolve_list_registry(args):
     registry also carries the builtin ``error://``/``registry://`` routes so the
     runtime is inspectable out of the box.
     """
+    module_path = getattr(args, "module", None)
+    if module_path:
+        return _registry_from_module(module_path)
     registry_file = args.registry if getattr(args, "registry", None) and Path(args.registry).exists() else None
     discover = getattr(args, "entry_points", False) or (not args.source and not registry_file)
     if discover:

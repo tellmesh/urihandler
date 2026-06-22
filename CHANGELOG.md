@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Single-file authoring (Gap 5) — three ways to ship/run a connector without a package:
+  - `urirun run <uri> --module ./core.py` dispatches straight from a Python file's
+    `@connector.handler`/`@command` routes — no `pip install`, console-script, or compile
+    step. (`list --module` too.) Builds the registry from exactly the routes that file
+    adds (before/after diff), reading the canonical `decorated_bindings` so it works under
+    `python -m` where the CLI runs as `__main__`.
+  - `urirun.connector_main(*connectors)` — one CLI entrypoint for a module defining
+    several connectors: a subcommand per route across all of them (namespaced by connector
+    id on a name clash) plus a combined `bindings`. Complements per-connector
+    `Connector.cli`.
+  - `urirun gen handlers <registry>` — generates typed `@handler` implementation *stubs*
+    (the runtime side, complementing `gen client`): one function per route with the
+    signature derived from its inputSchema (required params first), grouped into one
+    connector per `(scheme, target)`.
 - `runtime/dispatch_protocol.py` — the single written contract every transport speaks.
   HTTP `/run`, gRPC, MCP `tools/call` and the mesh relay all carry the same dispatch
   (`{uri, payload, mode}` → the `v2.run` envelope), but each parsed/shaped it ad hoc.
