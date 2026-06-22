@@ -2325,6 +2325,9 @@ class NodeHandler(BaseHTTPRequestHandler):
         if uri.startswith("node://") and uri.endswith("/registry/command/adopt"):
             self._handle_adopt(raw, body)       # node self-adopts installed connectors → live
             return
+        if uri.startswith("node://") and uri.endswith("/host/command/request"):
+            self._handle_need(raw, body)        # node asks the host for a connector/folder
+            return
         target = self._run_target(uri, raw)
         if target is None:
             return  # _run_target already answered (404/403)
@@ -2404,6 +2407,25 @@ class NodeHandler(BaseHTTPRequestHandler):
         summary = apply_deploy(c.state, {"bindings": {"version": doc["version"], "bindings": doc["bindings"]},
                                          "merge": True, "allow": allow})
         send_json(self, 200, {"ok": True, "adopted": summary.get("routeCount"), "schemes": summary.get("schemes"), "scheme": scheme})
+
+    def _handle_need(self, raw: bytes, body: dict):
+        # node://<name>/host/command/request {kind: connector|scheme|folder, what} — the
+        # node publishes a `need` event (node->host over SSE) so a watching host can supply
+        # the connector/folder it lacks. Admin-gated like other node:// management.
+        c = self.ctx
+        if not self._admin_ok(raw):
+            send_json(self, 403, {"ok": False, "error": "unauthorized (host/command/request needs admin token or enrolled key)"})
+            return
+        p = body.get("payload") or {}
+        kind = str(p.get("kind") or ("scheme" if p.get("scheme") else "connector"))
+        what = p.get("what") or p.get("scheme") or p.get("id") or p.get("path")
+        if not what:
+            send_json(self, 400, {"ok": False, "error": "what required (scheme/id/path to request)"})
+            return
+        c.hub.publish({"event": "need", "kind": kind, "what": what, "node": c.state["name"],
+                       "uri": f"need://{c.state['name']}/{kind}/{what}", "at": time.time(), "service": c.state["name"]})
+        send_json(self, 200, {"ok": True, "requested": {"kind": kind, "what": what},
+                              "note": "emitted a need event; a watching host (urirun host supply) can fulfill it"})
 
     def _handle_run_control(self, uri: str):
         # run://<runId>/command/cancel  |  run://<runId>/query/status — gated like /run.

@@ -158,6 +158,46 @@ class NodeClient:
         return {"ok": scheme in self.schemes(), "scheme": scheme,
                 "deployed": dep.get("routeCount"), "acquired": True}
 
+    # --- node asks the host (need->supply); host fulfills ---
+    def request_capability(self, what: str, kind: str = "connector") -> dict:
+        """Node-side: emit a `need` event asking a watching host to supply a connector
+        (kind=connector/scheme) or a folder (kind=folder). Needs admin token."""
+        return self.run(f"node://{self.name}/host/command/request", {"kind": kind, "what": what})
+
+    def push_folder(self, name_or_path: str, roots=None, max_files: int = 200) -> dict:
+        """Host-side: find a folder (abs path, or a dir named `name_or_path` under roots /
+        ~/github) and push its text files to the node's deploy dir (flat, by basename)."""
+        import glob
+        import os
+        src = None
+        p = os.path.expanduser(str(name_or_path))
+        if os.path.isdir(p):
+            src = p
+        else:
+            search = roots if isinstance(roots, list) else [roots or os.environ.get("URIRUN_CONNECTOR_ROOTS") or "~/github"]
+            for root in search:
+                base = os.path.expanduser(root)
+                hits = glob.glob(os.path.join(base, name_or_path)) + glob.glob(os.path.join(base, "*", name_or_path))
+                src = next((h for h in hits if os.path.isdir(h)), None)
+                if src:
+                    break
+        if not src:
+            return {"ok": False, "error": f"folder {name_or_path!r} not found", "roots": search if not p else [p]}
+        code: dict = {}
+        for fp in sorted(glob.glob(os.path.join(src, "**", "*"), recursive=True)):
+            if not os.path.isfile(fp):
+                continue
+            try:
+                code[os.path.basename(fp)] = open(fp, encoding="utf-8").read()
+            except Exception:
+                continue  # skip binary / unreadable
+            if len(code) >= max_files:
+                break
+        if not code:
+            return {"ok": False, "error": "no text files to push", "folder": src}
+        dep = self.deploy(code=code, merge=True)
+        return {"ok": dep.get("ok", True), "folder": src, "files": sorted(code), "pushed": dep.get("code")}
+
     @staticmethod
     def value(env: dict) -> Any:
         """Unwrap a /run envelope: local-function -> result.value; argv -> result.stdout(json)."""
