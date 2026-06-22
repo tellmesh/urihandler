@@ -686,6 +686,17 @@ def run_local_function_subprocess(ctx: dict, policy: dict, execute: bool) -> dic
 
 from urirun.runtime.introspect import run_registry_introspect
 
+if not hasattr(v1, "EXECUTORS"):  # import-environment guard, not a logic error
+    import urirun as _pkg
+    raise ImportError(
+        "urirun looks shadowed by an empty namespace package — urirun.v1 has no "
+        f"EXECUTORS (urirun.__file__={getattr(_pkg, '__file__', None)!r}, "
+        f"__path__={list(getattr(_pkg, '__path__', []))!r}). A bare 'urirun/' directory "
+        "early on sys.path (typically the monorepo root, which holds the repo but not "
+        "the package) is masking the installed package. Fix: run from another working "
+        "directory, or put '<repo>/urirun/adapters/python' first on PYTHONPATH."
+    )
+
 EXECUTORS = {
     **v1.EXECUTORS,
     "argv-template": run_argv_template,
