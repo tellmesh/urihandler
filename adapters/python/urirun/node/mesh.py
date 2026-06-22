@@ -14,10 +14,12 @@ The mesh layer is intentionally thin:
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import os
 import re
 import socket
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -155,10 +157,11 @@ def init_node(
     return save_node_config(config, path)
 
 
-def http_json(method: str, url: str, body: dict | None = None, timeout: float = 8.0) -> dict:
+def http_json(method: str, url: str, body: dict | None = None, timeout: float = 8.0,
+              headers: dict | None = None) -> dict:
     data = None if body is None else json.dumps(body).encode("utf-8")
-    headers = {"Content-Type": "application/json"}
-    request = urllib.request.Request(url, data=data, headers=headers, method=method)
+    request_headers = {"Content-Type": "application/json", **(headers or {})}
+    request = urllib.request.Request(url, data=data, headers=request_headers, method=method)
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8") or "{}")
@@ -1111,10 +1114,70 @@ def _pool_executors(pools):
             "local-function-subprocess": run_pooled}
 
 
+def deploy_dir() -> Path:
+    """Where /deploy writes pushed handler code so the node can import it."""
+    d = Path(os.path.expanduser("~/.urirun-node/deploy"))
+    d.mkdir(parents=True, exist_ok=True)
+    if str(d) not in sys.path:
+        sys.path.insert(0, str(d))
+    return d
+
+
+def apply_deploy(state: dict, body: dict) -> dict:
+    """Mutate a serving node's state from a /deploy payload: write any pushed handler
+    code, set handler env, then hot-swap the served registry / allow-policy / name.
+    Returns a summary. Raises ValueError on a malformed payload."""
+    summary: dict = {"code": [], "env": []}
+
+    # 1. handler code (e.g. a bridge module) -> deploy dir, force fresh import
+    code = body.get("code") or {}
+    if code:
+        ddir = deploy_dir()
+        for fname, source in code.items():
+            safe = os.path.basename(str(fname))  # no path traversal
+            (ddir / safe).write_text(str(source), encoding="utf-8")
+            mod = safe[:-3] if safe.endswith(".py") else safe
+            sys.modules.pop(mod, None)            # drop stale, re-import on next /run
+            summary["code"].append(safe)
+        importlib.invalidate_caches()
+
+    # 2. env the handlers read (TELLMESH_DIR, URISYS_ALLOW_REAL, …)
+    for key, val in (body.get("env") or {}).items():
+        os.environ[str(key)] = str(val)
+        summary["env"].append(str(key))
+
+    # 3. the new served surface
+    if body.get("registry"):
+        registry = body["registry"]
+    elif body.get("bindings"):
+        doc = body["bindings"]
+        if "bindings" not in doc:
+            doc = {"version": v2.VERSION, "bindings": doc}
+        registry = v2.compile_registry(doc)
+    else:
+        raise ValueError("deploy needs 'bindings' or 'registry'")
+
+    state["registry"] = registry
+    state["routes"] = routes_from_registry(registry)
+    if body.get("name"):
+        state["name"] = str(body["name"])
+    if isinstance(body.get("allow"), list):
+        state["allow"] = list(body["allow"])
+
+    schemes = sorted({r["uri"].split("://", 1)[0] for r in state["routes"]})
+    summary.update({"ok": True, "name": state["name"],
+                    "routeCount": len(state["routes"]), "schemes": schemes,
+                    "allow": state["allow"]})
+    return summary
+
+
 def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, public_url: str | None = None,
-               allow_secrets: bool = False, allow: list[str] | None = None, pool: bool = False) -> ThreadingHTTPServer:
-    routes = routes_from_registry(registry)
+               allow_secrets: bool = False, allow: list[str] | None = None, pool: bool = False,
+               admin_token: str | None = None) -> ThreadingHTTPServer:
     public_url = public_url or f"http://{socket.gethostname()}:{port}"
+    # Mutable so POST /deploy can hot-swap what the node serves without a restart.
+    state = {"name": name, "registry": registry,
+             "routes": routes_from_registry(registry), "allow": list(allow or [])}
 
     pool_executors = None
     if pool:
@@ -1127,20 +1190,22 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
 
         def do_GET(self):
             if self.path == "/health":
-                send_json(self, 200, {"ok": True, "name": name, "execute": execute, "routeCount": len(routes)})
+                send_json(self, 200, {"ok": True, "name": state["name"], "execute": execute,
+                                      "routeCount": len(state["routes"]),
+                                      "deploy": bool(admin_token)})
                 return
             if self.path == "/routes" or self.path == "/uri-processes":
-                send_json(self, 200, {"ok": True, "name": name, "routes": routes})
+                send_json(self, 200, {"ok": True, "name": state["name"], "routes": state["routes"]})
                 return
             if self.path == "/mcp/tools":
-                send_json(self, 200, v2_mcp.to_mcp_manifest(registry))
+                send_json(self, 200, v2_mcp.to_mcp_manifest(state["registry"]))
                 return
             if self.path == "/a2a/card":
-                send_json(self, 200, v2_mcp.to_a2a_card(registry, name=name, url=public_url))
+                send_json(self, 200, v2_mcp.to_a2a_card(state["registry"], name=state["name"], url=public_url))
                 return
             path, _, query = self.path.partition("?")
             if path == "/errors":
-                send_json(self, 200, {"ok": True, "name": name, "errors": uri_errors.recent()})
+                send_json(self, 200, {"ok": True, "name": state["name"], "errors": uri_errors.recent()})
                 return
             if path == "/errors/search":
                 q = ""
@@ -1156,15 +1221,18 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
             send_json(self, 404, {"ok": False, "error": "not found"})
 
         def do_POST(self):
+            if self.path == "/deploy":
+                self._handle_deploy()
+                return
             if self.path != "/run":
                 send_json(self, 404, {"ok": False, "error": "not found"})
                 return
             body = read_json(self)
-            run_policy = v2.runtime.build_policy(None, list(allow or []), None) or {}
+            run_policy = v2.runtime.build_policy(None, list(state["allow"]), None) or {}
             run_policy["secretsDisabled"] = not allow_secrets
             result = v2.run(
                 str(body["uri"]),
-                registry,
+                state["registry"],
                 payload=body.get("payload") or {},
                 mode="execute" if execute else "dry-run",
                 policy=run_policy,
@@ -1172,14 +1240,34 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
             )
             if not result.get("ok"):
                 uri_errors.record(result)  # stamp error:// address + record for /errors
-            result["service"] = name
+            result["service"] = state["name"]
             send_json(self, 200 if result.get("ok") else 400, result)
+
+        def _handle_deploy(self):
+            # Remote provisioning: push a registry (+ optional handler code) onto a live
+            # node, no SSH. It can write code and add executable routes, so it is OFF
+            # unless the node was started with an admin token, and every call must match.
+            if not admin_token:
+                send_json(self, 403, {"ok": False, "error": "deploy disabled (start node with --admin-token)"})
+                return
+            if self.headers.get("X-Urirun-Token") != admin_token:
+                send_json(self, 403, {"ok": False, "error": "bad or missing X-Urirun-Token"})
+                return
+            try:
+                summary = apply_deploy(state, read_json(self))
+            except Exception as exc:  # noqa: BLE001
+                send_json(self, 400, {"ok": False, "error": str(exc)})
+                return
+            print(json.dumps({"event": "urirun.node.deployed", "name": state["name"],
+                              "routes": summary["routeCount"], "schemes": summary["schemes"]}), flush=True)
+            send_json(self, 200, summary)
 
         def log_message(self, fmt, *args: Any):
             return
 
     server = ThreadingHTTPServer((host, port), Handler)
-    print(json.dumps({"event": "urirun.node.started", "name": name, "host": host, "port": port, "execute": execute, "routes": len(routes)}), flush=True)
+    print(json.dumps({"event": "urirun.node.started", "name": name, "host": host, "port": port,
+                      "execute": execute, "routes": len(state["routes"]), "deploy": bool(admin_token)}), flush=True)
     return server
 
 
