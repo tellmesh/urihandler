@@ -2273,20 +2273,7 @@ _CONNECTOR_SUBCOMMANDS = {
 }
 
 
-def _cmd_connectors_doctor(args, parser) -> int:
-    group = getattr(args, "entry_point_group", ENTRY_POINT_GROUP)
-    report = connector_health(group)
-    collisions = connector_collisions(group)
-    # duplicate-uri is a real conflict (index shadows one); shared-path is latent
-    # (index resolves it, only the tree fallback collides) → informational, not a gate.
-    dup = [c for c in collisions if c["kind"] == "duplicate-uri"]
-    shared = [c for c in collisions if c["kind"] == "shared-path"]
-    unhealthy = [r for r in report if not r["ok"] or r.get("scriptIssues")]
-    failing = bool(unhealthy or dup)
-    if getattr(args, "json", False):
-        reglib._emit_json({"ok": not failing, "total": len(report), "unhealthy": len(unhealthy),
-                           "connectors": report, "collisions": collisions}, "-")
-        return 1 if failing else 0
+def _print_doctor_report(report, unhealthy, dup, shared) -> None:
     for r in report:
         if not r["ok"]:
             print(f"  [FAIL] {r['name']:22s} {r.get('error', '')}")
@@ -2301,6 +2288,23 @@ def _cmd_connectors_doctor(args, parser) -> int:
     for c in shared:
         owners = ", ".join(f"{o['connector']}({o['uri']})" for o in c["owners"])
         print(f"  [shared-path]   {c['route']} — distinct URIs resolve via index; collide only on tree-fallback: {owners}")
+
+
+def _cmd_connectors_doctor(args, parser) -> int:
+    group = getattr(args, "entry_point_group", ENTRY_POINT_GROUP)
+    report = connector_health(group)
+    collisions = connector_collisions(group)
+    # duplicate-uri is a real conflict (index shadows one); shared-path is latent
+    # (index resolves it, only the tree fallback collides) → informational, not a gate.
+    dup = [c for c in collisions if c["kind"] == "duplicate-uri"]
+    shared = [c for c in collisions if c["kind"] == "shared-path"]
+    unhealthy = [r for r in report if not r["ok"] or r.get("scriptIssues")]
+    failing = bool(unhealthy or dup)
+    if getattr(args, "json", False):
+        reglib._emit_json({"ok": not failing, "total": len(report), "unhealthy": len(unhealthy),
+                           "connectors": report, "collisions": collisions}, "-")
+    else:
+        _print_doctor_report(report, unhealthy, dup, shared)
     return 1 if failing else 0
 
 
