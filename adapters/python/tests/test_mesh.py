@@ -56,6 +56,19 @@ class MeshTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             mesh.apply_deploy({"name": "n", "registry": {}, "routes": [], "allow": []}, {})
 
+    def test_route_source_provenance(self):
+        reg = mesh.v2.compile_registry({"version": mesh.v2.VERSION, "bindings": {
+            "x://h/a/query/b": {"kind": "query", "adapter": "argv-template",
+                                "argv": ["true"], "inputSchema": {"type": "object"}}}})
+        self.assertEqual(mesh.routes_from_registry(reg)[0]["source"], "built-in")
+        self.assertEqual(mesh.routes_from_registry(reg, source="deploy")[0]["source"], "deploy")
+        # a /deploy stamps the swapped routes as host-pushed
+        state = {"name": "n", "registry": {}, "routes": [], "allow": []}
+        mesh.apply_deploy(state, {"bindings": {"version": mesh.v2.VERSION, "bindings": {
+            "y://n/c/query/d": {"kind": "query", "adapter": "argv-template",
+                                "argv": ["true"], "inputSchema": {"type": "object"}}}}})
+        self.assertEqual(state["routes"][0]["source"], "deploy")
+
     def test_apply_deploy_reloads_pushed_code_without_restart(self):
         """Re-deploying changed code must run the NEW version even when the source is the
         same length and written within the same second (stale-.pyc trap)."""
@@ -507,3 +520,22 @@ class MeshTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_deploy_dir_adds_to_sys_path_and_pythonpath(tmp_path, monkeypatch):
+    """A deployed isolated handler runs out-of-process via `python -m urirun.exec`,
+    which inherits PYTHONPATH — so the deploy dir must be on PYTHONPATH (not only
+    sys.path) or the deployed module is not importable (ModuleNotFoundError)."""
+    import os
+    import sys
+    from urirun.node import mesh as nodemesh
+
+    monkeypatch.setattr(nodemesh, "node_state_dir", lambda: tmp_path)
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+    saved = list(sys.path)
+    try:
+        d = nodemesh.deploy_dir()
+        assert str(d) in sys.path                                              # in-process local-function
+        assert str(d) in os.environ.get("PYTHONPATH", "").split(os.pathsep)    # out-of-process exec subprocess
+    finally:
+        sys.path[:] = saved

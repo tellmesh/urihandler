@@ -564,7 +564,11 @@ def copy_id(url: str, identity: str, *, timeout: float = 10.0) -> dict:
     return http_json("POST", f"{base}/authorized-keys", raw=raw, timeout=timeout, headers=headers)
 
 
-def routes_from_registry(registry: dict) -> list[dict]:
+def routes_from_registry(registry: dict, source: str = "built-in") -> list[dict]:
+    """Flatten a compiled registry to route descriptors. `source` records each route's
+    provenance — "built-in" (the node's own registry), "deploy" (host-pushed via /deploy),
+    or "manage" (the node:// self-management surface) — so callers can see where a node's
+    URIs came from."""
     routes = []
     for item in reglib.flatten_registry_document(registry):
         entry = item["routeEntry"]
@@ -577,6 +581,7 @@ def routes_from_registry(registry: dict) -> list[dict]:
                 "adapter": entry.get("adapter"),
                 "safe": not any(part in item["uri"] for part in UNSAFE_URI_PARTS),
                 "title": meta.get("label") or meta.get("title") or item["uri"],
+                "source": source,
                 "inputSchema": config.get("inputSchema") or entry.get("inputSchema") or {"type": "object"},
             }
         )
@@ -902,13 +907,15 @@ def format_routes(routes: list[dict]) -> str:
         {
             "uri": route["uri"],
             "node": route.get("node") or "",
+            "source": route.get("source") or "",
             "kind": route.get("kind") or "",
             "adapter": route.get("adapter") or "",
         }
         for route in sorted(routes, key=lambda item: item["uri"])
         if safe_route(route)
     ]
-    return format_table(rows, ["uri", "node", "kind", "adapter"], {"uri": "URI", "node": "NODE", "kind": "KIND", "adapter": "ADAPTER"})
+    return format_table(rows, ["uri", "node", "source", "kind", "adapter"],
+                        {"uri": "URI", "node": "NODE", "source": "SOURCE", "kind": "KIND", "adapter": "ADAPTER"})
 
 
 def format_tickets(tickets: list[dict]) -> str:
@@ -1789,7 +1796,7 @@ def apply_deploy(state: dict, body: dict) -> dict:
 
     registry = _deploy_registry(body)
     state["registry"] = registry
-    state["routes"] = routes_from_registry(registry)
+    state["routes"] = routes_from_registry(registry, source="deploy")  # host-pushed surface
     if body.get("name"):
         state["name"] = str(body["name"])
     if isinstance(body.get("allow"), list):
@@ -1854,7 +1861,7 @@ class NodeHandler(BaseHTTPRequestHandler):
         if self.path == "/routes" or self.path == "/uri-processes":
             routes = list(c.state["routes"])
             if c.manage_registry:
-                routes = routes + routes_from_registry(c.manage_registry)
+                routes = routes + routes_from_registry(c.manage_registry, source="manage")
             send_json(self, 200, {"ok": True, "name": c.state["name"], "routes": routes})
             return
         if self.path == "/mcp/tools":
