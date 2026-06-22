@@ -259,9 +259,9 @@ Language-agnostic URI to handler adapter
 ### `project/map.toon.yaml`
 
 ```toon markpact:analysis path=project/map.toon.yaml
-# urirun | 139f 23958L | python:117,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-22
-# stats: 979 func | 46 cls | 139 mod | CC̄=4.4 | critical:91 | cycles:0
-# alerts[5]: CC probe_command=32; CC _host_mesh_command=18; CC main=18; CC main=17; CC watch_command=17
+# urirun | 139f 24159L | python:117,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-22
+# stats: 982 func | 46 cls | 139 mod | CC̄=4.4 | critical:94 | cycles:0
+# alerts[5]: CC probe_command=33; CC connector_discover=22; CC _host_mesh_command=18; CC main=18; CC main=17
 # hotspots[5]: serve fan=28; run_command fan=24; main fan=23; main fan=23; probe_command fan=20
 # evolution: baseline
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
@@ -297,7 +297,7 @@ M[139]:
   adapters/python/tests/test_host_db.py,113
   adapters/python/tests/test_install_upgrade.py,109
   adapters/python/tests/test_introspect.py,76
-  adapters/python/tests/test_mesh.py,997
+  adapters/python/tests/test_mesh.py,1074
   adapters/python/tests/test_minimal_imports.py,91
   adapters/python/tests/test_node_client.py,51
   adapters/python/tests/test_node_diagnostics.py,46
@@ -346,10 +346,10 @@ M[139]:
   adapters/python/urirun/host_integrations.py,6
   adapters/python/urirun/mesh.py,6
   adapters/python/urirun/node/__init__.py,2
-  adapters/python/urirun/node/client.py,154
+  adapters/python/urirun/node/client.py,188
   adapters/python/urirun/node/keyauth.py,157
-  adapters/python/urirun/node/manage.py,108
-  adapters/python/urirun/node/mesh.py,2671
+  adapters/python/urirun/node/manage.py,194
+  adapters/python/urirun/node/mesh.py,2675
   adapters/python/urirun/planfile_adapter.py,6
   adapters/python/urirun/runtime/__init__.py,2
   adapters/python/urirun/runtime/_registry.py,719
@@ -586,7 +586,7 @@ D:
     test_zero_config_registry_carries_builtin_routes()
   adapters/python/tests/test_mesh.py:
     e: _wait_healthy,_wait_subscribers,_post_run,test_deploy_dir_adds_to_sys_path_and_pythonpath,test_deploy_registry_merge_adds_and_preserves_argv,test_quiet_completion_keeps_banner_off_stdout,test_deploy_registry_merge_handles_sibling_ops,test_registry_fingerprint_stable_and_changes,test_apply_deploy_bumps_generation_and_reports_etag,MeshTests
-    MeshTests: test_host_config_add_node(0),test_apply_deploy_hot_swaps_registry_code_and_allow(0),test_apply_deploy_requires_a_surface(0),test_watch_node_url_encodes_filters_and_replay_cursor(0),test_parse_sse_line_tracks_event_id_and_ignores_bad_payloads(0),test_emit_streams_progress_to_events_by_run_id(0),test_argv_template_streams_stdout_to_events_by_run_id(0),test_async_run_202_and_cancel_stops_a_streaming_process(0),test_node_client_drives_a_live_node(0),test_node_client_token_auth(0),test_host_run_stream_command(0),test_route_source_provenance(0),test_apply_deploy_reloads_pushed_code_without_restart(0),test_resolve_admin_token_generate_reuse_and_precedence(0),test_verify_request_rejects_replay(0),test_apply_deploy_ignores_dangerous_env(0),test_oversized_body_rejected_with_413(0),test_run_rejects_malformed_body_with_400(0),test_parse_ports(0),test_node_list_running_discovers_a_live_node(0),test_require_run_auth_gates_run(0),test_keyauth_sign_verify_and_enrollment(0),test_stop_node_port_when_nothing_listening(0),test_copy_id_gives_actionable_error_not_bare_404(0),test_node_config_defaults(0),test_manage_bindings_and_install(0),test_node_management_routes_admin_gated(0),test_run_with_broken_handler_returns_json_not_dropped_connection(0),test_event_topic_mapping(0),test_fanout_to_mqtt_publishes_each_event(0),test_event_hub_ids_and_replay(0),test_events_endpoint_auth_gating(0),test_heuristic_flow_uses_all_reachable_nodes(0),test_heuristic_flow_maps_config_node_name_to_route_target(0),test_registry_from_remote_routes(0),test_resolve_step_payload_chains_prior_results(0),test_dig_path_indexes_lists(0),test_resolve_step_payload_passthrough_without_from(0),test_flow_document_round_trips_yaml(0),test_verify_flow_execution_checks_read_back_fragment(0),test_verify_flow_execution_can_fail_result(0),test_run_flow_document_dry_run(0)
+    MeshTests: test_host_config_add_node(0),test_apply_deploy_hot_swaps_registry_code_and_allow(0),test_apply_deploy_requires_a_surface(0),test_watch_node_url_encodes_filters_and_replay_cursor(0),test_parse_sse_line_tracks_event_id_and_ignores_bad_payloads(0),test_emit_streams_progress_to_events_by_run_id(0),test_argv_template_streams_stdout_to_events_by_run_id(0),test_async_run_202_and_cancel_stops_a_streaming_process(0),test_node_client_drives_a_live_node(0),test_node_client_token_auth(0),test_watch_resume_replays_missed_progress_by_event_id(0),test_host_run_stream_command(0),test_route_source_provenance(0),test_apply_deploy_reloads_pushed_code_without_restart(0),test_resolve_admin_token_generate_reuse_and_precedence(0),test_verify_request_rejects_replay(0),test_apply_deploy_ignores_dangerous_env(0),test_oversized_body_rejected_with_413(0),test_run_rejects_malformed_body_with_400(0),test_parse_ports(0),test_node_list_running_discovers_a_live_node(0),test_require_run_auth_gates_run(0),test_keyauth_sign_verify_and_enrollment(0),test_stop_node_port_when_nothing_listening(0),test_copy_id_gives_actionable_error_not_bare_404(0),test_node_config_defaults(0),test_manage_bindings_and_install(0),test_connector_install_from_any_source(0),test_connector_discover_scans_local_projects(0),test_node_management_routes_admin_gated(0),test_run_with_broken_handler_returns_json_not_dropped_connection(0),test_event_topic_mapping(0),test_fanout_to_mqtt_publishes_each_event(0),test_event_hub_ids_and_replay(0),test_events_endpoint_auth_gating(0),test_heuristic_flow_uses_all_reachable_nodes(0),test_heuristic_flow_maps_config_node_name_to_route_target(0),test_registry_from_remote_routes(0),test_resolve_step_payload_chains_prior_results(0),test_dig_path_indexes_lists(0),test_resolve_step_payload_passthrough_without_from(0),test_flow_document_round_trips_yaml(0),test_verify_flow_execution_checks_read_back_fragment(0),test_verify_flow_execution_can_fail_result(0),test_run_flow_document_dry_run(0)
     _wait_healthy(base;tries;delay)
     _wait_subscribers(base;want;tries;delay)
     _post_run(base;body;headers)
@@ -963,7 +963,7 @@ D:
   adapters/python/urirun/node/__init__.py:
   adapters/python/urirun/node/client.py:
     e: _get,_post,NodeClient
-    NodeClient: __init__(2),_auth(1),routes(0),get(1),concretize(2),run(6),run_async(3),cancel(1),status(1),value(1),resolve_refs(2),recent_log(1),watch(4)  # Drive one urirun node: ``c = NodeClient("http://host:8765");
+    NodeClient: __init__(2),_auth(1),routes(0),get(1),concretize(2),run(6),run_async(3),cancel(1),status(1),value(1),resolve_refs(2),recent_log(1),watch(5),stream_run(3)  # Drive one urirun node: ``c = NodeClient("http://host:8765");
     _get(url;timeout;headers)
     _post(url;body;headers;timeout)
   adapters/python/urirun/node/keyauth.py:
@@ -983,10 +983,13 @@ D:
     _replay_seen(sig)
     verify_request(headers;body;purpose)
   adapters/python/urirun/node/manage.py:
-    e: _pip,package_install,connector_install,package_list,runtime_info,bindings
+    e: _pip,package_install,connector_install,connector_discover,_read_connector_manifest,registry_installed,package_list,runtime_info,bindings
     _pip(args;timeout)
     package_install()
     connector_install()
+    connector_discover()
+    _read_connector_manifest(mf;path)
+    registry_installed()
     package_list()
     runtime_info()
     bindings(name)
@@ -1643,7 +1646,7 @@ D:
 
 ```prolog markpact:analysis path=project/logic.pl
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.47', 'javascript').
+project_metadata('urirun', '0.4.49', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -1677,7 +1680,7 @@ project_file('adapters/python/tests/test_host_dashboard.py', 97, 'python').
 project_file('adapters/python/tests/test_host_db.py', 113, 'python').
 project_file('adapters/python/tests/test_install_upgrade.py', 109, 'python').
 project_file('adapters/python/tests/test_introspect.py', 76, 'python').
-project_file('adapters/python/tests/test_mesh.py', 997, 'python').
+project_file('adapters/python/tests/test_mesh.py', 1074, 'python').
 project_file('adapters/python/tests/test_minimal_imports.py', 91, 'python').
 project_file('adapters/python/tests/test_node_client.py', 51, 'python').
 project_file('adapters/python/tests/test_node_diagnostics.py', 46, 'python').
@@ -1726,10 +1729,10 @@ project_file('adapters/python/urirun/host_db.py', 6, 'python').
 project_file('adapters/python/urirun/host_integrations.py', 6, 'python').
 project_file('adapters/python/urirun/mesh.py', 6, 'python').
 project_file('adapters/python/urirun/node/__init__.py', 2, 'python').
-project_file('adapters/python/urirun/node/client.py', 154, 'python').
+project_file('adapters/python/urirun/node/client.py', 188, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 157, 'python').
-project_file('adapters/python/urirun/node/manage.py', 108, 'python').
-project_file('adapters/python/urirun/node/mesh.py', 2671, 'python').
+project_file('adapters/python/urirun/node/manage.py', 194, 'python').
+project_file('adapters/python/urirun/node/mesh.py', 2675, 'python').
 project_file('adapters/python/urirun/planfile_adapter.py', 6, 'python').
 project_file('adapters/python/urirun/runtime/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/runtime/_registry.py', 719, 'python').
@@ -2196,7 +2199,10 @@ python_function('adapters/python/urirun/node/keyauth.py', '_replay_seen', 1, 4, 
 python_function('adapters/python/urirun/node/keyauth.py', 'verify_request', 3, 6, 4).
 python_function('adapters/python/urirun/node/manage.py', '_pip', 2, 2, 2).
 python_function('adapters/python/urirun/node/manage.py', 'package_install', 0, 6, 5).
-python_function('adapters/python/urirun/node/manage.py', 'connector_install', 0, 4, 2).
+python_function('adapters/python/urirun/node/manage.py', 'connector_install', 0, 13, 8).
+python_function('adapters/python/urirun/node/manage.py', 'connector_discover', 0, 22, 16).
+python_function('adapters/python/urirun/node/manage.py', '_read_connector_manifest', 2, 11, 11).
+python_function('adapters/python/urirun/node/manage.py', 'registry_installed', 0, 8, 7).
 python_function('adapters/python/urirun/node/manage.py', 'package_list', 0, 7, 5).
 python_function('adapters/python/urirun/node/manage.py', 'runtime_info', 0, 2, 3).
 python_function('adapters/python/urirun/node/manage.py', 'bindings', 1, 2, 0).
@@ -2236,7 +2242,7 @@ python_function('adapters/python/urirun/node/mesh.py', 'deploy_to_node', 1, 10, 
 python_function('adapters/python/urirun/node/mesh.py', '_watch_node_url', 4, 6, 6).
 python_function('adapters/python/urirun/node/mesh.py', '_watch_node_headers', 3, 4, 3).
 python_function('adapters/python/urirun/node/mesh.py', '_parse_sse_line', 2, 6, 5).
-python_function('adapters/python/urirun/node/mesh.py', 'watch_node', 7, 3, 7).
+python_function('adapters/python/urirun/node/mesh.py', 'watch_node', 7, 4, 7).
 python_function('adapters/python/urirun/node/mesh.py', 'event_topic', 2, 5, 4).
 python_function('adapters/python/urirun/node/mesh.py', '_mqtt_publish_fn', 1, 2, 3).
 python_function('adapters/python/urirun/node/mesh.py', 'fanout_to_mqtt', 5, 4, 5).
@@ -2311,7 +2317,7 @@ python_function('adapters/python/urirun/node/mesh.py', 'send_json', 3, 1, 8).
 python_function('adapters/python/urirun/node/mesh.py', 'read_raw', 1, 3, 4).
 python_function('adapters/python/urirun/node/mesh.py', 'read_json', 1, 2, 3).
 python_function('adapters/python/urirun/node/mesh.py', '_pool_executors', 1, 1, 5).
-python_function('adapters/python/urirun/node/mesh.py', 'probe_command', 1, 32, 20).
+python_function('adapters/python/urirun/node/mesh.py', 'probe_command', 1, 33, 20).
 python_function('adapters/python/urirun/node/mesh.py', 'node_state_dir', 0, 1, 3).
 python_function('adapters/python/urirun/node/mesh.py', 'deploy_dir', 0, 5, 7).
 python_function('adapters/python/urirun/node/mesh.py', 'node_token_path', 0, 1, 1).
@@ -2871,6 +2877,7 @@ python_method('MeshTests', 'test_argv_template_streams_stdout_to_events_by_run_i
 python_method('MeshTests', 'test_async_run_202_and_cancel_stops_a_streaming_process', 0, 5, 30).
 python_method('MeshTests', 'test_node_client_drives_a_live_node', 0, 2, 21).
 python_method('MeshTests', 'test_node_client_token_auth', 0, 1, 14).
+python_method('MeshTests', 'test_watch_resume_replays_missed_progress_by_event_id', 0, 4, 22).
 python_method('MeshTests', 'test_host_run_stream_command', 0, 1, 13).
 python_method('MeshTests', 'test_route_source_provenance', 0, 1, 4).
 python_method('MeshTests', 'test_apply_deploy_reloads_pushed_code_without_restart', 0, 2, 7).
@@ -2887,6 +2894,8 @@ python_method('MeshTests', 'test_stop_node_port_when_nothing_listening', 0, 1, 9
 python_method('MeshTests', 'test_copy_id_gives_actionable_error_not_bare_404', 0, 1, 14).
 python_method('MeshTests', 'test_node_config_defaults', 0, 1, 6).
 python_method('MeshTests', 'test_manage_bindings_and_install', 0, 4, 6).
+python_method('MeshTests', 'test_connector_install_from_any_source', 0, 4, 4).
+python_method('MeshTests', 'test_connector_discover_scans_local_projects', 0, 4, 11).
 python_method('MeshTests', 'test_node_management_routes_admin_gated', 0, 2, 21).
 python_method('MeshTests', 'test_run_with_broken_handler_returns_json_not_dropped_connection', 0, 2, 17).
 python_method('MeshTests', 'test_event_topic_mapping', 0, 1, 2).
@@ -3010,7 +3019,8 @@ python_method('NodeClient', 'status', 1, 1, 1).
 python_method('NodeClient', 'value', 1, 6, 3).
 python_method('NodeClient', 'resolve_refs', 2, 13, 10).
 python_method('NodeClient', 'recent_log', 1, 6, 3).
-python_method('NodeClient', 'watch', 4, 11, 11).
+python_method('NodeClient', 'watch', 5, 16, 15).
+python_method('NodeClient', 'stream_run', 3, 8, 5).
 python_class('adapters/python/urirun/node/mesh.py', 'EventHub').
 python_method('EventHub', '__init__', 1, 1, 3).
 python_method('EventHub', 'publish', 1, 3, 4).
@@ -3027,7 +3037,7 @@ python_method('NodeHandler', 'do_OPTIONS', 0, 1, 1).
 python_method('NodeHandler', '_guarded', 1, 3, 3).
 python_method('NodeHandler', 'do_GET', 0, 1, 1).
 python_method('NodeHandler', 'do_POST', 0, 1, 1).
-python_method('NodeHandler', '_get', 0, 12, 15).
+python_method('NodeHandler', '_get', 0, 13, 16).
 python_method('NodeHandler', '_get_errors', 2, 8, 12).
 python_method('NodeHandler', '_post', 0, 6, 6).
 python_method('NodeHandler', '_run_target', 2, 6, 6).
@@ -3160,7 +3170,7 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 
 ## Call Graph
 
-*385 nodes · 500 edges · 31 modules · CC̄=4.3*
+*385 nodes · 500 edges · 31 modules · CC̄=4.4*
 
 ### Hubs (by degree)
 
@@ -3171,15 +3181,15 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 | `_write_planfile_action` *(in adapters.python.urirun.host.host_integrations)* | 8 | 1 | 39 | **40** |
 | `info` *(in adapters.python.urirun.runtime.errors)* | 13 ⚠ | 2 | 27 | **29** |
 | `main` *(in scripts.repin_connectors)* | 18 ⚠ | 0 | 28 | **28** |
-| `main` *(in scripts.lint_connectors)* | 14 ⚠ | 0 | 27 | **27** |
-| `_run_query_route` *(in adapters.python.urirun.host.host_db)* | 7 | 1 | 26 | **27** |
 | `_cmd_upgrade` *(in adapters.python.urirun.runtime.v2)* | 14 ⚠ | 0 | 27 | **27** |
+| `proto_from_registry` *(in adapters.python.urirun.runtime.codegen)* | 13 ⚠ | 2 | 25 | **27** |
+| `main` *(in scripts.lint_connectors)* | 14 ⚠ | 0 | 27 | **27** |
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
 # generated in 0.19s
 # nodes: 385 | edges: 500 | modules: 31
-# CC̄=4.3
+# CC̄=4.4
 
 HUBS[20]:
   adapters.python.urirun.runtime.v2._build_parser
@@ -3192,20 +3202,20 @@ HUBS[20]:
     CC=13  in:2  out:27  total:29
   scripts.repin_connectors.main
     CC=18  in:0  out:28  total:28
-  scripts.lint_connectors.main
-    CC=14  in:0  out:27  total:27
-  adapters.python.urirun.host.host_db._run_query_route
-    CC=7  in:1  out:26  total:27
   adapters.python.urirun.runtime.v2._cmd_upgrade
     CC=14  in:0  out:27  total:27
   adapters.python.urirun.runtime.codegen.proto_from_registry
     CC=13  in:2  out:25  total:27
-  adapters.python.urirun.host.host_dashboard._dashboard_api_response
-    CC=13  in:1  out:25  total:26
-  adapters.python.urirun.runtime.v2.validate_binding_document
-    CC=12  in:2  out:24  total:26
+  scripts.lint_connectors.main
+    CC=14  in:0  out:27  total:27
+  adapters.python.urirun.host.host_db._run_query_route
+    CC=7  in:1  out:26  total:27
   adapters.python.urirun.host.host_dashboard.summary
     CC=6  in:1  out:25  total:26
+  adapters.python.urirun.runtime.v2.validate_binding_document
+    CC=12  in:2  out:24  total:26
+  adapters.python.urirun.host.host_dashboard._dashboard_api_response
+    CC=13  in:1  out:25  total:26
   adapters.python.urirun.runtime.v1.run
     CC=14  in:1  out:23  total:24
   adapters.python.urirun.testing.smoke
@@ -3214,13 +3224,13 @@ HUBS[20]:
     CC=11  in:4  out:19  total:23
   adapters.python.urirun.connectors.connector_lint.lint_connector
     CC=10  in:3  out:20  total:23
-  adapters.python.urirun.host.host_db.search_records
-    CC=6  in:1  out:21  total:22
   adapters.python.urirun.runtime.errors.problem
     CC=10  in:0  out:22  total:22
+  adapters.python.urirun.host.host_db.search_records
+    CC=6  in:1  out:21  total:22
   adapters.python.urirun.runtime.v1._run_process_streaming
     CC=7  in:1  out:20  total:21
-  adapters.python.urirun.runtime.codegen.gen_command
+  examples.matrix.verify.main
     CC=9  in:0  out:20  total:20
 
 MODULES:
