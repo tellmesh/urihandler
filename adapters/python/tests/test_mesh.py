@@ -54,6 +54,25 @@ class MeshTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             mesh.apply_deploy({"name": "n", "registry": {}, "routes": [], "allow": []}, {})
 
+    def test_resolve_admin_token_generate_reuse_and_precedence(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            old_home, old_env = os.environ.get("HOME"), os.environ.pop("URIRUN_NODE_TOKEN", None)
+            os.environ["HOME"] = tmp
+            try:
+                self.assertIsNone(mesh.resolve_admin_token(None, None, False))  # off by default
+                gen = mesh.resolve_admin_token(None, None, True)                # mint + persist
+                self.assertTrue(gen and mesh.node_token_path().exists())
+                self.assertEqual(mesh.resolve_admin_token(None, None, True), gen)   # reused across restarts
+                self.assertEqual(mesh.resolve_admin_token("auto", None, False), gen)  # 'auto' sentinel
+                self.assertEqual(mesh.resolve_admin_token("pinned", None, True), "pinned")  # explicit wins
+                self.assertEqual(mesh.resolve_admin_token(None, "cfg", False), "cfg")       # config next
+            finally:
+                if old_home is not None:
+                    os.environ["HOME"] = old_home
+                if old_env is not None:
+                    os.environ["URIRUN_NODE_TOKEN"] = old_env
+
     def test_node_config_defaults(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "node.json")
