@@ -358,6 +358,28 @@ def connector_health(group: str = ENTRY_POINT_GROUP) -> list[dict]:
     return report
 
 
+def _collision_index(group: str):
+    """Build ``(by_uri, by_path)`` for the installed fleet: connectors per exact URI,
+    and per route tree-path (``package.resource.operation``). Fault-isolated load;
+    an unparseable URI is counted under its URI but skipped for the path map."""
+    from collections import defaultdict
+
+    by_uri: dict[str, list[str]] = defaultdict(list)
+    by_path: dict[str, list[dict]] = defaultdict(list)
+    for binding in entry_point_bindings(group=group):
+        uri = str(binding.get("uri") or "")
+        if not uri:
+            continue
+        conn = (binding.get("meta") or {}).get("connector") or "?"
+        by_uri[uri].append(conn)
+        try:
+            route = ".".join(reglib.translate(reglib.parse_uri(uri))["route"])
+        except Exception:  # noqa: BLE001 - an unparseable uri can't collide; skip it.
+            continue
+        by_path[route].append({"connector": conn, "uri": uri})
+    return by_uri, by_path
+
+
 def connector_collisions(group: str = ENTRY_POINT_GROUP) -> list[dict]:
     """Cross-connector route collisions across the installed fleet, classified by severity.
 
@@ -374,21 +396,7 @@ def connector_collisions(group: str = ENTRY_POINT_GROUP) -> list[dict]:
     Returns ``[{kind, ...}]`` — ``duplicate-uri`` rows carry ``{uri, connectors}``,
     ``shared-path`` rows carry ``{route, owners:[{connector, uri}]}``.
     """
-    from collections import defaultdict
-
-    by_uri: dict[str, list[str]] = defaultdict(list)
-    by_path: dict[str, list[dict]] = defaultdict(list)
-    for binding in entry_point_bindings(group=group):  # fault-isolated load
-        uri = str(binding.get("uri") or "")
-        if not uri:
-            continue
-        conn = (binding.get("meta") or {}).get("connector") or "?"
-        by_uri[uri].append(conn)
-        try:
-            route = ".".join(reglib.translate(reglib.parse_uri(uri))["route"])
-        except Exception:  # noqa: BLE001 - an unparseable uri can't collide; skip it.
-            continue
-        by_path[route].append({"connector": conn, "uri": uri})
+    by_uri, by_path = _collision_index(group)
 
     collisions: list[dict] = []
     for uri, conns in sorted(by_uri.items()):

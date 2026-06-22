@@ -1792,6 +1792,283 @@ def apply_deploy(state: dict, body: dict) -> dict:
     return summary
 
 
+class NodeContext:
+    """Everything a NodeHandler needs to serve one node — the mutable `state` (name /
+    registry / routes / allow, hot-swappable by /deploy), the event hub, and the auth /
+    policy flags. Attached to the server as `server.ctx`."""
+
+    def __init__(self, **kw: Any) -> None:
+        self.__dict__.update(kw)
+
+
+class NodeHandler(BaseHTTPRequestHandler):
+    """The node's HTTP surface. State/config live on `self.server.ctx` (a NodeContext),
+    so this is a normal module-level class instead of a 250-line closure."""
+
+    @property
+    def ctx(self) -> NodeContext:
+        return self.server.ctx  # type: ignore[attr-defined]
+
+    def do_OPTIONS(self):
+        send_json(self, 200, {"ok": True})
+
+    def _guarded(self, fn):
+        # never let an unhandled error kill the request thread / drop the connection:
+        # the node always answers with a 500 JSON envelope instead.
+        try:
+            fn()
+        except Exception as exc:  # noqa: BLE001
+            try:
+                send_json(self, 500, {"ok": False, "error": f"node error: {type(exc).__name__}: {exc}"})
+            except Exception:
+                pass  # headers/body already partly sent (e.g. mid-stream) — nothing to do
+
+    def do_GET(self):
+        self._guarded(self._get)
+
+    def do_POST(self):
+        self._guarded(self._post)
+
+    def _get(self):
+        c = self.ctx
+        if self.path == "/health":
+            send_json(self, 200, {"ok": True, "name": c.state["name"], "execute": c.execute,
+                                  "version": current_version(),
+                                  "routeCount": len(c.state["routes"]),
+                                  "deploy": c.deploy_enabled, "events": c.hub.count(),
+                                  "keyAuth": c.key_auth, "keyCount": len(keyauth.load_authorized()) if c.key_auth else 0})
+            return
+        if self.path == "/events" or self.path.startswith("/events?"):
+            self._stream_events()
+            return
+        if self.path == "/routes" or self.path == "/uri-processes":
+            routes = list(c.state["routes"])
+            if c.manage_registry:
+                routes = routes + routes_from_registry(c.manage_registry)
+            send_json(self, 200, {"ok": True, "name": c.state["name"], "routes": routes})
+            return
+        if self.path == "/mcp/tools":
+            send_json(self, 200, v2_mcp.to_mcp_manifest(c.state["registry"]))
+            return
+        if self.path == "/a2a/card":
+            send_json(self, 200, v2_mcp.to_a2a_card(c.state["registry"], name=c.state["name"], url=c.public_url))
+            return
+        path, _, query = self.path.partition("?")
+        if path == "/errors":
+            if c.admin_token and not hmac.compare_digest(self.headers.get("X-Urirun-Token") or "", c.admin_token):
+                send_json(self, 403, {"ok": False, "error": "unauthorized (/errors needs X-Urirun-Token when --admin-token is set)"})
+                return
+            send_json(self, 200, {"ok": True, "name": c.state["name"], "errors": uri_errors.recent()})
+            return
+        if path == "/errors/search":
+            q = ""
+            for part in query.split("&"):
+                if part.startswith("q="):
+                    q = unquote(part[2:].replace("+", " "))
+            send_json(self, 200, {"ok": True, "query": q, "errors": uri_errors.search(q)})
+            return
+        if path.startswith("/errors/"):
+            send_json(self, 200, uri_errors.info(path[len("/errors/"):]))
+            return
+        send_json(self, 404, {"ok": False, "error": "not found"})
+
+    def _post(self):
+        if int(self.headers.get("Content-Length", "0") or "0") > MAX_BODY_BYTES:
+            send_json(self, 413, {"ok": False, "error": "request body too large"})
+            return
+        if self.path == "/deploy":
+            self._handle_deploy()
+            return
+        if self.path == "/authorized-keys":
+            self._handle_enroll()
+            return
+        if self.path != "/run":
+            send_json(self, 404, {"ok": False, "error": "not found"})
+            return
+        self._handle_run()
+
+    def _run_target(self, uri: str, raw: bytes):
+        """(registry, policy) for a run uri, or None after sending the error response.
+        node:// routes are always admin-gated and use the separate manage registry."""
+        c = self.ctx
+        if not uri.startswith("node://"):
+            return c.state["registry"], v2.runtime.build_policy(None, list(c.state["allow"]), None) or {}
+        if not c.manage_registry:
+            send_json(self, 404, {"ok": False, "error": "node management disabled (start node with --manage)"})
+            return None
+        if not self._admin_ok(raw):
+            send_json(self, 403, {"ok": False, "error": "unauthorized (node:// management requires X-Urirun-Token or an enrolled-key signature)"})
+            return None
+        return c.manage_registry, dict(c.manage_policy or {})
+
+    def _publish_run(self, uri: str, result: dict) -> None:
+        c = self.ctx
+        c.hub.publish({"event": "run", "uri": uri, "ok": bool(result.get("ok")),
+                       "at": time.time(), "service": c.state["name"], "kind": result.get("kind")})
+        if not result.get("ok"):
+            err = result.get("error") or {}
+            c.hub.publish({"event": "error", "uri": err.get("uri") or "error://local/unknown",
+                           "for": uri, "code": err.get("code"), "category": err.get("category"),
+                           "message": err.get("message") or err, "at": time.time(), "service": c.state["name"]})
+
+    def _handle_run(self):
+        c = self.ctx
+        raw = read_raw(self)
+        if c.run_auth_enforced and not self._run_ok(raw):
+            send_json(self, 403, {"ok": False, "error": "unauthorized (/run requires X-Urirun-Token or an enrolled-key signature)"})
+            return
+        try:
+            body = json.loads(raw.decode("utf-8") or "{}")
+        except Exception:
+            send_json(self, 400, {"ok": False, "error": "invalid JSON body"})
+            return
+        if not isinstance(body, dict) or "uri" not in body:
+            send_json(self, 400, {"ok": False, "error": "invalid request: expected JSON {uri, payload?}"})
+            return
+        uri = str(body["uri"])
+        target = self._run_target(uri, raw)
+        if target is None:
+            return  # _run_target already answered (404/403)
+        target_reg, run_policy = target
+        run_policy["secretsDisabled"] = not c.allow_secrets
+        result = v2.run(uri, target_reg, payload=body.get("payload") or {},
+                        mode="execute" if c.execute else "dry-run",
+                        policy=run_policy, executors=c.pool_executors)
+        if not result.get("ok"):
+            uri_errors.record(result)  # stamp error:// address + record for /errors
+        result["service"] = c.state["name"]
+        self._publish_run(uri, result)
+        send_json(self, 200 if result.get("ok") else 400, result)
+
+    def _stream_events(self):
+        # SSE: a long-lived GET streaming the node's run/error events (node->host). Gated
+        # like /run when --require-run-auth. Replay only on an explicit cursor.
+        c = self.ctx
+        if c.run_auth_enforced and not self._run_ok(b""):
+            send_json(self, 403, {"ok": False, "error": "unauthorized (/events requires X-Urirun-Token or an enrolled-key signature)"})
+            return
+        _, _, query = self.path.partition("?")
+        params = {}
+        for part in query.split("&"):
+            if "=" in part:
+                k, v = part.split("=", 1)
+                params[k] = unquote(v.replace("+", " "))
+        schemes = {s for s in (params.get("scheme", "").split(",")) if s}
+        cursor = params.get("last_event_id")
+        if cursor is None:
+            cursor = self.headers.get("Last-Event-ID")
+        try:
+            last_id = int(cursor) if cursor is not None else c.hub.current_id()
+        except ValueError:
+            last_id = c.hub.current_id()
+
+        def matches(ev: dict) -> bool:
+            return not schemes or str(ev.get("uri", "")).split("://", 1)[0] in schemes
+
+        def frame(ev: dict) -> bytes:
+            payload = {k: v for k, v in ev.items() if k != "_id"}
+            return (f"id: {ev.get('_id', '')}\n"
+                    f"data: {json.dumps(payload, ensure_ascii=False)}\n\n").encode("utf-8")
+
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(f": connected to {c.state['name']}\n\n".encode("utf-8"))
+            for ev in c.hub.replay_since(last_id):
+                if matches(ev):
+                    self.wfile.write(frame(ev))
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            return
+        q = c.hub.subscribe()
+        try:
+            while True:
+                try:
+                    ev = q.get(timeout=15)
+                except queue.Empty:
+                    self.wfile.write(b": keep-alive\n\n")
+                    self.wfile.flush()
+                    continue
+                if matches(ev):
+                    self.wfile.write(frame(ev))
+                    self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass
+        finally:
+            c.hub.unsubscribe(q)
+
+    def _admin_ok(self, raw: bytes) -> bool:
+        c = self.ctx
+        if c.admin_token and hmac.compare_digest(self.headers.get("X-Urirun-Token") or "", c.admin_token):
+            return True
+        return bool(c.key_auth and keyauth.verify_request(self.headers, raw, keyauth.PURPOSE_DEPLOY))
+
+    def _run_ok(self, raw: bytes) -> bool:
+        # same credentials as deploy, but signed with PURPOSE_RUN (a deploy request can't
+        # be replayed as a run, and vice versa)
+        c = self.ctx
+        if c.admin_token and hmac.compare_digest(self.headers.get("X-Urirun-Token") or "", c.admin_token):
+            return True
+        return bool(c.key_auth and keyauth.verify_request(self.headers, raw, keyauth.PURPOSE_RUN))
+
+    def _handle_deploy(self):
+        # Remote provisioning over the mesh (no SSH): push a registry (+ optional handler
+        # code). OFF unless --admin-token / --key-auth; every call must authenticate.
+        c = self.ctx
+        if not c.deploy_enabled:
+            send_json(self, 403, {"ok": False, "error": "deploy disabled (start node with --admin-token or --key-auth)"})
+            return
+        raw = read_raw(self)
+        if not self._admin_ok(raw):
+            send_json(self, 403, {"ok": False, "error": "unauthorized (need X-Urirun-Token or a signature from an enrolled key)"})
+            return
+        try:
+            summary = apply_deploy(c.state, json.loads(raw.decode("utf-8") or "{}"))
+        except Exception as exc:  # noqa: BLE001
+            send_json(self, 400, {"ok": False, "error": str(exc)})
+            return
+        print(json.dumps({"event": "urirun.node.deployed", "name": c.state["name"],
+                          "routes": summary["routeCount"], "schemes": summary["schemes"]}), flush=True)
+        send_json(self, 200, summary)
+
+    def _handle_enroll(self):
+        # ssh-copy-id for urirun. TOFU: the first key on an empty authorized_keys claims a
+        # fresh node; after that, adding a key must be signed by an already-enrolled one.
+        c = self.ctx
+        if not c.key_auth:
+            send_json(self, 403, {"ok": False, "error": "key auth disabled (start node with --key-auth)"})
+            return
+        if not keyauth.available():
+            send_json(self, 501, {"ok": False, "error": "node lacks the 'cryptography' package; pip install cryptography"})
+            return
+        raw = read_raw(self)
+        try:
+            pub = json.loads(raw.decode("utf-8") or "{}").get("publicKey")
+        except Exception:
+            pub = None
+        if not pub:
+            send_json(self, 400, {"ok": False, "error": "missing publicKey"})
+            return
+        if keyauth.load_authorized() and not keyauth.verify_request(self.headers, raw, keyauth.PURPOSE_ENROLL):
+            send_json(self, 403, {"ok": False, "error": "node already enrolled; sign the request with an authorized key"})
+            return
+        try:
+            res = keyauth.add_authorized(pub)
+        except Exception as exc:  # noqa: BLE001
+            send_json(self, 400, {"ok": False, "error": str(exc)})
+            return
+        print(json.dumps({"event": "urirun.node.key.enrolled", "name": c.state["name"],
+                          "fingerprint": res["fingerprint"], "keys": res["count"]}), flush=True)
+        send_json(self, 200, {"ok": True, "name": c.state["name"], **res})
+
+    def log_message(self, fmt, *args: Any):
+        return
+
+
 def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, public_url: str | None = None,
                allow_secrets: bool = False, allow: list[str] | None = None, pool: bool = False,
                admin_token: str | None = None, key_auth: bool = False,
@@ -1825,268 +2102,13 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
         from urirun.runtime.worker import ConnectorPools
         pool_executors = _pool_executors(ConnectorPools())   # warm workers, reused across requests
 
-    class Handler(BaseHTTPRequestHandler):
-        def do_OPTIONS(self):
-            send_json(self, 200, {"ok": True})
-
-        def _guarded(self, fn):
-            # never let an unhandled error kill the request thread / drop the connection:
-            # the node always answers with a 500 JSON envelope instead.
-            try:
-                fn()
-            except Exception as exc:  # noqa: BLE001
-                try:
-                    send_json(self, 500, {"ok": False, "error": f"node error: {type(exc).__name__}: {exc}"})
-                except Exception:
-                    pass  # headers/body already partly sent (e.g. mid-stream) — nothing to do
-
-        def do_GET(self):
-            self._guarded(self._get)
-
-        def do_POST(self):
-            self._guarded(self._post)
-
-        def _get(self):
-            if self.path == "/health":
-                send_json(self, 200, {"ok": True, "name": state["name"], "execute": execute,
-                                      "version": current_version(),
-                                      "routeCount": len(state["routes"]),
-                                      "deploy": deploy_enabled, "events": hub.count(),
-                                      "keyAuth": key_auth, "keyCount": len(keyauth.load_authorized()) if key_auth else 0})
-                return
-            if self.path == "/events" or self.path.startswith("/events?"):
-                self._stream_events()
-                return
-            if self.path == "/routes" or self.path == "/uri-processes":
-                routes = list(state["routes"])
-                if manage_registry:
-                    routes = routes + routes_from_registry(manage_registry)
-                send_json(self, 200, {"ok": True, "name": state["name"], "routes": routes})
-                return
-            if self.path == "/mcp/tools":
-                send_json(self, 200, v2_mcp.to_mcp_manifest(state["registry"]))
-                return
-            if self.path == "/a2a/card":
-                send_json(self, 200, v2_mcp.to_a2a_card(state["registry"], name=state["name"], url=public_url))
-                return
-            path, _, query = self.path.partition("?")
-            if path == "/errors":
-                if admin_token and not hmac.compare_digest(self.headers.get("X-Urirun-Token") or "", admin_token):
-                    send_json(self, 403, {"ok": False, "error": "unauthorized (/errors needs X-Urirun-Token when --admin-token is set)"})
-                    return
-                send_json(self, 200, {"ok": True, "name": state["name"], "errors": uri_errors.recent()})
-                return
-            if path == "/errors/search":
-                q = ""
-                for part in query.split("&"):
-                    if part.startswith("q="):
-                        q = unquote(part[2:].replace("+", " "))
-                send_json(self, 200, {"ok": True, "query": q, "errors": uri_errors.search(q)})
-                return
-            if path.startswith("/errors/"):
-                code = path[len("/errors/"):]
-                send_json(self, 200, uri_errors.info(code))
-                return
-            send_json(self, 404, {"ok": False, "error": "not found"})
-
-        def _post(self):
-            if int(self.headers.get("Content-Length", "0") or "0") > MAX_BODY_BYTES:
-                send_json(self, 413, {"ok": False, "error": "request body too large"})
-                return
-            if self.path == "/deploy":
-                self._handle_deploy()
-                return
-            if self.path == "/authorized-keys":
-                self._handle_enroll()
-                return
-            if self.path != "/run":
-                send_json(self, 404, {"ok": False, "error": "not found"})
-                return
-            raw = read_raw(self)
-            if run_auth_enforced and not self._run_ok(raw):
-                send_json(self, 403, {"ok": False, "error": "unauthorized (/run requires X-Urirun-Token or an enrolled-key signature)"})
-                return
-            try:
-                body = json.loads(raw.decode("utf-8") or "{}")
-            except Exception:
-                send_json(self, 400, {"ok": False, "error": "invalid JSON body"})
-                return
-            if not isinstance(body, dict) or "uri" not in body:
-                send_json(self, 400, {"ok": False, "error": "invalid request: expected JSON {uri, payload?}"})
-                return
-            # node:// self-management routes are ALWAYS admin-gated and served from the
-            # separate manage registry (never via --allow / open /run).
-            if str(body["uri"]).startswith("node://"):
-                if not manage_registry:
-                    send_json(self, 404, {"ok": False, "error": "node management disabled (start node with --manage)"})
-                    return
-                if not self._admin_ok(raw):
-                    send_json(self, 403, {"ok": False, "error": "unauthorized (node:// management requires X-Urirun-Token or an enrolled-key signature)"})
-                    return
-                target_reg, run_policy = manage_registry, dict(manage_policy or {})
-            else:
-                target_reg = state["registry"]
-                run_policy = v2.runtime.build_policy(None, list(state["allow"]), None) or {}
-            run_policy["secretsDisabled"] = not allow_secrets
-            result = v2.run(
-                str(body["uri"]),
-                target_reg,
-                payload=body.get("payload") or {},
-                mode="execute" if execute else "dry-run",
-                policy=run_policy,
-                executors=pool_executors,
-            )
-            if not result.get("ok"):
-                uri_errors.record(result)  # stamp error:// address + record for /errors
-            result["service"] = state["name"]
-            # publish a live event (URI form) to any /events subscribers
-            uri = str(body.get("uri", ""))
-            hub.publish({"event": "run", "uri": uri, "ok": bool(result.get("ok")),
-                         "at": time.time(), "service": state["name"], "kind": result.get("kind")})
-            if not result.get("ok"):
-                err = result.get("error") or {}
-                hub.publish({"event": "error", "uri": err.get("uri") or "error://local/unknown",
-                             "for": uri, "code": err.get("code"), "category": err.get("category"),
-                             "message": err.get("message") or err, "at": time.time(),
-                             "service": state["name"]})
-            send_json(self, 200 if result.get("ok") else 400, result)
-
-        def _stream_events(self):
-            # Server-Sent Events: a long-lived GET that streams the node's run/error/
-            # deploy events to the host as they happen (one-way node->host channel).
-            # When /run is gated (--require-run-auth), /events is gated the same way.
-            if run_auth_enforced and not self._run_ok(b""):
-                send_json(self, 403, {"ok": False, "error": "unauthorized (/events requires X-Urirun-Token or an enrolled-key signature)"})
-                return
-            path, _, query = self.path.partition("?")
-            params = {}
-            for part in query.split("&"):
-                if "=" in part:
-                    k, v = part.split("=", 1)
-                    params[k] = unquote(v.replace("+", " "))
-            schemes = {s for s in (params.get("scheme", "").split(",")) if s}
-            # Standard SSE: replay only when the client gives a cursor (Last-Event-ID /
-            # ?last_event_id). With no cursor, start from "now" (skip the ring history).
-            cursor = params.get("last_event_id")
-            if cursor is None:
-                cursor = self.headers.get("Last-Event-ID")
-            try:
-                last_id = int(cursor) if cursor is not None else hub.current_id()
-            except ValueError:
-                last_id = hub.current_id()
-
-            def matches(ev: dict) -> bool:
-                return not schemes or str(ev.get("uri", "")).split("://", 1)[0] in schemes
-
-            def frame(ev: dict) -> bytes:
-                body = {k: v for k, v in ev.items() if k != "_id"}
-                return (f"id: {ev.get('_id', '')}\n"
-                        f"data: {json.dumps(body, ensure_ascii=False)}\n\n").encode("utf-8")
-
-            try:
-                self.send_response(200)
-                self.send_header("Content-Type", "text/event-stream")
-                self.send_header("Cache-Control", "no-cache")
-                self.send_header("Connection", "keep-alive")
-                self.send_header("Access-Control-Allow-Origin", "*")
-                self.end_headers()
-                self.wfile.write(f": connected to {state['name']}\n\n".encode("utf-8"))
-                for ev in hub.replay_since(last_id):       # replay what was missed
-                    if matches(ev):
-                        self.wfile.write(frame(ev))
-                self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError, OSError):
-                return
-            q = hub.subscribe()
-            try:
-                while True:
-                    try:
-                        ev = q.get(timeout=15)
-                    except queue.Empty:
-                        self.wfile.write(b": keep-alive\n\n")  # heartbeat
-                        self.wfile.flush()
-                        continue
-                    if matches(ev):
-                        self.wfile.write(frame(ev))
-                        self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError, OSError):
-                pass
-            finally:
-                hub.unsubscribe(q)
-
-        def _admin_ok(self, raw: bytes) -> bool:
-            # token OR an ed25519 signature from an enrolled SSH key
-            if admin_token and hmac.compare_digest(self.headers.get("X-Urirun-Token") or "", admin_token):
-                return True
-            if key_auth and keyauth.verify_request(self.headers, raw, keyauth.PURPOSE_DEPLOY):
-                return True
-            return False
-
-        def _run_ok(self, raw: bytes) -> bool:
-            # same credentials as deploy, but signed with PURPOSE_RUN so a captured
-            # deploy request can't be replayed as a run (and vice versa)
-            if admin_token and hmac.compare_digest(self.headers.get("X-Urirun-Token") or "", admin_token):
-                return True
-            if key_auth and keyauth.verify_request(self.headers, raw, keyauth.PURPOSE_RUN):
-                return True
-            return False
-
-        def _handle_deploy(self):
-            # Remote provisioning: push a registry (+ optional handler code) onto a live
-            # node, no SSH. It can write code and add executable routes, so it is OFF
-            # unless the node enabled --admin-token and/or --key-auth, and every call
-            # must present a matching token or a signature from an enrolled key.
-            if not deploy_enabled:
-                send_json(self, 403, {"ok": False, "error": "deploy disabled (start node with --admin-token or --key-auth)"})
-                return
-            raw = read_raw(self)
-            if not self._admin_ok(raw):
-                send_json(self, 403, {"ok": False, "error": "unauthorized (need X-Urirun-Token or a signature from an enrolled key)"})
-                return
-            try:
-                summary = apply_deploy(state, json.loads(raw.decode("utf-8") or "{}"))
-            except Exception as exc:  # noqa: BLE001
-                send_json(self, 400, {"ok": False, "error": str(exc)})
-                return
-            print(json.dumps({"event": "urirun.node.deployed", "name": state["name"],
-                              "routes": summary["routeCount"], "schemes": summary["schemes"]}), flush=True)
-            send_json(self, 200, summary)
-
-        def _handle_enroll(self):
-            # ssh-copy-id for urirun. Trust-on-first-use: the FIRST key on an empty
-            # authorized_keys claims a fresh node with no secret; after that, adding a
-            # key must be signed by an already-enrolled one.
-            if not key_auth:
-                send_json(self, 403, {"ok": False, "error": "key auth disabled (start node with --key-auth)"})
-                return
-            if not keyauth.available():
-                send_json(self, 501, {"ok": False, "error": "node lacks the 'cryptography' package; pip install cryptography"})
-                return
-            raw = read_raw(self)
-            try:
-                pub = json.loads(raw.decode("utf-8") or "{}").get("publicKey")
-            except Exception:
-                pub = None
-            if not pub:
-                send_json(self, 400, {"ok": False, "error": "missing publicKey"})
-                return
-            existing = keyauth.load_authorized()
-            if existing and not keyauth.verify_request(self.headers, raw, keyauth.PURPOSE_ENROLL):
-                send_json(self, 403, {"ok": False, "error": "node already enrolled; sign the request with an authorized key"})
-                return
-            try:
-                res = keyauth.add_authorized(pub)
-            except Exception as exc:  # noqa: BLE001
-                send_json(self, 400, {"ok": False, "error": str(exc)})
-                return
-            print(json.dumps({"event": "urirun.node.key.enrolled", "name": state["name"],
-                              "fingerprint": res["fingerprint"], "keys": res["count"]}), flush=True)
-            send_json(self, 200, {"ok": True, "name": state["name"], **res})
-
-        def log_message(self, fmt, *args: Any):
-            return
-
-    server = ThreadingHTTPServer((host, port), Handler)
+    ctx = NodeContext(state=state, hub=hub, execute=execute, public_url=public_url,
+                      deploy_enabled=deploy_enabled, key_auth=key_auth, admin_token=admin_token,
+                      allow_secrets=allow_secrets, pool_executors=pool_executors,
+                      run_auth_enforced=run_auth_enforced,
+                      manage_registry=manage_registry, manage_policy=manage_policy)
+    server = ThreadingHTTPServer((host, port), NodeHandler)
+    server.ctx = ctx  # type: ignore[attr-defined]
     vstatus = version_status()  # cached PyPI check; best-effort
     sys.stderr.write(f"[urirun] {version_line()} starting node '{name}' on {host}:{port}\n")
     if vstatus["status"] == "update-available":

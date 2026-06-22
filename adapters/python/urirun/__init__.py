@@ -553,9 +553,8 @@ def connector_main(*connectors: "Connector", argv=None, prog: str = "urirun-conn
         main = lambda argv=None: urirun.connector_main(time_conn, http_conn, log_conn)
     """
     import argparse
-    from collections import Counter
 
-    from urirun.v2 import VERSION, run as _run
+    from urirun.v2 import VERSION
 
     if not connectors:
         raise ValueError("connector_main requires at least one connector")
@@ -565,6 +564,27 @@ def connector_main(*connectors: "Connector", argv=None, prog: str = "urirun-conn
     sub.add_parser("bindings", help="Print combined v2 bindings for every connector")
 
     pairs = [(conn, binding) for conn in connectors for binding in conn._live_bindings()]
+    route_by_cmd = _connector_cli_routes(sub, pairs)
+
+    args = parser.parse_args(argv)
+    if args._cmd == "bindings":
+        merged = {"version": VERSION, "bindings": {}}
+        for conn in connectors:
+            merged["bindings"].update(conn.bindings().get("bindings", {}))
+        connector_emit(merged)
+        return 0
+
+    conn, binding = route_by_cmd[args._cmd]
+    return _connector_run_command(conn, binding, args)
+
+
+def _connector_cli_routes(sub, pairs) -> dict:
+    """Register one subparser per route across all connectors; return ``{cmd: (conn, binding)}``.
+
+    A command name is the route's ``cliAlias`` or its last URI segment; clashing names
+    are disambiguated by connector id, then by scheme, so every route stays addressable.
+    """
+    from collections import Counter
 
     def _simple(binding: dict) -> str:
         return (binding.get("meta") or {}).get("cliAlias") or binding["uri"].rsplit("/", 1)[-1]
@@ -581,16 +601,14 @@ def connector_main(*connectors: "Connector", argv=None, prog: str = "urirun-conn
         p = sub.add_parser(name, help=meta.get("label") or binding["uri"])
         Connector._add_route_arguments(p, binding.get("inputSchema") or {}, bool(meta.get("external")))
         route_by_cmd[name] = (conn, binding)
+    return route_by_cmd
 
-    args = parser.parse_args(argv)
-    if args._cmd == "bindings":
-        merged = {"version": VERSION, "bindings": {}}
-        for conn in connectors:
-            merged["bindings"].update(conn.bindings().get("bindings", {}))
-        connector_emit(merged)
-        return 0
 
-    conn, binding = route_by_cmd[args._cmd]
+def _connector_run_command(conn, binding, args) -> int:
+    """Build the payload from parsed args, run the route under its policy, emit the
+    envelope; return a process exit code (0 ok, 1 on a failed run)."""
+    from urirun.v2 import run as _run
+
     schema = binding.get("inputSchema") or {}
     payload = {prop: getattr(args, prop) for prop in (schema.get("properties") or {}) if getattr(args, prop, None) is not None}
     external = bool((binding.get("meta") or {}).get("external"))
