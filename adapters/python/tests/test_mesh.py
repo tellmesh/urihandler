@@ -581,3 +581,24 @@ def test_quiet_completion_keeps_banner_off_stdout(monkeypatch):
         result = quiet_completion(model="x", messages=[])
     assert "Provider List" not in buf.getvalue()   # banner did NOT reach stdout
     assert result == {"ok": True}
+
+
+def test_deploy_registry_merge_handles_sibling_ops():
+    """Two ops under one route path (page/query/text + page/query/screenshot) must
+    NOT be mis-flagged as a conflict during the merge recompile (on_conflict='keep',
+    not 'last' which trips on sibling ops)."""
+    import urirun
+    from urirun.node import mesh as nodemesh
+
+    existing = urirun.compile_registry({"version": "urirun.bindings.v2",
+        "bindings": urirun.tool_binding("env://h/runtime/query/health", ["echo", "ok"], {})})
+    new_doc = {"version": "urirun.bindings.v2", "bindings": {
+        **urirun.tool_binding("browser://h/page/query/text", ["echo", "t"], {}),
+        **urirun.tool_binding("browser://h/page/query/screenshot", ["echo", "s"], {}),
+    }}
+    merged = nodemesh._deploy_registry({"bindings": new_doc, "merge": True}, existing)
+    assert {r["uri"] for r in urirun.list_routes(merged)} == {
+        "env://h/runtime/query/health",
+        "browser://h/page/query/text",
+        "browser://h/page/query/screenshot",
+    }

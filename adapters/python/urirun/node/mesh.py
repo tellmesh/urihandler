@@ -1800,8 +1800,11 @@ def _deploy_registry(body: dict, existing: dict | None = None) -> dict:
     else:
         raise ValueError("deploy needs 'bindings' or 'registry'")
     if body.get("merge") and existing and (existing.get("index") or existing.get("routes")):
+        # the dict spread already lets the new surface win on same-URI; compile with
+        # on_conflict="keep" (NOT "last", which mis-flags sibling ops under one route
+        # path, e.g. page/query/text + page/query/screenshot, as a conflict).
         merged = {**_registry_to_bindings(existing), **_registry_to_bindings(new)}
-        return v2.compile_registry({"version": v2.VERSION, "bindings": merged}, on_conflict="last")
+        return v2.compile_registry({"version": v2.VERSION, "bindings": merged}, on_conflict="keep")
     return new
 
 
