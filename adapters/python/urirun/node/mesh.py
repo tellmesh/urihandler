@@ -2195,6 +2195,9 @@ class NodeHandler(BaseHTTPRequestHandler):
                                   "registryEtag": registry_fingerprint(c.state["routes"]),
                                   "registryGeneration": c.state.get("generation", 1),
                                   "deploy": c.deploy_enabled, "events": c.hub.count(),
+                                  "policy": {"allow": list(c.state.get("allow") or []),
+                                             "requireRunAuth": bool(c.run_auth_enforced),
+                                             "allowSecrets": bool(c.allow_secrets)},
                                   "keyAuth": c.key_auth, "keyCount": len(keyauth.load_authorized()) if c.key_auth else 0})
             return
         if self.path == "/events" or self.path.startswith("/events?"):
