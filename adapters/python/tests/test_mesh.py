@@ -560,3 +560,24 @@ def test_deploy_registry_merge_adds_and_preserves_argv():
 
     replaced = nodemesh._deploy_registry({"bindings": new_doc}, existing)   # no merge -> replace
     assert {r["uri"] for r in urirun.list_routes(replaced)} == {"beta://host/y/query/b"}
+
+
+def test_quiet_completion_keeps_banner_off_stdout(monkeypatch):
+    """host ask emits JSON on stdout; litellm prints a 'Provider List' banner there
+    on first use. quiet_completion must keep that banner off stdout (-> stderr)."""
+    import contextlib
+    import io
+
+    import litellm
+    from urirun.host.task_planner import quiet_completion
+
+    def fake_completion(**kwargs):
+        print("Provider List: https://docs.litellm.ai/docs/providers")   # litellm's stray banner
+        return {"ok": True}
+
+    monkeypatch.setattr(litellm, "completion", fake_completion)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        result = quiet_completion(model="x", messages=[])
+    assert "Provider List" not in buf.getvalue()   # banner did NOT reach stdout
+    assert result == {"ok": True}

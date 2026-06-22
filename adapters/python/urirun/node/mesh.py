@@ -778,7 +778,7 @@ def llm_flow(prompt: str, routes: list[dict], nodes: list[dict]) -> dict:
     model = os.getenv("URIRUN_LLM_MODEL") or os.getenv("LLM_MODEL")
     if not model:
         raise RuntimeError("URIRUN_LLM_MODEL or LLM_MODEL is not set")
-    from litellm import completion
+    from urirun.host.task_planner import quiet_completion
 
     allowed_routes = [
         {
@@ -813,7 +813,7 @@ def llm_flow(prompt: str, routes: list[dict], nodes: list[dict]) -> dict:
             ),
         },
     ]
-    response = completion(model=model, messages=messages, temperature=0, response_format={"type": "json_object"})
+    response = quiet_completion(model=model, messages=messages, temperature=0, response_format={"type": "json_object"})
     return json_from_text(response.choices[0].message.content)
 
 

@@ -229,6 +229,21 @@ def heuristic_plan_chat_request(
     )
 
 
+def quiet_completion(**kwargs):
+    """``litellm.completion`` with its "Provider List" banner kept off stdout, so a
+    host's JSON stays the only thing on stdout. litellm prints that banner (and
+    other debug) straight to stdout on first use; we set ``suppress_debug_info`` and
+    redirect any stray prints to stderr for the duration of the call."""
+    import contextlib
+    import sys
+
+    import litellm
+
+    litellm.suppress_debug_info = True
+    with contextlib.redirect_stdout(sys.stderr):
+        return litellm.completion(**kwargs)
+
+
 def llm_plan_chat_request(
     prompt: str,
     *,
@@ -239,8 +254,6 @@ def llm_plan_chat_request(
     model = os.getenv("URIRUN_LLM_MODEL") or os.getenv("LLM_MODEL")
     if not model:
         raise RuntimeError("URIRUN_LLM_MODEL or LLM_MODEL is not set")
-
-    from litellm import completion
 
     schema = TaskPlanningResult.model_json_schema()
     messages = [
@@ -269,7 +282,7 @@ def llm_plan_chat_request(
             ),
         },
     ]
-    response = completion(model=model, messages=messages, temperature=0, response_format={"type": "json_object"})
+    response = quiet_completion(model=model, messages=messages, temperature=0, response_format={"type": "json_object"})
     data = _json_from_text(response.choices[0].message.content)
     data.setdefault("original_prompt", prompt)
     data.setdefault("source", "litellm")
