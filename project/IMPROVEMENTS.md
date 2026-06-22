@@ -102,9 +102,11 @@ host at +0.4s..+2.0s *while* `/run` was still blocking. (branch `feat/uri-proces
    rather than base64 over SSE.
 6. **(partly done) Host ergonomics.** `urirun host run <node> <uri> [--payload] [--stream]`
    dispatches a URI; `--stream` starts it async and prints the node's live `progress` until
-   the terminal `result` (falls back to a blocking run on an old node). NodeClient also gained
-   token auth + `get()`. STILL TODO: carry `progress` (with `run` filter) through the
-   `mesh-urirun-com` events lane for NAT'd nodes.
+   the terminal `result` (falls back to a blocking run on an old node) + `urirun host watch
+   <node> --run <id>`. NodeClient also gained token auth + `get()`. **(done)** the
+   `mesh-urirun-com` relay now carries `progress`/`result` with a `run=` filter (mesh-watch
+   `MESH_RUN`), so a host streams one run from a NAT'd node over outbound-only HTTPS;
+   events-e2e asserts it.
 
 ## Reusable host client (slims the examples)
 
