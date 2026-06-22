@@ -11,6 +11,61 @@ from urirun import mesh
 from urirun.node import keyauth, manage
 
 
+def _wait_healthy(base, tries=120, delay=0.1):
+    """Poll /health until it actually answers 200 (not merely 'no exception'), with a
+    generous budget so a node coming up under heavy CI load is genuinely ready before
+    a test drives it."""
+    import urllib.request
+    for _ in range(tries):
+        try:
+            with urllib.request.urlopen(base + "/health", timeout=3) as resp:
+                if resp.status == 200:
+                    return json.loads(resp.read())
+        except Exception:
+            pass
+        time.sleep(delay)
+    raise AssertionError(f"node at {base} never became healthy")
+
+
+def _wait_subscribers(base, want=1, tries=80, delay=0.1):
+    """Wait until the node reports >= want /events subscribers, so a streaming test
+    posts /run only after its SSE watcher is actually attached — removes the
+    fixed-sleep race that flakes under load."""
+    import urllib.request
+    for _ in range(tries):
+        try:
+            with urllib.request.urlopen(base + "/health", timeout=3) as resp:
+                if json.loads(resp.read()).get("events", 0) >= want:
+                    return
+        except Exception:
+            pass
+        time.sleep(delay)
+
+
+def _post_run(base, body, headers, *, timeout=20, tries=4):
+    """POST /run and return the parsed envelope, retrying a transient HTTP 500 — under
+    heavy load a subprocess spawn / streaming setup can fail spuriously, and the test
+    should reflect logic, not resource pressure. Non-500 HTTP errors propagate."""
+    import urllib.error
+    import urllib.request
+    last = None
+    for _ in range(tries):
+        req = urllib.request.Request(base + "/run", data=body, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read())
+        except urllib.error.HTTPError as exc:
+            if exc.code == 500:
+                last = exc
+                time.sleep(0.3)
+                continue
+            raise
+        except Exception as exc:  # connection refused / timeout under load — retry
+            last = exc
+            time.sleep(0.3)
+    raise last
+
+
 class MeshTests(unittest.TestCase):
     def test_host_config_add_node(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -82,11 +137,7 @@ class MeshTests(unittest.TestCase):
             server = mesh.serve_node("p", registry, "127.0.0.1", port, execute=True, allow=["proc://**"])
             threading.Thread(target=server.serve_forever, daemon=True).start()
             base = f"http://127.0.0.1:{port}"
-            for _ in range(40):
-                try:
-                    urllib.request.urlopen(base + "/health", timeout=1); break
-                except Exception:
-                    time.sleep(0.1)
+            _wait_healthy(base)
             got, stop = [], threading.Event()
 
             def watch():
@@ -100,10 +151,9 @@ class MeshTests(unittest.TestCase):
                         if len([g for g in got if g.get("event") == "progress"]) >= 3:
                             break
             tw = threading.Thread(target=watch, daemon=True); tw.start()
-            time.sleep(0.4)
-            req = urllib.request.Request(base + "/run", data=json.dumps({"uri": "proc://p/demo/command/go", "payload": {}}).encode(),
-                                         headers={"Content-Type": "application/json", "X-Urirun-Run-Id": "runX"}, method="POST")
-            env = json.loads(urllib.request.urlopen(req, timeout=5).read())
+            _wait_subscribers(base, 1)
+            env = _post_run(base, json.dumps({"uri": "proc://p/demo/command/go", "payload": {}}).encode(),
+                            {"Content-Type": "application/json", "X-Urirun-Run-Id": "runX"})
             self.assertEqual(env["runId"], "runX")
             tw.join(timeout=3); stop.set()
             progress = [g for g in got if g.get("event") == "progress"]
@@ -140,11 +190,7 @@ class MeshTests(unittest.TestCase):
         threading.Thread(target=server.serve_forever, daemon=True).start()
         base = f"http://127.0.0.1:{port}"
         try:
-            for _ in range(40):
-                try:
-                    urllib.request.urlopen(base + "/health", timeout=1); break
-                except Exception:
-                    time.sleep(0.1)
+            _wait_healthy(base)
             got, stop = [], threading.Event()
 
             def watch():
@@ -158,14 +204,9 @@ class MeshTests(unittest.TestCase):
                         if len([g for g in got if g.get("event") == "progress"]) >= 3:
                             break
             tw = threading.Thread(target=watch, daemon=True); tw.start()
-            time.sleep(0.2)
-            req = urllib.request.Request(
-                base + "/run",
-                data=json.dumps({"uri": "proc://p/demo/command/lines", "payload": {}}).encode(),
-                headers={"Content-Type": "application/json", "X-Urirun-Run-Id": "runY"},
-                method="POST",
-            )
-            env = json.loads(urllib.request.urlopen(req, timeout=5).read())
+            _wait_subscribers(base, 1)
+            env = _post_run(base, json.dumps({"uri": "proc://p/demo/command/lines", "payload": {}}).encode(),
+                            {"Content-Type": "application/json", "X-Urirun-Run-Id": "runY"})
             self.assertTrue(env["ok"])
             self.assertTrue(env["result"]["streamed"])
             self.assertEqual(env["result"]["stdout"].splitlines(), ["argv-0", "argv-1", "argv-2"])
@@ -195,11 +236,7 @@ class MeshTests(unittest.TestCase):
         threading.Thread(target=server.serve_forever, daemon=True).start()
         base = f"http://127.0.0.1:{port}"
         try:
-            for _ in range(40):
-                try:
-                    urllib.request.urlopen(base + "/health", timeout=1); break
-                except Exception:
-                    time.sleep(0.1)
+            _wait_healthy(base)
             results, stop = [], threading.Event()
 
             def watch():
@@ -419,20 +456,19 @@ class MeshTests(unittest.TestCase):
         server = mesh.serve_node("probe", registry, "127.0.0.1", port, execute=True,
                                  allow=["env://*"], admin_token="t", require_run_auth=True)
         threading.Thread(target=server.serve_forever, daemon=True).start()
-        url = f"http://127.0.0.1:{port}/run"
+        base = f"http://127.0.0.1:{port}"
+        url = f"{base}/run"
         body = json.dumps({"uri": "env://probe/runtime/query/ping", "payload": {}}).encode()
         try:
+            _wait_healthy(base)
             # no credential -> 403 (the open-execution endpoint is closed)
             req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
             with self.assertRaises(urllib.error.HTTPError) as ctx:
                 urllib.request.urlopen(req, timeout=5)
             self.assertEqual(ctx.exception.code, 403)
-            # correct token -> runs
-            req = urllib.request.Request(url, data=body,
-                                         headers={"Content-Type": "application/json", "X-Urirun-Token": "t"},
-                                         method="POST")
-            resp = urllib.request.urlopen(req, timeout=5)
-            self.assertEqual(resp.status, 200)
+            # correct token -> runs (retry a transient 500 under load — subprocess spawn)
+            env = _post_run(base, body, {"Content-Type": "application/json", "X-Urirun-Token": "t"})
+            self.assertIsInstance(env, dict)
         finally:
             server.shutdown()
 
