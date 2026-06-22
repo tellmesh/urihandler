@@ -32,38 +32,30 @@ def _wait_subscribers(base, want=1, tries=80, delay=0.1):
     posts /run only after its SSE watcher is actually attached — removes the
     fixed-sleep race that flakes under load."""
     import urllib.request
+    last = None
     for _ in range(tries):
         try:
             with urllib.request.urlopen(base + "/health", timeout=3) as resp:
-                if json.loads(resp.read()).get("events", 0) >= want:
+                last = json.loads(resp.read())
+                if last.get("events", 0) >= want:
                     return
-        except Exception:
-            pass
+        except Exception as exc:
+            last = f"{type(exc).__name__}: {exc}"
         time.sleep(delay)
+    raise AssertionError(f"node at {base} never reached {want} /events subscribers; last health={last!r}")
 
 
-def _post_run(base, body, headers, *, timeout=20, tries=4):
-    """POST /run and return the parsed envelope, retrying a transient HTTP 500 — under
-    heavy load a subprocess spawn / streaming setup can fail spuriously, and the test
-    should reflect logic, not resource pressure. Non-500 HTTP errors propagate."""
+def _post_run(base, body, headers, *, timeout=20):
+    """POST /run and return the parsed envelope; surface HTTP error bodies in failures."""
     import urllib.error
     import urllib.request
-    last = None
-    for _ in range(tries):
-        req = urllib.request.Request(base + "/run", data=body, headers=headers, method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read())
-        except urllib.error.HTTPError as exc:
-            if exc.code == 500:
-                last = exc
-                time.sleep(0.3)
-                continue
-            raise
-        except Exception as exc:  # connection refused / timeout under load — retry
-            last = exc
-            time.sleep(0.3)
-    raise last
+    req = urllib.request.Request(base + "/run", data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", "replace") if exc.fp else ""
+        raise AssertionError(f"POST {base}/run failed with HTTP {exc.code}: {raw}") from exc
 
 
 class MeshTests(unittest.TestCase):
@@ -274,6 +266,39 @@ class MeshTests(unittest.TestCase):
         finally:
             server.shutdown()
 
+    def test_node_client_drives_a_live_node(self):
+        # the reusable host client: health/name, routes, concretize, run + value unwrap.
+        import socket as _socket
+        import sys as _sys
+        import threading
+
+        from urirun.node.client import NodeClient
+
+        mod = type(_sys)("nc_mod")
+        mod.echo = lambda **p: {"ok": True, "got": p.get("x")}
+        _sys.modules["nc_mod"] = mod
+        try:
+            registry = mesh.v2.compile_registry({"version": mesh.v2.VERSION, "bindings": {
+                "demo://nc/thing/query/echo": {"kind": "query", "adapter": "local-function", "ref": "nc_mod:echo",
+                                               "python": {"type": "python", "module": "nc_mod", "export": "echo"},
+                                               "inputSchema": {"type": "object"}, "policy": {"allowExecute": True}}}})
+            s = _socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+            server = mesh.serve_node("nc", registry, "127.0.0.1", port, execute=True, allow=["demo://**"])
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            base = f"http://127.0.0.1:{port}"
+            _wait_healthy(base)
+            c = NodeClient(base)
+            self.assertEqual(c.name, "nc")
+            self.assertEqual(c.concretize("demo://%7Btarget%7D/thing/query/echo", {"{target}": None}),
+                             "demo://nc/thing/query/echo")
+            self.assertIn("demo://nc/thing/query/echo", [r["uri"] for r in c.routes()])
+            env = c.run("demo://nc/thing/query/echo", {"x": 42})
+            self.assertTrue(env["ok"])
+            self.assertEqual(c.value(env), {"ok": True, "got": 42})
+        finally:
+            server.shutdown()
+            _sys.modules.pop("nc_mod", None)
+
     def test_route_source_provenance(self):
         reg = mesh.v2.compile_registry({"version": mesh.v2.VERSION, "bindings": {
             "x://h/a/query/b": {"kind": "query", "adapter": "argv-template",
@@ -466,7 +491,7 @@ class MeshTests(unittest.TestCase):
             with self.assertRaises(urllib.error.HTTPError) as ctx:
                 urllib.request.urlopen(req, timeout=5)
             self.assertEqual(ctx.exception.code, 403)
-            # correct token -> runs (retry a transient 500 under load — subprocess spawn)
+            # correct token -> runs
             env = _post_run(base, body, {"Content-Type": "application/json", "X-Urirun-Token": "t"})
             self.assertIsInstance(env, dict)
         finally:

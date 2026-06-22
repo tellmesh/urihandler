@@ -103,3 +103,12 @@ host at +0.4s..+2.0s *while* `/run` was still blocking. (branch `feat/uri-proces
 6. **Relay + host ergonomics.** Carry `progress` (with `run` filter) through the
    `mesh-urirun-com` events lane for NAT'd nodes; add `urirun run --stream` / `host watch
    --run <id>` to print a run's progress live.
+
+## Reusable host client (slims the examples)
+
+The examples each re-implemented the same host-side scaffolding (`_get`/`_post`, a `Node`
+class with `concretize`/`run`, `_value` unwrap, `$ref` chaining, the SSE watch). Extracted
+to **`urirun/node/client.py` `NodeClient`** (run / run_async / cancel / status / routes /
+concretize / value / resolve_refs / watch). Examples now subclass it and keep only their
+unique logic: ex32 `run_scenarios.py` 218→155, ex31 `office_agent.py` 350→304. New examples
+are thin (`c = NodeClient(url); c.run(uri, payload)`); all example suites still pass.
