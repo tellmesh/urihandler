@@ -2322,6 +2322,9 @@ class NodeHandler(BaseHTTPRequestHandler):
         if uri.startswith("run://"):            # process lifecycle: cancel / status
             self._handle_run_control(uri)
             return
+        if uri.startswith("node://") and uri.endswith("/registry/command/adopt"):
+            self._handle_adopt(raw, body)       # node self-adopts installed connectors → live
+            return
         target = self._run_target(uri, raw)
         if target is None:
             return  # _run_target already answered (404/403)
