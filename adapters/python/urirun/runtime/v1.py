@@ -125,6 +125,7 @@ def _run_process_streaming(command, config: dict, params: dict, shell: bool, tim
         command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=shell,
         cwd=config.get("cwd"), env=_proc_env(config, params), bufsize=1,
     )
+    progress.register_proc(proc)   # let a run:// cancel kill it (unblocks the reader below)
     timed_out = {"v": False}
     timer = threading.Timer(timeout, lambda: (timed_out.__setitem__("v", True), proc.kill())) if timeout else None
     if timer:
@@ -146,6 +147,7 @@ def _run_process_streaming(command, config: dict, params: dict, shell: bool, tim
         "stdout": runtime._truncate("".join(out)),
         "stderr": runtime._truncate(stderr),
         "streamed": True,
+        "cancelled": progress.cancelled(),
     }
 
 

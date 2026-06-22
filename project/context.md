@@ -10,7 +10,7 @@
 - **Total Functions**: 975
 - **Total Classes**: 25
 - **Modules**: 134
-- **Entry Points**: 371
+- **Entry Points**: 370
 
 ## Architecture by Module
 
@@ -129,7 +129,7 @@ Main execution flows into the system:
 - **Calls**: argparse.ArgumentParser, parser.add_subparsers, sub.add_parser, py.add_argument, py.add_argument, sub.add_parser, npm.add_argument, npm.add_argument
 
 ### adapters.python.urirun.node.mesh.NodeHandler._handle_run
-- **Calls**: adapters.python.urirun.node.mesh.read_raw, str, self._run_target, _RUN_EMIT.set, self._publish_run, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json, json.loads
+- **Calls**: adapters.python.urirun.node.mesh.read_raw, str, self._run_target, progress.bind, self._publish_run, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json, json.loads
 
 ### scripts.repin_connectors.main
 - **Calls**: argparse.ArgumentParser, ap.add_argument, ap.add_argument, ap.add_argument, ap.add_argument, ap.parse_args, scripts.repin_connectors.find_root, sorted
@@ -391,6 +391,12 @@ Key functions that process and transform data:
 ### adapters.python.urirun.host.host_db._validate_record
 - **Output to**: None.validate, dataset.get, Draft202012Validator
 
+### adapters.python.urirun.runtime.v1._run_process
+- **Output to**: config.get, config.get, subprocess.run, policy.get, progress.active
+
+### adapters.python.urirun.runtime.v1._run_process_streaming
+- **Output to**: subprocess.Popen, threading.Timer, timer.start, enumerate, proc.wait
+
 ### adapters.python.urirun.runtime.v2.validate_input
 - **Output to**: adapters.python.urirun.runtime.v2._input_values, adapters.python.urirun.runtime.v2._schema_for, Draft202012Validator.check_schema, set, adapters.python.urirun.runtime.v2._apply_defaults
 
@@ -452,12 +458,6 @@ Supported forms:
 
 ### adapters.python.urirun.runtime._registry._parse_command
 - **Output to**: shlex.split, json.loads, isinstance, str
-
-### adapters.python.urirun.runtime._scan.parse_compose_label_line
-- **Output to**: None.strip, value.startswith, value.split, key.strip, None.strip
-
-### adapters.python.urirun.runtime._scan.format_binding_table
-- **Output to**: output.extend, None.join, max, None.rstrip, line
 
 ## Behavioral Patterns
 
@@ -564,8 +564,8 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.runtime.v2_grpc.main` - 25 calls
 - `adapters.python.urirun.runtime.v2.validate_binding_document` - 24 calls
 - `adapters.python.urirun.testing.smoke` - 23 calls
-- `adapters.python.urirun.runtime.v2_mcp.serve_mcp` - 23 calls
 - `adapters.python.urirun.runtime.v1.run` - 23 calls
+- `adapters.python.urirun.runtime.v2_mcp.serve_mcp` - 23 calls
 - `adapters.python.urirun.runtime.errors.problem` - 22 calls
 - `adapters.python.urirun.node.mesh.apply_deploy` - 22 calls
 - `adapters.python.urirun.node.mesh.serve_node` - 22 calls
@@ -606,7 +606,7 @@ graph TD
     _handle_run --> read_raw
     _handle_run --> str
     _handle_run --> _run_target
-    _handle_run --> set
+    _handle_run --> bind
     _handle_run --> _publish_run
     main --> parse_args
     _build_cli_parser --> ArgumentParser

@@ -1,5 +1,5 @@
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.41', 'javascript').
+project_metadata('urirun', '0.4.42', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -33,7 +33,7 @@ project_file('adapters/python/tests/test_host_dashboard.py', 97, 'python').
 project_file('adapters/python/tests/test_host_db.py', 113, 'python').
 project_file('adapters/python/tests/test_install_upgrade.py', 109, 'python').
 project_file('adapters/python/tests/test_introspect.py', 76, 'python').
-project_file('adapters/python/tests/test_mesh.py', 683, 'python').
+project_file('adapters/python/tests/test_mesh.py', 746, 'python').
 project_file('adapters/python/tests/test_minimal_imports.py', 91, 'python').
 project_file('adapters/python/tests/test_node_diagnostics.py', 46, 'python').
 project_file('adapters/python/tests/test_openapi_import.py', 49, 'python').
@@ -59,7 +59,7 @@ project_file('adapters/python/urirun/connector_sdk.py', 6, 'python').
 project_file('adapters/python/urirun/connector_smoke.py', 6, 'python').
 project_file('adapters/python/urirun/connectors/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/connectors/connect_catalog.py', 255, 'python').
-project_file('adapters/python/urirun/connectors/connector_lint.py', 379, 'python').
+project_file('adapters/python/urirun/connectors/connector_lint.py', 391, 'python').
 project_file('adapters/python/urirun/connectors/connector_scaffold.py', 413, 'python').
 project_file('adapters/python/urirun/connectors/connector_sdk.py', 88, 'python').
 project_file('adapters/python/urirun/connectors/connector_smoke.py', 82, 'python').
@@ -83,7 +83,7 @@ project_file('adapters/python/urirun/mesh.py', 6, 'python').
 project_file('adapters/python/urirun/node/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 157, 'python').
 project_file('adapters/python/urirun/node/manage.py', 108, 'python').
-project_file('adapters/python/urirun/node/mesh.py', 2424, 'python').
+project_file('adapters/python/urirun/node/mesh.py', 2417, 'python').
 project_file('adapters/python/urirun/planfile_adapter.py', 6, 'python').
 project_file('adapters/python/urirun/runtime/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/runtime/_registry.py', 719, 'python').
@@ -91,16 +91,17 @@ project_file('adapters/python/urirun/runtime/_runtime.py', 541, 'python').
 project_file('adapters/python/urirun/runtime/_scan.py', 671, 'python').
 project_file('adapters/python/urirun/runtime/adopt_pack.py', 246, 'python').
 project_file('adapters/python/urirun/runtime/agent.py', 152, 'python').
-project_file('adapters/python/urirun/runtime/codegen.py', 433, 'python').
+project_file('adapters/python/urirun/runtime/codegen.py', 439, 'python').
 project_file('adapters/python/urirun/runtime/compat.py', 200, 'python').
 project_file('adapters/python/urirun/runtime/daemon.py', 117, 'python').
 project_file('adapters/python/urirun/runtime/discovery.py', 159, 'python').
 project_file('adapters/python/urirun/runtime/dispatch_protocol.py', 184, 'python').
 project_file('adapters/python/urirun/runtime/errors.py', 564, 'python').
 project_file('adapters/python/urirun/runtime/introspect.py', 113, 'python').
+project_file('adapters/python/urirun/runtime/progress.py', 42, 'python').
 project_file('adapters/python/urirun/runtime/secrets.py', 235, 'python').
 project_file('adapters/python/urirun/runtime/tree.py', 92, 'python').
-project_file('adapters/python/urirun/runtime/v1.py', 432, 'python').
+project_file('adapters/python/urirun/runtime/v1.py', 470, 'python').
 project_file('adapters/python/urirun/runtime/v2.py', 2525, 'python').
 project_file('adapters/python/urirun/runtime/v2_adopt.py', 194, 'python').
 project_file('adapters/python/urirun/runtime/v2_grpc.py', 205, 'python').
@@ -362,7 +363,9 @@ python_function('adapters/python/urirun/connectors/connector_lint.py', '_route_k
 python_function('adapters/python/urirun/connectors/connector_lint.py', 'lint_connector', 1, 10, 16).
 python_function('adapters/python/urirun/connectors/connector_lint.py', '_format_report', 1, 13, 3).
 python_function('adapters/python/urirun/connectors/connector_lint.py', 'lint_command', 1, 6, 5).
-python_function('adapters/python/urirun/connectors/connector_lint.py', 'verify_connector', 1, 18, 20).
+python_function('adapters/python/urirun/connectors/connector_lint.py', '_import_first_bindings', 2, 6, 10).
+python_function('adapters/python/urirun/connectors/connector_lint.py', '_unresolved_handlers', 1, 8, 6).
+python_function('adapters/python/urirun/connectors/connector_lint.py', 'verify_connector', 1, 6, 14).
 python_function('adapters/python/urirun/connectors/connector_lint.py', 'verify_command', 1, 8, 4).
 python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_pkg_module', 1, 1, 1).
 python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_scheme', 2, 2, 1).
@@ -546,7 +549,6 @@ python_function('adapters/python/urirun/node/manage.py', 'connector_install', 0,
 python_function('adapters/python/urirun/node/manage.py', 'package_list', 0, 7, 5).
 python_function('adapters/python/urirun/node/manage.py', 'runtime_info', 0, 2, 3).
 python_function('adapters/python/urirun/node/manage.py', 'bindings', 1, 2, 0).
-python_function('adapters/python/urirun/node/mesh.py', 'emit', 1, 2, 2).
 python_function('adapters/python/urirun/node/mesh.py', 'now_id', 0, 1, 3).
 python_function('adapters/python/urirun/node/mesh.py', 'slug', 1, 2, 3).
 python_function('adapters/python/urirun/node/mesh.py', 'json_load', 1, 1, 3).
@@ -793,7 +795,8 @@ python_function('adapters/python/urirun/runtime/codegen.py', '_field_snake', 1, 
 python_function('adapters/python/urirun/runtime/codegen.py', '_msg_pascal', 1, 3, 3).
 python_function('adapters/python/urirun/runtime/codegen.py', '_uri_parts', 1, 5, 2).
 python_function('adapters/python/urirun/runtime/codegen.py', '_rpc_name', 1, 5, 2).
-python_function('adapters/python/urirun/runtime/codegen.py', 'assign_rpc_names', 2, 15, 9).
+python_function('adapters/python/urirun/runtime/codegen.py', 'assign_rpc_names', 2, 8, 5).
+python_function('adapters/python/urirun/runtime/codegen.py', '_disambiguate_rpc_name', 7, 8, 5).
 python_function('adapters/python/urirun/runtime/codegen.py', '_field_type', 3, 14, 7).
 python_function('adapters/python/urirun/runtime/codegen.py', '_message_fields', 2, 9, 9).
 python_function('adapters/python/urirun/runtime/codegen.py', 'dispatch_field_collisions', 1, 5, 4).
@@ -864,6 +867,10 @@ python_function('adapters/python/urirun/runtime/introspect.py', 'registry_intros
 python_function('adapters/python/urirun/runtime/introspect.py', 'run_registry_introspect', 3, 7, 7).
 python_function('adapters/python/urirun/runtime/introspect.py', '_introspect_binding', 2, 7, 2).
 python_function('adapters/python/urirun/runtime/introspect.py', '_introspect_list', 2, 9, 4).
+python_function('adapters/python/urirun/runtime/progress.py', 'bind', 1, 1, 1).
+python_function('adapters/python/urirun/runtime/progress.py', 'reset', 1, 2, 1).
+python_function('adapters/python/urirun/runtime/progress.py', 'active', 0, 1, 1).
+python_function('adapters/python/urirun/runtime/progress.py', 'emit', 1, 3, 2).
 python_function('adapters/python/urirun/runtime/secrets.py', 'redact', 1, 6, 3).
 python_function('adapters/python/urirun/runtime/secrets.py', '_provider_env', 2, 3, 1).
 python_function('adapters/python/urirun/runtime/secrets.py', '_provider_dotenv', 2, 7, 9).
@@ -886,7 +893,8 @@ python_function('adapters/python/urirun/runtime/v1.py', 'render_value', 2, 1, 4)
 python_function('adapters/python/urirun/runtime/v1.py', 'render_command', 2, 2, 1).
 python_function('adapters/python/urirun/runtime/v1.py', '_has_placeholders', 1, 2, 3).
 python_function('adapters/python/urirun/runtime/v1.py', '_proc_env', 2, 3, 6).
-python_function('adapters/python/urirun/runtime/v1.py', '_run_process', 5, 1, 4).
+python_function('adapters/python/urirun/runtime/v1.py', '_run_process', 5, 3, 6).
+python_function('adapters/python/urirun/runtime/v1.py', '_run_process_streaming', 5, 7, 17).
 python_function('adapters/python/urirun/runtime/v1.py', '_env_flags', 2, 3, 5).
 python_function('adapters/python/urirun/runtime/v1.py', 'run_spawn', 3, 6, 6).
 python_function('adapters/python/urirun/runtime/v1.py', 'run_shell_template', 3, 3, 5).
@@ -1189,6 +1197,7 @@ python_method('MeshTests', 'test_host_config_add_node', 0, 1, 7).
 python_method('MeshTests', 'test_apply_deploy_hot_swaps_registry_code_and_allow', 0, 1, 7).
 python_method('MeshTests', 'test_apply_deploy_requires_a_surface', 0, 1, 2).
 python_method('MeshTests', 'test_emit_streams_progress_to_events_by_run_id', 0, 7, 33).
+python_method('MeshTests', 'test_argv_template_streams_stdout_to_events_by_run_id', 0, 8, 31).
 python_method('MeshTests', 'test_route_source_provenance', 0, 1, 4).
 python_method('MeshTests', 'test_apply_deploy_reloads_pushed_code_without_restart', 0, 2, 7).
 python_method('MeshTests', 'test_resolve_admin_token_generate_reuse_and_precedence', 0, 4, 9).

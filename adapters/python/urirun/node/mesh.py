@@ -2091,6 +2091,9 @@ class NodeHandler(BaseHTTPRequestHandler):
                                       "registryGeneration": c.state.get("generation", 1)})
                 return
         uri = str(body["uri"])
+        if uri.startswith("run://"):            # process lifecycle: cancel / status
+            self._handle_run_control(uri)
+            return
         target = self._run_target(uri, raw)
         if target is None:
             return  # _run_target already answered (404/403)
@@ -2100,26 +2103,68 @@ class NodeHandler(BaseHTTPRequestHandler):
         # — never escalate: a dry-run node stays dry-run. Lets `host probe` test a
         # surface safely.
         mode = "dry-run" if (body.get("mode") == "dry-run" or not c.execute) else "execute"
-        # bind a progress sink so an in-process handler (or the subprocess reader) can
-        # stream this run live to /events?run=<id>; the host correlates by run id.
+        # bind a RunControl so an in-process handler (or the subprocess reader) can stream
+        # this run live to /events?run=<id> and a run:// cancel can stop it.
         run_id = self.headers.get("X-Urirun-Run-Id") or body.get("runId") or f"run-{c.hub.current_id() + 1}"
+        ctrl = progress.RunControl(run_id, lambda ev: c.hub.publish(
+            {"event": "progress", "run": run_id, "uri": uri, "at": time.time(), "service": c.state["name"], **ev}))
+        c.runs[run_id] = ctrl
+        payload = body.get("payload") or {}
 
-        def _emit(ev: dict) -> None:
-            c.hub.publish({"event": "progress", "run": run_id, "uri": uri,
-                           "at": time.time(), "service": c.state["name"], **ev})
+        def _run_it():
+            token = progress.bind(ctrl)
+            try:
+                result = v2.run(uri, target_reg, payload=payload, mode=mode, policy=run_policy, executors=c.pool_executors)
+            finally:
+                progress.reset(token)
+            if not result.get("ok"):
+                uri_errors.record(result)  # stamp error:// address + record for /errors
+            result["service"] = c.state["name"]
+            result["runId"] = run_id
+            ctrl.result, ctrl.status = result, ("cancelled" if ctrl.cancel.is_set() else "done")
+            self._publish_run(uri, result)
+            return result
 
-        token = progress.bind(_emit)
+        # async (Prefer: respond-async / mode:async): 202 + runId now; the result lands as a
+        # terminal `result` event on /events?run=<id>. Only for real execution.
+        prefer_async = body.get("mode") == "async" or "respond-async" in (self.headers.get("Prefer") or "").lower()
+        if prefer_async and mode == "execute":
+            def worker():
+                try:
+                    result = _run_it()
+                    c.hub.publish({"event": "result", "run": run_id, "uri": uri, "ok": bool(result.get("ok")),
+                                   "at": time.time(), "service": c.state["name"], "kind": result.get("kind"),
+                                   "cancelled": ctrl.cancel.is_set()})
+                except Exception as exc:  # noqa: BLE001
+                    c.hub.publish({"event": "result", "run": run_id, "uri": uri, "ok": False,
+                                   "at": time.time(), "service": c.state["name"], "error": str(exc)})
+                finally:
+                    c.runs.pop(run_id, None)
+            threading.Thread(target=worker, daemon=True).start()
+            send_json(self, 202, {"ok": True, "runId": run_id, "async": True, "status": "running",
+                                  "stream": f"/events?run={run_id}", "cancel": f"run://{run_id}/command/cancel"})
+            return
         try:
-            result = v2.run(uri, target_reg, payload=body.get("payload") or {},
-                            mode=mode, policy=run_policy, executors=c.pool_executors)
+            result = _run_it()
         finally:
-            progress.reset(token)
-        if not result.get("ok"):
-            uri_errors.record(result)  # stamp error:// address + record for /errors
-        result["service"] = c.state["name"]
-        result["runId"] = run_id
-        self._publish_run(uri, result)
+            c.runs.pop(run_id, None)
         send_json(self, 200 if result.get("ok") else 400, result)
+
+    def _handle_run_control(self, uri: str):
+        # run://<runId>/command/cancel  |  run://<runId>/query/status — gated like /run.
+        parts = [p for p in uri[len("run://"):].split("/") if p]
+        run_id = parts[0] if parts else ""
+        action = parts[-1] if parts else "status"
+        ctrl = self.ctx.runs.get(run_id)
+        if action == "cancel":
+            if not ctrl:
+                send_json(self, 404, {"ok": False, "error": f"no active run {run_id!r}"})
+                return
+            ctrl.kill()
+            send_json(self, 200, {"ok": True, "runId": run_id, "cancelled": True})
+            return
+        send_json(self, 200, {"ok": True, "runId": run_id,
+                              "status": ctrl.status if ctrl else "unknown", "running": ctrl is not None})
 
     def _stream_events(self):
         # SSE: a long-lived GET streaming the node's run/error events (node->host). Gated
@@ -2292,7 +2337,8 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
                       deploy_enabled=deploy_enabled, key_auth=key_auth, admin_token=admin_token,
                       allow_secrets=allow_secrets, pool_executors=pool_executors,
                       run_auth_enforced=run_auth_enforced,
-                      manage_registry=manage_registry, manage_policy=manage_policy)
+                      manage_registry=manage_registry, manage_policy=manage_policy,
+                      runs={})  # run id -> progress.RunControl, for streaming/cancel/status
     server = ThreadingHTTPServer((host, port), NodeHandler)
     server.ctx = ctx  # type: ignore[attr-defined]
     vstatus = version_status()  # cached PyPI check; best-effort

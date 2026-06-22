@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.10] - 2026-06-22
 
 ### Fixed
+- Fix string-concat issues (ticket-47a2ceb6)
+- Fix magic-numbers issues (ticket-daef9f77)
+- Fix magic-numbers issues (ticket-dbaa1034)
+- Fix unused-imports issues (ticket-42cc2189)
+- Fix magic-numbers issues (ticket-975f2cdd)
+
+## [0.1.10] - 2026-06-22
+
+### Fixed
 - Fix llm-generated-code issues (ticket-55686191)
 - Fix unused-imports issues (ticket-711724ee)
 - Fix ai-boilerplate issues (ticket-b9661411)
@@ -70,6 +79,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expose their schema too. See `examples/28-llm-novnc-desktop` (an LLM drives a noVNC
   Docker desktop from an NL intent; the desktop driver is a *connector*, the schema in
   the action space is the only core change).
+
+## [0.4.43] - 2026-06-22
+
+### Docs
+- Update CHANGELOG.md
+- Update README.md
+- Update SUMD.md
+- Update SUMR.md
+- Update TODO.md
+- Update project/context.md
+
+### Other
+- Update adapters/python/urirun/node/mesh.py
+- Update adapters/python/urirun/runtime/progress.py
+- Update adapters/python/urirun/runtime/v1.py
+- Update planfile.yaml
+- Update project/analysis.toon.yaml
+- Update project/calls.mmd
+- Update project/calls.png
+- Update project/calls.toon.yaml
+- Update project/calls.yaml
+- Update project/duplication.toon.yaml
+- ... and 8 more files
 
 ## [0.4.42] - 2026-06-22
 
