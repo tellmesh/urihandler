@@ -3,7 +3,7 @@
 
 ## AI Cost Tracking
 
-![PyPI](https://img.shields.io/badge/pypi-costs-blue) ![Version](https://img.shields.io/badge/version-0.4.44-blue) ![Python](https://img.shields.io/badge/python-3.9+-blue) ![License](https://img.shields.io/badge/license-Apache--2.0-green)
+![PyPI](https://img.shields.io/badge/pypi-costs-blue) ![Version](https://img.shields.io/badge/version-0.4.45-blue) ![Python](https://img.shields.io/badge/python-3.9+-blue) ![License](https://img.shields.io/badge/license-Apache--2.0-green)
 ![AI Cost](https://img.shields.io/badge/AI%20Cost-$4.39-orange) ![Human Time](https://img.shields.io/badge/Human%20Time-42.6h-blue) ![Model](https://img.shields.io/badge/Model-openrouter%2Fqwen%2Fqwen3--coder--next-lightgrey)
 
 - 🤖 **LLM usage:** $4.3931 (140 commits)
@@ -235,6 +235,16 @@ urirun host ask "pokaż procesy i logi na wszystkich komputerach"
 # execute after review
 URIRUN_LLM_MODEL=openrouter/qwen/qwen3-coder-next \
 urirun host ask "otwórz https://example.com na wszystkich komputerach" --execute
+
+# save the generated URI flow, then run it later
+urirun host ask "sprawdz procesy na lenovo" \
+  --config ~/.urirun/mesh.json \
+  --no-llm \
+  --flow-out .urirun/flows/lenovo-process-check.yaml
+
+urirun host flow run .urirun/flows/lenovo-process-check.yaml \
+  --config ~/.urirun/mesh.json \
+  --execute
 ```
 
 `urirun node` is the machine side. A node serves a local registry over HTTP:

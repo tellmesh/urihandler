@@ -120,6 +120,51 @@ def json_write(path: str | Path, data: dict) -> None:
     output.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def _flow_format(path: str | Path, requested: str | None = None) -> str:
+    if requested:
+        return requested
+    return "json" if Path(path).suffix.lower() == ".json" else "yaml"
+
+
+def flow_document(flow: dict, *, prompt: str | None = None, generator: dict | None = None) -> dict:
+    """Wrap a normalized flow with portable metadata for YAML/JSON storage."""
+    source = {"generatedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    if prompt is not None:
+        source["nl"] = prompt
+    if generator is not None:
+        source["generator"] = generator
+    return {"version": "urirun.flow.v1", "source": source, **flow}
+
+
+def write_flow_document(path: str | Path, document: dict, fmt: str | None = None) -> None:
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if _flow_format(output, fmt) == "json":
+        json_write(output, document)
+        return
+    try:
+        import yaml
+    except ModuleNotFoundError as exc:  # pragma: no cover - depends on optional PyYAML.
+        raise RuntimeError("PyYAML is required to write YAML flow files; use --flow-format json") from exc
+    output.write_text(yaml.safe_dump(document, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+
+def load_flow_document(path: str | Path) -> dict:
+    source = Path(path)
+    text = source.read_text(encoding="utf-8")
+    if source.suffix.lower() == ".json":
+        doc = json.loads(text)
+    else:
+        try:
+            import yaml
+        except ModuleNotFoundError as exc:  # pragma: no cover - depends on optional PyYAML.
+            raise RuntimeError("PyYAML is required to read YAML flow files") from exc
+        doc = yaml.safe_load(text)
+    if not isinstance(doc, dict) or not isinstance(doc.get("steps"), list):
+        raise ValueError(f"invalid flow document: {source}")
+    return doc
+
+
 def host_config_path(path: str | None = None) -> Path:
     if path:
         return Path(path)
@@ -940,6 +985,53 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool) -> dict:
             os.environ["URI_SERVICE_MAP"] = old_map
 
 
+def _flow_stdout(envelope: dict) -> str:
+    result = envelope.get("result")
+    if not isinstance(result, dict):
+        result = (envelope.get("response") or {}).get("result")
+    stdout = (result or {}).get("stdout") if isinstance(result, dict) else ""
+    return stdout if isinstance(stdout, str) else ""
+
+
+def verify_flow_execution(document: dict, execution: dict, *, executed: bool) -> dict | None:
+    spec = document.get("verification")
+    if not isinstance(spec, dict):
+        return None
+    checks = []
+    ok = True
+    if spec.get("require_ok", True):
+        passed = bool(execution.get("ok"))
+        checks.append({"check": "require_ok", "ok": passed})
+        ok = ok and passed
+    fragment = spec.get("expected_log_fragment")
+    step_id = spec.get("read_back_step")
+    if fragment and step_id:
+        if not executed:
+            checks.append({"check": "expected_log_fragment", "ok": True, "skipped": "dry-run"})
+        else:
+            stdout = _flow_stdout((execution.get("results") or {}).get(step_id) or {})
+            passed = str(fragment) in stdout
+            checks.append({"check": "expected_log_fragment", "step": step_id, "ok": passed})
+            ok = ok and passed
+    return {"ok": ok, "checks": checks}
+
+
+def run_flow_document(document: dict, mesh: dict, *, execute: bool) -> dict:
+    route_uris = {route["uri"] for route in mesh["routes"] if safe_route(route)}
+    flow = normalize_flow(document, route_uris)
+    registry = registry_from_routes(mesh["routes"])
+    execution = execute_flow(flow, mesh, registry, execute=execute)
+    verification = verify_flow_execution(document, execution, executed=execute)
+    ok = bool(execution.get("ok")) and (verification is None or bool(verification.get("ok")))
+    result = {"flow": flow, **execution}
+    result["ok"] = ok
+    if document.get("source"):
+        result["source"] = document.get("source")
+    if verification is not None:
+        result["verification"] = verification
+    return result
+
+
 def format_nodes(mesh: dict) -> str:
     rows = []
     for node in mesh["nodes"]:
@@ -1570,9 +1662,17 @@ def _host_mesh_command(args: argparse.Namespace, config: dict, mesh: dict) -> in
     if args.host_command == "ask":
         prompt = " ".join(args.prompt)
         flow, generator = make_flow(prompt, mesh, selected_nodes=args.node, use_llm=not args.no_llm)
+        if getattr(args, "flow_out", None):
+            write_flow_document(args.flow_out, flow_document(flow, prompt=prompt, generator=generator), getattr(args, "flow_format", None))
         registry = registry_from_routes(mesh["routes"])
         execution = execute_flow(flow, mesh, registry, execute=args.execute)
         result = {"ok": execution["ok"], "prompt": prompt, "generator": generator, "flow": flow, **execution}
+        if getattr(args, "flow_out", None):
+            result["flowOut"] = args.flow_out
+        reglib._emit_json(result, "-")
+        return 0 if result["ok"] else 1
+    if args.host_command == "flow" and args.flow_command == "run":
+        result = run_flow_document(load_flow_document(args.flow), mesh, execute=args.execute)
         reglib._emit_json(result, "-")
         return 0 if result["ok"] else 1
     return None

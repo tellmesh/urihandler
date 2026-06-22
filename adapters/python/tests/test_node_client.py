@@ -15,6 +15,15 @@ class NodeClientTests(unittest.TestCase):
 
         self.assertEqual(uri, "demo://lab/tool/query/info")
 
+    def test_auth_merges_token_header(self):
+        client = NodeClient.__new__(NodeClient)
+        client.token = "secret"
+
+        self.assertEqual(
+            client._auth({"Accept": "text/event-stream"}),
+            {"X-Urirun-Token": "secret", "Accept": "text/event-stream"},
+        )
+
     def test_value_unwraps_common_run_envelopes(self):
         self.assertEqual(NodeClient.value({"ok": True, "result": {"value": {"pong": True}}}), {"pong": True})
         self.assertEqual(NodeClient.value({"ok": True, "result": {"stdout": '{"n": 3}'}}), {"n": 3})
