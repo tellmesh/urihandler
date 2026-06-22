@@ -1585,9 +1585,62 @@ def _host_delegated_command(args: argparse.Namespace) -> int | None:
         return copy_id_command(args)
     if args.host_command == "watch":
         return watch_command(args)
+    if args.host_command == "run":
+        return run_command(args)
     if args.host_command == "probe":
         return probe_command(args)
     return None
+
+
+def run_command(args: argparse.Namespace) -> int:
+    """`urirun host run <node> <uri> [--payload JSON] [--stream]` — dispatch a URI to a
+    node; with --stream, start it async and print the node's live progress until done."""
+    from urirun.node.client import NodeClient
+    config = load_host_config(args.config)
+    url = node_url(config, args.node)
+    token = getattr(args, "token", None) or os.environ.get("URIRUN_NODE_TOKEN")
+    client = NodeClient(url, token=token)
+    payload = json.loads(args.payload) if getattr(args, "payload", None) else {}
+    uri = client.concretize(args.uri)
+    timeout = float(getattr(args, "timeout", 120.0) or 120.0)
+
+    if not getattr(args, "stream", False):
+        env = client.run(uri, payload, timeout=timeout)
+        reglib._emit_json(env, "-")
+        return 0 if env.get("ok") else 1
+
+    run_id = getattr(args, "run_id", None) or f"cli-{int(time.time() * 1000)}"
+    stop, done = threading.Event(), {"env": None}
+
+    def watch() -> None:
+        try:
+            for ev in client.watch(run=run_id, stop=stop, timeout=timeout + 10):
+                if ev.get("event") == "progress":
+                    extra = {k: v for k, v in ev.items() if k not in ("event", "run", "uri", "at", "service")}
+                    sys.stdout.write(f"  ░ {extra.get('line', json.dumps(extra, ensure_ascii=False))}\n")
+                    sys.stdout.flush()
+                elif ev.get("event") == "result":
+                    done["env"] = ev
+                    return
+        except Exception:  # noqa: BLE001
+            return
+
+    tw = threading.Thread(target=watch, daemon=True)
+    tw.start()
+    time.sleep(0.3)  # let the SSE subscriber attach before we start the run
+    started = client.run_async(uri, payload, run_id=run_id)
+    if not started.get("async"):  # node too old for async — fall back to a blocking run
+        stop.set()
+        env = client.run(uri, payload, timeout=timeout)
+        reglib._emit_json(env, "-")
+        return 0 if env.get("ok") else 1
+    sys.stderr.write(f"run {run_id} started on {client.name}; streaming progress…\n")
+    sys.stderr.flush()
+    tw.join(timeout=timeout + 5)
+    stop.set()
+    env = done["env"] or {"ok": False, "error": "no result event received", "runId": run_id}
+    reglib._emit_json(env, "-")
+    return 0 if env.get("ok") else 1
 
 
 def _print_event(ev: dict, as_json: bool) -> None:

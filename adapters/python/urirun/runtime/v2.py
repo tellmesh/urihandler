@@ -1745,6 +1745,15 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
     host_probe.add_argument("--json", action="store_true", help="emit the probe report as JSON")
     host_probe.add_argument("--timeout", type=float, default=15.0, help="per-route timeout in seconds")
 
+    host_run = host_sub.add_parser("run", parents=[host_common], help="Dispatch a URI to a node; --stream prints live progress")
+    host_run.add_argument("node", help="configured node name or a node URL")
+    host_run.add_argument("uri", help="the URI to run on the node")
+    host_run.add_argument("--payload", help="JSON payload for the URI")
+    host_run.add_argument("--stream", action="store_true", help="start async and stream the node's live progress until done")
+    host_run.add_argument("--run-id", dest="run_id", help="correlation id for the run (default: generated)")
+    host_run.add_argument("--token", help="X-Urirun-Token for an auth-gated node")
+    host_run.add_argument("--timeout", type=float, default=120.0, help="run timeout in seconds")
+
     host_ask = host_sub.add_parser("ask", parents=[host_common], help="Generate a URI flow from natural language and dispatch it")
     host_ask.add_argument("prompt", nargs="+")
     host_ask.add_argument("--node", action="append", default=[], help="restrict execution to a node name; repeatable")
