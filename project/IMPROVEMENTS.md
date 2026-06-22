@@ -100,9 +100,11 @@ host at +0.4s..+2.0s *while* `/run` was still blocking. (branch `feat/uri-proces
 5. **Binary/high-rate streams.** `emit` is JSON/SSE — fine for logs/progress. For screen or
    media streaming, bridge to a binary channel (the tellmesh `uriwebrtc`/`urikvmedge` packs)
    rather than base64 over SSE.
-6. **Relay + host ergonomics.** Carry `progress` (with `run` filter) through the
-   `mesh-urirun-com` events lane for NAT'd nodes; add `urirun run --stream` / `host watch
-   --run <id>` to print a run's progress live.
+6. **(partly done) Host ergonomics.** `urirun host run <node> <uri> [--payload] [--stream]`
+   dispatches a URI; `--stream` starts it async and prints the node's live `progress` until
+   the terminal `result` (falls back to a blocking run on an old node). NodeClient also gained
+   token auth + `get()`. STILL TODO: carry `progress` (with `run` filter) through the
+   `mesh-urirun-com` events lane for NAT'd nodes.
 
 ## Reusable host client (slims the examples)
 

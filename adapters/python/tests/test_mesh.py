@@ -321,6 +321,29 @@ class MeshTests(unittest.TestCase):
         finally:
             server.shutdown()
 
+    def test_host_run_stream_command(self):
+        # `urirun host run <url> <uri> --stream` drives an async run and returns 0 on success.
+        import argparse
+        import socket as _socket
+        import sys as _sys
+        import threading
+
+        registry = mesh.v2.compile_registry({"version": mesh.v2.VERSION, "bindings": {
+            "proc://h/job/command/go": {"kind": "command", "adapter": "argv-template",
+                                        "argv": [_sys.executable, "-u", "-c", "print('step-1', flush=True)"],
+                                        "inputSchema": {"type": "object"}, "policy": {"allowExecute": True}}}})
+        s = _socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+        server = mesh.serve_node("h", registry, "127.0.0.1", port, execute=True, allow=["proc://**"])
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{port}"
+        try:
+            _wait_healthy(base)
+            args = argparse.Namespace(config=None, node=base, uri="proc://h/job/command/go",
+                                      payload=None, stream=True, run_id="cliT", token=None, timeout=15.0)
+            self.assertEqual(mesh.run_command(args), 0)
+        finally:
+            server.shutdown()
+
     def test_route_source_provenance(self):
         reg = mesh.v2.compile_registry({"version": mesh.v2.VERSION, "bindings": {
             "x://h/a/query/b": {"kind": "query", "adapter": "argv-template",
