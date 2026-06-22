@@ -176,6 +176,67 @@ class MeshTests(unittest.TestCase):
         finally:
             server.shutdown()
 
+    def test_async_run_202_and_cancel_stops_a_streaming_process(self):
+        # async /run returns 202 + runId immediately; a run:// cancel kills a long argv
+        # process early; a terminal `result` event lands on /events?run=<id>.
+        import socket as _socket
+        import sys as _sys
+        import threading
+        import urllib.request
+
+        # ~6s argv process; we cancel it after ~0.5s
+        script = "import time\nfor i in range(30):\n    print(i, flush=True)\n    time.sleep(0.2)\n"
+        registry = mesh.v2.compile_registry({"version": mesh.v2.VERSION, "bindings": {
+            "proc://p/job/command/run": {"kind": "command", "adapter": "argv-template",
+                                         "argv": [_sys.executable, "-u", "-c", script],
+                                         "inputSchema": {"type": "object"}, "policy": {"allowExecute": True}}}})
+        s = _socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+        server = mesh.serve_node("p", registry, "127.0.0.1", port, execute=True, allow=["proc://**"])
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{port}"
+        try:
+            for _ in range(40):
+                try:
+                    urllib.request.urlopen(base + "/health", timeout=1); break
+                except Exception:
+                    time.sleep(0.1)
+            results, stop = [], threading.Event()
+
+            def watch():
+                r = urllib.request.urlopen(base + "/events?run=jobA", timeout=10)
+                for raw in r:
+                    if stop.is_set():
+                        break
+                    line = raw.decode().strip()
+                    if line.startswith("data:"):
+                        ev = json.loads(line[5:].strip())
+                        results.append(ev)
+                        if ev.get("event") == "result":
+                            break
+            tw = threading.Thread(target=watch, daemon=True); tw.start()
+            time.sleep(0.3)
+            # async start → 202 immediately
+            t0 = time.time()
+            req = urllib.request.Request(base + "/run", data=json.dumps({"uri": "proc://p/job/command/run"}).encode(),
+                                         headers={"Content-Type": "application/json", "X-Urirun-Run-Id": "jobA", "Prefer": "respond-async"}, method="POST")
+            resp = urllib.request.urlopen(req, timeout=5)
+            started = json.loads(resp.read())
+            self.assertEqual(resp.status, 202)
+            self.assertTrue(started["async"] and started["runId"] == "jobA")
+            self.assertLess(time.time() - t0, 1.0)  # returned immediately, not after 6s
+            # cancel it
+            time.sleep(0.5)
+            creq = urllib.request.Request(base + "/run", data=json.dumps({"uri": "run://jobA/command/cancel"}).encode(),
+                                          headers={"Content-Type": "application/json"}, method="POST")
+            cancelled = json.loads(urllib.request.urlopen(creq, timeout=5).read())
+            self.assertTrue(cancelled["cancelled"])
+            tw.join(timeout=5); stop.set()
+            term = [e for e in results if e.get("event") == "result"]
+            self.assertTrue(term and term[0]["run"] == "jobA")        # terminal result arrived
+            self.assertLess(time.time() - t0, 5.0)                    # well before the 6s natural end
+        finally:
+            server.shutdown()
+
     def test_route_source_provenance(self):
         reg = mesh.v2.compile_registry({"version": mesh.v2.VERSION, "bindings": {
             "x://h/a/query/b": {"kind": "query", "adapter": "argv-template",

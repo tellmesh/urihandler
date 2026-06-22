@@ -85,12 +85,15 @@ host at +0.4s..+2.0s *while* `/run` was still blocking. (branch `feat/uri-proces
    streamed line-1..4 to the host at +0.4..+1.3s (`streamed:true`). (local-function-subprocess
    still returns its result JSON at end — its stdout IS the result; a handler there uses
    mesh.emit explicitly.)
-2. **Non-blocking run.** `/run` still blocks until the handler returns even while streaming.
-   Add `Prefer: respond-async` (or `mode:async`) → 202 + `runId` immediately, final result
-   delivered as a terminal `result` event on `/events?run=`. Needed for tail-f / servers.
-3. **Process lifecycle URIs.** A node-side process registry keyed by `runId` →
-   `proc://<node>/<runId>/command/cancel` (SIGTERM/SIGKILL) + `…/query/status`. Cancellation
-   is the missing half of streaming control.
+2. **(done) Non-blocking run.** `/run` with `Prefer: respond-async` (or `mode:async`)
+   returns **202 + runId immediately**; the run executes in a background thread and its
+   outcome lands as a terminal `result` event on `/events?run=<id>`. Verified live: 202 in
+   0.00s for a ~9s process, ticks streaming meanwhile.
+3. **(done) Process lifecycle URIs.** A node-side run registry (`RunControl` per runId,
+   tracking child processes) backs `run://<runId>/command/cancel` (kills the process, which
+   unblocks the stdout reader) and `run://<runId>/query/status`. Verified live: cancelled a
+   ~9s process at +1.6s, terminal result event delivered. Streaming control is now
+   start→stream→status→stop, all over URIs.
 4. **Ordering + replay per run.** Progress shares the global ring buffer; a chatty process
    can evict others. Give each run a sequence number and (optionally) a per-run buffer so a
    reconnecting client resumes mid-stream without loss.
