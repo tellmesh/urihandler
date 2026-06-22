@@ -522,22 +522,22 @@ def deploy_to_node(url: str, *, bindings: dict | None = None, registry: dict | N
 
 
 def _watch_node_url(url: str, scheme: list | str | None = None, run: str | None = None,
-                    last_event_id: int = 0) -> str:
+                    last_event_id: int | None = None) -> str:
     params = []
     if scheme:
         params.append(("scheme", ",".join(scheme) if not isinstance(scheme, str) else scheme))
     if run:
         params.append(("run", run))
-    if last_event_id:
+    if last_event_id is not None:
         params.append(("last_event_id", str(last_event_id)))
     query = urlencode(params)
     return url.rstrip("/") + "/events" + (f"?{query}" if query else "")
 
 
-def _watch_node_headers(last_event_id: int = 0, token: str | None = None,
+def _watch_node_headers(last_event_id: int | None = None, token: str | None = None,
                         identity: str | None = None) -> dict:
     headers = {"Accept": "text/event-stream"}
-    if last_event_id:
+    if last_event_id is not None:
         headers["Last-Event-ID"] = str(last_event_id)
     if identity:
         headers.update(keyauth.sign(identity, keyauth.PURPOSE_RUN, b""))
@@ -562,7 +562,7 @@ def _parse_sse_line(line: str, cur_id: int) -> tuple[int, dict | None]:
     return cur_id, ev
 
 
-def watch_node(url: str, scheme: list | str | None = None, last_event_id: int = 0,
+def watch_node(url: str, scheme: list | str | None = None, last_event_id: int | None = None,
                token: str | None = None, identity: str | None = None, timeout: float | None = None,
                run: str | None = None):
     """Yield the node's live events (SSE) as dicts — run/error in URI form, each with its
@@ -572,7 +572,7 @@ def watch_node(url: str, scheme: list | str | None = None, last_event_id: int = 
         _watch_node_url(url, scheme=scheme, run=run, last_event_id=last_event_id),
         headers=_watch_node_headers(last_event_id=last_event_id, token=token, identity=identity),
     )
-    cur_id = last_event_id
+    cur_id = last_event_id or 0
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         for raw in resp:
             line = raw.decode("utf-8", "replace").strip()
@@ -1698,7 +1698,7 @@ def watch_command(args: argparse.Namespace) -> int:
             mqtt_pub(event_topic(topic_prefix, ev), json.dumps(ev, ensure_ascii=False))
         _print_event(ev, as_json)
 
-    last_id = 0
+    last_id = None
     while True:
         try:
             for ev in watch_node(url, scheme=scheme, last_event_id=last_id, token=token, identity=identity, run=run):

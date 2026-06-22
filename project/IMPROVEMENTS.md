@@ -94,9 +94,11 @@ host at +0.4s..+2.0s *while* `/run` was still blocking. (branch `feat/uri-proces
    unblocks the stdout reader) and `run://<runId>/query/status`. Verified live: cancelled a
    ~9s process at +1.6s, terminal result event delivered. Streaming control is now
    start→stream→status→stop, all over URIs.
-4. **Ordering + replay per run.** Progress shares the global ring buffer; a chatty process
-   can evict others. Give each run a sequence number and (optionally) a per-run buffer so a
-   reconnecting client resumes mid-stream without loss.
+4. **(done) Replay/resume per run.** Progress/result events carry the EventHub `_id`;
+   `NodeClient.watch(last_event_id=)` replays the missed tail (server replays the ring
+   filtered by run), and `NodeClient.stream_run(run_id)` reconnects from the last id after a
+   drop — so `host run --stream` doesn't lose a long run's progress. (Open: per-run buffer so
+   a very chatty run can't evict others from the shared ring.)
 5. **Binary/high-rate streams.** `emit` is JSON/SSE — fine for logs/progress. For screen or
    media streaming, bridge to a binary channel (the tellmesh `uriwebrtc`/`urikvmedge` packs)
    rather than base64 over SSE.

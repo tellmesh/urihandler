@@ -113,6 +113,8 @@ class MeshTests(unittest.TestCase):
         self.assertEqual(parsed.netloc, "node.local")
         self.assertEqual(parsed.path, "/events")
         self.assertEqual(parse_qs(parsed.query), {"scheme": ["shell,log"], "run": ["run 1"], "last_event_id": ["7"]})
+        self.assertEqual(parse_qs(urlparse(mesh._watch_node_url("http://node.local", last_event_id=0)).query),
+                         {"last_event_id": ["0"]})
 
     def test_parse_sse_line_tracks_event_id_and_ignores_bad_payloads(self):
         cur_id, ev = mesh._parse_sse_line("id: 42", 0)
@@ -371,17 +373,18 @@ class MeshTests(unittest.TestCase):
             base = f"http://127.0.0.1:{port}"
             _wait_healthy(base)
             c = NodeClient(base)
-            # run synchronously first so all 4 progress events land in the ring buffer
+            # run synchronously first so all 4 progress events (ids 1..4) land in the ring
             env = c.run("proc://r/d/command/go", run_id="resumeX")
             self.assertTrue(env["ok"])
-            # now a late subscriber replays from id 0, filtered to this run → gets all 4 + nothing else
+            # a client resuming from cursor 2 (as after a drop) replays only the missed
+            # tail (ids 3,4) for this run — nothing earlier, nothing from other runs.
             got = []
-            for ev in c.watch(run="resumeX", last_event_id=0, timeout=3):
+            for ev in c.watch(run="resumeX", last_event_id=2, timeout=3):
                 if ev.get("event") == "progress":
                     got.append(ev["line"])
-                    if len(got) >= 4:
+                    if len(got) >= 2:
                         break
-            self.assertEqual(got, ["r0", "r1", "r2", "r3"])
+            self.assertEqual(got, ["r2", "r3"])
         finally:
             server.shutdown()
             _sys.modules.pop("res_mod", None)

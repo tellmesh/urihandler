@@ -12,7 +12,7 @@ import threading
 import urllib.error
 import urllib.request
 from typing import Any, Iterator
-from urllib.parse import unquote
+from urllib.parse import unquote, urlencode
 
 
 def _get(url: str, timeout: float = 6.0, headers: dict | None = None) -> dict:
@@ -133,21 +133,22 @@ class NodeClient:
     # --- live events (node -> host) ---
     def watch(self, scheme: str | list | None = None, run: str | None = None,
               stop: threading.Event | None = None, timeout: float = 30.0,
-              last_event_id: int = 0) -> Iterator[dict]:
+              last_event_id: int | None = None) -> Iterator[dict]:
         """Yield the node's SSE events live, each tagged with its `_id`. `scheme`/`run`
         filter server-side; `last_event_id` replays what was missed (resume after a drop)."""
         params = []
         if scheme:
-            params.append("scheme=" + (",".join(scheme) if isinstance(scheme, list) else scheme))
+            params.append(("scheme", ",".join(scheme) if isinstance(scheme, list) else scheme))
         if run:
-            params.append("run=" + run)
-        if last_event_id:
-            params.append(f"last_event_id={last_event_id}")
-        url = self.base + "/events" + ("?" + "&".join(params) if params else "")
+            params.append(("run", run))
+        if last_event_id is not None:
+            params.append(("last_event_id", str(last_event_id)))
+        query = urlencode(params)
+        url = self.base + "/events" + (f"?{query}" if query else "")
         headers = self._auth({"Accept": "text/event-stream"})
-        if last_event_id:
+        if last_event_id is not None:
             headers["Last-Event-ID"] = str(last_event_id)
-        cur_id = last_event_id
+        cur_id = last_event_id or 0
         with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=timeout) as resp:
             for raw in resp:
                 if stop is not None and stop.is_set():
