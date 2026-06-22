@@ -1775,10 +1775,15 @@ def apply_deploy(state: dict, body: dict) -> dict:
 def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, public_url: str | None = None,
                allow_secrets: bool = False, allow: list[str] | None = None, pool: bool = False,
                admin_token: str | None = None, key_auth: bool = False,
-               require_run_auth: bool = False) -> ThreadingHTTPServer:
+               require_run_auth: bool = False, manage: bool = False) -> ThreadingHTTPServer:
     public_url = public_url or f"http://{socket.gethostname()}:{port}"
     # /deploy is reachable when a token OR SSH key-auth is configured.
     deploy_enabled = bool(admin_token) or key_auth
+    # node:// self-management routes (pip install into the node's venv, etc.) — served
+    # from a separate registry and ALWAYS admin-gated, never via the open /run path.
+    from urirun.node import manage as node_manage
+    manage_registry = v2.compile_registry(node_manage.bindings(name)) if manage else None
+    manage_policy = v2.runtime.build_policy(None, [f"node://{name}/**"], None) if manage else None
     # require_run_auth needs a credential to check against; ignore it (with a warning
     # below) if neither a token nor key-auth is configured.
     run_auth_enforced = require_run_auth and deploy_enabled
@@ -1816,7 +1821,10 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
                 self._stream_events()
                 return
             if self.path == "/routes" or self.path == "/uri-processes":
-                send_json(self, 200, {"ok": True, "name": state["name"], "routes": state["routes"]})
+                routes = list(state["routes"])
+                if manage_registry:
+                    routes = routes + routes_from_registry(manage_registry)
+                send_json(self, 200, {"ok": True, "name": state["name"], "routes": routes})
                 return
             if self.path == "/mcp/tools":
                 send_json(self, 200, v2_mcp.to_mcp_manifest(state["registry"]))
@@ -1869,11 +1877,23 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
             if not isinstance(body, dict) or "uri" not in body:
                 send_json(self, 400, {"ok": False, "error": "invalid request: expected JSON {uri, payload?}"})
                 return
-            run_policy = v2.runtime.build_policy(None, list(state["allow"]), None) or {}
+            # node:// self-management routes are ALWAYS admin-gated and served from the
+            # separate manage registry (never via --allow / open /run).
+            if str(body["uri"]).startswith("node://"):
+                if not manage_registry:
+                    send_json(self, 404, {"ok": False, "error": "node management disabled (start node with --manage)"})
+                    return
+                if not self._admin_ok(raw):
+                    send_json(self, 403, {"ok": False, "error": "unauthorized (node:// management requires X-Urirun-Token or an enrolled-key signature)"})
+                    return
+                target_reg, run_policy = manage_registry, dict(manage_policy or {})
+            else:
+                target_reg = state["registry"]
+                run_policy = v2.runtime.build_policy(None, list(state["allow"]), None) or {}
             run_policy["secretsDisabled"] = not allow_secrets
             result = v2.run(
                 str(body["uri"]),
-                state["registry"],
+                target_reg,
                 payload=body.get("payload") or {},
                 mode="execute" if execute else "dry-run",
                 policy=run_policy,
@@ -2054,10 +2074,15 @@ def _node_serve(args: argparse.Namespace, node: dict, name: str, registry: dict)
     key_auth = bool(getattr(args, "key_auth", False) or node.get("keyAuth")
                     or keyauth.authorized_keys_path().exists())
     require_run_auth = bool(getattr(args, "require_run_auth", False) or node.get("requireRunAuth"))
+    manage = bool(getattr(args, "manage", False) or node.get("manage"))
+    if manage and not (admin_token or key_auth):
+        sys.stderr.write("[urirun] --manage requires admin auth (--admin-token / --key-auth / --generate-token); node:// would be ungated. Disabling management.\n")
+        sys.stderr.flush()
+        manage = False
     server = serve_node(name, registry, host, port, execute, public_url=args.public_url,
                         allow_secrets=allow_secrets, allow=allow, pool=pool,
                         admin_token=admin_token, key_auth=key_auth,
-                        require_run_auth=require_run_auth)
+                        require_run_auth=require_run_auth, manage=manage)
     server.serve_forever()
     return 0
 

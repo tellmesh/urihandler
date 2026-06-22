@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from urirun import mesh
-from urirun.node import keyauth
+from urirun.node import keyauth, manage
 
 
 class MeshTests(unittest.TestCase):
@@ -326,6 +326,54 @@ class MeshTests(unittest.TestCase):
             self.assertEqual(config["node"]["registry"], "registry.json")
             self.assertEqual(config["node"]["port"], 9999)
             self.assertTrue(config["node"]["execute"])
+
+    def test_manage_bindings_and_install(self):
+        b = manage.bindings("lab")["bindings"]
+        assert "node://lab/package/command/install" in b
+        assert "node://lab/runtime/query/info" in b
+        self.assertEqual(b["node://lab/package/command/install"]["python"]["module"], "urirun.node.manage")
+        # install shells out to pip with the right args (mock the pip call)
+        calls = []
+        orig = manage._pip
+        manage._pip = lambda args, timeout=900: (calls.append(args) or {"ok": True, "returncode": 0})
+        try:
+            r = manage.package_install(spec="urirun-connector-time-tools", upgrade=True)
+            self.assertTrue(r["ok"])
+            self.assertEqual(calls[-1], ["install", "--upgrade", "urirun-connector-time-tools"])
+            manage.package_install(spec="pkg", upgrade=False)
+            self.assertEqual(calls[-1], ["install", "pkg"])
+            self.assertFalse(manage.package_install()["ok"])  # spec required
+        finally:
+            manage._pip = orig
+
+    def test_node_management_routes_admin_gated(self):
+        import socket as _socket
+        import threading
+        import urllib.error
+        import urllib.request
+
+        registry = mesh.v2.compile_registry({"version": mesh.v2.VERSION, "bindings": {
+            "env://probe/runtime/query/ping": {"kind": "query", "adapter": "argv-template",
+                                               "inputSchema": {"type": "object"}, "argv": ["true"]}}})
+        s = _socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+        server = mesh.serve_node("probe", registry, "127.0.0.1", port, execute=True,
+                                 admin_token="t", manage=True)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        url = f"http://127.0.0.1:{port}/run"
+        body = json.dumps({"uri": "node://probe/runtime/query/info", "payload": {}}).encode()
+        try:
+            with self.assertRaises(urllib.error.HTTPError) as cm:    # no token -> 403
+                urllib.request.urlopen(urllib.request.Request(url, data=body, method="POST"), timeout=3)
+            self.assertEqual(cm.exception.code, 403)
+            req = urllib.request.Request(url, data=body, headers={"X-Urirun-Token": "t"}, method="POST")
+            out = json.loads(urllib.request.urlopen(req, timeout=5).read())
+            self.assertTrue(out["ok"])
+            self.assertIn("python", out["result"]["value"])
+            # node:// appears in /routes
+            routes = json.loads(urllib.request.urlopen(f"http://127.0.0.1:{port}/routes", timeout=3).read())["routes"]
+            self.assertTrue(any(r["uri"].startswith("node://probe/") for r in routes))
+        finally:
+            server.shutdown()
 
     def test_event_topic_mapping(self):
         self.assertEqual(

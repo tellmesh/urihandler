@@ -1895,6 +1895,9 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
     node_serve.add_argument("--key-auth", action="store_true",
                             help="enable SSH-key admin auth: accept ssh-copy-id enrollment and ed25519-signed "
                                  "/deploy (no shared token). First key on a fresh node is trust-on-first-use.")
+    node_serve.add_argument("--manage", action="store_true",
+                            help="expose admin-gated node:// self-management URIs (pip install into the node's "
+                                 "venv, list packages, runtime info, connector install). Requires admin auth.")
     node_serve.add_argument("--require-run-auth", action="store_true",
                             help="require the same token/signature as /deploy on POST /run too "
                                  "(needs --admin-token or --key-auth). Strongly recommended for any node "
