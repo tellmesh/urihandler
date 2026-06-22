@@ -33,7 +33,7 @@ project_file('adapters/python/tests/test_host_dashboard.py', 97, 'python').
 project_file('adapters/python/tests/test_host_db.py', 113, 'python').
 project_file('adapters/python/tests/test_install_upgrade.py', 109, 'python').
 project_file('adapters/python/tests/test_introspect.py', 76, 'python').
-project_file('adapters/python/tests/test_mesh.py', 510, 'python').
+project_file('adapters/python/tests/test_mesh.py', 542, 'python').
 project_file('adapters/python/tests/test_minimal_imports.py', 91, 'python').
 project_file('adapters/python/tests/test_node_diagnostics.py', 46, 'python').
 project_file('adapters/python/tests/test_openapi_import.py', 49, 'python').
@@ -83,7 +83,7 @@ project_file('adapters/python/urirun/mesh.py', 6, 'python').
 project_file('adapters/python/urirun/node/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 157, 'python').
 project_file('adapters/python/urirun/node/manage.py', 108, 'python').
-project_file('adapters/python/urirun/node/mesh.py', 2243, 'python').
+project_file('adapters/python/urirun/node/mesh.py', 2250, 'python').
 project_file('adapters/python/urirun/planfile_adapter.py', 6, 'python').
 project_file('adapters/python/urirun/runtime/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/runtime/_registry.py', 719, 'python').
@@ -250,6 +250,7 @@ python_function('adapters/python/tests/test_introspect.py', 'test_routes_list_fi
 python_function('adapters/python/tests/test_introspect.py', 'test_bindings_show_over_uri', 1, 3, 4).
 python_function('adapters/python/tests/test_introspect.py', 'test_no_registry_payload_introspects_live_runtime', 1, 3, 4).
 python_function('adapters/python/tests/test_introspect.py', 'test_zero_config_registry_carries_builtin_routes', 0, 5, 3).
+python_function('adapters/python/tests/test_mesh.py', 'test_deploy_dir_adds_to_sys_path_and_pythonpath', 2, 3, 7).
 python_function('adapters/python/tests/test_node_diagnostics.py', '_template_registry', 0, 1, 1).
 python_function('adapters/python/tests/test_node_diagnostics.py', 'test_concrete_uri_resolves_against_host_template', 0, 3, 5).
 python_function('adapters/python/tests/test_node_diagnostics.py', 'test_template_route_denied_without_allow_still_resolves', 0, 3, 4).
@@ -565,7 +566,7 @@ python_function('adapters/python/urirun/node/mesh.py', 'event_topic', 2, 5, 4).
 python_function('adapters/python/urirun/node/mesh.py', '_mqtt_publish_fn', 1, 2, 3).
 python_function('adapters/python/urirun/node/mesh.py', 'fanout_to_mqtt', 5, 4, 5).
 python_function('adapters/python/urirun/node/mesh.py', 'copy_id', 2, 7, 13).
-python_function('adapters/python/urirun/node/mesh.py', 'routes_from_registry', 1, 9, 5).
+python_function('adapters/python/urirun/node/mesh.py', 'routes_from_registry', 2, 9, 5).
 python_function('adapters/python/urirun/node/mesh.py', 'safe_route', 1, 4, 4).
 python_function('adapters/python/urirun/node/mesh.py', 'route_target', 1, 1, 1).
 python_function('adapters/python/urirun/node/mesh.py', 'discover_node', 1, 2, 5).
@@ -586,7 +587,7 @@ python_function('adapters/python/urirun/node/mesh.py', '_dig_path', 2, 4, 4).
 python_function('adapters/python/urirun/node/mesh.py', 'resolve_step_payload', 2, 5, 5).
 python_function('adapters/python/urirun/node/mesh.py', 'execute_flow', 4, 9, 9).
 python_function('adapters/python/urirun/node/mesh.py', 'format_nodes', 1, 8, 5).
-python_function('adapters/python/urirun/node/mesh.py', 'format_routes', 1, 6, 4).
+python_function('adapters/python/urirun/node/mesh.py', 'format_routes', 1, 7, 4).
 python_function('adapters/python/urirun/node/mesh.py', 'format_tickets', 1, 6, 2).
 python_function('adapters/python/urirun/node/mesh.py', 'format_table', 3, 6, 9).
 python_function('adapters/python/urirun/node/mesh.py', '_parse_json_option', 2, 2, 1).
@@ -1169,6 +1170,7 @@ python_class('adapters/python/tests/test_mesh.py', 'MeshTests').
 python_method('MeshTests', 'test_host_config_add_node', 0, 1, 7).
 python_method('MeshTests', 'test_apply_deploy_hot_swaps_registry_code_and_allow', 0, 1, 7).
 python_method('MeshTests', 'test_apply_deploy_requires_a_surface', 0, 1, 2).
+python_method('MeshTests', 'test_route_source_provenance', 0, 1, 4).
 python_method('MeshTests', 'test_apply_deploy_reloads_pushed_code_without_restart', 0, 2, 7).
 python_method('MeshTests', 'test_resolve_admin_token_generate_reuse_and_precedence', 0, 4, 9).
 python_method('MeshTests', 'test_verify_request_rejects_replay', 0, 2, 16).

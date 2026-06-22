@@ -110,3 +110,49 @@ class ProjectionParityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ToolBindingAndRunStepsTest(unittest.TestCase):
+    """urirun.tool_binding (the argv-template `_route` boilerplate) and
+    urirun.run_steps (the per-step run loop boilerplate) every example reinvented."""
+
+    def _registry(self):
+        import sys
+        py = sys.executable
+        b = {}
+        b.update(urirun.tool_binding(
+            "time://host/clock/query/now",
+            [py, "-c", "import json;print(json.dumps({'ok':True,'t':'now'}))"], {}))
+        b.update(urirun.tool_binding(
+            "echo://host/text/command/say",
+            [py, "-c", "import json,sys;print(json.dumps({'ok':True,'said':sys.argv[1]}))", "{text}"],
+            {"text": {"type": "string"}}, required=["text"], label="say"))
+        return urirun.compile_registry({"version": "urirun.bindings.v2", "bindings": b})
+
+    def test_tool_binding_shape_and_kind(self):
+        b = urirun.tool_binding("a://host/x/query/y", ["echo", "{n}"],
+                                {"n": {"type": "string"}}, required=["n"], label="L")
+        entry = b["a://host/x/query/y"]
+        self.assertEqual(entry["adapter"], "argv-template")
+        self.assertEqual(entry["kind"], "query")           # derived from /query/
+        self.assertEqual(entry["meta"]["label"], "L")
+        self.assertEqual(entry["inputSchema"]["required"], ["n"])
+        self.assertEqual(urirun.tool_binding("a://host/x/command/z", ["echo"])
+                         ["a://host/x/command/z"]["kind"], "command")
+
+    def test_run_steps_executes_and_auto_unwraps(self):
+        out = urirun.run_steps([
+            {"id": "t", "uri": "time://host/clock/query/now"},
+            {"id": "s", "uri": "echo://host/text/command/say", "payload": {"text": "hi"}},
+        ], self._registry(), execute=True)
+        self.assertEqual([r["ok"] for r in out], [True, True])
+        self.assertEqual(out[1]["data"], {"ok": True, "said": "hi"})   # result_data unwrap, no manual stdout parse
+        self.assertEqual(out[1]["id"], "s")
+
+    def test_run_steps_stops_on_error(self):
+        out = urirun.run_steps([
+            {"uri": "echo://host/text/command/say"},        # missing required 'text' -> fails
+            {"uri": "time://host/clock/query/now"},         # must not run
+        ], self._registry(), execute=True)
+        self.assertEqual(len(out), 1)
+        self.assertFalse(out[0]["ok"])

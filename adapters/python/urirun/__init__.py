@@ -183,6 +183,62 @@ def result_data(env: dict):
     return result  # fetch / dry-run / other
 
 
+def run_steps(steps, registry: dict, *, execute: bool = True, allow=None, stop_on_error: bool = True):
+    """Run a list of ``{uri, payload}`` steps against a registry and return one
+    ``{uri, ok, data}`` (plus ``id`` when given) per step — the loop every agent /
+    flow example was re-writing by hand. ``data`` is already unwrapped via
+    :func:`result_data`; ``ok`` combines the envelope and the connector's own ``ok``.
+
+    Policy defaults to ``<scheme>://*`` per step (so ``query`` reads and the
+    matching ``command`` routes run); pass ``allow=[...]`` to use one policy for
+    all steps. With ``stop_on_error`` (default) execution halts at the first failed
+    step. ``execute=False`` dry-runs (validate + plan, no side effects)::
+
+        for r in urirun.run_steps(flow["steps"], registry, execute=True):
+            print(r["uri"], r["ok"], r["data"])
+    """
+    mode = "execute" if execute else "dry-run"
+    out = []
+    for step in steps:
+        uri = step["uri"] if isinstance(step, dict) else step[0]
+        payload = (step.get("payload") if isinstance(step, dict) else (step[1] if len(step) > 1 else {})) or {}
+        scheme = uri.split("://", 1)[0]
+        env = run(uri, registry, payload, mode=mode,
+                  policy=policy(allow=list(allow) if allow else [f"{scheme}://*"]))
+        data = result_data(env)
+        ok = bool(env.get("ok")) and (data.get("ok", True) if isinstance(data, dict) else True)
+        record = {"uri": uri, "ok": ok, "data": data}
+        if isinstance(step, dict) and "id" in step:
+            record["id"] = step["id"]
+        out.append(record)
+        if stop_on_error and not ok:
+            break
+    return out
+
+
+def tool_binding(uri: str, argv, properties: dict | None = None, *, label: str = "",
+                 required=None, kind: str | None = None) -> dict:
+    """Build a single ``argv-template`` binding (``{uri: entry}``) for a CLI tool —
+    the ``_route(...)`` helper every example was redefining. ``argv`` is the command
+    (use ``"{name}"`` placeholders), ``properties`` the JSON-Schema properties for
+    the inputs. ``kind`` defaults to ``query``/``command`` from the URI. Merge several
+    into a bindings document and ``compile_registry`` it::
+
+        b = {}
+        b.update(urirun.tool_binding("time://host/clock/query/now", [py, tool, "now"], {}))
+        b.update(urirun.tool_binding("log://host/run/command/write",
+                 [py, tool, "log", "--text", "{text}"], {"text": {"type": "string"}}, required=["text"]))
+        registry = urirun.compile_registry({"version": "urirun.bindings.v2", "bindings": b})
+    """
+    schema = {"type": "object", "additionalProperties": False, "properties": properties or {}}
+    if required:
+        schema["required"] = list(required)
+    if kind is None:
+        kind = "query" if "/query/" in uri else "command"
+    return {uri: {"adapter": "argv-template", "kind": kind, "argv": list(argv),
+                  "inputSchema": schema, "meta": {"label": label}, "uri": uri}}
+
+
 def connector_bindings(*, routes=None, connector=None, additional_properties: bool | None = False):
     """Export v2 bindings generated from ``@urirun.command`` decorators."""
     from urirun.v2 import connector_bindings as _connector_bindings

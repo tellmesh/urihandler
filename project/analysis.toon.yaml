@@ -1,4 +1,4 @@
-# code2llm | 134f 20487L | python:75,json:12,shell:10,yaml:4,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-22
+# code2llm | 134f 20497L | python:75,json:12,shell:10,yaml:4,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-22
 # generated in 0.04s
 # CC̅=4.2 | critical:13/958 | dups:0 | cycles:0
 
@@ -131,8 +131,8 @@ LAYERS:
   │
   adapters/                       CC̄=4.3    ←in:9  →out:0
   │ !! v2                        2497L  1C  125m  CC=14     ←3
-  │ !! mesh                      2232L  3C  136m  CC=17     ←1
-  │ !! _registry                  718L  0C   43m  CC=14     ←1
+  │ !! mesh                      2242L  3C  136m  CC=17     ←1
+  │ !! _registry                  718L  0C   43m  CC=14     ←0
   │ !! _scan                      670L  0C   36m  CC=15     ←0
   │ !! __init__                   618L  1C   46m  CC=12     ←10
   │ !! host_dashboard             609L  0C   16m  CC=13     ←0
@@ -191,9 +191,9 @@ LAYERS:
   │ urirun_test.c               18L  0C    2m  CC=2      ←0
   │ urirun.sh                   17L  0C    2m  CC=0.0    ←0
   │ urirun-connector.csproj.FileListAbsolute.txt    15L  0C    0m  CC=0.0    ←0
+  │ package.json                14L  0C    0m  CC=0.0    ←0
   │ hash_connector.pl           14L  0C    0m  CC=0.0    ←0
   │ hash-connector.php          14L  0C    0m  CC=0.0    ←0
-  │ package.json                14L  0C    0m  CC=0.0    ←0
   │ urirun.h                    13L  0C    1m  CC=1      ←0
   │ hash_connector.rs           12L  0C    1m  CC=1      ←0
   │ HashConnector.java          11L  1C    1m  CC=1      ←0
