@@ -1530,6 +1530,10 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
     connectors_lint.add_argument("package", help="Path to a connector package directory")
     connectors_lint.add_argument("--json", action="store_true")
     connectors_lint.add_argument("--strict", action="store_true", help="Also fail when a route is spelled out in more than one place")
+    connectors_verify = connectors_sub.add_parser("verify",
+        help="Pre-deploy gate: lint + import + validate bindings + resolve every handler (catches advertised-but-dead routes)")
+    connectors_verify.add_argument("package", help="Path to a connector package directory")
+    connectors_verify.add_argument("--json", action="store_true")
     connectors_new = connectors_sub.add_parser("new", help="Scaffold a new connector package")
     connectors_new.add_argument("id", help="Connector id, e.g. my-thing")
     connectors_new.add_argument("--lang", choices=["python", "js", "go", "php"], default="python")
@@ -2298,6 +2302,7 @@ def _cmd_agent(args, parser) -> int:
 
 _CONNECTOR_SUBCOMMANDS = {
     "lint": ("urirun.connectors.connector_lint", "lint_command"),
+    "verify": ("urirun.connectors.connector_lint", "verify_command"),
     "new": ("urirun.connector_scaffold", "new_command"),
     "smoke": ("urirun.connector_smoke", "smoke_command"),
     "from-spec": ("urirun.connectors.declarative", "from_spec_command"),
