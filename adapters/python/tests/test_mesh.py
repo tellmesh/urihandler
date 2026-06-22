@@ -602,3 +602,24 @@ def test_deploy_registry_merge_handles_sibling_ops():
         "browser://h/page/query/text",
         "browser://h/page/query/screenshot",
     }
+
+
+def test_registry_fingerprint_stable_and_changes():
+    from urirun.node import mesh as nodemesh
+    a = [{"uri": "x://h/a/query/b", "kind": "query"}, {"uri": "y://h/c/command/d", "kind": "command"}]
+    assert nodemesh.registry_fingerprint(a) == nodemesh.registry_fingerprint(list(reversed(a)))  # order-independent
+    assert nodemesh.registry_fingerprint(a) != nodemesh.registry_fingerprint(a + [{"uri": "z://h/e/query/f", "kind": "query"}])
+    assert len(nodemesh.registry_fingerprint(a)) == 16
+
+
+def test_apply_deploy_bumps_generation_and_reports_etag():
+    import urirun
+    from urirun.node import mesh as nodemesh
+    state = {"name": "n", "allow": [], "generation": 1,
+             "registry": urirun.compile_registry({"version": "urirun.bindings.v2", "bindings": {}}),
+             "routes": []}
+    doc = {"version": "urirun.bindings.v2", "bindings": urirun.tool_binding("a://h/x/query/y", ["echo"], {})}
+    summary = nodemesh.apply_deploy(state, {"bindings": doc})
+    assert state["generation"] == 2                                  # surface change bumps generation
+    assert summary["registryGeneration"] == 2
+    assert summary["registryEtag"] == nodemesh.registry_fingerprint(state["routes"])

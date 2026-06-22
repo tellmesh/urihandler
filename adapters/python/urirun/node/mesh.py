@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import hashlib
 import hmac
 import importlib
 import json
@@ -590,6 +591,15 @@ def routes_from_registry(registry: dict, source: str = "built-in") -> list[dict]
             }
         )
     return sorted(routes, key=lambda item: item["uri"])
+
+
+def registry_fingerprint(routes: list[dict]) -> str:
+    """A stable short etag for a served surface — the sorted (uri, kind) set, hashed.
+    Two nodes serving the same routes share an etag; any add / remove / kind-change
+    flips it. Lets a caller (or `host probe`) tell whether a node's surface changed
+    between two calls — the fix for testing a node whose registry is hot-swapped."""
+    items = sorted((r.get("uri", ""), r.get("kind", "")) for r in routes)
+    return hashlib.sha256(repr(items).encode("utf-8")).hexdigest()[:16]
 
 
 def safe_route(route: dict) -> bool:
@@ -1441,6 +1451,8 @@ def _host_delegated_command(args: argparse.Namespace) -> int | None:
         return copy_id_command(args)
     if args.host_command == "watch":
         return watch_command(args)
+    if args.host_command == "probe":
+        return probe_command(args)
     return None
 
 
@@ -1671,6 +1683,69 @@ def _pool_executors(pools):
             "local-function-subprocess": run_pooled}
 
 
+def probe_command(args: argparse.Namespace) -> int:
+    """`urirun host probe <node> [--execute] [--json]` — snapshot the node's surface
+    (its registry etag), test every route PINNED to that snapshot, then re-read the
+    surface. A 409 on any route, or an etag/generation change between start and end,
+    means the registry was hot-swapped under the probe (churn) — so testing a node
+    whose surface keeps changing finally yields an honest verdict instead of silently
+    hitting a moving target. Dry-run by default (validates route + schema, no side
+    effects); `--execute` actually runs them."""
+    import urllib.error
+    import urllib.request
+
+    config = load_host_config(args.config)
+    url = node_url(config, args.node).rstrip("/")
+    snap = http_json("GET", f"{url}/routes")
+    etag0, gen0 = snap.get("etag"), snap.get("generation")
+    routes = snap.get("routes", [])
+    rows: list[dict] = []
+    churn = 0
+    for route in routes:
+        uri = route["uri"]
+        required = (route.get("inputSchema") or {}).get("required") or []
+        body = {"uri": uri, "payload": {k: "" for k in required}, "expectEtag": etag0}
+        if not args.execute:
+            body["mode"] = "dry-run"
+        request = urllib.request.Request(f"{url}/run", data=json.dumps(body).encode("utf-8"),
+                                         headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=args.timeout) as resp:
+                env = json.loads(resp.read() or b"{}")
+            rows.append({"uri": uri, "ok": bool(env.get("ok")),
+                         "error": (env.get("error") or {}) if not env.get("ok") else None})
+        except urllib.error.HTTPError as exc:
+            if exc.code == 409:
+                churn += 1
+                rows.append({"uri": uri, "ok": False, "churn": True})
+            else:
+                rows.append({"uri": uri, "ok": False, "error": f"HTTP {exc.code}"})
+        except Exception as exc:  # noqa: BLE001
+            rows.append({"uri": uri, "ok": False, "error": str(exc)})
+
+    health = http_json("GET", f"{url}/health")
+    etag1, gen1 = health.get("registryEtag"), health.get("registryGeneration")
+    stable = etag0 == etag1 and gen0 == gen1 and churn == 0
+    passed = sum(1 for r in rows if r["ok"])
+    report = {"ok": stable, "node": health.get("name"), "etag": etag0, "generation": gen0,
+              "stable": stable, "routes": len(rows), "passed": passed, "churn409": churn,
+              "etagAfter": etag1, "generationAfter": gen1,
+              "mode": "execute" if args.execute else "dry-run", "results": rows}
+    if getattr(args, "json", False):
+        reglib._emit_json(report, "-")
+        return 0 if stable else 1
+    print(f"probe {report['node']} — etag {etag0} gen {gen0} — {passed}/{len(rows)} routes ok ({report['mode']})")
+    for r in rows:
+        mark = "CHURN" if r.get("churn") else ("ok" if r["ok"] else "FAIL")
+        print(f"  {mark:5} {r['uri']}" + (f"  {r['error']}" if r.get("error") else ""))
+    if stable:
+        print(f"surface STABLE (generation {gen0})")
+    else:
+        print(f"⚠ surface CHURNED during probe: generation {gen0}->{gen1}, "
+              f"etag {etag0}->{etag1}, {churn} route(s) hit 409 (registry changed)")
+    return 0 if stable else 1
+
+
 def node_state_dir() -> Path:
     d = Path(os.path.expanduser("~/.urirun-node"))
     d.mkdir(parents=True, exist_ok=True)
@@ -1827,6 +1902,7 @@ def apply_deploy(state: dict, body: dict) -> dict:
     registry = _deploy_registry(body, state.get("registry"))
     state["registry"] = registry
     state["routes"] = routes_from_registry(registry, source="deploy")  # host-pushed surface
+    state["generation"] = state.get("generation", 1) + 1                # surface changed
     if body.get("name"):
         state["name"] = str(body["name"])
     if isinstance(body.get("allow"), list):
@@ -1835,7 +1911,9 @@ def apply_deploy(state: dict, body: dict) -> dict:
     schemes = sorted({r["uri"].split("://", 1)[0] for r in state["routes"]})
     summary.update({"ok": True, "name": state["name"],
                     "routeCount": len(state["routes"]), "schemes": schemes,
-                    "allow": state["allow"]})
+                    "allow": state["allow"],
+                    "registryEtag": registry_fingerprint(state["routes"]),
+                    "registryGeneration": state["generation"]})
     return summary
 
 
@@ -1882,6 +1960,8 @@ class NodeHandler(BaseHTTPRequestHandler):
             send_json(self, 200, {"ok": True, "name": c.state["name"], "execute": c.execute,
                                   "version": current_version(),
                                   "routeCount": len(c.state["routes"]),
+                                  "registryEtag": registry_fingerprint(c.state["routes"]),
+                                  "registryGeneration": c.state.get("generation", 1),
                                   "deploy": c.deploy_enabled, "events": c.hub.count(),
                                   "keyAuth": c.key_auth, "keyCount": len(keyauth.load_authorized()) if c.key_auth else 0})
             return
@@ -1892,7 +1972,9 @@ class NodeHandler(BaseHTTPRequestHandler):
             routes = list(c.state["routes"])
             if c.manage_registry:
                 routes = routes + routes_from_registry(c.manage_registry, source="manage")
-            send_json(self, 200, {"ok": True, "name": c.state["name"], "routes": routes})
+            send_json(self, 200, {"ok": True, "name": c.state["name"], "routes": routes,
+                                  "etag": registry_fingerprint(routes),
+                                  "generation": c.state.get("generation", 1)})
             return
         if self.path == "/mcp/tools":
             send_json(self, 200, v2_mcp.to_mcp_manifest(c.state["registry"]))
@@ -1973,15 +2055,30 @@ class NodeHandler(BaseHTTPRequestHandler):
         if not isinstance(body, dict) or "uri" not in body:
             send_json(self, 400, {"ok": False, "error": "invalid request: expected JSON {uri, payload?}"})
             return
+        # optimistic concurrency: a caller that captured the surface (etag from /routes
+        # or /health) can pin this run to it. If the registry was hot-swapped since,
+        # answer 409 with the new etag instead of silently running against a different
+        # surface — the fix for testing/driving a node whose registry churns.
+        expect = self.headers.get("If-Registry-Match") or body.get("expectEtag")
+        if expect:
+            actual = registry_fingerprint(c.state["routes"])
+            if expect != actual:
+                send_json(self, 409, {"ok": False, "error": "registry changed since the surface was captured",
+                                      "expectedEtag": expect, "actualEtag": actual,
+                                      "registryGeneration": c.state.get("generation", 1)})
+                return
         uri = str(body["uri"])
         target = self._run_target(uri, raw)
         if target is None:
             return  # _run_target already answered (404/403)
         target_reg, run_policy = target
         run_policy["secretsDisabled"] = not c.allow_secrets
+        # a request may DOWNGRADE to dry-run (validate route + schema, no side effects)
+        # — never escalate: a dry-run node stays dry-run. Lets `host probe` test a
+        # surface safely.
+        mode = "dry-run" if (body.get("mode") == "dry-run" or not c.execute) else "execute"
         result = v2.run(uri, target_reg, payload=body.get("payload") or {},
-                        mode="execute" if c.execute else "dry-run",
-                        policy=run_policy, executors=c.pool_executors)
+                        mode=mode, policy=run_policy, executors=c.pool_executors)
         if not result.get("ok"):
             uri_errors.record(result)  # stamp error:// address + record for /errors
         result["service"] = c.state["name"]
@@ -2143,7 +2240,8 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
         sys.stderr.flush()
     # Mutable so POST /deploy can hot-swap what the node serves without a restart.
     state = {"name": name, "registry": registry,
-             "routes": routes_from_registry(registry), "allow": list(allow or [])}
+             "routes": routes_from_registry(registry), "allow": list(allow or []),
+             "generation": 1}
     hub = EventHub()  # live event stream (SSE): run/error/deploy events as URIs
 
     pool_executors = None

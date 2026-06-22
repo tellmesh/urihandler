@@ -1733,6 +1733,14 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
     host_copyid.add_argument("--all", action="store_true", help="enroll on every node in the mesh config")
     host_copyid.add_argument("--identity", help="SSH private key (default ~/.ssh/id_ed25519)")
 
+    host_probe = host_sub.add_parser("probe", parents=[host_common],
+                                     help="Snapshot a node's surface and test every route pinned to it; detects a churning/hot-swapped registry")
+    host_probe.add_argument("node", help="configured node name or a node URL")
+    host_probe.add_argument("--execute", action="store_true",
+                            help="actually run the routes (default: dry-run — validate route + schema, no side effects)")
+    host_probe.add_argument("--json", action="store_true", help="emit the probe report as JSON")
+    host_probe.add_argument("--timeout", type=float, default=15.0, help="per-route timeout in seconds")
+
     host_ask = host_sub.add_parser("ask", parents=[host_common], help="Generate a URI flow from natural language and dispatch it")
     host_ask.add_argument("prompt", nargs="+")
     host_ask.add_argument("--node", action="append", default=[], help="restrict execution to a node name; repeatable")
