@@ -1673,6 +1673,19 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
     monitor_daily.add_argument("--screenshot-when", choices=["failure", "always", "never"], default="failure")
     monitor_daily.add_argument("--execute", action="store_true", help="write checks/artifacts/tickets; default only observes")
 
+    host_deploy = host_sub.add_parser("deploy", parents=[host_common],
+                                      help="Push a registry (+ optional handler code) onto a running node over the mesh (no SSH)")
+    host_deploy.add_argument("node", help="configured node name or a node URL")
+    host_deploy.add_argument("--bindings", help="bindings or registry JSON to serve")
+    host_deploy.add_argument("--allow", action="append", default=[], metavar="GLOB",
+                             help="execution allow glob for the deployed routes (repeatable)")
+    host_deploy.add_argument("--code", action="append", default=[], metavar="FILE",
+                             help="handler .py file to push so the node can import it (repeatable)")
+    host_deploy.add_argument("--env", action="append", default=[], metavar="K=V",
+                             help="env var the node's handlers should read (repeatable)")
+    host_deploy.add_argument("--name", help="rename the node on deploy")
+    host_deploy.add_argument("--token", help="admin token (else URIRUN_NODE_TOKEN)")
+
     host_ask = host_sub.add_parser("ask", parents=[host_common], help="Generate a URI flow from natural language and dispatch it")
     host_ask.add_argument("prompt", nargs="+")
     host_ask.add_argument("--node", action="append", default=[], help="restrict execution to a node name; repeatable")
@@ -1833,6 +1846,9 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
                             help="permit secret:// resolution on this node (off by default; a remote /run must not read the host's local secrets)")
     node_serve.add_argument("--pool", action="store_true",
                             help="keep warm worker processes per connector so argv-template routes skip the cold start on every /run")
+    node_serve.add_argument("--admin-token", default=None, metavar="TOKEN",
+                            help="enable POST /deploy (remote provisioning) gated by this token; "
+                                 "also read from URIRUN_NODE_TOKEN. Off by default — it can add executable routes.")
 
     def add_source(p, with_uri=True):
         if with_uri:

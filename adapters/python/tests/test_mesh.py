@@ -19,6 +19,41 @@ class MeshTests(unittest.TestCase):
             self.assertEqual(updated["nodes"], [{"name": "node-a", "url": "http://127.0.0.1:8765", "tags": ["lab"]}])
             self.assertEqual(mesh.load_host_config(path)["nodes"][0]["name"], "node-a")
 
+    def test_apply_deploy_hot_swaps_registry_code_and_allow(self):
+        # a live node's mutable state, as serve_node builds it
+        state = {"name": "node-a",
+                 "registry": {"version": "urirun.bindings.v2", "routes": {}},
+                 "routes": [], "allow": []}
+        body = {
+            "bindings": {"version": "urirun.bindings.v2", "bindings": {
+                "demo://node-a/thing/query/ping": {
+                    "kind": "query", "adapter": "local-function",
+                    "ref": "pushed_mod:ping",
+                    "python": {"type": "python", "module": "pushed_mod", "export": "ping"},
+                    "inputSchema": {"type": "object"}},
+            }},
+            "code": {"pushed_mod.py": "def ping(**p):\n    return {'pong': True}\n"},
+            "allow": ["demo://node-a/**"],
+            "name": "renamed",
+            "env": {"DEPLOY_TEST_VAR": "1"},
+        }
+        summary = mesh.apply_deploy(state, body)
+
+        self.assertTrue(summary["ok"])
+        self.assertEqual(summary["routeCount"], 1)
+        self.assertEqual(summary["schemes"], ["demo"])
+        self.assertEqual(state["name"], "renamed")          # rename applied
+        self.assertEqual(state["allow"], ["demo://node-a/**"])  # allow swapped
+        self.assertEqual(len(state["routes"]), 1)            # registry hot-swapped
+        # pushed code landed on the node's import path
+        self.assertTrue((mesh.deploy_dir() / "pushed_mod.py").exists())
+        import os
+        self.assertEqual(os.environ.get("DEPLOY_TEST_VAR"), "1")
+
+    def test_apply_deploy_requires_a_surface(self):
+        with self.assertRaises(ValueError):
+            mesh.apply_deploy({"name": "n", "registry": {}, "routes": [], "allow": []}, {})
+
     def test_node_config_defaults(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "node.json")

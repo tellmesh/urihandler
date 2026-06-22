@@ -172,6 +172,40 @@ def http_json(method: str, url: str, body: dict | None = None, timeout: float = 
             return {"ok": False, "error": {"type": "http", "status": exc.code, "message": str(exc)}}
 
 
+def node_url(config: dict, name_or_url: str) -> str:
+    """Resolve a node by mesh-config name, or accept a raw URL."""
+    if "://" in name_or_url:
+        return name_or_url.rstrip("/")
+    for node in config.get("nodes", []):
+        if node.get("name") == name_or_url:
+            return str(node["url"]).rstrip("/")
+    raise SystemExit(f"unknown node {name_or_url!r}; pass a URL or a configured node name")
+
+
+def deploy_to_node(url: str, *, bindings: dict | None = None, registry: dict | None = None,
+                   allow: list[str] | None = None, code: dict | None = None,
+                   env: dict | None = None, name: str | None = None,
+                   token: str | None = None, timeout: float = 30.0) -> dict:
+    """Push a registry (+ optional handler code/env) onto a running node's POST /deploy,
+    so a host can provision a node over the mesh without SSH. The node must have been
+    started with a matching --admin-token."""
+    body: dict = {}
+    if registry is not None:
+        body["registry"] = registry
+    if bindings is not None:
+        body["bindings"] = bindings
+    if allow is not None:
+        body["allow"] = allow
+    if code:
+        body["code"] = code
+    if env:
+        body["env"] = env
+    if name:
+        body["name"] = name
+    headers = {"X-Urirun-Token": token} if token else {}
+    return http_json("POST", f"{url.rstrip('/')}/deploy", body=body, timeout=timeout, headers=headers)
+
+
 def routes_from_registry(registry: dict) -> list[dict]:
     routes = []
     for item in reglib.flatten_registry_document(registry):
@@ -1032,6 +1066,8 @@ def _host_delegated_command(args: argparse.Namespace) -> int | None:
         return monitor_command(args)
     if args.host_command == "task":
         return task_command(args)
+    if args.host_command == "deploy":
+        return deploy_command(args)
     return None
 
 
@@ -1064,6 +1100,32 @@ def _host_mesh_command(args: argparse.Namespace, config: dict, mesh: dict) -> in
         reglib._emit_json(result, "-")
         return 0 if result["ok"] else 1
     return None
+
+
+def deploy_command(args: argparse.Namespace) -> int:
+    """`urirun host deploy <node> --bindings F [--allow G] [--code F] [--env K=V]`."""
+    config = load_host_config(args.config)
+    url = node_url(config, args.node)
+
+    bindings = registry = None
+    if args.bindings:
+        doc = json_load(args.bindings)
+        if doc.get("version", "").endswith("registry") or "routes" in doc:
+            registry = doc
+        else:
+            bindings = doc
+    code = {os.path.basename(p): Path(p).read_text(encoding="utf-8") for p in (args.code or [])}
+    env = {}
+    for pair in (args.env or []):
+        key, _, val = pair.partition("=")
+        env[key] = val
+    token = args.token or os.environ.get("URIRUN_NODE_TOKEN")
+
+    result = deploy_to_node(url, bindings=bindings, registry=registry,
+                            allow=args.allow or None, code=code or None, env=env or None,
+                            name=args.name, token=token)
+    reglib._emit_json(result, "-")
+    return 0 if result.get("ok") else 1
 
 
 def host_command(args: argparse.Namespace) -> int:
@@ -1278,8 +1340,9 @@ def _node_serve(args: argparse.Namespace, node: dict, name: str, registry: dict)
     allow_secrets = bool(getattr(args, "allow_secrets", False) or node.get("allowSecrets"))
     allow = list(getattr(args, "allow", None) or node.get("allow") or [])
     pool = bool(getattr(args, "pool", False) or node.get("pool"))
+    admin_token = getattr(args, "admin_token", None) or node.get("adminToken") or os.environ.get("URIRUN_NODE_TOKEN")
     server = serve_node(name, registry, host, port, execute, public_url=args.public_url,
-                        allow_secrets=allow_secrets, allow=allow, pool=pool)
+                        allow_secrets=allow_secrets, allow=allow, pool=pool, admin_token=admin_token)
     server.serve_forever()
     return 0
 
