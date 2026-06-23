@@ -1501,6 +1501,7 @@ def test_deploy_allow_compat_warning_when_merge_clears_policy():
 
 
 def test_deploy_to_node_warns_on_remote_allow_merge_mismatch(monkeypatch):
+    from urirun.node import transport
     from urirun.node import mesh as nodemesh
 
     calls = []
@@ -1511,7 +1512,7 @@ def test_deploy_to_node_warns_on_remote_allow_merge_mismatch(monkeypatch):
             return {"ok": True, "policy": {"allow": ["app://**", "screen://**"]}}
         return {"ok": True, "allow": ["browser://**"], "routeCount": 3}
 
-    monkeypatch.setattr(nodemesh, "http_json", fake_http)
+    monkeypatch.setattr(transport, "http_json", fake_http)
 
     result = nodemesh.deploy_to_node(
         "http://node",

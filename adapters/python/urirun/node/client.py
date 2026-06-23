@@ -14,6 +14,8 @@ import urllib.request
 from typing import Any, Iterator
 from urllib.parse import unquote, urlencode
 
+from urirun.node.transport import _annotate_deploy_allow_compat
+
 
 def _get(url: str, timeout: float = 6.0, headers: dict | None = None) -> dict:
     req = urllib.request.Request(url, headers=headers or {}, method="GET")
@@ -107,7 +109,14 @@ class NodeClient:
             body["env"] = env
         if merge:
             body["merge"] = True
-        return _post(self.base + "/deploy", body, headers=self._auth(), timeout=timeout)
+        before = None
+        if merge and allow:
+            try:
+                before = _get(self.base + "/health", timeout=min(timeout, 8.0), headers=self._auth())
+            except Exception:
+                before = None
+        result = _post(self.base + "/deploy", body, headers=self._auth(), timeout=timeout)
+        return _annotate_deploy_allow_compat(result, merge=merge, before=before, requested_allow=allow)
 
     def schemes(self) -> set:
         return {str(r.get("uri", "")).split("://", 1)[0] for r in self.routes()}

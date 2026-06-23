@@ -5,24 +5,24 @@
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 83, json: 12, shell: 10, yaml: 4, csharp: 4
+- **Languages**: python: 85, json: 12, shell: 10, yaml: 4, csharp: 4
 - **Analysis Mode**: static
 - **Total Functions**: 1070
 - **Total Classes**: 27
-- **Modules**: 141
+- **Modules**: 143
 - **Entry Points**: 413
 
 ## Architecture by Module
-
-### adapters.python.urirun.node.mesh
-- **Functions**: 151
-- **Classes**: 3
-- **File**: `mesh.py`
 
 ### adapters.python.urirun.runtime.v2
 - **Functions**: 125
 - **Classes**: 1
 - **File**: `v2.py`
+
+### adapters.python.urirun.node.mesh
+- **Functions**: 115
+- **Classes**: 3
+- **File**: `mesh.py`
 
 ### v1.js.urirun-v1
 - **Functions**: 65
@@ -82,6 +82,10 @@
 - **Classes**: 3
 - **File**: `worker.py`
 
+### adapters.python.urirun.node.transport
+- **Functions**: 20
+- **File**: `transport.py`
+
 ### adapters.python.urirun.runtime.codegen
 - **Functions**: 19
 - **File**: `codegen.py`
@@ -99,10 +103,6 @@
 - **Functions**: 17
 - **Classes**: 1
 - **File**: `secrets.py`
-
-### adapters.python.urirun.connectors.connect_catalog
-- **Functions**: 17
-- **File**: `connect_catalog.py`
 
 ## Key Entry Points
 

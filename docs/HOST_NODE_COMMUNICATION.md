@@ -86,10 +86,10 @@ changes allow policy should send the complete desired allow list unless the
 target node version is known to preserve allow entries during merge. A real
 Lenovo run showed why this matters: the route surface merged correctly, but an
 older node narrowed policy to the newly supplied allow glob until a second deploy
-restored the full list. The host now probes `/health` before merge deploys with
-`--allow` and annotates the deploy response with warning code
-`DEPLOY_ALLOW_MERGE_MISMATCH` when the returned allow policy is narrower than
-the expected union.
+restored the full list. `urirun host deploy` and `NodeClient.deploy()` now probe
+`/health` before merge deploys with `--allow` and annotate the deploy response
+with warning code `DEPLOY_ALLOW_MERGE_MISMATCH` when the returned allow policy
+is narrower than the expected union.
 
 ## Desktop, browser and KVM capabilities
 

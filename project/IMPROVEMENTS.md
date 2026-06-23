@@ -38,10 +38,10 @@ capability selection and safe autonomous loops.
 3. **Harden cross-version deploy.**
    Local tests cover `--merge` preserving allow policy, but the real Lenovo node
    behaved like an older implementation and narrowed allow policy after a merge
-   deploy. The host now probes `/health` before merge deploys with `--allow`
-   and annotates the response with `DEPLOY_ALLOW_MERGE_MISMATCH` when the
-   returned allow list is narrower than expected. Keep adding live compatibility
-   tests around this path.
+   deploy. `urirun host deploy` and `NodeClient.deploy()` now probe `/health`
+   before merge deploys with `--allow` and annotate the response with
+   `DEPLOY_ALLOW_MERGE_MISMATCH` when the returned allow list is narrower than
+   expected. Keep adding live compatibility tests around this path.
 4. **Reduce routing boilerplate in examples.**
    New examples should use `NodeClient`, transient `--node-url`, exact URI
    routing and reusable host helpers. They should not reimplement `_get`/`_post`,

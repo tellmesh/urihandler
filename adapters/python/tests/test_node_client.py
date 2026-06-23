@@ -51,22 +51,56 @@ class NodeClientTests(unittest.TestCase):
         client.base = "http://node"
         client.token = "secret"
         calls = []
+        orig_get = client_mod._get
         orig = client_mod._post
+        client_mod._get = lambda url, timeout=6.0, headers=None: (
+            calls.append(("GET", url, headers, timeout)) or {"ok": True, "policy": {"allow": []}}
+        )
         client_mod._post = lambda url, body, headers=None, timeout=120.0: (
-            calls.append((url, body, headers, timeout)) or {"ok": True}
+            calls.append(("POST", url, body, headers, timeout)) or {"ok": True, "allow": ["browser://**"]}
         )
         try:
             out = client.deploy(bindings={"bindings": {}}, allow=["browser://**"], merge=True, timeout=5)
         finally:
+            client_mod._get = orig_get
             client_mod._post = orig
 
         self.assertTrue(out["ok"])
         self.assertEqual(calls, [(
+            "GET",
+            "http://node/health",
+            {"X-Urirun-Token": "secret"},
+            5,
+        ), (
+            "POST",
             "http://node/deploy",
             {"bindings": {"bindings": {}}, "allow": ["browser://**"], "merge": True},
             {"X-Urirun-Token": "secret"},
             5,
         )])
+
+    def test_deploy_warns_when_merge_narrows_allow_policy(self):
+        client = NodeClient.__new__(NodeClient)
+        client.base = "http://node"
+        client.token = None
+        orig_get = client_mod._get
+        orig_post = client_mod._post
+        client_mod._get = lambda url, timeout=6.0, headers=None: {
+            "ok": True,
+            "policy": {"allow": ["app://**", "screen://**"]},
+        }
+        client_mod._post = lambda url, body, headers=None, timeout=120.0: {
+            "ok": True,
+            "allow": ["browser://**"],
+        }
+        try:
+            out = client.deploy(bindings={"bindings": {}}, allow=["browser://**"], merge=True)
+        finally:
+            client_mod._get = orig_get
+            client_mod._post = orig_post
+
+        self.assertEqual(out["warnings"][0]["code"], "DEPLOY_ALLOW_MERGE_MISMATCH")
+        self.assertEqual(out["warnings"][0]["missingAllow"], ["app://**", "screen://**"])
 
     def test_ensure_scheme_noops_when_scheme_is_already_live(self):
         client = NodeClient.__new__(NodeClient)
