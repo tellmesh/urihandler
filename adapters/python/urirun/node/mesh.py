@@ -14,6 +14,7 @@ The mesh layer is intentionally thin:
 from __future__ import annotations
 
 import argparse
+import base64
 import collections
 import hashlib
 import hmac
@@ -29,7 +30,7 @@ import time
 import unicodedata
 import urllib.error
 import urllib.request
-from urllib.parse import unquote, urlencode
+from urllib.parse import unquote, urlencode, urlparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -101,6 +102,8 @@ CONFIG_VERSION = "urirun.mesh.v1"
 DEFAULT_CONFIG = ".urirun/mesh.json"
 DEFAULT_NODE_CONFIG = ".urirun/node.json"
 UNSAFE_URI_PARTS = ("/terminal/command/run", "://sudo", "/command/install", "/command/upgrade")
+DEFAULT_HOST_ARTIFACT_DIR = "~/.urirun/artifacts/host"
+BASE64_ARTIFACT_MIN_CHARS = 4096
 
 
 def now_id() -> str:
@@ -226,6 +229,47 @@ def add_node(path: str | None, name: str, url: str, tags: list[str] | None = Non
     nodes.append(node)
     config["nodes"] = sorted(nodes, key=lambda item: item["name"])
     return save_host_config(config, path)
+
+
+def _coerce_node_url(raw: str) -> str:
+    """Accept URL or host[:port] for transient host commands."""
+    value = str(raw or "").strip()
+    if not value:
+        raise ValueError("node URL must not be empty")
+    if "://" not in value:
+        value = f"http://{value if ':' in value else value + ':8765'}"
+    return value.rstrip("/")
+
+
+def _node_name_from_url(url: str, index: int) -> str:
+    parsed = urlparse(url)
+    host = parsed.hostname or f"node-{index}"
+    port = f"-{parsed.port}" if parsed.port else ""
+    return slug(f"{host}{port}") or f"node_{index}"
+
+
+def config_with_transient_node_urls(config: dict, specs: list[str] | None) -> dict:
+    """Return a copy of host config extended with repeatable NAME=URL or URL specs.
+
+    This backs `urirun host ask --node-url ...`, so a one-off node can be used without
+    writing `.urirun/mesh.json`. Configured nodes with the same name are replaced for
+    this process only.
+    """
+    if not specs:
+        return config
+    out = json.loads(json.dumps(config))
+    nodes = [dict(item) for item in out.get("nodes", [])]
+    for idx, spec in enumerate(specs, 1):
+        name = ""
+        raw_url = spec
+        if "=" in spec:
+            name, raw_url = [part.strip() for part in spec.split("=", 1)]
+        url = _coerce_node_url(raw_url)
+        name = name or _node_name_from_url(url, idx)
+        nodes = [item for item in nodes if item.get("name") != name]
+        nodes.append({"name": name, "url": url, "transient": True})
+    out["nodes"] = sorted(nodes, key=lambda item: item["name"])
+    return out
 
 
 def default_node_config(name: str | None = None, registry: str = ".urirun/registry.merged.json") -> dict:
@@ -911,6 +955,37 @@ def normalize_flow(flow: dict, allowed_uris: set[str]) -> dict:
     }
 
 
+def normalize_flow_or_explain(
+    flow: dict,
+    allowed_uris: set[str],
+    *,
+    routes: list[dict],
+    selected_nodes: list[str] | None = None,
+    planner_reason: str = "",
+) -> dict:
+    try:
+        return normalize_flow(flow, allowed_uris)
+    except ValueError as exc:
+        if str(exc) != "flow must contain non-empty steps":
+            raise
+        nodes = sorted({str(route.get("node") or "") for route in routes if route.get("node")})
+        sample = sorted(allowed_uris)[:8]
+        detail = {
+            "safeRoutes": len(allowed_uris),
+            "nodes": nodes,
+            "selectedNodes": selected_nodes or [],
+            "routeSample": sample,
+        }
+        reason = f"; planner reason: {planner_reason}" if planner_reason else ""
+        raise ValueError(
+            "NL flow generated no URI steps. "
+            f"Discovered {detail['safeRoutes']} safe route(s) on node(s) {nodes or '[]'}"
+            f"{'; selected ' + repr(selected_nodes) if selected_nodes else ''}. "
+            "Check the mesh config or pass --node-url [NAME=]URL. "
+            f"Sample routes: {sample}{reason}"
+        ) from exc
+
+
 def llm_flow(prompt: str, routes: list[dict], nodes: list[dict]) -> dict:
     model = os.getenv("URIRUN_LLM_MODEL") or os.getenv("LLM_MODEL")
     if not model:
@@ -959,12 +1034,29 @@ def make_flow(prompt: str, mesh: dict, selected_nodes: list[str] | None = None, 
     allowed = {route["uri"] for route in routes}
     if use_llm:
         try:
-            return normalize_flow(llm_flow(prompt, routes, mesh["nodes"]), allowed), {"provider": "litellm", "fallback": False}
+            return normalize_flow_or_explain(
+                llm_flow(prompt, routes, mesh["nodes"]),
+                allowed,
+                routes=routes,
+                selected_nodes=selected_nodes,
+            ), {"provider": "litellm", "fallback": False}
         except Exception as exc:  # noqa: BLE001 - host should still be usable without an LLM.
             flow = heuristic_flow(prompt, routes, mesh["nodes"], selected_nodes)
-            return normalize_flow(flow, allowed), {"provider": "heuristic", "fallback": True, "reason": str(exc)}
+            return normalize_flow_or_explain(
+                flow,
+                allowed,
+                routes=routes,
+                selected_nodes=selected_nodes,
+                planner_reason=str(exc),
+            ), {"provider": "heuristic", "fallback": True, "reason": str(exc)}
     flow = heuristic_flow(prompt, routes, mesh["nodes"], selected_nodes)
-    return normalize_flow(flow, allowed), {"provider": "heuristic", "fallback": True, "reason": "LLM disabled"}
+    return normalize_flow_or_explain(
+        flow,
+        allowed,
+        routes=routes,
+        selected_nodes=selected_nodes,
+        planner_reason="LLM disabled",
+    ), {"provider": "heuristic", "fallback": True, "reason": "LLM disabled"}
 
 
 def _dig_path(data: Any, dotted: str) -> Any:
@@ -1023,6 +1115,90 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool) -> dict:
             os.environ.pop("URI_SERVICE_MAP", None)
         else:
             os.environ["URI_SERVICE_MAP"] = old_map
+
+
+def _artifact_extension(raw: bytes, mime: str | None = None) -> tuple[str, str]:
+    if mime:
+        clean = mime.split(";", 1)[0].lower()
+        if clean == "image/png":
+            return ".png", clean
+        if clean in {"image/jpeg", "image/jpg"}:
+            return ".jpg", "image/jpeg"
+        if clean == "image/gif":
+            return ".gif", clean
+    if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png", "image/png"
+    if raw.startswith(b"\xff\xd8\xff"):
+        return ".jpg", "image/jpeg"
+    if raw.startswith(b"GIF8"):
+        return ".gif", "image/gif"
+    return ".bin", mime or "application/octet-stream"
+
+
+def _decode_base64_artifact(value: str) -> tuple[bytes, str | None] | None:
+    text = value.strip()
+    mime = None
+    if text.startswith("data:") and ";base64," in text[:128]:
+        head, _, text = text.partition(",")
+        mime = head[5:].split(";", 1)[0] or None
+    if len(text) < BASE64_ARTIFACT_MIN_CHARS:
+        return None
+    try:
+        return base64.b64decode(text, validate=True), mime
+    except Exception:
+        return None
+
+
+def _write_artifact(raw: bytes, *, artifact_dir: str | None, hint: str, mime: str | None = None) -> dict:
+    digest = hashlib.sha256(raw).hexdigest()
+    ext, detected_mime = _artifact_extension(raw, mime)
+    root = Path(os.path.expanduser(artifact_dir or os.environ.get("URIRUN_ARTIFACT_DIR") or DEFAULT_HOST_ARTIFACT_DIR))
+    root.mkdir(parents=True, exist_ok=True)
+    name = f"{time.strftime('%Y%m%dT%H%M%S')}-{slug(hint)}-{digest[:12]}{ext}"
+    path = root / name
+    path.write_bytes(raw)
+    return {"path": str(path), "bytes": len(raw), "sha256": digest, "mime": detected_mime}
+
+
+def materialize_base64_artifacts(data: Any, *, artifact_dir: str | None = None,
+                                 hint: str = "artifact") -> tuple[Any, list[dict]]:
+    """Replace large base64 blobs in a result tree with file artifacts.
+
+    The node keeps returning ordinary JSON, but host commands should not dump a full PNG
+    to stdout. We preserve exact bytes on disk and leave a small structured reference.
+    """
+    artifacts: list[dict] = []
+
+    def walk(value: Any, path_hint: str) -> Any:
+        if isinstance(value, dict):
+            out = {}
+            for key, item in value.items():
+                if isinstance(item, str) and key in {"base64", "data", "png", "screenshot", "image"}:
+                    decoded = _decode_base64_artifact(item)
+                    if decoded:
+                        raw, mime = decoded
+                        artifact = _write_artifact(raw, artifact_dir=artifact_dir, hint=f"{path_hint}-{key}", mime=mime)
+                        artifacts.append({"field": f"{path_hint}.{key}", **artifact})
+                        out[key] = {"artifactPath": artifact["path"], "bytes": artifact["bytes"],
+                                    "sha256": artifact["sha256"], "mime": artifact["mime"]}
+                        continue
+                out[key] = walk(item, f"{path_hint}.{key}")
+            return out
+        if isinstance(value, list):
+            return [walk(item, f"{path_hint}.{idx}") for idx, item in enumerate(value)]
+        return value
+
+    return walk(data, hint), artifacts
+
+
+def compact_result_artifacts(result: dict, args: argparse.Namespace, *, hint: str) -> dict:
+    if getattr(args, "inline_artifacts", False):
+        return result
+    compacted, artifacts = materialize_base64_artifacts(result, artifact_dir=getattr(args, "artifact_dir", None), hint=hint)
+    if artifacts:
+        compacted = dict(compacted)
+        compacted["artifacts"] = artifacts
+    return compacted
 
 
 def _flow_stdout(envelope: dict) -> str:
@@ -1824,10 +2000,12 @@ def _host_mesh_command(args: argparse.Namespace, config: dict, mesh: dict) -> in
         result = {"ok": execution["ok"], "prompt": prompt, "generator": generator, "flow": flow, **execution}
         if getattr(args, "flow_out", None):
             result["flowOut"] = args.flow_out
+        result = compact_result_artifacts(result, args, hint="host-ask")
         reglib._emit_json(result, "-")
         return 0 if result["ok"] else 1
     if args.host_command == "flow" and args.flow_command == "run":
         result = run_flow_document(load_flow_document(args.flow), mesh, execute=args.execute)
+        result = compact_result_artifacts(result, args, hint="host-flow")
         reglib._emit_json(result, "-")
         return 0 if result["ok"] else 1
     return None
@@ -1954,6 +2132,7 @@ def host_command(args: argparse.Namespace) -> int:
     if delegated is not None:
         return delegated
     config = load_host_config(args.config)
+    config = config_with_transient_node_urls(config, getattr(args, "node_url", None))
     mesh = discover_mesh(config)
     result = _host_mesh_command(args, config, mesh)
     return result if result is not None else 1
@@ -2247,7 +2426,15 @@ def apply_deploy(state: dict, body: dict) -> dict:
     if body.get("name"):
         state["name"] = str(body["name"])
     if isinstance(body.get("allow"), list):
-        state["allow"] = list(body["allow"])
+        if body.get("merge"):
+            merged_allow = list(state.get("allow") or [])
+            for pattern in body["allow"]:
+                if pattern not in merged_allow:
+                    merged_allow.append(pattern)
+            state["allow"] = merged_allow
+            summary["allowMerged"] = True
+        else:
+            state["allow"] = list(body["allow"])
 
     schemes = sorted({r["uri"].split("://", 1)[0] for r in state["routes"]})
     summary.update({"ok": True, "name": state["name"],

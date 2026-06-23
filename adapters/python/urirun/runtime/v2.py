@@ -1591,6 +1591,8 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
     host_common.add_argument("--env-file", default=None, metavar="PATH",
                              help="load KEY=VALUE from a .env (LLM_MODEL / OPENROUTER_API_KEY etc.) before running; "
                                   "./.env is auto-loaded when URIRUN_DOTENV=1. Already-set vars win.")
+    host_common.add_argument("--node-url", action="append", default=[], metavar="[NAME=]URL",
+                             help="temporarily add a node URL for this command without editing the mesh config; repeatable")
 
     host_init = host_sub.add_parser("init", parents=[host_common], help="Create host mesh config")
     host_init.add_argument("--name")
@@ -1794,12 +1796,16 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
     host_ask.add_argument("--no-llm", action="store_true", help="use heuristic flow generation only")
     host_ask.add_argument("--flow-out", help="write the generated URI flow to a YAML/JSON file")
     host_ask.add_argument("--flow-format", choices=["yaml", "json"], help="format for --flow-out; default follows file extension")
+    host_ask.add_argument("--artifact-dir", help="directory for large base64/binary result artifacts; default ~/.urirun/artifacts/host")
+    host_ask.add_argument("--inline-artifacts", action="store_true", help="keep large base64 values inline in stdout")
 
     host_flow = host_sub.add_parser("flow", help="Run saved URI flow documents")
     flow_sub = host_flow.add_subparsers(dest="flow_command", required=True)
     flow_run = flow_sub.add_parser("run", parents=[host_common], help="Run a saved YAML/JSON URI flow")
     flow_run.add_argument("flow", help="flow YAML/JSON file")
     flow_run.add_argument("--execute", action="store_true", help="execute on nodes; default is dry-run")
+    flow_run.add_argument("--artifact-dir", help="directory for large base64/binary result artifacts; default ~/.urirun/artifacts/host")
+    flow_run.add_argument("--inline-artifacts", action="store_true", help="keep large base64 values inline in stdout")
 
     host_task = host_sub.add_parser("task", help="Manage planfile-backed host tasks")
     task_sub = host_task.add_subparsers(dest="task_command", required=True)

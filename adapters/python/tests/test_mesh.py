@@ -5,6 +5,7 @@ import json
 import tempfile
 import time
 import unittest
+import base64
 from pathlib import Path
 
 from urirun import mesh
@@ -1350,6 +1351,78 @@ def test_apply_deploy_bumps_generation_and_reports_etag():
     assert state["generation"] == 2                                  # surface change bumps generation
     assert summary["registryGeneration"] == 2
     assert summary["registryEtag"] == nodemesh.registry_fingerprint(state["routes"])
+
+
+def test_config_with_transient_node_urls():
+    from urirun.node import mesh as nodemesh
+
+    config = {"version": nodemesh.CONFIG_VERSION, "host": {"name": "h"}, "nodes": []}
+    out = nodemesh.config_with_transient_node_urls(
+        config,
+        ["laptop=http://192.168.188.201:8766", "example.org:7777"],
+    )
+
+    assert {"name": "laptop", "url": "http://192.168.188.201:8766", "transient": True} in out["nodes"]
+    assert any(node["name"] == "example_org_7777" and node["url"] == "http://example.org:7777"
+               for node in out["nodes"])
+    assert config["nodes"] == []
+
+
+def test_apply_deploy_merge_preserves_existing_allowlist():
+    import urirun
+    from urirun.node import mesh as nodemesh
+
+    state = {
+        "name": "n",
+        "allow": ["browser://**"],
+        "generation": 1,
+        "registry": urirun.compile_registry({"version": "urirun.bindings.v2", "bindings": {}}),
+        "routes": [],
+    }
+    doc = {"version": "urirun.bindings.v2", "bindings": urirun.tool_binding("screen://n/portal/query/capture", ["echo"], {})}
+
+    summary = nodemesh.apply_deploy(state, {"bindings": doc, "merge": True, "allow": ["screen://**"]})
+
+    assert summary["allowMerged"] is True
+    assert state["allow"] == ["browser://**", "screen://**"]
+
+
+def test_materialize_base64_artifacts(tmp_path):
+    from urirun.node import mesh as nodemesh
+
+    png = b"\x89PNG\r\n\x1a\n" + (b"x" * 4096)
+    result, artifacts = nodemesh.materialize_base64_artifacts(
+        {"result": {"value": {"base64": base64.b64encode(png).decode()}}},
+        artifact_dir=str(tmp_path),
+        hint="test",
+    )
+
+    assert len(artifacts) == 1
+    assert Path(artifacts[0]["path"]).read_bytes() == png
+    ref = result["result"]["value"]["base64"]
+    assert ref["artifactPath"] == artifacts[0]["path"]
+    assert ref["bytes"] == len(png)
+    assert ref["mime"] == "image/png"
+
+
+def test_make_flow_empty_has_actionable_error():
+    from urirun.node import mesh as nodemesh
+
+    mesh_doc = {
+        "nodes": [{"name": "laptop", "reachable": True}],
+        "routes": [],
+        "serviceMap": {},
+    }
+
+    try:
+        nodemesh.make_flow("sprawdź ekran", mesh_doc, selected_nodes=["laptop"], use_llm=False)
+    except ValueError as exc:
+        message = str(exc)
+    else:
+        raise AssertionError("expected actionable empty-flow error")
+
+    assert "Discovered 0 safe route" in message
+    assert "--node-url" in message
 
 
 def test_maybe_load_dotenv(tmp_path, monkeypatch):
