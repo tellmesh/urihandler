@@ -58,7 +58,7 @@ MANIFEST_NAMES = {
     ".urirun/manifest.json",
     ".urirun/bindings.v2.json",
 }
-IGNORED_DIRS = {".git", ".hg", ".svn", ".venv", "__pycache__", "build", "dist", "node_modules", ".pytest_cache"}
+IGNORED_DIRS = {".git", ".hg", ".svn", ".venv", "__pycache__", "build", "dist", "node_modules", ".pytest_cache", ".state", ".urirun", "venv", "env"}
 
 
 DECORATED_BINDINGS: dict[str, dict] = {}

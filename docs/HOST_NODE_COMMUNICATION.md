@@ -10,7 +10,10 @@ host. It is grounded in the current analysis snapshots:
 - `project/duplication.toon.yaml`: no duplicate groups in the scanned subset.
 
 The current bottleneck is not duplicated code. It is concentration of too many
-communication responsibilities in `adapters/python/urirun/node/mesh.py`.
+communication responsibilities in `adapters/python/urirun/node/mesh.py`. Flow
+planning and saved-flow execution have been split into
+`adapters/python/urirun/node/flow.py`; the remaining concentration is mostly the
+HTTP handler, CLI dispatch, deploy/enrollment and event streaming.
 
 ## Roles
 
@@ -150,8 +153,9 @@ planner invent routes that no node actually serves.
 ## Current improvement targets
 
 1. Split `node/mesh.py` by protocol responsibility. Good extraction boundaries
-   are event streaming, deploy/enrollment, host discovery/routing, flow planning,
-   CLI argument construction, and artifact handling.
+   are event streaming, deploy/enrollment, host discovery/routing, CLI argument
+   construction, and artifact handling. Flow planning is already in
+   `node/flow.py` and should stay importable independently from the node server.
 2. Keep `NodeClient` as the reusable host-side transport API and move more
    examples to it. New examples should not carry local `_get`/`_post`, SSE watch
    loops, `$ref` resolution, or route concretization code.
@@ -161,9 +165,9 @@ planner invent routes that no node actually serves.
    that do not merge allow policy as expected and surfaces a structured warning.
 5. Add desktop capability tests that distinguish `screen://`, `kvm://`, CDP and
    OCR. The Lenovo test showed that route presence alone is not enough.
-6. Move recurring natural-language route templates out of examples into reusable
-   host helpers. Examples should specify intent, node and domain, not repeat the
-   full routing boilerplate.
+6. Keep recurring natural-language route templates in reusable host helpers such
+   as `node.flow`. Examples should specify intent, node and domain, not repeat
+   the full routing boilerplate.
 7. Preserve the dry-run/execute distinction at every layer. Autonomous loops may
    observe, draft and prepare; external sends, publishes or irreversible actions
    need an explicit reviewed execute step.

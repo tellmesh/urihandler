@@ -14,9 +14,10 @@ Current baseline from the generated analysis artifacts:
 
 Conclusion: the main problem is not copy-paste duplication. The risk is that the
 host-node communication layer concentrates routing, HTTP protocol handling,
-auth, deploy, events, flow planning, artifacts and CLI delegation in
-`adapters/python/urirun/node/mesh.py`. The next refactors should split
-responsibility boundaries without changing the URI protocol.
+auth, deploy, events and CLI delegation in
+`adapters/python/urirun/node/mesh.py`. Flow planning and flow document execution
+now live in `adapters/python/urirun/node/flow.py`; the next refactors should
+continue splitting responsibility boundaries without changing the URI protocol.
 
 See also [docs/HOST_NODE_COMMUNICATION.md](../docs/HOST_NODE_COMMUNICATION.md),
 which is now the operator-level contract for `/health`, `/routes`, `/run`,
@@ -27,9 +28,10 @@ capability selection and safe autonomous loops.
 
 1. **Split `node/mesh.py` by communication responsibility.**
    Keep the public CLI/API stable, but extract internals into focused modules:
-   event streaming, deploy/enrollment, host discovery/routing, flow planning,
-   CLI argument construction, and artifact handling. The existing untracked
-   `_artifacts.py` / `_util.py` direction is consistent with this.
+   event streaming, deploy/enrollment, host discovery/routing, CLI argument
+   construction, and artifact handling. The current `_artifacts.py`, `_util.py`,
+   `config.py`, `routing.py`, `transport.py` and `flow.py` split is the right
+   direction.
 2. **Make capability readiness explicit.**
    Add a `surface doctor` style command or envelope that reports screen,
    CDP, KVM input, OCR, auth, deploy and run-stream status. A route existing in
@@ -65,6 +67,16 @@ pushed several functions over the CC<=15 standard; that pass hardened the node
 with the test suite as the safety net.
 
 ## Done
+
+**Host/node module split — behavior preserved**
+- Flow planning, YAML/JSON flow documents, LLM/heuristic NL-to-URI generation,
+  step payload chaining and flow execution moved from `node/mesh.py` to
+  `node/flow.py`.
+- `node/mesh.py` re-exports the same flow helper names (`make_flow`,
+  `execute_flow`, `run_flow_document`, etc.), so existing CLI code, examples and
+  tests that patch `mesh.execute_flow` remain compatible.
+- Verified with the focused flow tests and the full Python adapter suite:
+  335 tests passed.
 
 **Complexity (CC≤15) — extract-method, behavior preserved**
 - `apply_deploy` 21 → ~8: extracted `_write_pushed_code`, `_apply_deploy_env`, `_deploy_registry`.

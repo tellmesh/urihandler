@@ -259,13 +259,13 @@ Language-agnostic URI to handler adapter
 ### `project/map.toon.yaml`
 
 ```toon markpact:analysis path=project/map.toon.yaml
-# urirun | 143f 25824L | python:121,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-23
-# stats: 1032 func | 46 cls | 143 mod | CC̄=4.5 | critical:106 | cycles:0
+# urirun | 149f 26588L | python:127,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-23
+# stats: 1058 func | 46 cls | 149 mod | CC̄=4.5 | critical:111 | cycles:0
 # alerts[5]: CC apply_deploy=20; CC _host_mesh_command=18; CC main=18; CC main=17; CC watch_command=17
 # hotspots[5]: serve fan=28; run_command fan=27; main fan=23; main fan=23; serve_node fan=21
 # evolution: baseline
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
-M[143]:
+M[149]:
   adapters/bash/example/hash-connector.sh,10
   adapters/bash/urirun.sh,18
   adapters/conformance.py,149
@@ -298,9 +298,9 @@ M[143]:
   adapters/python/tests/test_host_db.py,113
   adapters/python/tests/test_install_upgrade.py,109
   adapters/python/tests/test_introspect.py,76
-  adapters/python/tests/test_mesh.py,1547
+  adapters/python/tests/test_mesh.py,1608
   adapters/python/tests/test_minimal_imports.py,91
-  adapters/python/tests/test_node_client.py,187
+  adapters/python/tests/test_node_client.py,221
   adapters/python/tests/test_node_diagnostics.py,46
   adapters/python/tests/test_openapi_import.py,49
   adapters/python/tests/test_param_routing.py,59
@@ -350,10 +350,16 @@ M[143]:
   adapters/python/urirun/node/__init__.py,2
   adapters/python/urirun/node/_artifacts.py,111
   adapters/python/urirun/node/_util.py,31
-  adapters/python/urirun/node/client.py,310
+  adapters/python/urirun/node/_version.py,75
+  adapters/python/urirun/node/client.py,319
+  adapters/python/urirun/node/config.py,186
+  adapters/python/urirun/node/flow.py,432
   adapters/python/urirun/node/keyauth.py,177
   adapters/python/urirun/node/manage.py,356
-  adapters/python/urirun/node/mesh.py,3009
+  adapters/python/urirun/node/mesh.py,2387
+  adapters/python/urirun/node/paths.py,39
+  adapters/python/urirun/node/routing.py,117
+  adapters/python/urirun/node/transport.py,433
   adapters/python/urirun/planfile_adapter.py,6
   adapters/python/urirun/runtime/__init__.py,2
   adapters/python/urirun/runtime/_registry.py,719
@@ -594,7 +600,7 @@ D:
     test_no_registry_payload_introspects_live_runtime(tmp_path)
     test_zero_config_registry_carries_builtin_routes()
   adapters/python/tests/test_mesh.py:
-    e: _wait_healthy,_wait_subscribers,_post_run,test_deploy_dir_adds_to_sys_path_and_pythonpath,test_deploy_registry_merge_adds_and_preserves_argv,test_quiet_completion_keeps_banner_off_stdout,test_deploy_registry_merge_handles_sibling_ops,test_registry_fingerprint_stable_and_changes,test_apply_deploy_bumps_generation_and_reports_etag,test_config_with_transient_node_urls,test_deploy_command_uses_transient_node_url,test_apply_deploy_merge_preserves_existing_allowlist,test_materialize_base64_artifacts,test_make_flow_empty_has_actionable_error,test_maybe_load_dotenv,MeshTests
+    e: _wait_healthy,_wait_subscribers,_post_run,test_deploy_dir_adds_to_sys_path_and_pythonpath,test_deploy_registry_merge_adds_and_preserves_argv,test_quiet_completion_keeps_banner_off_stdout,test_deploy_registry_merge_handles_sibling_ops,test_registry_fingerprint_stable_and_changes,test_apply_deploy_bumps_generation_and_reports_etag,test_config_with_transient_node_urls,test_deploy_command_uses_transient_node_url,test_deploy_allow_compat_warning_when_merge_narrows_policy,test_deploy_allow_compat_warning_when_merge_clears_policy,test_deploy_to_node_warns_on_remote_allow_merge_mismatch,test_apply_deploy_merge_preserves_existing_allowlist,test_materialize_base64_artifacts,test_make_flow_empty_has_actionable_error,test_maybe_load_dotenv,MeshTests
     MeshTests: test_host_config_add_node(0),test_apply_deploy_hot_swaps_registry_code_and_allow(0),test_apply_deploy_requires_a_surface(0),test_apply_deploy_accepts_code_only_hot_swap(0),test_watch_node_url_encodes_filters_and_replay_cursor(0),test_parse_sse_line_tracks_event_id_and_ignores_bad_payloads(0),test_emit_streams_progress_to_events_by_run_id(0),test_argv_template_streams_stdout_to_events_by_run_id(0),test_async_run_202_and_cancel_stops_a_streaming_process(0),test_node_client_drives_a_live_node(0),test_node_client_token_auth(0),test_watch_resume_replays_missed_progress_by_event_id(0),test_host_run_stream_command(0),test_route_source_provenance(0),test_apply_deploy_reloads_pushed_code_without_restart(0),test_resolve_admin_token_generate_reuse_and_precedence(0),test_enroll_token_shape_and_match(0),test_copy_id_requires_console_enroll_token_for_first_key(0),test_verify_request_rejects_replay(0),test_apply_deploy_ignores_dangerous_env(0),test_oversized_body_rejected_with_413(0),test_run_rejects_malformed_body_with_400(0),test_parse_ports(0),test_node_list_running_discovers_a_live_node(0),test_require_run_auth_gates_run(0),test_keyauth_sign_verify_and_enrollment(0),test_stop_node_port_when_nothing_listening(0),test_copy_id_gives_actionable_error_not_bare_404(0),test_node_config_defaults(0),test_manage_bindings_and_install(0),test_node_requests_and_host_supplies_connector_and_folder(0),test_node_side_adopt_makes_installed_routes_live(0),test_run_ensuring_self_heals_then_runs(0),test_ensure_scheme_acquires_capability_and_makes_it_live(0),test_fulfill_need_dispatches_scheme_and_folder_requests(0),test_install_source_policy(0),test_connector_install_from_any_source(0),test_connector_discover_scans_local_projects(0),test_discover_derives_routes_from_uninstalled_local_connector(0),test_node_management_routes_admin_gated(0),test_run_with_broken_handler_returns_json_not_dropped_connection(0),test_event_topic_mapping(0),test_fanout_to_mqtt_publishes_each_event(0),test_event_hub_ids_and_replay(0),test_events_endpoint_auth_gating(0),test_heuristic_flow_uses_all_reachable_nodes(0),test_heuristic_flow_maps_config_node_name_to_route_target(0),test_heuristic_flow_maps_linkedin_screen_prompt_to_capture(0),test_heuristic_flow_filters_selected_node_when_route_targets_overlap(0),test_heuristic_flow_maps_browser_linkedin_prompt_to_cdp(0),test_registry_from_remote_routes(0),test_service_map_prefers_exact_uri_over_shared_target(0),test_resolve_step_payload_chains_prior_results(0),test_dig_path_indexes_lists(0),test_resolve_step_payload_passthrough_without_from(0),test_flow_document_round_trips_yaml(0),test_verify_flow_execution_checks_read_back_fragment(0),test_verify_flow_execution_can_fail_result(0),test_run_flow_document_dry_run(0)
     _wait_healthy(base;tries;delay)
     _wait_subscribers(base;want;tries;delay)
@@ -607,6 +613,9 @@ D:
     test_apply_deploy_bumps_generation_and_reports_etag()
     test_config_with_transient_node_urls()
     test_deploy_command_uses_transient_node_url(tmp_path;monkeypatch;capsys)
+    test_deploy_allow_compat_warning_when_merge_narrows_policy()
+    test_deploy_allow_compat_warning_when_merge_clears_policy()
+    test_deploy_to_node_warns_on_remote_allow_merge_mismatch(monkeypatch)
     test_apply_deploy_merge_preserves_existing_allowlist()
     test_materialize_base64_artifacts(tmp_path)
     test_make_flow_empty_has_actionable_error()
@@ -616,7 +625,7 @@ D:
     MinimalImportTests: test_core_import_keeps_host_and_domain_modules_lazy(0),test_host_binding_generation_keeps_executors_lazy(0)
   adapters/python/tests/test_node_client.py:
     e: NodeClientTests
-    NodeClientTests: test_concretize_decodes_uri_and_uses_node_name_default(0),test_auth_merges_token_header(0),test_value_unwraps_common_run_envelopes(0),test_resolve_refs_replaces_nested_step_outputs(0),test_deploy_posts_to_deploy_endpoint_with_auth_and_merge(0),test_ensure_scheme_noops_when_scheme_is_already_live(0),test_ensure_scheme_deploys_installed_bindings(0),test_ensure_scheme_installs_discovered_local_source_then_deploys(0),test_ensure_scheme_reports_missing_candidate(0),test_request_capability_emits_need_route(0),test_push_folder_deploys_text_files(0)
+    NodeClientTests: test_concretize_decodes_uri_and_uses_node_name_default(0),test_auth_merges_token_header(0),test_value_unwraps_common_run_envelopes(0),test_resolve_refs_replaces_nested_step_outputs(0),test_deploy_posts_to_deploy_endpoint_with_auth_and_merge(0),test_deploy_warns_when_merge_narrows_allow_policy(0),test_ensure_scheme_noops_when_scheme_is_already_live(0),test_ensure_scheme_deploys_installed_bindings(0),test_ensure_scheme_installs_discovered_local_source_then_deploys(0),test_ensure_scheme_reports_missing_candidate(0),test_request_capability_emits_need_route(0),test_push_folder_deploys_text_files(0)
   adapters/python/tests/test_node_diagnostics.py:
     e: _template_registry,test_concrete_uri_resolves_against_host_template,test_template_route_denied_without_allow_still_resolves
     _template_registry()
@@ -1001,11 +1010,59 @@ D:
     slug(value)
     json_load(path)
     json_write(path;data)
+  adapters/python/urirun/node/_version.py:
+    e: current_version,_vtuple,latest_version,version_status,version_line
+    current_version()
+    _vtuple(v)
+    latest_version(timeout;ttl)
+    version_status(check_latest)
+    version_line(check_latest)
   adapters/python/urirun/node/client.py:
     e: _get,_post,NodeClient
     NodeClient: __init__(2),_auth(1),routes(0),get(1),concretize(2),run(6),run_async(3),cancel(1),status(1),deploy(6),schemes(0),ensure_scheme(3),run_ensuring(3),request_capability(2),push_folder(3),value(1),resolve_refs(2),recent_log(1),watch(5),stream_run(3)  # Drive one urirun node: ``c = NodeClient("http://host:8765");
     _get(url;timeout;headers)
     _post(url;body;headers;timeout)
+  adapters/python/urirun/node/config.py:
+    e: host_config_path,node_config_path,default_host_config,load_host_config,save_host_config,init_host,add_node,_coerce_node_url,_node_name_from_url,config_with_transient_node_urls,host_config_for_args,default_node_config,load_node_config,save_node_config,init_node,node_url
+    host_config_path(path)
+    node_config_path(path)
+    default_host_config(name)
+    load_host_config(path)
+    save_host_config(config;path)
+    init_host(path;name)
+    add_node(path;name;url;tags)
+    _coerce_node_url(raw)
+    _node_name_from_url(url;index)
+    config_with_transient_node_urls(config;specs)
+    host_config_for_args(args)
+    default_node_config(name;registry)
+    load_node_config(path)
+    save_node_config(config;path)
+    init_node(path;name;registry;host;port;execute)
+    node_url(config;name_or_url)
+  adapters/python/urirun/node/flow.py:
+    e: _flow_format,flow_document,write_flow_document,load_flow_document,first_url,nl_key,append_if_available,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,execute_flow,_flow_stdout,verify_flow_execution,run_flow_document
+    _flow_format(path;requested)
+    flow_document(flow)
+    write_flow_document(path;document;fmt)
+    load_flow_document(path)
+    first_url(prompt)
+    nl_key(text)
+    append_if_available(steps;route_uris;uri;payload;previous)
+    _flow_intents(lowered)
+    _append_target_steps(steps;route_uris;target;intents;url;previous)
+    heuristic_flow(prompt;routes;nodes;selected_nodes)
+    json_from_text(text)
+    normalize_flow(flow;allowed_uris)
+    normalize_flow_or_explain(flow;allowed_uris)
+    llm_flow(prompt;routes;nodes)
+    make_flow(prompt;mesh;selected_nodes;use_llm)
+    _dig_path(data;dotted)
+    resolve_step_payload(payload;results)
+    execute_flow(flow;mesh;registry;execute)
+    _flow_stdout(envelope)
+    verify_flow_execution(document;execution)
+    run_flow_document(document;mesh)
   adapters/python/urirun/node/keyauth.py:
     e: new_enroll_token,token_matches,available,state_dir,authorized_keys_path,_normalize,fingerprint,load_authorized,is_authorized,add_authorized,_canonical,public_openssh,sign,verify,_replay_seen,verify_request
     new_enroll_token(length)
@@ -1048,7 +1105,7 @@ D:
     runtime_info()
     bindings(name)
   adapters/python/urirun/node/mesh.py:
-    e: _flow_format,flow_document,write_flow_document,load_flow_document,host_config_path,node_config_path,default_host_config,load_host_config,save_host_config,init_host,add_node,_coerce_node_url,_node_name_from_url,config_with_transient_node_urls,host_config_for_args,default_node_config,load_node_config,save_node_config,init_node,current_version,_vtuple,latest_version,version_status,version_line,http_json,_probe_health,_listening_ports_local,node_list_running,_pids_on_port,stop_node_port,parse_ports,node_url,deploy_to_node,_watch_node_url,_watch_node_headers,_parse_sse_line,watch_node,event_topic,_mqtt_publish_fn,fanout_to_mqtt,copy_id,routes_from_registry,registry_fingerprint,safe_route,route_target,discover_node,discover_mesh,binding_for_remote_route,registry_from_routes,target_nodes,route_targets_for_nodes,first_url,nl_key,append_if_available,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,execute_flow,_flow_stdout,verify_flow_execution,run_flow_document,format_nodes,format_routes,format_tickets,format_table,_parse_json_option,data_command,monitor_command,_task_prompt,_ticket_payload,_host_local_registry,_run_executor_handler,_resolves_locally,_run_task_flow,_emit_ticket_result,_task_plan,_task_bindings,_task_schedule,_task_list,_task_show,_task_next,_task_create,_task_claim,_task_start,_task_complete,_task_fail,_task_block,_task_ready,_task_wait,_task_dsl,_task_run,_task_loop,task_command,_host_delegated_command,fulfill_need,supply_command,ensure_command,run_command,_print_event,watch_command,_host_mesh_command,copy_id_command,copy_id_cli,deploy_command,_maybe_load_dotenv,host_command,send_json,read_raw,read_json,_pool_executors,_probe_one_route,_render_probe_report,probe_command,node_state_dir,deploy_dir,node_token_path,resolve_admin_token,_write_pushed_code,_apply_deploy_env,_registry_to_bindings,_deploy_registry,apply_deploy,serve_node,_resolve_serve_opts,_node_serve,node_list_command,node_stop_command,node_command,EventHub,NodeContext,NodeHandler
+    e: _flow_format,flow_document,write_flow_document,load_flow_document,first_url,nl_key,append_if_available,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,execute_flow,_flow_stdout,verify_flow_execution,run_flow_document,format_nodes,format_routes,format_tickets,format_table,_parse_json_option,data_command,monitor_command,_task_prompt,_ticket_payload,_host_local_registry,_run_executor_handler,_resolves_locally,_run_task_flow,_emit_ticket_result,_task_plan,_task_bindings,_task_schedule,_task_list,_task_show,_task_next,_task_create,_task_claim,_task_start,_task_complete,_task_fail,_task_block,_task_ready,_task_wait,_task_dsl,_task_run,_task_loop,task_command,_host_delegated_command,fulfill_need,supply_command,ensure_command,run_command,_print_event,watch_command,_host_mesh_command,copy_id_command,copy_id_cli,deploy_command,_maybe_load_dotenv,host_command,send_json,read_raw,read_json,_pool_executors,_probe_one_route,_render_probe_report,probe_command,resolve_admin_token,_write_pushed_code,_apply_deploy_env,_registry_to_bindings,_deploy_registry,apply_deploy,serve_node,_resolve_serve_opts,_node_serve,node_list_command,node_stop_command,node_command,EventHub,NodeContext,NodeHandler
     EventHub: __init__(1),publish(1),subscribe(0),unsubscribe(1),replay_since(1),current_id(0),count(0)  # In-memory pub/sub for a node's live event stream (SSE). Each
     NodeContext: __init__(0)  # Everything a NodeHandler needs to serve one node — the mutab
     NodeHandler: ctx(0),do_OPTIONS(0),_guarded(1),do_GET(0),do_POST(0),_get(0),_get_errors(2),_post(0),_run_target(2),_publish_run(2),_validate_run_request(1),_dispatch_control_uri(3),_respond_async(4),_handle_run(0),_handle_adopt(2),_handle_need(2),_handle_run_control(1),_stream_events(0),_admin_ok(1),_run_ok(1),_handle_deploy(0),_handle_enroll(0),log_message(1)  # The node's HTTP surface. State/config live on `self.server.c
@@ -1056,53 +1113,6 @@ D:
     flow_document(flow)
     write_flow_document(path;document;fmt)
     load_flow_document(path)
-    host_config_path(path)
-    node_config_path(path)
-    default_host_config(name)
-    load_host_config(path)
-    save_host_config(config;path)
-    init_host(path;name)
-    add_node(path;name;url;tags)
-    _coerce_node_url(raw)
-    _node_name_from_url(url;index)
-    config_with_transient_node_urls(config;specs)
-    host_config_for_args(args)
-    default_node_config(name;registry)
-    load_node_config(path)
-    save_node_config(config;path)
-    init_node(path;name;registry;host;port;execute)
-    current_version()
-    _vtuple(v)
-    latest_version(timeout;ttl)
-    version_status(check_latest)
-    version_line(check_latest)
-    http_json(method;url;body;timeout;headers;raw)
-    _probe_health(host;port;timeout)
-    _listening_ports_local()
-    node_list_running(host;ports)
-    _pids_on_port(port)
-    stop_node_port(port;host;timeout)
-    parse_ports(spec)
-    node_url(config;name_or_url)
-    deploy_to_node(url)
-    _watch_node_url(url;scheme;run;last_event_id)
-    _watch_node_headers(last_event_id;token;identity)
-    _parse_sse_line(line;cur_id)
-    watch_node(url;scheme;last_event_id;token;identity;timeout;run)
-    event_topic(prefix;ev)
-    _mqtt_publish_fn(broker)
-    fanout_to_mqtt(events;broker;topic_prefix;publish_fn;on_publish)
-    copy_id(url;identity)
-    routes_from_registry(registry;source)
-    registry_fingerprint(routes)
-    safe_route(route)
-    route_target(uri)
-    discover_node(node)
-    discover_mesh(config)
-    binding_for_remote_route(route)
-    registry_from_routes(routes)
-    target_nodes(prompt;nodes;explicit)
-    route_targets_for_nodes(routes;node_names)
     first_url(prompt)
     nl_key(text)
     append_if_available(steps;route_uris;uri;payload;previous)
@@ -1172,9 +1182,6 @@ D:
     _probe_one_route(url;route;etag0;execute;timeout)
     _render_probe_report(report)
     probe_command(args)
-    node_state_dir()
-    deploy_dir()
-    node_token_path()
     resolve_admin_token(explicit;config_token;generate)
     _write_pushed_code(code;summary)
     _apply_deploy_env(env;summary)
@@ -1187,6 +1194,43 @@ D:
     node_list_command(args)
     node_stop_command(args)
     node_command(args)
+  adapters/python/urirun/node/paths.py:
+    e: node_state_dir,deploy_dir,node_token_path
+    node_state_dir()
+    deploy_dir()
+    node_token_path()
+  adapters/python/urirun/node/routing.py:
+    e: routes_from_registry,registry_fingerprint,safe_route,route_target,binding_for_remote_route,registry_from_routes,target_nodes,route_targets_for_nodes
+    routes_from_registry(registry;source)
+    registry_fingerprint(routes)
+    safe_route(route)
+    route_target(uri)
+    binding_for_remote_route(route)
+    registry_from_routes(routes)
+    target_nodes(prompt;nodes;explicit)
+    route_targets_for_nodes(routes;node_names)
+  adapters/python/urirun/node/transport.py:
+    e: http_json,_probe_health,_listening_ports_local,node_list_running,_pids_on_port,stop_node_port,parse_ports,_deploy_allow_list,_annotate_deploy_allow_compat,deploy_to_node,_watch_node_url,_watch_node_headers,_parse_sse_line,watch_node,event_topic,_mqtt_publish_fn,fanout_to_mqtt,copy_id,discover_node,discover_mesh
+    http_json(method;url;body;timeout;headers;raw)
+    _probe_health(host;port;timeout)
+    _listening_ports_local()
+    node_list_running(host;ports)
+    _pids_on_port(port)
+    stop_node_port(port;host;timeout)
+    parse_ports(spec)
+    _deploy_allow_list(data)
+    _annotate_deploy_allow_compat(result)
+    deploy_to_node(url)
+    _watch_node_url(url;scheme;run;last_event_id)
+    _watch_node_headers(last_event_id;token;identity)
+    _parse_sse_line(line;cur_id)
+    watch_node(url;scheme;last_event_id;token;identity;timeout;run)
+    event_topic(prefix;ev)
+    _mqtt_publish_fn(broker)
+    fanout_to_mqtt(events;broker;topic_prefix;publish_fn;on_publish)
+    copy_id(url;identity)
+    discover_node(node)
+    discover_mesh(config)
   adapters/python/urirun/planfile_adapter.py:
   adapters/python/urirun/runtime/__init__.py:
   adapters/python/urirun/runtime/_registry.py:
@@ -1708,7 +1752,7 @@ D:
 
 ```prolog markpact:analysis path=project/logic.pl
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.59', 'javascript').
+project_metadata('urirun', '0.4.61', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -1743,9 +1787,9 @@ project_file('adapters/python/tests/test_host_dashboard.py', 97, 'python').
 project_file('adapters/python/tests/test_host_db.py', 113, 'python').
 project_file('adapters/python/tests/test_install_upgrade.py', 109, 'python').
 project_file('adapters/python/tests/test_introspect.py', 76, 'python').
-project_file('adapters/python/tests/test_mesh.py', 1547, 'python').
+project_file('adapters/python/tests/test_mesh.py', 1608, 'python').
 project_file('adapters/python/tests/test_minimal_imports.py', 91, 'python').
-project_file('adapters/python/tests/test_node_client.py', 187, 'python').
+project_file('adapters/python/tests/test_node_client.py', 221, 'python').
 project_file('adapters/python/tests/test_node_diagnostics.py', 46, 'python').
 project_file('adapters/python/tests/test_openapi_import.py', 49, 'python').
 project_file('adapters/python/tests/test_param_routing.py', 59, 'python').
@@ -1795,10 +1839,16 @@ project_file('adapters/python/urirun/mesh.py', 6, 'python').
 project_file('adapters/python/urirun/node/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/node/_artifacts.py', 111, 'python').
 project_file('adapters/python/urirun/node/_util.py', 31, 'python').
-project_file('adapters/python/urirun/node/client.py', 310, 'python').
+project_file('adapters/python/urirun/node/_version.py', 75, 'python').
+project_file('adapters/python/urirun/node/client.py', 319, 'python').
+project_file('adapters/python/urirun/node/config.py', 186, 'python').
+project_file('adapters/python/urirun/node/flow.py', 432, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 177, 'python').
 project_file('adapters/python/urirun/node/manage.py', 356, 'python').
-project_file('adapters/python/urirun/node/mesh.py', 3009, 'python').
+project_file('adapters/python/urirun/node/mesh.py', 2387, 'python').
+project_file('adapters/python/urirun/node/paths.py', 39, 'python').
+project_file('adapters/python/urirun/node/routing.py', 117, 'python').
+project_file('adapters/python/urirun/node/transport.py', 433, 'python').
 project_file('adapters/python/urirun/planfile_adapter.py', 6, 'python').
 project_file('adapters/python/urirun/runtime/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/runtime/_registry.py', 719, 'python').
@@ -1983,6 +2033,9 @@ python_function('adapters/python/tests/test_mesh.py', 'test_registry_fingerprint
 python_function('adapters/python/tests/test_mesh.py', 'test_apply_deploy_bumps_generation_and_reports_etag', 0, 4, 4).
 python_function('adapters/python/tests/test_mesh.py', 'test_config_with_transient_node_urls', 0, 4, 2).
 python_function('adapters/python/tests/test_mesh.py', 'test_deploy_command_uses_transient_node_url', 3, 3, 9).
+python_function('adapters/python/tests/test_mesh.py', 'test_deploy_allow_compat_warning_when_merge_narrows_policy', 0, 5, 1).
+python_function('adapters/python/tests/test_mesh.py', 'test_deploy_allow_compat_warning_when_merge_clears_policy', 0, 3, 1).
+python_function('adapters/python/tests/test_mesh.py', 'test_deploy_to_node_warns_on_remote_allow_merge_mismatch', 1, 3, 3).
 python_function('adapters/python/tests/test_mesh.py', 'test_apply_deploy_merge_preserves_existing_allowlist', 0, 3, 3).
 python_function('adapters/python/tests/test_mesh.py', 'test_materialize_base64_artifacts', 1, 6, 7).
 python_function('adapters/python/tests/test_mesh.py', 'test_make_flow_empty_has_actionable_error', 0, 5, 3).
@@ -2275,8 +2328,50 @@ python_function('adapters/python/urirun/node/_util.py', 'now_id', 0, 1, 3).
 python_function('adapters/python/urirun/node/_util.py', 'slug', 1, 2, 3).
 python_function('adapters/python/urirun/node/_util.py', 'json_load', 1, 1, 3).
 python_function('adapters/python/urirun/node/_util.py', 'json_write', 2, 1, 4).
+python_function('adapters/python/urirun/node/_version.py', 'current_version', 0, 2, 1).
+python_function('adapters/python/urirun/node/_version.py', '_vtuple', 1, 5, 7).
+python_function('adapters/python/urirun/node/_version.py', 'latest_version', 2, 5, 11).
+python_function('adapters/python/urirun/node/_version.py', 'version_status', 1, 5, 3).
+python_function('adapters/python/urirun/node/_version.py', 'version_line', 1, 3, 1).
 python_function('adapters/python/urirun/node/client.py', '_get', 3, 3, 5).
 python_function('adapters/python/urirun/node/client.py', '_post', 4, 7, 9).
+python_function('adapters/python/urirun/node/config.py', 'host_config_path', 1, 5, 4).
+python_function('adapters/python/urirun/node/config.py', 'node_config_path', 1, 2, 2).
+python_function('adapters/python/urirun/node/config.py', 'default_host_config', 1, 3, 2).
+python_function('adapters/python/urirun/node/config.py', 'load_host_config', 1, 2, 6).
+python_function('adapters/python/urirun/node/config.py', 'save_host_config', 2, 1, 2).
+python_function('adapters/python/urirun/node/config.py', 'init_host', 2, 1, 2).
+python_function('adapters/python/urirun/node/config.py', 'add_node', 4, 4, 6).
+python_function('adapters/python/urirun/node/config.py', '_coerce_node_url', 1, 5, 4).
+python_function('adapters/python/urirun/node/config.py', '_node_name_from_url', 2, 4, 2).
+python_function('adapters/python/urirun/node/config.py', 'config_with_transient_node_urls', 2, 9, 11).
+python_function('adapters/python/urirun/node/config.py', 'host_config_for_args', 1, 1, 3).
+python_function('adapters/python/urirun/node/config.py', 'default_node_config', 2, 2, 1).
+python_function('adapters/python/urirun/node/config.py', 'load_node_config', 1, 2, 5).
+python_function('adapters/python/urirun/node/config.py', 'save_node_config', 2, 1, 2).
+python_function('adapters/python/urirun/node/config.py', 'init_node', 6, 1, 3).
+python_function('adapters/python/urirun/node/config.py', 'node_url', 2, 8, 4).
+python_function('adapters/python/urirun/node/flow.py', '_flow_format', 2, 3, 2).
+python_function('adapters/python/urirun/node/flow.py', 'flow_document', 1, 3, 2).
+python_function('adapters/python/urirun/node/flow.py', 'write_flow_document', 3, 3, 7).
+python_function('adapters/python/urirun/node/flow.py', 'load_flow_document', 1, 5, 9).
+python_function('adapters/python/urirun/node/flow.py', 'first_url', 1, 2, 2).
+python_function('adapters/python/urirun/node/flow.py', 'nl_key', 1, 1, 6).
+python_function('adapters/python/urirun/node/flow.py', 'append_if_available', 5, 5, 5).
+python_function('adapters/python/urirun/node/flow.py', '_flow_intents', 1, 4, 3).
+python_function('adapters/python/urirun/node/flow.py', '_append_target_steps', 6, 10, 2).
+python_function('adapters/python/urirun/node/flow.py', 'heuristic_flow', 4, 8, 12).
+python_function('adapters/python/urirun/node/flow.py', 'json_from_text', 1, 5, 7).
+python_function('adapters/python/urirun/node/flow.py', 'normalize_flow', 2, 15, 9).
+python_function('adapters/python/urirun/node/flow.py', 'normalize_flow_or_explain', 2, 10, 7).
+python_function('adapters/python/urirun/node/flow.py', 'llm_flow', 3, 7, 7).
+python_function('adapters/python/urirun/node/flow.py', 'make_flow', 4, 6, 5).
+python_function('adapters/python/urirun/node/flow.py', '_dig_path', 2, 4, 4).
+python_function('adapters/python/urirun/node/flow.py', 'resolve_step_payload', 2, 5, 5).
+python_function('adapters/python/urirun/node/flow.py', 'execute_flow', 4, 9, 9).
+python_function('adapters/python/urirun/node/flow.py', '_flow_stdout', 1, 6, 2).
+python_function('adapters/python/urirun/node/flow.py', 'verify_flow_execution', 2, 10, 6).
+python_function('adapters/python/urirun/node/flow.py', 'run_flow_document', 2, 7, 7).
 python_function('adapters/python/urirun/node/keyauth.py', 'new_enroll_token', 1, 2, 3).
 python_function('adapters/python/urirun/node/keyauth.py', 'token_matches', 2, 3, 4).
 python_function('adapters/python/urirun/node/keyauth.py', 'available', 0, 2, 0).
@@ -2318,53 +2413,6 @@ python_function('adapters/python/urirun/node/mesh.py', '_flow_format', 2, 3, 2).
 python_function('adapters/python/urirun/node/mesh.py', 'flow_document', 1, 3, 2).
 python_function('adapters/python/urirun/node/mesh.py', 'write_flow_document', 3, 3, 7).
 python_function('adapters/python/urirun/node/mesh.py', 'load_flow_document', 1, 5, 9).
-python_function('adapters/python/urirun/node/mesh.py', 'host_config_path', 1, 5, 4).
-python_function('adapters/python/urirun/node/mesh.py', 'node_config_path', 1, 2, 2).
-python_function('adapters/python/urirun/node/mesh.py', 'default_host_config', 1, 3, 2).
-python_function('adapters/python/urirun/node/mesh.py', 'load_host_config', 1, 2, 6).
-python_function('adapters/python/urirun/node/mesh.py', 'save_host_config', 2, 1, 2).
-python_function('adapters/python/urirun/node/mesh.py', 'init_host', 2, 1, 2).
-python_function('adapters/python/urirun/node/mesh.py', 'add_node', 4, 4, 6).
-python_function('adapters/python/urirun/node/mesh.py', '_coerce_node_url', 1, 5, 4).
-python_function('adapters/python/urirun/node/mesh.py', '_node_name_from_url', 2, 4, 2).
-python_function('adapters/python/urirun/node/mesh.py', 'config_with_transient_node_urls', 2, 9, 11).
-python_function('adapters/python/urirun/node/mesh.py', 'host_config_for_args', 1, 1, 3).
-python_function('adapters/python/urirun/node/mesh.py', 'default_node_config', 2, 2, 1).
-python_function('adapters/python/urirun/node/mesh.py', 'load_node_config', 1, 2, 5).
-python_function('adapters/python/urirun/node/mesh.py', 'save_node_config', 2, 1, 2).
-python_function('adapters/python/urirun/node/mesh.py', 'init_node', 6, 1, 3).
-python_function('adapters/python/urirun/node/mesh.py', 'current_version', 0, 2, 1).
-python_function('adapters/python/urirun/node/mesh.py', '_vtuple', 1, 5, 7).
-python_function('adapters/python/urirun/node/mesh.py', 'latest_version', 2, 5, 11).
-python_function('adapters/python/urirun/node/mesh.py', 'version_status', 1, 5, 3).
-python_function('adapters/python/urirun/node/mesh.py', 'version_line', 1, 3, 1).
-python_function('adapters/python/urirun/node/mesh.py', 'http_json', 6, 8, 8).
-python_function('adapters/python/urirun/node/mesh.py', '_probe_health', 3, 6, 3).
-python_function('adapters/python/urirun/node/mesh.py', '_listening_ports_local', 0, 7, 8).
-python_function('adapters/python/urirun/node/mesh.py', 'node_list_running', 2, 9, 13).
-python_function('adapters/python/urirun/node/mesh.py', '_pids_on_port', 1, 9, 12).
-python_function('adapters/python/urirun/node/mesh.py', 'stop_node_port', 3, 9, 6).
-python_function('adapters/python/urirun/node/mesh.py', 'parse_ports', 1, 4, 7).
-python_function('adapters/python/urirun/node/mesh.py', 'node_url', 2, 8, 4).
-python_function('adapters/python/urirun/node/mesh.py', 'deploy_to_node', 1, 10, 5).
-python_function('adapters/python/urirun/node/mesh.py', '_watch_node_url', 4, 6, 6).
-python_function('adapters/python/urirun/node/mesh.py', '_watch_node_headers', 3, 4, 3).
-python_function('adapters/python/urirun/node/mesh.py', '_parse_sse_line', 2, 6, 5).
-python_function('adapters/python/urirun/node/mesh.py', 'watch_node', 7, 4, 7).
-python_function('adapters/python/urirun/node/mesh.py', 'event_topic', 2, 5, 4).
-python_function('adapters/python/urirun/node/mesh.py', '_mqtt_publish_fn', 1, 2, 3).
-python_function('adapters/python/urirun/node/mesh.py', 'fanout_to_mqtt', 5, 4, 5).
-python_function('adapters/python/urirun/node/mesh.py', 'copy_id', 2, 8, 14).
-python_function('adapters/python/urirun/node/mesh.py', 'routes_from_registry', 2, 9, 5).
-python_function('adapters/python/urirun/node/mesh.py', 'registry_fingerprint', 1, 2, 6).
-python_function('adapters/python/urirun/node/mesh.py', 'safe_route', 1, 4, 4).
-python_function('adapters/python/urirun/node/mesh.py', 'route_target', 1, 1, 1).
-python_function('adapters/python/urirun/node/mesh.py', 'discover_node', 1, 2, 5).
-python_function('adapters/python/urirun/node/mesh.py', 'discover_mesh', 1, 7, 6).
-python_function('adapters/python/urirun/node/mesh.py', 'binding_for_remote_route', 1, 3, 1).
-python_function('adapters/python/urirun/node/mesh.py', 'registry_from_routes', 1, 3, 3).
-python_function('adapters/python/urirun/node/mesh.py', 'target_nodes', 3, 10, 2).
-python_function('adapters/python/urirun/node/mesh.py', 'route_targets_for_nodes', 2, 14, 5).
 python_function('adapters/python/urirun/node/mesh.py', 'first_url', 1, 2, 2).
 python_function('adapters/python/urirun/node/mesh.py', 'nl_key', 1, 1, 6).
 python_function('adapters/python/urirun/node/mesh.py', 'append_if_available', 5, 5, 5).
@@ -2434,9 +2482,6 @@ python_function('adapters/python/urirun/node/mesh.py', '_pool_executors', 1, 1, 
 python_function('adapters/python/urirun/node/mesh.py', '_probe_one_route', 5, 13, 10).
 python_function('adapters/python/urirun/node/mesh.py', '_render_probe_report', 1, 10, 4).
 python_function('adapters/python/urirun/node/mesh.py', 'probe_command', 1, 14, 11).
-python_function('adapters/python/urirun/node/mesh.py', 'node_state_dir', 0, 1, 3).
-python_function('adapters/python/urirun/node/mesh.py', 'deploy_dir', 0, 5, 7).
-python_function('adapters/python/urirun/node/mesh.py', 'node_token_path', 0, 1, 1).
 python_function('adapters/python/urirun/node/mesh.py', 'resolve_admin_token', 3, 11, 11).
 python_function('adapters/python/urirun/node/mesh.py', '_write_pushed_code', 2, 9, 13).
 python_function('adapters/python/urirun/node/mesh.py', '_apply_deploy_env', 2, 4, 4).
@@ -2449,6 +2494,37 @@ python_function('adapters/python/urirun/node/mesh.py', '_node_serve', 4, 1, 4).
 python_function('adapters/python/urirun/node/mesh.py', 'node_list_command', 1, 7, 7).
 python_function('adapters/python/urirun/node/mesh.py', 'node_stop_command', 1, 14, 9).
 python_function('adapters/python/urirun/node/mesh.py', 'node_command', 1, 13, 13).
+python_function('adapters/python/urirun/node/paths.py', 'node_state_dir', 0, 1, 3).
+python_function('adapters/python/urirun/node/paths.py', 'deploy_dir', 0, 5, 7).
+python_function('adapters/python/urirun/node/paths.py', 'node_token_path', 0, 1, 1).
+python_function('adapters/python/urirun/node/routing.py', 'routes_from_registry', 2, 9, 5).
+python_function('adapters/python/urirun/node/routing.py', 'registry_fingerprint', 1, 2, 6).
+python_function('adapters/python/urirun/node/routing.py', 'safe_route', 1, 4, 4).
+python_function('adapters/python/urirun/node/routing.py', 'route_target', 1, 1, 1).
+python_function('adapters/python/urirun/node/routing.py', 'binding_for_remote_route', 1, 3, 1).
+python_function('adapters/python/urirun/node/routing.py', 'registry_from_routes', 1, 3, 3).
+python_function('adapters/python/urirun/node/routing.py', 'target_nodes', 3, 10, 2).
+python_function('adapters/python/urirun/node/routing.py', 'route_targets_for_nodes', 2, 14, 5).
+python_function('adapters/python/urirun/node/transport.py', 'http_json', 6, 8, 8).
+python_function('adapters/python/urirun/node/transport.py', '_probe_health', 3, 6, 3).
+python_function('adapters/python/urirun/node/transport.py', '_listening_ports_local', 0, 7, 8).
+python_function('adapters/python/urirun/node/transport.py', 'node_list_running', 2, 9, 13).
+python_function('adapters/python/urirun/node/transport.py', '_pids_on_port', 1, 9, 12).
+python_function('adapters/python/urirun/node/transport.py', 'stop_node_port', 3, 9, 6).
+python_function('adapters/python/urirun/node/transport.py', 'parse_ports', 1, 4, 7).
+python_function('adapters/python/urirun/node/transport.py', '_deploy_allow_list', 1, 7, 3).
+python_function('adapters/python/urirun/node/transport.py', '_annotate_deploy_allow_compat', 1, 11, 7).
+python_function('adapters/python/urirun/node/transport.py', 'deploy_to_node', 1, 13, 7).
+python_function('adapters/python/urirun/node/transport.py', '_watch_node_url', 4, 6, 6).
+python_function('adapters/python/urirun/node/transport.py', '_watch_node_headers', 3, 4, 3).
+python_function('adapters/python/urirun/node/transport.py', '_parse_sse_line', 2, 6, 5).
+python_function('adapters/python/urirun/node/transport.py', 'watch_node', 7, 4, 7).
+python_function('adapters/python/urirun/node/transport.py', 'event_topic', 2, 5, 4).
+python_function('adapters/python/urirun/node/transport.py', '_mqtt_publish_fn', 1, 2, 3).
+python_function('adapters/python/urirun/node/transport.py', 'fanout_to_mqtt', 5, 4, 5).
+python_function('adapters/python/urirun/node/transport.py', 'copy_id', 2, 8, 14).
+python_function('adapters/python/urirun/node/transport.py', 'discover_node', 1, 2, 5).
+python_function('adapters/python/urirun/node/transport.py', 'discover_mesh', 1, 7, 6).
 python_function('adapters/python/urirun/runtime/_registry.py', 'parse_uri', 1, 8, 10).
 python_function('adapters/python/urirun/runtime/_registry.py', 'translate', 1, 2, 2).
 python_function('adapters/python/urirun/runtime/_registry.py', 'hash_uri', 1, 1, 3).
@@ -3050,7 +3126,8 @@ python_method('NodeClientTests', 'test_concretize_decodes_uri_and_uses_node_name
 python_method('NodeClientTests', 'test_auth_merges_token_header', 0, 1, 3).
 python_method('NodeClientTests', 'test_value_unwraps_common_run_envelopes', 0, 1, 2).
 python_method('NodeClientTests', 'test_resolve_refs_replaces_nested_step_outputs', 0, 1, 2).
-python_method('NodeClientTests', 'test_deploy_posts_to_deploy_endpoint_with_auth_and_merge', 0, 2, 5).
+python_method('NodeClientTests', 'test_deploy_posts_to_deploy_endpoint_with_auth_and_merge', 0, 3, 5).
+python_method('NodeClientTests', 'test_deploy_warns_when_merge_narrows_allow_policy', 0, 1, 3).
 python_method('NodeClientTests', 'test_ensure_scheme_noops_when_scheme_is_already_live', 0, 1, 3).
 python_method('NodeClientTests', 'test_ensure_scheme_deploys_installed_bindings', 0, 1, 6).
 python_method('NodeClientTests', 'test_ensure_scheme_installs_discovered_local_source_then_deploys', 0, 1, 7).
@@ -3153,7 +3230,7 @@ python_method('NodeClient', 'run', 6, 5, 2).
 python_method('NodeClient', 'run_async', 3, 3, 2).
 python_method('NodeClient', 'cancel', 1, 1, 1).
 python_method('NodeClient', 'status', 1, 1, 1).
-python_method('NodeClient', 'deploy', 6, 6, 2).
+python_method('NodeClient', 'deploy', 6, 9, 5).
 python_method('NodeClient', 'schemes', 0, 2, 4).
 python_method('NodeClient', 'ensure_scheme', 3, 20, 10).
 python_method('NodeClient', 'run_ensuring', 3, 4, 5).
@@ -3318,7 +3395,7 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 
 ## Call Graph
 
-*385 nodes · 500 edges · 31 modules · CC̄=4.4*
+*385 nodes · 500 edges · 31 modules · CC̄=4.5*
 
 ### Hubs (by degree)
 
@@ -3329,15 +3406,15 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 | `_write_planfile_action` *(in adapters.python.urirun.host.host_integrations)* | 8 | 1 | 39 | **40** |
 | `info` *(in adapters.python.urirun.runtime.errors)* | 13 ⚠ | 2 | 27 | **29** |
 | `main` *(in scripts.repin_connectors)* | 18 ⚠ | 0 | 28 | **28** |
-| `_cmd_upgrade` *(in adapters.python.urirun.runtime.v2)* | 14 ⚠ | 0 | 27 | **27** |
 | `proto_from_registry` *(in adapters.python.urirun.runtime.codegen)* | 13 ⚠ | 2 | 25 | **27** |
-| `_run_query_route` *(in adapters.python.urirun.host.host_db)* | 7 | 1 | 26 | **27** |
+| `main` *(in scripts.lint_connectors)* | 14 ⚠ | 0 | 27 | **27** |
+| `_cmd_upgrade` *(in adapters.python.urirun.runtime.v2)* | 14 ⚠ | 0 | 27 | **27** |
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
 # generated in 0.19s
 # nodes: 385 | edges: 500 | modules: 31
-# CC̄=4.4
+# CC̄=4.5
 
 HUBS[20]:
   adapters.python.urirun.runtime.v2._build_parser
@@ -3350,36 +3427,36 @@ HUBS[20]:
     CC=13  in:2  out:27  total:29
   scripts.repin_connectors.main
     CC=18  in:0  out:28  total:28
-  adapters.python.urirun.runtime.v2._cmd_upgrade
-    CC=14  in:0  out:27  total:27
   adapters.python.urirun.runtime.codegen.proto_from_registry
     CC=13  in:2  out:25  total:27
-  adapters.python.urirun.host.host_db._run_query_route
-    CC=7  in:1  out:26  total:27
   scripts.lint_connectors.main
     CC=14  in:0  out:27  total:27
-  adapters.python.urirun.host.host_dashboard.summary
-    CC=6  in:1  out:25  total:26
-  adapters.python.urirun.runtime.v2.validate_binding_document
-    CC=12  in:2  out:24  total:26
+  adapters.python.urirun.runtime.v2._cmd_upgrade
+    CC=14  in:0  out:27  total:27
+  adapters.python.urirun.host.host_db._run_query_route
+    CC=7  in:1  out:26  total:27
   adapters.python.urirun.host.host_dashboard._dashboard_api_response
     CC=13  in:1  out:25  total:26
-  adapters.python.urirun.runtime.v1.run
-    CC=14  in:1  out:23  total:24
+  adapters.python.urirun.runtime.v2.validate_binding_document
+    CC=12  in:2  out:24  total:26
+  adapters.python.urirun.host.host_dashboard.summary
+    CC=6  in:1  out:25  total:26
   adapters.python.urirun.testing.smoke
     CC=9  in:1  out:23  total:24
-  adapters.python.urirun.runtime.v2.scan_artifacts
-    CC=11  in:4  out:19  total:23
+  adapters.python.urirun.runtime.v1.run
+    CC=14  in:1  out:23  total:24
   adapters.python.urirun.connectors.connector_lint.lint_connector
     CC=10  in:3  out:20  total:23
+  adapters.python.urirun.runtime.v2.scan_artifacts
+    CC=11  in:4  out:19  total:23
   adapters.python.urirun.host.host_db.search_records
     CC=6  in:1  out:21  total:22
   adapters.python.urirun.runtime.errors.problem
     CC=10  in:0  out:22  total:22
   adapters.python.urirun.runtime.v1._run_process_streaming
     CC=7  in:1  out:20  total:21
-  adapters.python.urirun.host.domain_monitor._route_flow
-    CC=4  in:0  out:20  total:20
+  adapters.python.urirun.runtime.codegen.gen_command
+    CC=9  in:0  out:20  total:20
 
 MODULES:
   adapters.c.urirun  [3 funcs]

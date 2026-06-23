@@ -159,9 +159,6 @@ installed in the node venv, else discover a connector (catalog/loca
 line 
 - **Calls**: sys.stdout.write, sys.stdout.flush, cache.get, line.strip, json.loads, sys.stdout.flush, ref.partition, getattr
 
-### adapters.python.urirun.node.mesh.NodeHandler._get
-- **Calls**: self.path.partition, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json, self.path.startswith, self._stream_events, list, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json
-
 ### adapters.python.urirun.runtime.v2_grpc.main
 - **Calls**: argparse.ArgumentParser, parser.add_subparsers, sub.add_parser, s.add_argument, s.add_argument, s.add_argument, s.add_argument, s.add_argument
 
@@ -185,13 +182,13 @@ refresh. The token bundle lives in the keyring under ``oauth:<provider>``
 > Project an error envelope to RFC 9457 ``application/problem+json``.
 - **Calls**: dict, adapters.python.urirun.runtime.errors.category_meta, err.get, adapters.python.urirun.runtime.errors.classify, err.get, adapters.python.urirun.runtime.errors.error_code, err.get, err.get
 
+### adapters.python.urirun.node.mesh.NodeHandler._handle_enroll
+- **Calls**: adapters.python.urirun.node.mesh.read_raw, keyauth.verify_request, keyauth.token_matches, print, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json, keyauth.available, adapters.python.urirun.node.mesh.send_json
+
 ### adapters.python.urirun.node.client.NodeClient.watch
 > Yield the node's SSE events live, each tagged with its `_id`. `scheme`/`run`
 filter server-side; `last_event_id` replays what was missed (resume after
 - **Calls**: urlencode, self._auth, params.append, params.append, params.append, str, urllib.request.urlopen, urllib.request.Request
-
-### adapters.python.urirun.node.mesh.NodeHandler._handle_enroll
-- **Calls**: adapters.python.urirun.node.mesh.read_raw, keyauth.verify_request, keyauth.token_matches, print, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json, keyauth.available, adapters.python.urirun.node.mesh.send_json
 
 ### examples.matrix.verify.main
 - **Calls**: contracts.get, sorted, None.removesuffix, adapters.python.urirun.validate_binding_document, examples.matrix.verify.essential, contracts.items, json.load, print
@@ -215,6 +212,9 @@ filter server-side; `last_event_id` replays what was missed (resume after
 > Report the resolved urirun binary, version and interpreter, plus connector
 health — the fastest way to diagnose a version split (stale binary on PATH)
 - **Calls**: getattr, print, print, print, print, adapters.python.urirun.runtime.v2.connector_health, adapters.python.urirun.runtime.v2._package_version, reglib._emit_json
+
+### adapters.python.urirun.node.mesh.node_command
+- **Calls**: adapters.python.urirun.node.config.load_node_config, dict, v2.load_registry_arg, reglib._emit_json, adapters.python.urirun.node.mesh.node_list_command, adapters.python.urirun.node.mesh.node_stop_command, reglib._emit_json, node.get
 
 ### adapters.python.urirun.node.client.NodeClient.resolve_refs
 > Chain steps: replace "$ref:<i>.<field.path>" with an earlier step's output.
@@ -262,23 +262,21 @@ _cmd_upgrade [adapters.python.urirun.runtime.v2]
 _handler_worker_main [adapters.python.urirun.runtime.worker]
 ```
 
-### Flow 8: _get
-```
-_get [adapters.python.urirun.node.mesh.NodeHandler]
-  └─ →> send_json
-  └─ →> send_json
-```
-
-### Flow 9: _worker_main
+### Flow 8: _worker_main
 ```
 _worker_main [adapters.python.urirun.runtime.worker]
 ```
 
-### Flow 10: _cmd_show
+### Flow 9: _cmd_show
 ```
 _cmd_show [adapters.python.urirun.connectors.connect_catalog]
   └─> fetch_connector
       └─> _get_json
+```
+
+### Flow 10: _provider_oauth
+```
+_provider_oauth [adapters.python.urirun.runtime.secrets]
 ```
 
 ## Key Classes

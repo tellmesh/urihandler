@@ -1,15 +1,10 @@
-# code2llm | 144f 22791L | python:85,json:12,shell:10,yaml:4,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-23
+# code2llm | 144f 22801L | python:85,json:12,shell:10,yaml:4,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-23
 # generated in 0.05s
 # CC̅=4.5 | critical:16/1070 | dups:0 | cycles:0
 
 HEALTH[16]:
   🟡 CC    main CC=18 (limit:15)
   🟡 CC    main CC=17 (limit:15)
-  🟡 CC    ensure_scheme CC=20 (limit:15)
-  🟡 CC    push_folder CC=16 (limit:15)
-  🟡 CC    watch CC=16 (limit:15)
-  🟡 CC    resolveParams CC=15 (limit:15)
-  🟡 CC    run CC=19 (limit:15)
   🟡 CC    normalize_flow CC=15 (limit:15)
   🟡 CC    data_command CC=15 (limit:15)
   🟡 CC    watch_command CC=17 (limit:15)
@@ -19,6 +14,11 @@ HEALTH[16]:
   🟡 CC    _stream_events CC=19 (limit:15)
   🟡 CC    serve_node CC=15 (limit:15)
   🟡 CC    _resolve_serve_opts CC=17 (limit:15)
+  🟡 CC    resolveParams CC=15 (limit:15)
+  🟡 CC    run CC=19 (limit:15)
+  🟡 CC    ensure_scheme CC=20 (limit:15)
+  🟡 CC    push_folder CC=16 (limit:15)
+  🟡 CC    watch CC=16 (limit:15)
 
 REFACTOR[1]:
   1. split 16 high-CC methods  (CC>15)
@@ -134,7 +134,7 @@ LAYERS:
   │
   adapters/                       CC̄=4.5    ←in:9  →out:0
   │ !! v2                        2584L  1C  125m  CC=14     ←3
-  │ !! mesh                      2386L  3C  115m  CC=20     ←1
+  │ !! mesh                      2386L  3C  115m  CC=20     ←2
   │ !! _registry                  718L  0C   43m  CC=14     ←0
   │ !! __init__                   702L  1C   49m  CC=14     ←10
   │ !! _scan                      673L  0C   37m  CC=14     ←0
@@ -145,13 +145,13 @@ LAYERS:
   │ domain_monitor             485L  1C   25m  CC=11     ←1
   │ v1                         471L  0C   25m  CC=14     ←0
   │ codegen                    438L  0C   19m  CC=14     ←0
-  │ transport                  431L  0C   20m  CC=13     ←1
+  │ transport                  432L  0C   20m  CC=13     ←2
   │ connector_scaffold         412L  0C   11m  CC=3      ←0
   │ connector_lint             390L  0C   19m  CC=14     ←1
   │ task_planner               371L  2C   17m  CC=12     ←3
   │ host_integrations          355L  0C   15m  CC=8      ←0
   │ manage                     355L  0C   21m  CC=12     ←0
-  │ !! client                     309L  1C   22m  CC=20     ←0
+  │ !! client                     318L  1C   22m  CC=20     ←0
   │ planfile_adapter           279L  1C   26m  CC=9      ←0
   │ worker                     266L  3C   20m  CC=13     ←0
   │ connect_catalog            254L  0C   17m  CC=13     ←0

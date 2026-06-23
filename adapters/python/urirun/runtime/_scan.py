@@ -26,7 +26,7 @@ DEFAULT_MANIFEST_NAMES = {
     ".urirun/bindings.json",
     ".urirun/routes.json",
 }
-IGNORED_DIRS = {".git", ".hg", ".svn", ".venv", "__pycache__", "build", "dist", "node_modules", ".pytest_cache"}
+IGNORED_DIRS = {".git", ".hg", ".svn", ".venv", "__pycache__", "build", "dist", "node_modules", ".pytest_cache", ".state", ".urirun", "venv", "env"}
 
 
 def slugify(value: str, fallback: str = "item") -> str:
