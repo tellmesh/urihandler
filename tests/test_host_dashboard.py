@@ -116,6 +116,15 @@ def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
     assert "renderIframeServiceView" in html
     assert "renderFormServiceView" in html
     assert "renderGraphServiceView" in html
+    assert "renderWidgetDashboard" in html
+    assert "widgetGrid" in html
+    assert "data-view=\"widgets\"" in html
+    assert "/services/view?target=" in html
+    assert "artifactFileGrid" in html
+    assert "artifact-file-row" in html
+    assert "renderArtifactFileGrid" in html
+    assert "data-view=\"artifacts\"" in html
+    assert "/api/artifacts?limit=80" in html
     assert "submitServiceForm" in html
     assert "data-service-form" in html
     assert "isGroupedScannerEventMessage" in html
@@ -148,6 +157,9 @@ def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
 
     assert "scanner://page/camera/command/autonomous" in host_dashboard.SCANNER_HTML
     assert "beginAutonomousScanning" in host_dashboard.SCANNER_HTML
+    assert "withActionTimeout" in host_dashboard.SCANNER_HTML
+    assert "page action timed out after" in host_dashboard.SCANNER_HTML
+    assert "accept camera permission" in host_dashboard.SCANNER_HTML
 
 
 def test_chat_ask_generates_and_dry_runs_uri_flow(monkeypatch):

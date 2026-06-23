@@ -366,6 +366,100 @@ INDEX_HTML = r"""<!doctype html>
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 8px;
     }
+    .artifact-layout, .widget-layout {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 14px;
+    }
+    .artifact-file-grid {
+      display: grid;
+      gap: 8px;
+      overflow: auto;
+    }
+    .artifact-file-row {
+      display: grid;
+      grid-template-columns: 96px minmax(180px, 1fr) minmax(160px, .65fr) minmax(120px, .45fr);
+      gap: 10px;
+      align-items: start;
+      min-width: 760px;
+      padding: 8px;
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      background: var(--surface-2);
+    }
+    .artifact-file-row.header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: var(--surface-3);
+    }
+    .artifact-thumb {
+      display: grid;
+      place-items: center;
+      width: 88px;
+      height: 68px;
+      overflow: hidden;
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+      background: var(--code-bg);
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .artifact-thumb img, .artifact-thumb iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      object-fit: cover;
+      background: var(--code-bg);
+      pointer-events: none;
+    }
+    .artifact-name {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .artifact-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .artifact-meta-line {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+    }
+    .widget-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 12px;
+      align-items: start;
+    }
+    .widget-card {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+      align-content: start;
+    }
+    .widget-card > .stream-head,
+    .widget-card > .subtle,
+    .widget-card > .artifact-actions {
+      padding: 0 2px;
+    }
+    .widget-preview {
+      display: grid;
+      gap: 8px;
+      max-height: 720px;
+      overflow: auto;
+    }
     .message {
       display: grid;
       gap: 8px;
@@ -443,7 +537,7 @@ INDEX_HTML = r"""<!doctype html>
       bottom: 0;
       z-index: 6;
       display: none;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(8, 1fr);
       border-top: 1px solid var(--line);
       background: var(--surface);
     }
@@ -488,6 +582,11 @@ INDEX_HTML = r"""<!doctype html>
       .chat-shell { grid-template-columns: 1fr; min-height: 0; }
       .contacts-panel { border-right: 0; border-bottom: 1px solid var(--line-soft); padding-right: 0; padding-bottom: 10px; }
       .contact-list { max-height: 260px; }
+      .artifact-file-row {
+        grid-template-columns: 76px minmax(180px, 1fr) minmax(140px, .65fr) minmax(120px, .45fr);
+        min-width: 720px;
+      }
+      .artifact-thumb { width: 68px; height: 56px; }
       .desktop-tabs { display: none; }
       .bottom-nav { display: grid; }
       table { min-width: 680px; }
@@ -505,6 +604,8 @@ INDEX_HTML = r"""<!doctype html>
         <button data-view="overview">Overview</button>
         <button data-view="chat">Chat</button>
         <button data-view="discovery">Discovery</button>
+        <button data-view="artifacts">Artifacts</button>
+        <button data-view="widgets">Widgets</button>
         <button data-view="tasks">Tasks</button>
         <button data-view="nodes">Nodes</button>
         <button data-view="activity">Activity</button>
@@ -525,6 +626,36 @@ INDEX_HTML = r"""<!doctype html>
         <article class="panel">
           <div class="panel-head"><h2>Discovered URI Routes</h2><span class="subtle" id="discoveryRouteCount"></span></div>
           <div class="panel-body"><div class="list" id="discoveryRoutesList"></div></div>
+        </article>
+      </section>
+      <section class="artifact-layout view-block" data-section="artifacts">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Artifacts</h2>
+              <p class="subtle">File-style grid/table of generated documents, scans and previews.</p>
+            </div>
+            <div class="actions">
+              <span class="subtle" id="artifactCount"></span>
+              <button type="button" id="artifactRefreshBtn">Refresh files</button>
+            </div>
+          </div>
+          <div class="panel-body"><div class="artifact-file-grid" id="artifactFileGrid"></div></div>
+        </article>
+      </section>
+      <section class="widget-layout view-block" data-section="widgets">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Widgets</h2>
+              <p class="subtle">Dashboard service previews and live views exposed by URI services.</p>
+            </div>
+            <div class="actions">
+              <span class="subtle" id="widgetCount"></span>
+              <button type="button" id="widgetRefreshBtn">Refresh widgets</button>
+            </div>
+          </div>
+          <div class="panel-body"><div class="widget-grid" id="widgetGrid"></div></div>
         </article>
       </section>
       <div class="stack">
@@ -629,12 +760,14 @@ INDEX_HTML = r"""<!doctype html>
     <button data-view="overview">Overview</button>
     <button data-view="chat">Chat</button>
     <button data-view="discovery">Discovery</button>
+    <button data-view="artifacts">Artifacts</button>
+    <button data-view="widgets">Widgets</button>
     <button data-view="tasks">Tasks</button>
     <button data-view="nodes">Nodes</button>
     <button data-view="activity">Activity</button>
   </nav>
   <script>
-    const VALID_VIEWS = new Set(['overview', 'chat', 'discovery', 'tasks', 'nodes', 'activity']);
+    const VALID_VIEWS = new Set(['overview', 'chat', 'discovery', 'artifacts', 'widgets', 'tasks', 'nodes', 'activity']);
     const params = new URLSearchParams(window.location.search);
     const initialView = VALID_VIEWS.has(params.get('view')) ? params.get('view') : (VALID_VIEWS.has(params.get('tab')) ? params.get('tab') : 'overview');
     const initialChatFull = params.get('chat') === 'full' || params.get('fullscreen') === 'chat';
@@ -642,6 +775,7 @@ INDEX_HTML = r"""<!doctype html>
     const state = {
       summary: null,
       tasks: [],
+      artifacts: [],
       view: initialView,
       chatMessages: [],
       serviceViews: [],
@@ -891,20 +1025,93 @@ INDEX_HTML = r"""<!doctype html>
       </div>`).join('') || empty('No logs recorded');
     }
 
-    function artifactPreview(item) {
+    function artifactPreviewUrl(item) {
       const path = item && item.path ? String(item.path) : '';
-      if (!/\.(png|jpe?g|webp|gif)$/i.test(path)) return '';
-      return `<img src="/api/file?path=${encodeURIComponent(path)}" alt="${esc(basename(path))}" loading="lazy">`;
+      return path ? `/api/file?path=${encodeURIComponent(path)}` : '';
     }
 
-    function renderArtifacts(items) {
-      $('artifactsList').innerHTML = items.map((item) => `<div class="item">
+    function artifactPreview(item) {
+      const path = item && item.path ? String(item.path) : '';
+      const url = artifactPreviewUrl(item);
+      if (!url || !/\.(png|jpe?g|webp|gif)$/i.test(path)) return '';
+      return `<img src="${esc(url)}" alt="${esc(basename(path))}" loading="lazy">`;
+    }
+
+    function artifactThumb(item) {
+      const path = item && item.path ? String(item.path) : '';
+      const url = artifactPreviewUrl(item);
+      const ext = (path.match(/\.([a-z0-9]+)$/i) || [,'file'])[1].toLowerCase();
+      if (!url) return `<div class="artifact-thumb">uri</div>`;
+      if (/\.(png|jpe?g|webp|gif)$/i.test(path)) {
+        return `<div class="artifact-thumb"><img src="${esc(url)}" alt="${esc(basename(path))}" loading="lazy"></div>`;
+      }
+      if (/\.pdf$/i.test(path)) {
+        return `<div class="artifact-thumb"><iframe src="${esc(url)}#toolbar=0&navpanes=0" title="${esc(basename(path))}" loading="lazy"></iframe></div>`;
+      }
+      return `<div class="artifact-thumb">${esc(ext)}</div>`;
+    }
+
+    function artifactMetaSummary(item) {
+      const meta = item.meta || {};
+      const doc = (meta.document && meta.document.metadata) || meta.detectedDocument || meta.metadata || {};
+      const parts = [
+        doc.type || meta.type,
+        doc.date || meta.date,
+        doc.contractor || doc.supplier || doc.category || meta.contractor,
+        doc.amount || meta.amount,
+      ].filter(Boolean);
+      return parts.join(' · ');
+    }
+
+    function renderArtifactFileRow(item) {
+      const path = text(item.path);
+      const name = basename(path || item.uri || item.id);
+      const url = artifactPreviewUrl(item);
+      const metaLine = artifactMetaSummary(item);
+      const openLink = url ? `<a href="${esc(url)}" target="_blank" rel="noreferrer">open</a>` : '';
+      const download = url ? `<a href="${esc(url)}" download>download</a>` : '';
+      return `<div class="artifact-file-row">
+        ${artifactThumb(item)}
+        <div>
+          <div class="artifact-name"><strong>${esc(name)}</strong><span class="pill">${esc(item.kind || 'artifact')}</span></div>
+          <div class="mono">${esc(path || item.uri || '')}</div>
+          <div class="artifact-actions">${openLink}${download}</div>
+        </div>
+        <div>
+          <div class="mono">${esc(item.uri || '')}</div>
+          ${metaLine ? `<div class="artifact-meta-line">${esc(metaLine)}</div>` : ''}
+        </div>
+        <div>
+          <div class="subtle">${esc(item.created_at || '')}</div>
+          ${item.meta ? `<details><summary>metadata</summary><pre>${esc(JSON.stringify(item.meta, null, 2))}</pre></details>` : ''}
+        </div>
+      </div>`;
+    }
+
+    function renderArtifactFileGrid(items) {
+      $('artifactCount').textContent = `${items.length} file(s)`;
+      $('artifactFileGrid').innerHTML = items.length
+        ? `<div class="artifact-file-row header">
+            <div>Preview</div><div>File</div><div>URI / document</div><div>Created</div>
+          </div>${items.map(renderArtifactFileRow).join('')}`
+        : empty('No artifacts recorded');
+    }
+
+    function renderArtifacts(items=[]) {
+      state.artifacts = items || [];
+      renderArtifactFileGrid(state.artifacts);
+      $('artifactsList').innerHTML = state.artifacts.map((item) => `<div class="item">
         <div><strong>${item.kind}</strong></div>
         ${artifactPreview(item)}
         <div class="mono">${item.uri}</div>
         <div class="subtle">${text(item.path)} ${item.created_at || ''}</div>
         ${item.meta ? `<details><summary>metadata</summary><pre>${esc(JSON.stringify(item.meta, null, 2))}</pre></details>` : ''}
       </div>`).join('') || empty('No artifacts recorded');
+    }
+
+    async function loadArtifacts() {
+      const data = await api('/api/artifacts?limit=80');
+      renderArtifacts(data.artifacts || []);
     }
 
     function basename(path) {
@@ -1109,10 +1316,64 @@ INDEX_HTML = r"""<!doctype html>
       return renderGenericServiceView(view);
     }
 
+    function serviceWidgetLinks(service, view) {
+      const target = service.id || view.target || view.serviceId || '';
+      const links = [];
+      if (target) {
+        links.push(`<a href="/services/view?target=${encodeURIComponent(target)}" target="_blank" rel="noreferrer">HTML widget</a>`);
+        links.push(`<a href="/services/view.svg?target=${encodeURIComponent(target)}" target="_blank" rel="noreferrer">SVG</a>`);
+      }
+      if (service.url) links.push(`<a href="${esc(service.url)}" target="_blank" rel="noreferrer">open service</a>`);
+      return links.length ? `<div class="artifact-actions">${links.join('')}</div>` : '';
+    }
+
+    function renderWidgetCard(service, view) {
+      const safeView = view || {};
+      const status = service.status || safeView.status || 'live';
+      const target = service.id || safeView.target || safeView.serviceId || '';
+      const fallbackView = service.url
+        ? {title: `${service.name || target || 'service'} page`, target, status, view: 'page', data: {url: service.url}}
+        : null;
+      const preview = view
+        ? renderServiceView(view)
+        : (fallbackView ? renderIframeServiceView(fallbackView) : `<div class="stream-card"><div class="subtle">No live view published yet for this service.</div></div>`);
+      return `<div class="widget-card">
+        <div class="stream-head">
+          <div>
+            <strong>${esc(service.label || service.name || safeView.title || target || 'service')}</strong>
+            <div class="mono">${esc(target)}</div>
+          </div>
+          <span class="pill ${status === 'running' || status === 'up' || status === 'live' ? 'up' : 'down'}">${esc(status)}</span>
+        </div>
+        <div class="subtle">${esc(service.url || service.bindUrl || safeView.updatedAt || '')}</div>
+        ${serviceWidgetLinks(service, safeView)}
+        <div class="widget-preview">${preview}</div>
+      </div>`;
+    }
+
+    function renderWidgetDashboard() {
+      const services = state.summary && Array.isArray(state.summary.services) ? state.summary.services : [];
+      const views = state.serviceViews || [];
+      const used = new Set();
+      const cards = services.map((service) => {
+        const view = views.find((item) => item.target === service.id || item.serviceId === service.id || item.serviceId === service.name || item.target === service.name);
+        if (view) used.add(view.id || view.target || view.serviceId);
+        return renderWidgetCard(service, view);
+      });
+      views.forEach((view) => {
+        const key = view.id || view.target || view.serviceId;
+        if (used.has(key)) return;
+        cards.push(renderWidgetCard({id: view.target || view.serviceId, label: view.title || view.serviceId || view.target, status: view.status || view.kind || 'live'}, view));
+      });
+      $('widgetCount').textContent = `${cards.length} widget(s)`;
+      $('widgetGrid').innerHTML = cards.join('') || empty('No services or widgets available');
+    }
+
     function renderServiceViews() {
       const active = state.selectedTargets.length ? state.selectedTargets : ['host'];
       const visible = state.serviceViews.filter((view) => active.includes(view.target) || active.includes(view.serviceId));
       $('chatStreamList').innerHTML = visible.map(renderServiceView).join('');
+      renderWidgetDashboard();
     }
 
     async function loadServiceViews() {
@@ -1342,12 +1603,14 @@ INDEX_HTML = r"""<!doctype html>
     async function load() {
       const sprint = $('sprintFilter').value;
       const queue = $('queueFilter').value;
-      const [summary, tasks] = await Promise.all([
+      const [summary, tasks, artifacts] = await Promise.all([
         api('/api/summary'),
         api(`/api/tasks?sprint=${encodeURIComponent(sprint)}&queue=${encodeURIComponent(queue)}`),
+        api('/api/artifacts?limit=80'),
       ]);
       state.summary = summary;
       state.tasks = tasks.tickets || [];
+      state.artifacts = artifacts.artifacts || summary.artifacts || [];
       $('contextLine').textContent = `${summary.project} · ${summary.db}`;
       renderMetrics(summary);
       renderTasks(state.tasks);
@@ -1358,7 +1621,7 @@ INDEX_HTML = r"""<!doctype html>
       renderRoutes(summary.routes || []);
       renderChecks(summary.checks || []);
       renderLogs(summary.logs || []);
-      renderArtifacts(summary.artifacts || []);
+      renderArtifacts(state.artifacts);
       await loadChatHistory();
       applyView(state.view);
     }
@@ -1456,6 +1719,14 @@ INDEX_HTML = r"""<!doctype html>
       writeUrlState({ action: 'open:scanner' });
       window.open('/scanner', '_blank');
     });
+    $('artifactRefreshBtn').addEventListener('click', () => {
+      writeUrlState({ action: 'artifacts:refresh' }, { replace: true });
+      loadArtifacts().catch((error) => alert(error.message));
+    });
+    $('widgetRefreshBtn').addEventListener('click', () => {
+      writeUrlState({ action: 'widgets:refresh' }, { replace: true });
+      loadServiceViews().catch((error) => alert(error.message));
+    });
     $('chatFullscreenBtn').addEventListener('click', () => setChatFullscreen(!state.chatFullscreen));
     $('chatScrollBottomBtn').addEventListener('click', () => {
       $('chatResult').scrollTop = $('chatResult').scrollHeight;
@@ -1514,6 +1785,7 @@ INDEX_HTML = r"""<!doctype html>
     renderChatHistory();
     setInterval(() => loadChatHistory().catch(() => {}), 4000);
     setInterval(() => loadServiceViews().catch(() => {}), 1000);
+    setInterval(() => loadArtifacts().catch(() => {}), 4000);
     loadServiceViews().catch(() => {});
     load().catch((error) => {
       $('contextLine').textContent = error.message;
@@ -1966,6 +2238,30 @@ SCANNER_HTML = r"""<!doctype html>
       } catch (_) {}
     }
 
+    function actionTimeoutMs(action) {
+      const payload = action && action.payload ? action.payload : {};
+      const raw = Number(payload.timeoutMs || payload.timeout || action.timeoutMs || 0);
+      if (Number.isFinite(raw) && raw >= 1000) return Math.min(raw, 120000);
+      const uri = action && action.uri ? String(action.uri) : '';
+      if (uri.includes('/camera/command/best-pdf') || uri.includes('/camera/command/autonomous')) return 60000;
+      if (uri.includes('/camera/command/start') || uri.includes('/ui/button/start-camera/command/click')) return 20000;
+      return 15000;
+    }
+
+    function withActionTimeout(promise, action) {
+      const timeoutMs = actionTimeoutMs(action);
+      const uri = action && action.uri ? action.uri : 'page action';
+      let timeoutId = null;
+      const timeout = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error(`page action timed out after ${timeoutMs}ms: ${uri}; keep the scanner tab visible and accept camera permission if prompted`));
+        }, timeoutMs);
+      });
+      return Promise.race([promise, timeout]).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
+      });
+    }
+
     async function pollPageActions() {
       if (!window.urirun || typeof window.urirun.invoke !== 'function') return;
       let data = null;
@@ -1979,7 +2275,10 @@ SCANNER_HTML = r"""<!doctype html>
       for (const action of actions) {
         try {
           setState(`URI ${action.uri}`);
-          const result = await window.urirun.invoke(action.uri, action.payload || {}, {mode: action.mode || 'execute', localOnly: true});
+          const result = await withActionTimeout(
+            window.urirun.invoke(action.uri, action.payload || {}, {mode: action.mode || 'execute', localOnly: true}),
+            action
+          );
           await sendActionResult(action, result, null);
         } catch (err) {
           setState(err.message || String(err), true);
