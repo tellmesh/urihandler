@@ -123,7 +123,6 @@ def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
     assert "chatMessagePlainText" in html
     assert "selectedVisibleChatMessageIds" in html
     assert "selectedChatMessageIds" in html
-    assert "scanner://page/camera/command/autonomous" in html
     assert "body[data-view=\"chat\"] .grid" in html
     assert "data-view=\"discovery\"" in html
     assert "name=\"chatTarget\"" in html
@@ -133,6 +132,9 @@ def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
     assert "tab:" in html
     assert "action:" in html
     assert "window.addEventListener('popstate'" in html
+
+    assert "scanner://page/camera/command/autonomous" in host_dashboard.SCANNER_HTML
+    assert "beginAutonomousScanning" in host_dashboard.SCANNER_HTML
 
 
 def test_chat_ask_generates_and_dry_runs_uri_flow(monkeypatch):

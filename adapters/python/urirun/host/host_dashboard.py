@@ -2516,7 +2516,7 @@ def _is_phone_scanner_prompt(prompt: str) -> bool:
     text = _nl_text(prompt)
     scanner_terms = (
         "skaner", "scanner", "skan", "scan", "kamera", "camera", "telefon", "phone", "mobile", "mobil",
-        "webrtc", "qr", "qrcode", "paragon", "rachunek", "faktur", "smartfon", "latark", "swiatl", "torch", "flash",
+        "webrtc", "qr", "qrcode", "paragon", "rachunek", "smartfon", "latark", "swiatl", "torch", "flash",
     )
     service_terms = ("aplikac", "uslug", "service", "stron", "narzedz", "interfejs")
     start_terms = (
