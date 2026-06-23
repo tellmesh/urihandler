@@ -1,11 +1,11 @@
-# urirun | 136f 22520L | yaml:4,txt:3,shell:10,json:12,python:78,yml:2,javascript:3,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,c:1,cpp:1,csharp:4,ruby:2 | 2026-06-23
+# urirun | 141f 22688L | yaml:4,txt:3,shell:10,json:12,python:83,yml:2,javascript:3,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,c:1,cpp:1,csharp:4,ruby:2 | 2026-06-23
 # generated in 0.02s
-# stats: 1068 func | 0 cls | 136 mod | CC̄=4.4 | critical:16 | cycles:0
+# stats: 1070 func | 0 cls | 141 mod | CC̄=4.5 | critical:16 | cycles:0
 # alerts[5]: fan-out _build_parser=116; fan-out run_command=33; fan-out serve=30; fan-out main=29; fan-out NodeHandler._stream_events=28
 # hotspots[5]: _build_parser fan=116; run_command fan=33; serve fan=30; main fan=29; NodeHandler._stream_events fan=28
-# evolution: CC̄ 4.4→4.4 (flat 0.0)
+# evolution: CC̄ 4.4→4.5 (regressed +0.1)
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
-M[136]:
+M[141]:
   Makefile,90
   adapters/bash/example/hash-connector.sh,9
   adapters/bash/urirun.sh,17
@@ -68,10 +68,15 @@ M[136]:
   adapters/python/urirun/host_integrations.py,5
   adapters/python/urirun/mesh.py,5
   adapters/python/urirun/node/__init__.py,1
+  adapters/python/urirun/node/_artifacts.py,110
+  adapters/python/urirun/node/_util.py,30
+  adapters/python/urirun/node/_version.py,74
   adapters/python/urirun/node/client.py,309
   adapters/python/urirun/node/keyauth.py,176
   adapters/python/urirun/node/manage.py,355
-  adapters/python/urirun/node/mesh.py,3099
+  adapters/python/urirun/node/mesh.py,2899
+  adapters/python/urirun/node/paths.py,38
+  adapters/python/urirun/node/routing.py,116
   adapters/python/urirun/planfile_adapter.py,5
   adapters/python/urirun/runtime/__init__.py,1
   adapters/python/urirun/runtime/_registry.py,718
@@ -149,14 +154,10 @@ D:
     _get(url;timeout;headers)
     _post(url;body;headers;timeout)
   adapters/python/urirun/node/mesh.py:
-    e: EventHub,NodeContext,NodeHandler,now_id,slug,json_load,json_write,_flow_format,flow_document,write_flow_document,load_flow_document,host_config_path,node_config_path,default_host_config,load_host_config,save_host_config,init_host,add_node,_coerce_node_url,_node_name_from_url,config_with_transient_node_urls,host_config_for_args,default_node_config,load_node_config,save_node_config,init_node,current_version,_vtuple,latest_version,version_status,version_line,http_json,_probe_health,_listening_ports_local,node_list_running,_pids_on_port,stop_node_port,parse_ports,node_url,deploy_to_node,_watch_node_url,_watch_node_headers,_parse_sse_line,watch_node,event_topic,_mqtt_publish_fn,fanout_to_mqtt,copy_id,routes_from_registry,registry_fingerprint,safe_route,route_target,discover_node,discover_mesh,binding_for_remote_route,registry_from_routes,target_nodes,route_targets_for_nodes,first_url,nl_key,append_if_available,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,execute_flow,_artifact_extension,_decode_base64_artifact,_write_artifact,materialize_base64_artifacts,compact_result_artifacts,_flow_stdout,verify_flow_execution,run_flow_document,format_nodes,format_routes,format_tickets,format_table,_parse_json_option,data_command,monitor_command,_task_prompt,_ticket_payload,_host_local_registry,_run_executor_handler,_resolves_locally,_run_task_flow,_emit_ticket_result,_task_plan,_task_bindings,_task_schedule,_task_list,_task_show,_task_next,_task_create,_task_claim,_task_start,_task_complete,_task_fail,_task_block,_task_ready,_task_wait,_task_dsl,_task_run,_task_loop,task_command,_host_delegated_command,fulfill_need,supply_command,ensure_command,run_command,_print_event,watch_command,_host_mesh_command,copy_id_command,copy_id_cli,deploy_command,_maybe_load_dotenv,host_command,send_json,read_raw,read_json,_pool_executors,_probe_one_route,_render_probe_report,probe_command,node_state_dir,deploy_dir,node_token_path,resolve_admin_token,_write_pushed_code,_apply_deploy_env,_registry_to_bindings,_deploy_registry,apply_deploy,serve_node,_resolve_serve_opts,_node_serve,node_list_command,node_stop_command,node_command
+    e: EventHub,NodeContext,NodeHandler,_flow_format,flow_document,write_flow_document,load_flow_document,host_config_path,node_config_path,default_host_config,load_host_config,save_host_config,init_host,add_node,_coerce_node_url,_node_name_from_url,config_with_transient_node_urls,host_config_for_args,default_node_config,load_node_config,save_node_config,init_node,http_json,_probe_health,_listening_ports_local,node_list_running,_pids_on_port,stop_node_port,parse_ports,node_url,_deploy_allow_list,_annotate_deploy_allow_compat,deploy_to_node,_watch_node_url,_watch_node_headers,_parse_sse_line,watch_node,event_topic,_mqtt_publish_fn,fanout_to_mqtt,copy_id,discover_node,discover_mesh,first_url,nl_key,append_if_available,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,execute_flow,_flow_stdout,verify_flow_execution,run_flow_document,format_nodes,format_routes,format_tickets,format_table,_parse_json_option,data_command,monitor_command,_task_prompt,_ticket_payload,_host_local_registry,_run_executor_handler,_resolves_locally,_run_task_flow,_emit_ticket_result,_task_plan,_task_bindings,_task_schedule,_task_list,_task_show,_task_next,_task_create,_task_claim,_task_start,_task_complete,_task_fail,_task_block,_task_ready,_task_wait,_task_dsl,_task_run,_task_loop,task_command,_host_delegated_command,fulfill_need,supply_command,ensure_command,run_command,_print_event,watch_command,_host_mesh_command,copy_id_command,copy_id_cli,deploy_command,_maybe_load_dotenv,host_command,send_json,read_raw,read_json,_pool_executors,_probe_one_route,_render_probe_report,probe_command,resolve_admin_token,_write_pushed_code,_apply_deploy_env,_registry_to_bindings,_deploy_registry,apply_deploy,serve_node,_resolve_serve_opts,_node_serve,node_list_command,node_stop_command,node_command
     EventHub: __init__(1),publish(1),subscribe(0),unsubscribe(1),replay_since(1),current_id(0),count(0)  # In-memory pub/sub for a node's live event stream (SSE). Each...
     NodeContext: __init__(0)  # Everything a NodeHandler needs to serve one node — the mutab...
     NodeHandler(BaseHTTPRequestHandler): do_OPTIONS(0),_guarded(1),do_GET(0),do_POST(0),_get(0),_get_errors(2),_post(0),_run_target(2),_publish_run(2),_validate_run_request(1),_dispatch_control_uri(3),_respond_async(4),_handle_run(0),_handle_adopt(2),_handle_need(2),_handle_run_control(1),_stream_events(0),_admin_ok(1),_run_ok(1),_handle_deploy(0),_handle_enroll(0),log_message(1)  # The node's HTTP surface. State/config live on `self.server.c...
-    now_id()
-    slug(value)
-    json_load(path)
-    json_write(path;data)
     _flow_format(path;requested)
     flow_document(flow)
     write_flow_document(path;document;fmt)
@@ -176,11 +177,6 @@ D:
     load_node_config(path)
     save_node_config(config;path)
     init_node(path;name;registry;host;port;execute)
-    current_version()
-    _vtuple(v)
-    latest_version(timeout;ttl)
-    version_status(check_latest)
-    version_line(check_latest)
     http_json(method;url;body;timeout;headers;raw)
     _probe_health(host;port;timeout)
     _listening_ports_local()
@@ -189,6 +185,8 @@ D:
     stop_node_port(port;host;timeout)
     parse_ports(spec)
     node_url(config;name_or_url)
+    _deploy_allow_list(data)
+    _annotate_deploy_allow_compat(result)
     deploy_to_node(url)
     _watch_node_url(url;scheme;run;last_event_id)
     _watch_node_headers(last_event_id;token;identity)
@@ -198,16 +196,8 @@ D:
     _mqtt_publish_fn(broker)
     fanout_to_mqtt(events;broker;topic_prefix;publish_fn;on_publish)
     copy_id(url;identity)
-    routes_from_registry(registry;source)
-    registry_fingerprint(routes)
-    safe_route(route)
-    route_target(uri)
     discover_node(node)
     discover_mesh(config)
-    binding_for_remote_route(route)
-    registry_from_routes(routes)
-    target_nodes(prompt;nodes;explicit)
-    route_targets_for_nodes(routes;node_names)
     first_url(prompt)
     nl_key(text)
     append_if_available(steps;route_uris;uri;payload;previous)
@@ -222,11 +212,6 @@ D:
     _dig_path(data;dotted)
     resolve_step_payload(payload;results)
     execute_flow(flow;mesh;registry;execute)
-    _artifact_extension(raw;mime)
-    _decode_base64_artifact(value)
-    _write_artifact(raw)
-    materialize_base64_artifacts(data)
-    compact_result_artifacts(result;args)
     _flow_stdout(envelope)
     verify_flow_execution(document;execution)
     run_flow_document(document;mesh)
@@ -282,9 +267,6 @@ D:
     _probe_one_route(url;route;etag0;execute;timeout)
     _render_probe_report(report)
     probe_command(args)
-    node_state_dir()
-    deploy_dir()
-    node_token_path()
     resolve_admin_token(explicit;config_token;generate)
     _write_pushed_code(code;summary)
     _apply_deploy_env(env;summary)
@@ -711,6 +693,16 @@ Connector a...
     load_spec(path)
     bindings_from_spec(spec)
     from_spec_command(args)
+  adapters/python/urirun/node/routing.py:
+    e: routes_from_registry,registry_fingerprint,safe_route,route_target,binding_for_remote_route,registry_from_routes,target_nodes,route_targets_for_nodes
+    routes_from_registry(registry;source)
+    registry_fingerprint(routes)
+    safe_route(route)
+    route_target(uri)
+    binding_for_remote_route(route)
+    registry_from_routes(routes)
+    target_nodes(prompt;nodes;explicit)
+    route_targets_for_nodes(routes;node_names)
   adapters/python/urirun/host/host_dashboard.py:
     e: _json_response,_html_response,_read_json,_first,_host_db,_mesh,_planfile_adapter,_safe_tickets,_task_counts,summary,task_action,_dashboard_api_response,create_handler,serve,command,default_host
     _json_response(handler;status;payload)
@@ -1074,6 +1066,13 @@ Connector a...
     _handle_mcp_request(request;registry;index;public_tools;respond;mode;policy)
     serve_mcp(registry;policy;mode;instream;outstream)
     main(argv)
+  adapters/python/urirun/node/_artifacts.py:
+    e: _artifact_extension,_decode_base64_artifact,_write_artifact,materialize_base64_artifacts,compact_result_artifacts
+    _artifact_extension(raw;mime)
+    _decode_base64_artifact(value)
+    _write_artifact(raw)
+    materialize_base64_artifacts(data)
+    compact_result_artifacts(result;args)
   adapters/js/index.js:
     e: parseUri,match,path,segments,buildInvocation,functionName,dispatch,descriptor,invocation,mod,fn
     parseUri()
@@ -1167,6 +1166,18 @@ Connector a...
     load_manifest(package;name)
     emit(payload)
     connector_cli(prog)
+  adapters/python/urirun/node/_version.py:
+    e: current_version,_vtuple,latest_version,version_status,version_line
+    current_version()
+    _vtuple(v)
+    latest_version(timeout;ttl)
+    version_status(check_latest)
+    version_line(check_latest)
+  adapters/python/urirun/node/paths.py:
+    e: node_state_dir,deploy_dir,node_token_path
+    node_state_dir()
+    deploy_dir()
+    node_token_path()
   security/mesh-probe/probe.py:
     e: http,_attacker_key,record
     http(method;path)
@@ -1239,6 +1250,12 @@ Connector a...
     assert()
     assert()
     assert()
+  adapters/python/urirun/node/_util.py:
+    e: now_id,slug,json_load,json_write
+    now_id()
+    slug(value)
+    json_load(path)
+    json_write(path;data)
   examples/matrix/emit_python.py:
     e: f
     f(path)

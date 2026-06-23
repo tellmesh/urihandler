@@ -1,10 +1,68 @@
-# urirun — improvements driven by the examples (2026-06-22)
+# urirun — improvements and communication refactors (updated 2026-06-23)
 
-Grounded in `project/analysis.toon.yaml` (HEALTH: 18 functions CC>15, limit 15) and
-`project/map.toon.yaml` (hotspots: `serve_node` fan=65, `apply_deploy` fan=26). The
-examples (31 remote-office, 32 task-scenarios, the mesh relay) drove new code into
-`node/mesh.py` that pushed several functions over the CC≤15 standard; this pass brings
-them back and hardens the node, with the test suite (267 passing) as the safety net.
+Current baseline from the generated analysis artifacts:
+
+- `project/analysis.toon.yaml`: 137 files, 22520 lines, average CC 4.4,
+  16 functions at or over the CC threshold. Current hotspots include
+  `ensure_scheme`, `apply_deploy`, `NodeHandler._stream_events`, `run`,
+  `_host_mesh_command`, `watch_command`, `_resolve_serve_opts`, and two `main`
+  functions.
+- `project/map.toon.yaml`: no cycles; top fan-out is `_build_parser=116`,
+  then `run_command=33`, `serve=30`, `main=29`, and
+  `NodeHandler._stream_events=28`.
+- `project/duplication.toon.yaml`: 0 duplicate groups in the scanned subset.
+
+Conclusion: the main problem is not copy-paste duplication. The risk is that the
+host-node communication layer concentrates routing, HTTP protocol handling,
+auth, deploy, events, flow planning, artifacts and CLI delegation in
+`adapters/python/urirun/node/mesh.py`. The next refactors should split
+responsibility boundaries without changing the URI protocol.
+
+See also [docs/HOST_NODE_COMMUNICATION.md](../docs/HOST_NODE_COMMUNICATION.md),
+which is now the operator-level contract for `/health`, `/routes`, `/run`,
+`/events`, `/deploy`, `/enroll`, key enrollment, route policy, screen/KVM/CDP/OCR
+capability selection and safe autonomous loops.
+
+## Current recommended work
+
+1. **Split `node/mesh.py` by communication responsibility.**
+   Keep the public CLI/API stable, but extract internals into focused modules:
+   event streaming, deploy/enrollment, host discovery/routing, flow planning,
+   CLI argument construction, and artifact handling. The existing untracked
+   `_artifacts.py` / `_util.py` direction is consistent with this.
+2. **Make capability readiness explicit.**
+   Add a `surface doctor` style command or envelope that reports screen,
+   CDP, KVM input, OCR, auth, deploy and run-stream status. A route existing in
+   `/routes` is not enough; the Lenovo test showed `screen://` worked through
+   `xdg-portal`, while `browser://.../kvm/click-text` lacked OCR/input deps.
+3. **Harden cross-version deploy.**
+   Local tests cover `--merge` preserving allow policy, but the real Lenovo node
+   behaved like an older implementation and narrowed allow policy after a merge
+   deploy. The host now probes `/health` before merge deploys with `--allow`
+   and annotates the response with `DEPLOY_ALLOW_MERGE_MISMATCH` when the
+   returned allow list is narrower than expected. Keep adding live compatibility
+   tests around this path.
+4. **Reduce routing boilerplate in examples.**
+   New examples should use `NodeClient`, transient `--node-url`, exact URI
+   routing and reusable host helpers. They should not reimplement `_get`/`_post`,
+   `$ref` resolution, SSE loops or local node selection.
+5. **Keep autonomous loops evidence-driven.**
+   A desktop/browser loop should begin with `host routes`, `host probe`, and
+   capability-specific checks. It should choose among `screen://`, CDP,
+   `kvm://` input and OCR based on verified node dependencies.
+6. **Preserve dry-run/execute semantics.**
+   Autonomous flows may observe, parse, draft and prepare. External sends,
+   publishes, installs outside allowlisted sources, and irreversible mutations
+   should remain explicit reviewed execute steps.
+
+## Historical notes from the 2026-06-22 example-driven pass
+
+The earlier pass was grounded in `project/analysis.toon.yaml` (then HEALTH:
+18 functions CC>15, limit 15) and `project/map.toon.yaml` (then hotspots:
+`serve_node` fan=65, `apply_deploy` fan=26). The examples (31 remote-office,
+32 task-scenarios, the mesh relay) drove new code into `node/mesh.py` that
+pushed several functions over the CC<=15 standard; that pass hardened the node
+with the test suite as the safety net.
 
 ## Done
 
@@ -39,7 +97,7 @@ auth (`uri-copy-id`), `node://` self-management (`--manage`), `/events` SSE + `h
   `built-in` / `deploy` / `manage`; `/routes` and `urirun host routes` (new SOURCE column)
   now show where every URI on a node came from.
 
-## Proposed next (grounded in the same analysis, deferred as larger/riskier)
+## Historical follow-up from that pass
 
 1. **(done) `serve_node` fan=65 (top hotspot).** The ~250-line nested `Handler` closure is
    now a module-level **`NodeHandler`** whose state/config live on `self.server.ctx` (a
@@ -58,12 +116,11 @@ auth (`uri-copy-id`), `node://` self-management (`--manage`), `/events` SSE + `h
    `--require-run-auth`); making it stricter than the also-open `/run` would be
    inconsistent, so the off-localhost startup SECURITY warning now names `/events` too
    (readable telemetry) and points to `--require-run-auth` which gates both.
-4. **(done) Regenerated `project/analysis.toon.yaml` + `map.toon.yaml`** (against
-   `adapters/python/urirun`, excluding stale `build/`): critical CC **18 → 9**;
-   `apply_deploy`/`_node_serve`/`_cmd_connectors_doctor` off the list; `serve_node` no
-   longer a top fan-out hotspot. Remaining over-limit: the 3 cohesive mesh loops (radon
-   over-counts) + a few exactly at 15. Top fan-out is now `_build_parser=106` (a flat
-   argparse builder — high fan, trivial CC; not worth splitting).
+4. **(done at the time) Regenerated `project/analysis.toon.yaml` + `map.toon.yaml`.**
+   The then-current pass reduced several previous offenders and removed
+   `serve_node` as the top fan-out hotspot. The current 2026-06-23 snapshot is
+   different: it reports 16 threshold items and top fan-out `_build_parser=116`;
+   use the "Current recommended work" section above for the active queue.
 
 ## Process streaming over URI (control long-running processes, not just request/response)
 

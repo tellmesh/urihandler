@@ -5,17 +5,17 @@
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 78, json: 12, shell: 10, yaml: 4, csharp: 4
+- **Languages**: python: 83, json: 12, shell: 10, yaml: 4, csharp: 4
 - **Analysis Mode**: static
-- **Total Functions**: 1068
+- **Total Functions**: 1070
 - **Total Classes**: 27
-- **Modules**: 136
-- **Entry Points**: 412
+- **Modules**: 141
+- **Entry Points**: 413
 
 ## Architecture by Module
 
 ### adapters.python.urirun.node.mesh
-- **Functions**: 174
+- **Functions**: 151
 - **Classes**: 3
 - **File**: `mesh.py`
 

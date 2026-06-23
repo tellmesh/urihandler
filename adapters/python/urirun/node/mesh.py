@@ -101,27 +101,20 @@ from urirun.node import keyauth
 CONFIG_VERSION = "urirun.mesh.v1"
 DEFAULT_CONFIG = ".urirun/mesh.json"
 DEFAULT_NODE_CONFIG = ".urirun/node.json"
-UNSAFE_URI_PARTS = ("/terminal/command/run", "://sudo", "/command/install", "/command/upgrade")
-DEFAULT_HOST_ARTIFACT_DIR = "~/.urirun/artifacts/host"
-BASE64_ARTIFACT_MIN_CHARS = 4096
-
-
-def now_id() -> str:
-    return str(int(time.time()))
-
-
-def slug(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")[:64] or "step"
-
-
-def json_load(path: str | Path) -> dict:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
-
-
-def json_write(path: str | Path, data: dict) -> None:
-    output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+# UNSAFE_URI_PARTS moved to urirun.node.routing (re-exported with the routing helpers below).
+# Foundational primitives (_util) and base64-artifact helpers (_artifacts) live in
+# sibling modules now; re-exported here so `mesh.<name>` and `from …mesh import <name>`
+# keep working unchanged for callers (domain_monitor, task_planner, _scan, v2, tests).
+from urirun.node._util import json_load, json_write, now_id, slug  # noqa: E402
+from urirun.node._artifacts import (  # noqa: E402
+    BASE64_ARTIFACT_MIN_CHARS,
+    DEFAULT_HOST_ARTIFACT_DIR,
+    _artifact_extension,
+    _decode_base64_artifact,
+    _write_artifact,
+    compact_result_artifacts,
+    materialize_base64_artifacts,
+)
 
 
 def _flow_format(path: str | Path, requested: str | None = None) -> str:
@@ -319,64 +312,14 @@ def init_node(
     return save_node_config(config, path)
 
 
-def current_version() -> str:
-    """Installed urirun version (delegates to the canonical v2._package_version)."""
-    try:
-        return v2._package_version()
-    except Exception:
-        return "unknown"
-
-
-def _vtuple(v: str):
-    parts = []
-    for chunk in str(v).split("."):
-        num = "".join(c for c in chunk if c.isdigit())
-        parts.append(int(num) if num else 0)
-    return tuple(parts)
-
-
-def latest_version(timeout: float = 1.5, ttl: int = 21600) -> str | None:
-    """Newest urirun on PyPI, cached in ~/.urirun-node/.version-check.json (best-effort)."""
-    cache = node_state_dir() / ".version-check.json"
-    now = int(time.time())
-    try:
-        c = json.loads(cache.read_text(encoding="utf-8"))
-        if now - int(c.get("at", 0)) < ttl:
-            return c.get("latest")
-    except Exception:
-        pass
-    latest = None
-    try:
-        with urllib.request.urlopen("https://pypi.org/pypi/urirun/json", timeout=timeout) as r:
-            latest = json.loads(r.read().decode("utf-8")).get("info", {}).get("version")
-    except Exception:
-        latest = None
-    try:
-        cache.write_text(json.dumps({"at": now, "latest": latest}), encoding="utf-8")
-    except Exception:
-        pass
-    return latest
-
-
-def version_status(check_latest: bool = True) -> dict:
-    cur = current_version()
-    latest = latest_version() if check_latest else None
-    if latest and cur != "unknown":
-        status = "up-to-date" if _vtuple(cur) >= _vtuple(latest) else "update-available"
-    else:
-        status = "unknown"
-    return {"version": cur, "latest": latest, "status": status}
-
-
-def version_line(check_latest: bool = True) -> str:
-    s = version_status(check_latest)
-    if s["status"] == "up-to-date":
-        tail = f"(latest {s['latest']} — up to date)"
-    elif s["status"] == "update-available":
-        tail = f"(update available: {s['latest']} — pip install -U 'urirun[keyauth]')"
-    else:
-        tail = "(latest unknown — offline?)"
-    return f"urirun {s['version']} {tail}"
+# Version reporting moved to urirun.node._version; re-exported for callers (v2.py, tests).
+from urirun.node._version import (  # noqa: E402
+    _vtuple,
+    current_version,
+    latest_version,
+    version_line,
+    version_status,
+)
 
 
 def http_json(method: str, url: str, body: dict | None = None, timeout: float = 8.0,
@@ -538,6 +481,49 @@ def node_url(config: dict, name_or_url: str) -> str:
     raise SystemExit(f"unknown node {name_or_url!r}; pass a URL, host[:port], or a configured node name")
 
 
+def _deploy_allow_list(data: dict | None) -> list[str] | None:
+    if not isinstance(data, dict):
+        return None
+    policy = data.get("policy") if isinstance(data.get("policy"), dict) else {}
+    if "allow" in data:
+        value = data.get("allow")
+    elif "allow" in policy:
+        value = policy.get("allow")
+    else:
+        return None
+    return [str(item) for item in value] if isinstance(value, list) else None
+
+
+def _annotate_deploy_allow_compat(result: dict, *, merge: bool, before: dict | None,
+                                  requested_allow: list[str] | None) -> dict:
+    """Warn when an older node narrows allow policy during a merge deploy.
+
+    Modern nodes merge allow lists when /deploy receives {"merge": true, "allow": [...]};
+    older nodes may replace the policy. The host can detect that from /health before
+    deploy plus the deploy response, and surface it without changing the wire protocol.
+    """
+    if not (merge and requested_allow and isinstance(result, dict) and result.get("ok")):
+        return result
+    actual = _deploy_allow_list(result)
+    if actual is None:
+        return result
+    before_allow = _deploy_allow_list(before) or []
+    expected = list(dict.fromkeys([*before_allow, *map(str, requested_allow)]))
+    missing = [pattern for pattern in expected if pattern not in actual]
+    if not missing:
+        return result
+    warning = {
+        "code": "DEPLOY_ALLOW_MERGE_MISMATCH",
+        "message": "remote node did not preserve the expected allow policy during --merge deploy",
+        "missingAllow": missing,
+        "expectedAllow": expected,
+        "actualAllow": actual,
+    }
+    result = dict(result)
+    result["warnings"] = [*(result.get("warnings") or []), warning]
+    return result
+
+
 def deploy_to_node(url: str, *, bindings: dict | None = None, registry: dict | None = None,
                    allow: list[str] | None = None, code: dict | None = None,
                    env: dict | None = None, name: str | None = None,
@@ -569,7 +555,14 @@ def deploy_to_node(url: str, *, bindings: dict | None = None, registry: dict | N
         headers = keyauth.sign(identity, keyauth.PURPOSE_DEPLOY, raw)
     elif token:
         headers = {"X-Urirun-Token": token}
-    return http_json("POST", f"{url.rstrip('/')}/deploy", raw=raw, timeout=timeout, headers=headers)
+    before = None
+    if merge and allow:
+        try:
+            before = http_json("GET", f"{url.rstrip('/')}/health", timeout=min(timeout, 8.0))
+        except Exception:
+            before = None
+    result = http_json("POST", f"{url.rstrip('/')}/deploy", raw=raw, timeout=timeout, headers=headers)
+    return _annotate_deploy_allow_compat(result, merge=merge, before=before, requested_allow=allow)
 
 
 def _watch_node_url(url: str, scheme: list | str | None = None, run: str | None = None,
@@ -703,46 +696,19 @@ def copy_id(url: str, identity: str, *, token: str | None = None, timeout: float
     return http_json("POST", f"{base}/authorized-keys", raw=raw, timeout=timeout, headers=headers)
 
 
-def routes_from_registry(registry: dict, source: str = "built-in") -> list[dict]:
-    """Flatten a compiled registry to route descriptors. `source` records each route's
-    provenance — "built-in" (the node's own registry), "deploy" (host-pushed via /deploy),
-    or "manage" (the node:// self-management surface) — so callers can see where a node's
-    URIs came from."""
-    routes = []
-    for item in reglib.flatten_registry_document(registry):
-        entry = item["routeEntry"]
-        config = entry.get("config") or {}
-        meta = entry.get("meta") or {}
-        routes.append(
-            {
-                "uri": item["uri"],
-                "kind": entry.get("kind"),
-                "adapter": entry.get("adapter"),
-                "safe": not any(part in item["uri"] for part in UNSAFE_URI_PARTS),
-                "title": meta.get("label") or meta.get("title") or item["uri"],
-                "source": source,
-                "inputSchema": config.get("inputSchema") or entry.get("inputSchema") or {"type": "object"},
-            }
-        )
-    return sorted(routes, key=lambda item: item["uri"])
-
-
-def registry_fingerprint(routes: list[dict]) -> str:
-    """A stable short etag for a served surface — the sorted (uri, kind) set, hashed.
-    Two nodes serving the same routes share an etag; any add / remove / kind-change
-    flips it. Lets a caller (or `host probe`) tell whether a node's surface changed
-    between two calls — the fix for testing a node whose registry is hot-swapped."""
-    items = sorted((r.get("uri", ""), r.get("kind", "")) for r in routes)
-    return hashlib.sha256(repr(items).encode("utf-8")).hexdigest()[:16]
-
-
-def safe_route(route: dict) -> bool:
-    uri = str(route.get("uri", ""))
-    return bool(uri and route.get("safe", True) is not False and not any(part in uri for part in UNSAFE_URI_PARTS))
-
-
-def route_target(uri: str) -> str:
-    return reglib.parse_uri(uri)["target"]
+# Pure routing helpers moved to urirun.node.routing; re-exported for callers
+# (NodeHandler, flow generation, discover_mesh below).
+from urirun.node.routing import (  # noqa: E402
+    UNSAFE_URI_PARTS,
+    binding_for_remote_route,
+    registry_fingerprint,
+    registry_from_routes,
+    route_target,
+    route_targets_for_nodes,
+    routes_from_registry,
+    safe_route,
+    target_nodes,
+)
 
 
 def discover_node(node: dict) -> dict:
@@ -779,65 +745,8 @@ def discover_mesh(config: dict) -> dict:
     return {"nodes": nodes, "routes": routes, "serviceMap": service_map}
 
 
-def binding_for_remote_route(route: dict) -> dict:
-    return {
-        "kind": "service",
-        "adapter": "http-service",
-        "inputSchema": route.get("inputSchema") or {"type": "object"},
-        "meta": {
-            "label": route.get("title") or route.get("uri"),
-            "node": route.get("node"),
-            "sourceAdapter": route.get("adapter"),
-        },
-    }
-
-
-def registry_from_routes(routes: list[dict]) -> dict:
-    bindings = {route["uri"]: binding_for_remote_route(route) for route in routes if safe_route(route)}
-    return v2.compile_registry({"version": v2.VERSION, "bindings": bindings}, on_conflict="keep")
-
-
-def target_nodes(prompt: str, nodes: list[dict], explicit: list[str] | None = None) -> list[str]:
-    reachable = [node["name"] for node in nodes if node.get("reachable")]
-    if explicit:
-        selected = [name for name in explicit if name in reachable]
-        return selected or explicit
-    lowered = prompt.lower()
-    mentioned = [name for name in reachable if name.lower() in lowered]
-    if mentioned:
-        return mentioned
-    return reachable
-
-
-def route_targets_for_nodes(routes: list[dict], node_names: list[str]) -> list[str]:
-    """Map host-config node names to URI targets exposed by their routes.
-
-    A mesh entry may be named ``lenovo`` while the node serves URIs targeted at
-    ``laptop``. Heuristic NL flow generation must use the URI target, not the
-    host-config alias, or it produces an empty flow.
-    """
-    all_targets: list[str] = []
-    by_node: dict[str, list[str]] = {}
-    for route in routes:
-        try:
-            target = route_target(str(route.get("uri") or ""))
-        except Exception:
-            continue
-        if target not in all_targets:
-            all_targets.append(target)
-        node = str(route.get("node") or "")
-        if node:
-            by_node.setdefault(node, [])
-            if target not in by_node[node]:
-                by_node[node].append(target)
-
-    expanded: list[str] = []
-    for name in node_names:
-        candidates = by_node.get(name) or ([name] if name in all_targets else [])
-        for target in candidates or [name]:
-            if target not in expanded:
-                expanded.append(target)
-    return expanded
+# binding_for_remote_route / registry_from_routes / target_nodes /
+# route_targets_for_nodes moved to urirun.node.routing (re-exported above).
 
 
 def first_url(prompt: str) -> str | None:
@@ -1141,93 +1050,9 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool) -> dict:
             os.environ["URI_SERVICE_MAP"] = old_map
 
 
-def _artifact_extension(raw: bytes, mime: str | None = None) -> tuple[str, str]:
-    if mime:
-        clean = mime.split(";", 1)[0].lower()
-        if clean == "image/png":
-            return ".png", clean
-        if clean in {"image/jpeg", "image/jpg"}:
-            return ".jpg", "image/jpeg"
-        if clean == "image/gif":
-            return ".gif", clean
-    if raw.startswith(b"\x89PNG\r\n\x1a\n"):
-        return ".png", "image/png"
-    if raw.startswith(b"\xff\xd8\xff"):
-        return ".jpg", "image/jpeg"
-    if raw.startswith(b"GIF8"):
-        return ".gif", "image/gif"
-    return ".bin", mime or "application/octet-stream"
-
-
-def _decode_base64_artifact(value: str) -> tuple[bytes, str | None] | None:
-    text = value.strip()
-    mime = None
-    if text.startswith("data:") and ";base64," in text[:128]:
-        head, _, text = text.partition(",")
-        mime = head[5:].split(";", 1)[0] or None
-    if len(text) < BASE64_ARTIFACT_MIN_CHARS:
-        return None
-    try:
-        return base64.b64decode(text, validate=True), mime
-    except Exception:
-        return None
-
-
-def _write_artifact(raw: bytes, *, artifact_dir: str | None, hint: str, mime: str | None = None) -> dict:
-    digest = hashlib.sha256(raw).hexdigest()
-    ext, detected_mime = _artifact_extension(raw, mime)
-    root = Path(os.path.expanduser(artifact_dir or os.environ.get("URIRUN_ARTIFACT_DIR") or DEFAULT_HOST_ARTIFACT_DIR))
-    root.mkdir(parents=True, exist_ok=True)
-    name = f"{time.strftime('%Y%m%dT%H%M%S')}-{slug(hint)}-{digest[:12]}{ext}"
-    path = root / name
-    path.write_bytes(raw)
-    return {"path": str(path), "bytes": len(raw), "sha256": digest, "mime": detected_mime}
-
-
-def materialize_base64_artifacts(data: Any, *, artifact_dir: str | None = None,
-                                 hint: str = "artifact") -> tuple[Any, list[dict]]:
-    """Replace large base64 blobs in a result tree with file artifacts.
-
-    The node keeps returning ordinary JSON, but host commands should not dump a full PNG
-    to stdout. We preserve exact bytes on disk and leave a small structured reference.
-    """
-    artifacts_by_sha: dict[str, dict] = {}
-
-    def walk(value: Any, path_hint: str) -> Any:
-        if isinstance(value, dict):
-            out = {}
-            for key, item in value.items():
-                if isinstance(item, str) and key in {"base64", "data", "png", "screenshot", "image"}:
-                    decoded = _decode_base64_artifact(item)
-                    if decoded:
-                        raw, mime = decoded
-                        digest = hashlib.sha256(raw).hexdigest()
-                        artifact = artifacts_by_sha.get(digest)
-                        if artifact is None:
-                            artifact = _write_artifact(raw, artifact_dir=artifact_dir, hint=f"{path_hint}-{key}", mime=mime)
-                            artifact["fields"] = []
-                            artifacts_by_sha[digest] = artifact
-                        artifact["fields"].append(f"{path_hint}.{key}")
-                        out[key] = {"artifactPath": artifact["path"], "bytes": artifact["bytes"],
-                                    "sha256": artifact["sha256"], "mime": artifact["mime"]}
-                        continue
-                out[key] = walk(item, f"{path_hint}.{key}")
-            return out
-        if isinstance(value, list):
-            return [walk(item, f"{path_hint}.{idx}") for idx, item in enumerate(value)]
-        return value
-
-    return walk(data, hint), list(artifacts_by_sha.values())
-
-
-def compact_result_artifacts(result: dict, args: argparse.Namespace, *, hint: str) -> dict:
-    if getattr(args, "inline_artifacts", False):
-        return result
-    compacted, artifacts = materialize_base64_artifacts(result, artifact_dir=getattr(args, "artifact_dir", None), hint=hint)
-    if artifacts:
-        compacted = dict(compacted)
-        compacted["artifacts"] = artifacts
-    return compacted
+# _artifact_extension / _decode_base64_artifact / _write_artifact /
+# materialize_base64_artifacts / compact_result_artifacts moved to urirun.node._artifacts
+# (re-exported at the top of this module).
 
 
 def _flow_stdout(envelope: dict) -> str:
@@ -2295,33 +2120,8 @@ def probe_command(args: argparse.Namespace) -> int:
     return 0 if stable else 1
 
 
-def node_state_dir() -> Path:
-    d = Path(os.path.expanduser("~/.urirun-node"))
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-
-def deploy_dir() -> Path:
-    """Where /deploy writes pushed handler code so the node can import it.
-
-    Added to ``sys.path`` (for in-process ``local-function`` handlers) AND to
-    ``PYTHONPATH`` so the out-of-process ``python -m urirun.exec`` runner used by
-    ``isolated`` (``local-function-subprocess``) handlers can import deployed
-    modules too — without it a deployed isolated connector fails with
-    ``ModuleNotFoundError``."""
-    d = node_state_dir() / "deploy"
-    d.mkdir(parents=True, exist_ok=True)
-    ds = str(d)
-    if ds not in sys.path:
-        sys.path.insert(0, ds)
-    parts = [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p]
-    if ds not in parts:
-        os.environ["PYTHONPATH"] = os.pathsep.join([ds, *parts])
-    return d
-
-
-def node_token_path() -> Path:
-    return node_state_dir() / "admin-token"
+# Node state directories moved to urirun.node.paths; re-exported for callers.
+from urirun.node.paths import deploy_dir, node_state_dir, node_token_path  # noqa: E402
 
 
 def resolve_admin_token(explicit: str | None, config_token: str | None, generate: bool) -> str | None:

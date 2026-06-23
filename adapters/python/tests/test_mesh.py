@@ -1468,6 +1468,66 @@ def test_deploy_command_uses_transient_node_url(tmp_path, monkeypatch, capsys):
     assert seen == {"url": "http://192.168.188.201:8766", "merge": True}
 
 
+def test_deploy_allow_compat_warning_when_merge_narrows_policy():
+    from urirun.node import mesh as nodemesh
+
+    result = nodemesh._annotate_deploy_allow_compat(
+        {"ok": True, "allow": ["browser://**"]},
+        merge=True,
+        before={"policy": {"allow": ["app://**", "kvm://**"]}},
+        requested_allow=["browser://**"],
+    )
+
+    warning = result["warnings"][0]
+    assert warning["code"] == "DEPLOY_ALLOW_MERGE_MISMATCH"
+    assert warning["missingAllow"] == ["app://**", "kvm://**"]
+    assert warning["expectedAllow"] == ["app://**", "kvm://**", "browser://**"]
+    assert warning["actualAllow"] == ["browser://**"]
+
+
+def test_deploy_allow_compat_warning_when_merge_clears_policy():
+    from urirun.node import mesh as nodemesh
+
+    result = nodemesh._annotate_deploy_allow_compat(
+        {"ok": True, "allow": []},
+        merge=True,
+        before={"policy": {"allow": ["app://**"]}},
+        requested_allow=["browser://**"],
+    )
+
+    warning = result["warnings"][0]
+    assert warning["missingAllow"] == ["app://**", "browser://**"]
+    assert warning["actualAllow"] == []
+
+
+def test_deploy_to_node_warns_on_remote_allow_merge_mismatch(monkeypatch):
+    from urirun.node import mesh as nodemesh
+
+    calls = []
+
+    def fake_http(method, url, **kwargs):
+        calls.append((method, url, kwargs))
+        if method == "GET":
+            return {"ok": True, "policy": {"allow": ["app://**", "screen://**"]}}
+        return {"ok": True, "allow": ["browser://**"], "routeCount": 3}
+
+    monkeypatch.setattr(nodemesh, "http_json", fake_http)
+
+    result = nodemesh.deploy_to_node(
+        "http://node",
+        bindings={"version": "urirun.bindings.v2", "bindings": {}},
+        allow=["browser://**"],
+        merge=True,
+        token="secret",
+    )
+
+    assert [call[:2] for call in calls] == [
+        ("GET", "http://node/health"),
+        ("POST", "http://node/deploy"),
+    ]
+    assert result["warnings"][0]["missingAllow"] == ["app://**", "screen://**"]
+
+
 def test_apply_deploy_merge_preserves_existing_allowlist():
     import urirun
     from urirun.node import mesh as nodemesh
