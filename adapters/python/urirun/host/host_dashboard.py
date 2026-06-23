@@ -32,6 +32,7 @@ _SERVICE_THREADS: dict[str, threading.Thread] = {}
 _DOCUMENT_INDEX_LOCK = threading.Lock()
 _SCANNER_BEST_LOCK = threading.Lock()
 _SCANNER_BEST_SESSIONS: dict[str, dict] = {}
+_SCANNER_LIVE_STREAMS: dict[str, dict] = {}
 _PAGE_ACTION_LOCK = threading.Lock()
 _PAGE_ACTION_QUEUES: dict[str, list[dict]] = {}
 
@@ -285,6 +286,85 @@ INDEX_HTML = r"""<!doctype html>
       max-height: 620px;
       overflow: auto;
     }
+    .stream-list {
+      display: grid;
+      gap: 8px;
+    }
+    .stream-card {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid rgba(45, 212, 191, .28);
+      border-radius: 8px;
+      background: rgba(45, 212, 191, .08);
+    }
+    .stream-head, .stream-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .stream-frames {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+      gap: 6px;
+    }
+    .stream-frame {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      padding: 6px;
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+      background: var(--surface-2);
+    }
+    .stream-frame img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 4px;
+      background: var(--code-bg);
+    }
+    .service-table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+    }
+    .service-table-wrap table {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      border-radius: 0;
+    }
+    .service-media {
+      width: 100%;
+      max-height: 520px;
+      object-fit: contain;
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+      background: var(--code-bg);
+    }
+    .service-frame {
+      width: 100%;
+      height: min(68vh, 720px);
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+      background: var(--code-bg);
+    }
+    .service-form-preview {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+      background: var(--surface-2);
+    }
+    .service-graph {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px;
+    }
     .message {
       display: grid;
       gap: 8px;
@@ -481,6 +561,7 @@ INDEX_HTML = r"""<!doctype html>
                     <button type="button" class="danger" id="chatDeleteVisibleBtn">Delete all visible</button>
                   </div>
                 </div>
+                <div class="stream-list" id="chatStreamList"></div>
                 <div class="chat-result" id="chatResult"></div>
                 <form class="chat-form chat-composer" id="chatForm">
                   <textarea id="chatPrompt" placeholder="Napisz komendę NL do wybranych kontaktów URI..."></textarea>
@@ -562,6 +643,7 @@ INDEX_HTML = r"""<!doctype html>
       tasks: [],
       view: initialView,
       chatMessages: [],
+      serviceViews: [],
       visibleChatMessages: [],
       visibleChatMessageIds: [],
       selectedChatMessageIds: new Set(),
@@ -852,6 +934,193 @@ INDEX_HTML = r"""<!doctype html>
       </div>`;
     }
 
+    function streamStatusClass(status) {
+      if (status === 'accepted') return 'up';
+      if (status === 'rejected' || status === 'failed') return 'down';
+      return 'running';
+    }
+
+    function streamDocLabel(candidate) {
+      const doc = candidate && candidate.detectedDocument ? candidate.detectedDocument : {};
+      const parts = [doc.type, doc.date, doc.contractor || doc.supplier || doc.category, doc.amount].filter(Boolean);
+      return parts.join(' · ') || 'document candidate';
+    }
+
+    function renderStreamFrame(candidate) {
+      const quality = candidate && candidate.quality ? candidate.quality : {};
+      const score = Number(quality.score || 0).toFixed(1);
+      const preview = candidate && candidate.previewUrl
+        ? `<img src="${esc(candidate.previewUrl)}" alt="${esc(streamDocLabel(candidate))}" loading="lazy">`
+        : '';
+      return `<div class="stream-frame">
+        ${preview}
+        <div class="mono">#${esc(candidate && candidate.frameIndex || '')} · ${score}</div>
+        <div class="subtle">${esc(streamDocLabel(candidate))}</div>
+      </div>`;
+    }
+
+    function renderScannerStream(stream, title='phone scanner stream') {
+      const best = stream.best || {};
+      const quality = best.quality || {};
+      const document = stream.document || {};
+      const status = stream.status || 'running';
+      const accepted = status === 'accepted' && document.path;
+      const bestScore = Number(quality.score || 0).toFixed(1);
+      const frames = stream.candidates || [];
+      return `<div class="stream-card">
+        <div class="stream-head">
+          <strong>${esc(title)}</strong>
+          <span class="pill ${streamStatusClass(status)}">${esc(status)}</span>
+        </div>
+        <div class="stream-meta">
+          <span class="subtle">${esc(stream.seriesId || '')}</span>
+          <span class="subtle">${esc(stream.updatedAt || '')}</span>
+        </div>
+        <div><strong>${esc(streamDocLabel(best))}</strong></div>
+        <div class="subtle">${esc(stream.count || 0)} frame(s) · best score ${esc(bestScore)}${stream.error ? ` · ${esc(stream.error)}` : ''}</div>
+        ${accepted ? `<div><a href="${esc(document.previewUrl || `/api/file?path=${encodeURIComponent(document.path)}`)}" download>${esc(basename(document.path))}</a></div>` : ''}
+        ${frames.length ? `<div class="stream-frames">${frames.map(renderStreamFrame).join('')}</div>` : ''}
+        <details><summary>URI / JSON</summary><pre>${esc(JSON.stringify(stream, null, 2))}</pre></details>
+      </div>`;
+    }
+
+    function renderGenericServiceView(view) {
+      const data = view.data || {};
+      return `<div class="stream-card">
+        <div class="stream-head">
+          <strong>${esc(view.title || view.id || 'service view')}</strong>
+          <span class="pill ${streamStatusClass(view.status || 'running')}">${esc(view.status || view.kind || 'live')}</span>
+        </div>
+        <div class="stream-meta">
+          <span class="subtle">${esc(view.target || view.serviceId || '')}</span>
+          <span class="subtle">${esc(view.updatedAt || '')}</span>
+        </div>
+        <details open><summary>service data</summary><pre>${esc(JSON.stringify(data, null, 2))}</pre></details>
+      </div>`;
+    }
+
+    function renderTableServiceView(view) {
+      const data = view.data || {};
+      const rows = Array.isArray(data.rows) ? data.rows : [];
+      const explicitColumns = Array.isArray(data.columns) ? data.columns : [];
+      const columns = explicitColumns.length
+        ? explicitColumns.map((column) => typeof column === 'string' ? column : column.key || column.name || column.label).filter(Boolean)
+        : [...new Set(rows.flatMap((row) => Object.keys(row || {})))];
+      const table = columns.length
+        ? `<div class="service-table-wrap"><table>
+            <thead><tr>${columns.map((column) => `<th>${esc(column)}</th>`).join('')}</tr></thead>
+            <tbody>${rows.map((row) => `<tr>${columns.map((column) => `<td>${esc(text(row && row[column]))}</td>`).join('')}</tr>`).join('')}</tbody>
+          </table></div>`
+        : `<div class="subtle">no rows</div>`;
+      return renderServiceViewShell(view, table);
+    }
+
+    function renderImageServiceView(view) {
+      const data = view.data || {};
+      const images = Array.isArray(data.images) ? data.images : [data.url || data.previewUrl || data.src].filter(Boolean);
+      const body = images.length
+        ? `<div class="stream-frames">${images.map((image) => {
+            const item = typeof image === 'string' ? { url: image } : image;
+            return `<div class="stream-frame">
+              <img src="${esc(item.url || item.previewUrl || item.src || '')}" alt="${esc(item.label || view.title || 'service image')}" loading="lazy">
+              ${item.label ? `<div class="subtle">${esc(item.label)}</div>` : ''}
+            </div>`;
+          }).join('')}</div>`
+        : `<div class="subtle">no image</div>`;
+      return renderServiceViewShell(view, body);
+    }
+
+    function renderVideoServiceView(view) {
+      const data = view.data || {};
+      const url = data.url || data.src || data.streamUrl;
+      const body = url
+        ? `<video class="service-media" src="${esc(url)}" controls muted playsinline></video>`
+        : `<div class="subtle">no video stream</div>`;
+      return renderServiceViewShell(view, body);
+    }
+
+    function renderIframeServiceView(view) {
+      const data = view.data || {};
+      const url = data.url || data.src || data.href;
+      const body = url
+        ? `<iframe class="service-frame" src="${esc(url)}" title="${esc(view.title || 'service page')}" loading="lazy"></iframe>`
+        : `<div class="subtle">no page url</div>`;
+      return renderServiceViewShell(view, body);
+    }
+
+    function renderFormServiceView(view) {
+      const data = view.data || {};
+      const fields = Array.isArray(data.fields) ? data.fields : [];
+      const actionUri = data.actionUri || data.uri || view.actionUri || '';
+      const body = `<form class="service-form-preview" data-service-form data-action-uri="${esc(actionUri)}">
+        ${fields.map((field) => {
+          const name = field.name || field.key || field.label || 'field';
+          const type = field.type || 'text';
+          const value = field.value || field.default || '';
+          const checked = type === 'checkbox' && (field.checked || value === true || value === 'true') ? 'checked' : '';
+          return `<label class="stack">
+            <span class="subtle">${esc(field.label || name)}</span>
+            <input type="${esc(type)}" name="${esc(name)}" value="${esc(value)}" ${checked} ${field.readonly ? 'readonly' : ''}>
+          </label>`;
+        }).join('') || '<div class="subtle">no fields</div>'}
+        ${actionUri ? `<div class="mono">${esc(actionUri)}</div><button type="submit">Run URI</button>` : '<div class="subtle">no action URI</div>'}
+      </form>`;
+      return renderServiceViewShell(view, body);
+    }
+
+    function renderGraphServiceView(view) {
+      const data = view.data || {};
+      const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+      const edges = Array.isArray(data.edges) ? data.edges : [];
+      const body = `<div class="service-graph">
+        <div class="item"><strong>nodes</strong>${nodes.map((node) => `<div class="mono">${esc(node.id || node.name || JSON.stringify(node))}</div>`).join('') || '<div class="subtle">none</div>'}</div>
+        <div class="item"><strong>edges</strong>${edges.map((edge) => `<div class="mono">${esc(edge.from || edge.source || '')} -> ${esc(edge.to || edge.target || '')}</div>`).join('') || '<div class="subtle">none</div>'}</div>
+      </div>`;
+      return renderServiceViewShell(view, body);
+    }
+
+    function renderServiceViewShell(view, body) {
+      return `<div class="stream-card">
+        <div class="stream-head">
+          <strong>${esc(view.title || view.id || 'service view')}</strong>
+          <span class="pill ${streamStatusClass(view.status || 'running')}">${esc(view.status || view.kind || 'live')}</span>
+        </div>
+        <div class="stream-meta">
+          <span class="subtle">${esc(view.target || view.serviceId || '')}</span>
+          <span class="subtle">${esc(view.updatedAt || '')}</span>
+        </div>
+        ${body}
+        <details><summary>URI / JSON</summary><pre>${esc(JSON.stringify(view, null, 2))}</pre></details>
+      </div>`;
+    }
+
+    function renderServiceView(view) {
+      if (view.view === 'scanner-stream') {
+        const streams = view.data && Array.isArray(view.data.streams) ? view.data.streams : [];
+        return streams.map((stream) => renderScannerStream(stream, view.title || 'phone scanner stream')).join('');
+      }
+      if (view.view === 'table') return renderTableServiceView(view);
+      if (view.view === 'image' || view.view === 'image-list') return renderImageServiceView(view);
+      if (view.view === 'video') return renderVideoServiceView(view);
+      if (view.view === 'iframe' || view.view === 'page' || view.view === 'web') return renderIframeServiceView(view);
+      if (view.view === 'form') return renderFormServiceView(view);
+      if (view.view === 'graph') return renderGraphServiceView(view);
+      return renderGenericServiceView(view);
+    }
+
+    function renderServiceViews() {
+      const active = state.selectedTargets.length ? state.selectedTargets : ['host'];
+      const visible = state.serviceViews.filter((view) => active.includes(view.target) || active.includes(view.serviceId));
+      $('chatStreamList').innerHTML = visible.map(renderServiceView).join('');
+    }
+
+    async function loadServiceViews() {
+      const data = await api('/api/services/live?limit=8');
+      state.serviceViews = data.views || [];
+      renderServiceViews();
+      renderChatHistory();
+    }
+
     function renderChatMessage(message) {
       const detail = message.detail || {};
       const timeline = detail.timeline || [];
@@ -920,6 +1189,18 @@ INDEX_HTML = r"""<!doctype html>
       return active.some((target) => targets.has(target));
     }
 
+    function isGroupedScannerEventMessage(message) {
+      const scannerLiveVisible = state.serviceViews.some((view) => view.target === 'service:phone-scanner' || view.serviceId === 'service:phone-scanner');
+      if (!state.selectedTargets.includes('service:phone-scanner') || !scannerLiveVisible) return false;
+      const detail = message.detail || {};
+      const event = String(detail.event || '');
+      if (['open', 'camera-started', 'autonomous-start-requested', 'torch-changed'].includes(event)) return true;
+      const content = String(message.content || '').toLowerCase();
+      return content === 'phone scanner opened'
+        || content === 'phone scanner camera started'
+        || content === 'phone scanner autonomous-start-requested';
+    }
+
     function selectedVisibleChatMessageIds() {
       return state.visibleChatMessageIds.filter((id) => state.selectedChatMessageIds.has(id));
     }
@@ -985,6 +1266,8 @@ INDEX_HTML = r"""<!doctype html>
 
     function renderChatHistory() {
       const seenQr = new Set();
+      const resultEl = $('chatResult');
+      const stickToBottom = resultEl.scrollTop + resultEl.clientHeight >= resultEl.scrollHeight - 32;
       const visible = [...state.chatMessages].reverse().filter((message) => {
         const uri = message.detail && message.detail.uri;
         if (uri && uri.startsWith('dashboard://host/qr/')) {
@@ -992,11 +1275,11 @@ INDEX_HTML = r"""<!doctype html>
           seenQr.add(uri);
         }
         return true;
-      }).reverse().filter(messageMatchesTargets);
+      }).reverse().filter(messageMatchesTargets).filter((message) => !isGroupedScannerEventMessage(message));
       state.visibleChatMessages = visible;
       state.visibleChatMessageIds = visible.map((message) => message.id).filter(Boolean);
-      $('chatResult').innerHTML = visible.map(renderChatMessage).join('') || empty('No chat messages yet');
-      $('chatResult').scrollTop = $('chatResult').scrollHeight;
+      resultEl.innerHTML = visible.map(renderChatMessage).join('') || empty('No chat messages yet');
+      if (stickToBottom) resultEl.scrollTop = resultEl.scrollHeight;
       updateChatSelectionControls();
     }
 
@@ -1018,6 +1301,31 @@ INDEX_HTML = r"""<!doctype html>
       renderChatHistory();
       $('chatStatus').textContent = `deleted ${result.deleted || 0}`;
       writeUrlState({ action: 'chat:delete', deleted: result.deleted || 0 }, { replace: true });
+    }
+
+    async function submitServiceForm(form) {
+      const uri = form.dataset.actionUri || '';
+      if (!uri) return;
+      const payload = {};
+      form.querySelectorAll('input, textarea, select').forEach((field) => {
+        if (!field.name) return;
+        if (field.type === 'checkbox') payload[field.name] = field.checked;
+        else payload[field.name] = field.value;
+      });
+      $('chatStatus').textContent = 'running service URI...';
+      await api('/api/uri/invoke', {
+        method: 'POST',
+        body: JSON.stringify({
+          uri,
+          payload,
+          targets: state.selectedTargets,
+          source: 'service-view',
+        }),
+      });
+      await loadChatHistory();
+      await loadServiceViews();
+      $('chatStatus').textContent = 'ok';
+      writeUrlState({ action: 'service-form:submit', uri }, { replace: true });
     }
 
     function applyView(view) {
@@ -1045,6 +1353,7 @@ INDEX_HTML = r"""<!doctype html>
       renderNodes(summary.nodes || []);
       renderChatContacts(summary);
       renderDiscovery(summary);
+      renderServiceViews();
       renderRoutes(summary.routes || []);
       renderChecks(summary.checks || []);
       renderLogs(summary.logs || []);
@@ -1119,6 +1428,7 @@ INDEX_HTML = r"""<!doctype html>
         if (!state.selectedTargets.length) state.selectedTargets = ['host'];
         updateTargetSummary();
         renderChatHistory();
+        renderServiceViews();
         writeUrlState({ action: 'contacts:select', targets: state.selectedTargets.join(',') }, { replace: true });
       }
       if (event.target && event.target.name === 'chatMessageSelect') {
@@ -1127,6 +1437,15 @@ INDEX_HTML = r"""<!doctype html>
         else state.selectedChatMessageIds.delete(id);
         updateChatSelectionControls();
       }
+    });
+    document.addEventListener('submit', (event) => {
+      const form = event.target && event.target.closest ? event.target.closest('[data-service-form]') : null;
+      if (!form) return;
+      event.preventDefault();
+      submitServiceForm(form).catch((error) => {
+        $('chatStatus').textContent = error.message;
+        alert(error.message);
+      });
     });
     $('refreshBtn').addEventListener('click', () => {
       writeUrlState({ action: 'refresh' });
@@ -1193,6 +1512,8 @@ INDEX_HTML = r"""<!doctype html>
     writeUrlState({ action: params.get('action') || 'load' }, { replace: true });
     renderChatHistory();
     setInterval(() => loadChatHistory().catch(() => {}), 4000);
+    setInterval(() => loadServiceViews().catch(() => {}), 1000);
+    loadServiceViews().catch(() => {});
     load().catch((error) => {
       $('contextLine').textContent = error.message;
     });
@@ -2762,6 +3083,97 @@ def _public_scanner_candidate(candidate: dict) -> dict:
     }
 
 
+def _scanner_live_store_locked(
+    series_id: str,
+    series: dict,
+    *,
+    status: str = "running",
+    error: str | None = None,
+    document: dict | None = None,
+    artifact: dict | None = None,
+) -> None:
+    candidates = [item for item in (series.get("candidates") or []) if isinstance(item, dict)]
+    best = series.get("best") if isinstance(series.get("best"), dict) else None
+    _SCANNER_LIVE_STREAMS[series_id] = {
+        "seriesId": series_id,
+        "createdAt": series.get("createdAt") or _utc_now(),
+        "updatedAt": _utc_now(),
+        "status": status,
+        "count": len(candidates),
+        "best": best,
+        "candidates": candidates[-8:],
+        "error": error,
+        "document": document or series.get("document"),
+        "artifact": artifact or series.get("artifact"),
+    }
+    if len(_SCANNER_LIVE_STREAMS) > 20:
+        keep = sorted(_SCANNER_LIVE_STREAMS.items(), key=lambda item: str(item[1].get("updatedAt") or ""), reverse=True)[:20]
+        _SCANNER_LIVE_STREAMS.clear()
+        _SCANNER_LIVE_STREAMS.update(dict(keep))
+
+
+def _scanner_public_candidate_for_live(candidate: dict | None, project: str) -> dict | None:
+    if not isinstance(candidate, dict):
+        return None
+    public = _public_scanner_candidate(candidate)
+    path = public.get("path")
+    if path:
+        public["previewUrl"] = _preview_url(str(path), project)
+    original = public.get("originalPath")
+    if original:
+        public["originalPreviewUrl"] = _preview_url(str(original), project)
+    return public
+
+
+def scanner_live_state(project: str, limit: int = 8) -> dict:
+    with _SCANNER_BEST_LOCK:
+        streams = sorted(
+            [dict(item) for item in _SCANNER_LIVE_STREAMS.values()],
+            key=lambda item: str(item.get("updatedAt") or ""),
+            reverse=True,
+        )[: max(1, min(20, int(limit or 8)))]
+    public_streams = []
+    for stream in streams:
+        candidates = [
+            item for item in (_scanner_public_candidate_for_live(candidate, project) for candidate in stream.get("candidates", []))
+            if item
+        ]
+        best = _scanner_public_candidate_for_live(stream.get("best"), project)
+        document = stream.get("document") if isinstance(stream.get("document"), dict) else {}
+        if document.get("path"):
+            document = {**document, "previewUrl": _preview_url(str(document["path"]), project)}
+        public_streams.append({
+            **{key: value for key, value in stream.items() if key not in {"best", "candidates", "document"}},
+            "best": best,
+            "candidates": candidates,
+            "document": document,
+        })
+    return {"ok": True, "updatedAt": _utc_now(), "streams": public_streams}
+
+
+def service_live_views(project: str, limit: int = 8) -> dict:
+    scanner = scanner_live_state(project, limit=limit)
+    views: list[dict] = []
+    streams = scanner.get("streams") or []
+    if streams:
+        status_order = {"accepted": 4, "running": 3, "rejected": 2, "failed": 1}
+        status = max((str(item.get("status") or "running") for item in streams), key=lambda item: status_order.get(item, 0), default="running")
+        views.append({
+            "id": "service:phone-scanner/live",
+            "target": "service:phone-scanner",
+            "serviceId": "service:phone-scanner",
+            "title": "phone scanner stream",
+            "kind": "stream",
+            "view": "scanner-stream",
+            "status": status,
+            "updatedAt": scanner.get("updatedAt"),
+            "refreshMs": 1000,
+            "data": {"streams": streams},
+            "supportedViews": ["scanner-stream", "table", "image-list", "video", "iframe", "form", "graph", "json"],
+        })
+    return {"ok": True, "updatedAt": _utc_now(), "views": views}
+
+
 def _scanner_best_update(series_id: str, candidate: dict) -> dict:
     with _SCANNER_BEST_LOCK:
         series = _SCANNER_BEST_SESSIONS.setdefault(series_id, {"createdAt": _utc_now(), "candidates": []})
@@ -2770,6 +3182,7 @@ def _scanner_best_update(series_id: str, candidate: dict) -> dict:
         series["candidates"] = series["candidates"][-24:]
         best = max(series["candidates"], key=lambda item: float((item.get("quality") or {}).get("score") or 0.0))
         series["best"] = best
+        _scanner_live_store_locked(series_id, series, status="running")
         return {
             "seriesId": series_id,
             "count": len(series["candidates"]),
@@ -2963,16 +3376,34 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
         raise ValueError("seriesId is required")
     series = _scanner_best_take(series_id, clear=payload.get("clear", True) is not False)
     if not series:
+        with _SCANNER_BEST_LOCK:
+            _SCANNER_LIVE_STREAMS[series_id] = {
+                "seriesId": series_id,
+                "createdAt": _utc_now(),
+                "updatedAt": _utc_now(),
+                "status": "failed",
+                "count": 0,
+                "best": None,
+                "candidates": [],
+                "error": "scanner best series not found",
+                "document": {},
+                "artifact": None,
+            }
         return {"ok": False, "error": "scanner best series not found", "seriesId": series_id}
     best = series.get("best")
     if not isinstance(best, dict):
         candidates = [item for item in series.get("candidates", []) if isinstance(item, dict)]
         best = max(candidates, key=lambda item: float((item.get("quality") or {}).get("score") or 0.0)) if candidates else None
     if not isinstance(best, dict):
+        with _SCANNER_BEST_LOCK:
+            _scanner_live_store_locked(series_id, series, status="failed", error="scanner best series has no candidates")
         return {"ok": False, "error": "scanner best series has no candidates", "seriesId": series_id}
     quality = best.get("quality") if isinstance(best.get("quality"), dict) else {}
     min_score = float(payload.get("minScore") if payload.get("minScore") is not None else 45.0)
     if not payload.get("force") and (float(quality.get("score") or 0.0) < min_score or not quality.get("documentLike")):
+        with _SCANNER_BEST_LOCK:
+            series["best"] = best
+            _scanner_live_store_locked(series_id, series, status="rejected", error="no reliable receipt or invoice candidate found")
         return {
             "ok": False,
             "error": "no reliable receipt or invoice candidate found",
@@ -2984,6 +3415,9 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
     original_path = Path(str(best.get("originalPath") or "")).expanduser().resolve()
     display_path = Path(str(best.get("displayPath") or "")).expanduser().resolve()
     if not original_path.is_file() or not display_path.is_file():
+        with _SCANNER_BEST_LOCK:
+            series["best"] = best
+            _scanner_live_store_locked(series_id, series, status="failed", error="best candidate file is missing")
         return {"ok": False, "error": "best candidate file is missing", "seriesId": series_id, "best": _public_scanner_candidate(best)}
     crop = best.get("crop") if isinstance(best.get("crop"), dict) else {}
     ocr = best.get("ocr") if isinstance(best.get("ocr"), dict) else {}
@@ -3032,6 +3466,18 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
         document=document,
         content_prefix="Best phone scan saved",
     )
+    with _SCANNER_BEST_LOCK:
+        series["best"] = best
+        series["document"] = document
+        series["artifact"] = registered["documentArtifact"] or registered["artifact"]
+        _scanner_live_store_locked(
+            series_id,
+            series,
+            status="accepted" if document.get("ok") else "failed",
+            error=None if document.get("ok") else str(document.get("error") or "document archive failed"),
+            document=document,
+            artifact=registered["documentArtifact"] or registered["artifact"],
+        )
     return {
         "ok": True,
         "seriesId": series_id,
@@ -3896,6 +4342,10 @@ def _dashboard_api_response(path: str, project: str, db: str | None, config: str
         return 200, {"ok": True, "artifacts": host_db.list_artifacts(db, kind=_first(query, "kind"), limit=int(_first(query, "limit", "20") or 20))}
     if path == "/api/chat/history":
         return 200, chat_history(db, project, limit=int(_first(query, "limit", "80") or 80))
+    if path == "/api/services/live":
+        return 200, service_live_views(project, limit=int(_first(query, "limit", "8") or 8))
+    if path == "/api/scanner/live":
+        return 200, scanner_live_state(project, limit=int(_first(query, "limit", "8") or 8))
     return 404, {"ok": False, "error": "not found"}
 
 
@@ -3943,8 +4393,13 @@ def create_handler(
                     return
                 status, payload = _dashboard_api_response(parsed.path, project, db, config, parse_qs(parsed.query), node_urls=node_urls)
                 _json_response(self, status, payload)
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                return
             except Exception as exc:  # noqa: BLE001
-                _json_response(self, 500, {"ok": False, "error": str(exc)})
+                try:
+                    _json_response(self, 500, {"ok": False, "error": str(exc)})
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                    return
 
         def do_POST(self):
             parsed = urlparse(self.path)
@@ -3992,8 +4447,13 @@ def create_handler(
                     _json_response(self, 200, scanner_session(db, payload))
                     return
                 _json_response(self, 404, {"ok": False, "error": "not found"})
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                return
             except Exception as exc:  # noqa: BLE001
-                _json_response(self, 400, {"ok": False, "error": str(exc)})
+                try:
+                    _json_response(self, 400, {"ok": False, "error": str(exc)})
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                    return
 
         def log_message(self, fmt, *args: Any):
             return

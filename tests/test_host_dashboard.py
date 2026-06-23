@@ -107,6 +107,19 @@ def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
     assert "chat-fullscreen" in html
     assert "chatContactList" in html
     assert "chatTargetSummary" in html
+    assert "chatStreamList" in html
+    assert "serviceViews" in html
+    assert "renderServiceViews" in html
+    assert "renderTableServiceView" in html
+    assert "renderImageServiceView" in html
+    assert "renderVideoServiceView" in html
+    assert "renderIframeServiceView" in html
+    assert "renderFormServiceView" in html
+    assert "renderGraphServiceView" in html
+    assert "submitServiceForm" in html
+    assert "data-service-form" in html
+    assert "isGroupedScannerEventMessage" in html
+    assert "/api/services/live" in html
     assert "discoveryList" in html
     assert "discoveryRoutesList" in html
     assert "messageMatchesTargets" in html
@@ -299,6 +312,65 @@ def test_chat_history_limit_ignores_technical_ask_logs(monkeypatch):
     history = host_dashboard.chat_history(":memory:", ".", limit=3)
 
     assert [item["content"] for item in history["messages"]] == ["one", "two", "three"]
+
+
+def test_scanner_live_state_groups_best_candidates(tmp_path):
+    image = tmp_path / "candidate.jpg"
+    image.write_bytes(b"jpg")
+    host_dashboard._SCANNER_BEST_SESSIONS.clear()
+    host_dashboard._SCANNER_LIVE_STREAMS.clear()
+
+    host_dashboard._scanner_best_update("series-1", {
+        "seriesId": "series-1",
+        "frameIndex": 1,
+        "displayPath": str(image),
+        "originalPath": str(image),
+        "quality": {"score": 78.5, "documentLike": True},
+        "detectedDocument": {"type": "paragon", "date": "2026-06-23", "amount": "12.30"},
+        "crop": {"ok": True},
+        "ocr": {"ok": True, "chars": 42},
+    })
+
+    result = host_dashboard.scanner_live_state(str(tmp_path))
+
+    assert result["ok"] is True
+    stream = result["streams"][0]
+    assert stream["seriesId"] == "series-1"
+    assert stream["status"] == "running"
+    assert stream["count"] == 1
+    assert stream["best"]["quality"]["score"] == 78.5
+    assert stream["best"]["previewUrl"].startswith("/api/file?path=")
+    assert stream["candidates"][0]["detectedDocument"]["type"] == "paragon"
+
+
+def test_service_live_views_wraps_scanner_stream(tmp_path):
+    image = tmp_path / "candidate.jpg"
+    image.write_bytes(b"jpg")
+    host_dashboard._SCANNER_BEST_SESSIONS.clear()
+    host_dashboard._SCANNER_LIVE_STREAMS.clear()
+
+    host_dashboard._scanner_best_update("series-2", {
+        "seriesId": "series-2",
+        "frameIndex": 1,
+        "displayPath": str(image),
+        "originalPath": str(image),
+        "quality": {"score": 81.0, "documentLike": True},
+        "detectedDocument": {"type": "faktura", "date": "2026-06-23", "amount": "42.00"},
+        "crop": {"ok": True},
+        "ocr": {"ok": True, "chars": 88},
+    })
+
+    result = host_dashboard.service_live_views(str(tmp_path))
+
+    assert result["ok"] is True
+    view = result["views"][0]
+    assert view["target"] == "service:phone-scanner"
+    assert view["serviceId"] == "service:phone-scanner"
+    assert view["view"] == "scanner-stream"
+    assert view["kind"] == "stream"
+    assert view["refreshMs"] == 1000
+    assert "table" in view["supportedViews"]
+    assert view["data"]["streams"][0]["seriesId"] == "series-2"
 
 
 def test_startup_phone_qr_adds_chat_message(monkeypatch, tmp_path):
