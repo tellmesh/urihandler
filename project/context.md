@@ -5,17 +5,17 @@
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 86, json: 12, shell: 10, yaml: 4, csharp: 4
+- **Languages**: python: 87, json: 12, shell: 10, yaml: 4, csharp: 4
 - **Analysis Mode**: static
-- **Total Functions**: 1070
+- **Total Functions**: 1073
 - **Total Classes**: 27
-- **Modules**: 144
+- **Modules**: 145
 - **Entry Points**: 412
 
 ## Architecture by Module
 
 ### adapters.python.urirun.runtime.v2
-- **Functions**: 128
+- **Functions**: 124
 - **Classes**: 1
 - **File**: `v2.py`
 

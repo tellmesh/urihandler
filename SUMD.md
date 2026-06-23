@@ -259,8 +259,8 @@ Language-agnostic URI to handler adapter
 ### `project/map.toon.yaml`
 
 ```toon markpact:analysis path=project/map.toon.yaml
-# urirun | 150f 26284L | python:128,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-23
-# stats: 1039 func | 46 cls | 150 mod | CC̄=4.5 | critical:108 | cycles:0
+# urirun | 150f 26293L | python:128,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-23
+# stats: 1041 func | 46 cls | 150 mod | CC̄=4.5 | critical:108 | cycles:0
 # alerts[5]: CC apply_deploy=20; CC _host_mesh_command=18; CC main=18; CC main=17; CC watch_command=17
 # hotspots[5]: serve fan=28; run_command fan=27; main fan=23; main fan=23; serve_node fan=21
 # evolution: baseline
@@ -379,7 +379,7 @@ M[150]:
   adapters/python/urirun/runtime/secrets.py,235
   adapters/python/urirun/runtime/tree.py,92
   adapters/python/urirun/runtime/v1.py,472
-  adapters/python/urirun/runtime/v2.py,2590
+  adapters/python/urirun/runtime/v2.py,2599
   adapters/python/urirun/runtime/v2_adopt.py,194
   adapters/python/urirun/runtime/v2_grpc.py,205
   adapters/python/urirun/runtime/v2_mcp.py,210
@@ -1504,7 +1504,7 @@ D:
     load_registry_arg(arg;openapi_base_url)
     main(argv)
   adapters/python/urirun/runtime/v2.py:
-    e: model_from_function,_placeholder_kwargs,uri_command,uri_shell,_handler_kwargs,uri_handler,decorated_bindings,_document_binding_from_expanded,connector_bindings,_select_entry_points,_load_entry_point_bindings,entry_point_bindings,_entry_point_script_issues,connector_health,_collision_index,connector_collisions,entry_point_binding_document,entry_point_registry,_schema_for,_apply_defaults,_input_values,validate_input,render_value,render_sequence,render_argv,run_argv_template,run_shell_template,_first_payload_value,_resolve_error_action,_error_recent,_error_search,_error_info,_error_ticket,run_error_store,_host_integrations,planfile_task_bindings,run_planfile_task,host_data_bindings,run_host_data,domain_monitor_bindings,run_domain_monitor,run_local_function_subprocess,_builtin_error_route_entry,_builtin_registry_route_entry,_record_error,_run_parse,_run_resolve_route,_run_validate,_run_executor,_run_dry,_run_execute,run,check,list_routes,_strip_runtime_only,_binding_config,_binding_adapter_kind,expand_binding,_binding_pairs,expand_bindings,compile_registry,build_binding_document,_bindings_as_map,merge_binding_document,write_or_emit_binding,_coerce_default,parse_param_declaration,input_schema_from_params,command_binding_from_cli,pypi_binding,load_registry_arg,_placeholders_in,validate_binding_document,_iter_files,_rel,_empty_input_schema,_load_manifest,_scan_package_json,_read_toml,_scan_pyproject,_scan_shell_script,_scan_makefile,_parse_dockerfile_labels,_manifest_candidates,_scan_dockerfile,scan_artifacts,_load_json_arg,_load_many,_package_version,_is_pipx_env,_add_connectors_subparser,_build_parser,_cmd_scan,_cmd_compile,_cmd_discover,_cmd_adopt_pack,_cmd_tree,_cmd_validate,_cmd_add_command,_cmd_add_pypi,_cmd_add_openapi,_cmd_gen,_cmd_doctor,_pip_command,_resolve_pip_targets,_pip_install_args,_cmd_install,_cmd_upgrade,_pipspec_version,_outdated_rows,_cmd_outdated,_cmd_agent,_print_doctor_report,_cmd_connectors_doctor,_cmd_connectors,_cmd_errors,_cmd_compat,_cmd_host,_cmd_node,_builtin_binding_items,_registry_from_module,_resolve_list_registry,_cmd_run_or_list,_cmd_version,main,_RunAbort
+    e: model_from_function,_placeholder_kwargs,uri_command,uri_shell,_handler_kwargs,uri_handler,decorated_bindings,_document_binding_from_expanded,connector_bindings,_select_entry_points,_load_entry_point_bindings,entry_point_bindings,_entry_point_script_issues,connector_health,_collision_index,connector_collisions,entry_point_binding_document,entry_point_registry,_schema_for,_apply_defaults,_input_values,validate_input,render_value,render_sequence,render_argv,run_argv_template,run_shell_template,_first_payload_value,_resolve_error_action,_error_recent,_error_search,_error_info,_error_ticket,run_error_store,_host_integrations,planfile_task_bindings,run_planfile_task,host_data_bindings,run_host_data,domain_monitor_bindings,run_domain_monitor,run_local_function_subprocess,_builtin_error_route_entry,_builtin_registry_route_entry,_record_error,_run_parse,_run_resolve_route,_run_validate,_run_executor,_run_dry,_run_execute,run,check,list_routes,_strip_runtime_only,_binding_config,_binding_adapter_kind,expand_binding,_binding_pairs,expand_bindings,compile_registry,build_binding_document,_bindings_as_map,merge_binding_document,write_or_emit_binding,_coerce_default,parse_param_declaration,input_schema_from_params,command_binding_from_cli,pypi_binding,load_registry_arg,_placeholders_in,validate_binding_document,_iter_files,_rel,_empty_input_schema,_load_manifest,_scan_package_json,_read_toml,_scan_pyproject,_scan_shell_script,_scan_makefile,_parse_dockerfile_labels,_manifest_candidates,_scan_dockerfile,scan_artifacts,_load_json_arg,_load_many,_package_version,_is_pipx_env,_add_connectors_subparser,_add_node_subparser,_add_host_subparser,_build_parser,_cmd_scan,_cmd_compile,_cmd_discover,_cmd_adopt_pack,_cmd_tree,_cmd_validate,_cmd_add_command,_cmd_add_pypi,_cmd_add_openapi,_cmd_gen,_cmd_doctor,_pip_command,_resolve_pip_targets,_pip_install_args,_cmd_install,_cmd_upgrade,_pipspec_version,_outdated_rows,_cmd_outdated,_cmd_agent,_print_doctor_report,_cmd_connectors_doctor,_cmd_connectors,_cmd_errors,_cmd_compat,_cmd_host,_cmd_node,_builtin_binding_items,_registry_from_module,_resolve_list_registry,_cmd_run_or_list,_cmd_version,main,_RunAbort
     _RunAbort: __init__(1)  # Carries a finished (error) envelope to the single exit point
     model_from_function(fn)
     _placeholder_kwargs(fn)
@@ -1597,6 +1597,8 @@ D:
     _package_version()
     _is_pipx_env()
     _add_connectors_subparser(subparsers)
+    _add_node_subparser(subparsers)
+    _add_host_subparser(subparsers)
     _build_parser(prog)
     _cmd_scan(args;parser)
     _cmd_compile(args;parser)
@@ -1736,7 +1738,7 @@ D:
 
 ```prolog markpact:analysis path=project/logic.pl
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.64', 'javascript').
+project_metadata('urirun', '0.4.65', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -1852,7 +1854,7 @@ project_file('adapters/python/urirun/runtime/progress.py', 90, 'python').
 project_file('adapters/python/urirun/runtime/secrets.py', 235, 'python').
 project_file('adapters/python/urirun/runtime/tree.py', 92, 'python').
 project_file('adapters/python/urirun/runtime/v1.py', 472, 'python').
-project_file('adapters/python/urirun/runtime/v2.py', 2590, 'python').
+project_file('adapters/python/urirun/runtime/v2.py', 2599, 'python').
 project_file('adapters/python/urirun/runtime/v2_adopt.py', 194, 'python').
 project_file('adapters/python/urirun/runtime/v2_grpc.py', 205, 'python').
 project_file('adapters/python/urirun/runtime/v2_mcp.py', 210, 'python').
@@ -2833,7 +2835,9 @@ python_function('adapters/python/urirun/runtime/v2.py', '_load_many', 1, 4, 7).
 python_function('adapters/python/urirun/runtime/v2.py', '_package_version', 0, 3, 5).
 python_function('adapters/python/urirun/runtime/v2.py', '_is_pipx_env', 0, 3, 0).
 python_function('adapters/python/urirun/runtime/v2.py', '_add_connectors_subparser', 1, 1, 4).
-python_function('adapters/python/urirun/runtime/v2.py', '_build_parser', 1, 1, 7).
+python_function('adapters/python/urirun/runtime/v2.py', '_add_node_subparser', 1, 1, 5).
+python_function('adapters/python/urirun/runtime/v2.py', '_add_host_subparser', 1, 1, 4).
+python_function('adapters/python/urirun/runtime/v2.py', '_build_parser', 1, 1, 8).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_scan', 2, 3, 7).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_compile', 2, 3, 5).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_discover', 2, 2, 4).
@@ -3361,40 +3365,40 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 
 ## Call Graph
 
-*385 nodes · 500 edges · 31 modules · CC̄=4.5*
+*407 nodes · 500 edges · 43 modules · CC̄=4.5*
 
 ### Hubs (by degree)
 
 | Function | CC | in | out | total |
 |----------|----|----|-----|-------|
-| `_build_parser` *(in adapters.python.urirun.runtime.v2)* | 1 | 1 | 484 | **485** |
 | `serve` *(in adapters.python.urirun.runtime.daemon)* | 14 ⚠ | 1 | 41 | **42** |
 | `_write_planfile_action` *(in adapters.python.urirun.host.host_integrations)* | 8 | 1 | 39 | **40** |
 | `info` *(in adapters.python.urirun.runtime.errors)* | 13 ⚠ | 2 | 27 | **29** |
+| `adopt` *(in adapters.python.urirun.runtime.adopt_pack)* | 13 ⚠ | 1 | 28 | **29** |
+| `normalize_binding` *(in adapters.python.urirun.runtime._scan)* | 11 ⚠ | 17 | 12 | **29** |
 | `main` *(in scripts.repin_connectors)* | 18 ⚠ | 0 | 28 | **28** |
-| `_cmd_upgrade` *(in adapters.python.urirun.runtime.v2)* | 14 ⚠ | 0 | 27 | **27** |
 | `proto_from_registry` *(in adapters.python.urirun.runtime.codegen)* | 13 ⚠ | 2 | 25 | **27** |
 | `_run_query_route` *(in adapters.python.urirun.host.host_db)* | 7 | 1 | 26 | **27** |
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.18s
-# nodes: 385 | edges: 500 | modules: 31
+# generated in 0.19s
+# nodes: 407 | edges: 500 | modules: 43
 # CC̄=4.5
 
 HUBS[20]:
-  adapters.python.urirun.runtime.v2._build_parser
-    CC=1  in:1  out:484  total:485
   adapters.python.urirun.runtime.daemon.serve
     CC=14  in:1  out:41  total:42
   adapters.python.urirun.host.host_integrations._write_planfile_action
     CC=8  in:1  out:39  total:40
   adapters.python.urirun.runtime.errors.info
     CC=13  in:2  out:27  total:29
+  adapters.python.urirun.runtime.adopt_pack.adopt
+    CC=13  in:1  out:28  total:29
+  adapters.python.urirun.runtime._scan.normalize_binding
+    CC=11  in:17  out:12  total:29
   scripts.repin_connectors.main
     CC=18  in:0  out:28  total:28
-  adapters.python.urirun.runtime.v2._cmd_upgrade
-    CC=14  in:0  out:27  total:27
   adapters.python.urirun.runtime.codegen.proto_from_registry
     CC=13  in:2  out:25  total:27
   adapters.python.urirun.host.host_db._run_query_route
@@ -3403,26 +3407,26 @@ HUBS[20]:
     CC=14  in:0  out:27  total:27
   adapters.python.urirun.host.host_dashboard._dashboard_api_response
     CC=13  in:1  out:25  total:26
+  adapters.python.urirun.runtime._runtime.run
+    CC=12  in:1  out:25  total:26
   adapters.python.urirun.host.host_dashboard.summary
     CC=6  in:1  out:25  total:26
-  adapters.python.urirun.runtime.v2.validate_binding_document
-    CC=12  in:2  out:24  total:26
   adapters.python.urirun.testing.smoke
     CC=9  in:1  out:23  total:24
   adapters.python.urirun.runtime.v1.run
     CC=14  in:1  out:23  total:24
   adapters.python.urirun.connectors.connector_lint.lint_connector
     CC=10  in:3  out:20  total:23
-  adapters.python.urirun.runtime.v2.scan_artifacts
-    CC=11  in:4  out:19  total:23
-  adapters.python.urirun.runtime.errors.problem
-    CC=10  in:0  out:22  total:22
   adapters.python.urirun.host.host_db.search_records
     CC=6  in:1  out:21  total:22
+  adapters.python.urirun.runtime.errors.problem
+    CC=10  in:0  out:22  total:22
+  adapters.python.urirun.runtime.tree.collect_uris
+    CC=11  in:1  out:20  total:21
+  adapters.python.urirun.runtime._registry.discover_manifest
+    CC=14  in:2  out:19  total:21
   adapters.python.urirun.runtime.v1._run_process_streaming
     CC=7  in:1  out:20  total:21
-  adapters.python.urirun.host.host_db.init_db
-    CC=2  in:14  out:6  total:20
 
 MODULES:
   adapters.c.urirun  [3 funcs]
@@ -3446,7 +3450,7 @@ MODULES:
   adapters.php.Urirun  [2 funcs]
     bindings  CC=1  out:0
     bindingsJson  CC=1  out:2
-  adapters.python.urirun  [25 funcs]
+  adapters.python.urirun  [24 funcs]
     _dispatch_cli  CC=11  out:16
     _live_bindings  CC=4  out:5
     manifest  CC=11  out:13
@@ -3536,17 +3540,57 @@ MODULES:
     is_destructive  CC=4  out:4
   adapters.python.urirun.node.mesh  [1 funcs]
     _pool_executors  CC=1  out:8
-  adapters.python.urirun.runtime._runtime  [18 funcs]
+  adapters.python.urirun.runtime._registry  [36 funcs]
+    _default_openapi_route  CC=9  out:11
+    _discover_python_module  CC=1  out:2
+    _emit_json  CC=3  out:3
+    _get_route_entry  CC=1  out:0
+    _iter_module_exports  CC=6  out:8
+    _load_sources  CC=2  out:3
+    _operation_from_method  CC=1  out:1
+    _resolve_from_index  CC=6  out:7
+    _route_entry_equal  CC=2  out:2
+    _walk_route_entries  CC=5  out:3
+  adapters.python.urirun.runtime._runtime  [23 funcs]
     _build_fetch_body  CC=4  out:9
     _fetch_fill  CC=1  out:6
     _fetch_render  CC=6  out:7
+    _hydrate_local_function  CC=6  out:9
     _looks_destructive  CC=5  out:10
     _make_secret_injector  CC=3  out:12
     _matches_any  CC=3  out:1
     _policy_allow  CC=3  out:3
     _policy_denial  CC=9  out:12
     _resolve_fetch_url  CC=8  out:17
-    _send_fetch  CC=2  out:9
+  adapters.python.urirun.runtime._scan  [18 funcs]
+    _read_toml  CC=12  out:17
+    binding_to_route_source  CC=3  out:3
+    build_binding_document  CC=3  out:6
+    compile_registry_document  CC=4  out:5
+    emit_json  CC=3  out:3
+    github_dependency_binding  CC=4  out:3
+    infer_kind  CC=12  out:11
+    load_bindings_from_manifest  CC=14  out:16
+    normalize_binding  CC=11  out:12
+    now_iso  CC=1  out:2
+  adapters.python.urirun.runtime.adopt_pack  [11 funcs]
+    _config_manifest  CC=4  out:6
+    _document  CC=2  out:2
+    _handlers  CC=6  out:5
+    _load  CC=2  out:6
+    _package_json_manifest  CC=3  out:10
+    _policy  CC=3  out:2
+    adopt  CC=13  out:28
+    adopt_document  CC=1  out:2
+    installed_manifest_path  CC=13  out:14
+    main  CC=2  out:10
+  adapters.python.urirun.runtime.agent  [6 funcs]
+    _load_planner  CC=2  out:4
+    _parse_stdout  CC=9  out:8
+    _resolve_refs  CC=10  out:15
+    action_space  CC=9  out:13
+    agent_command  CC=7  out:16
+    run_plan  CC=7  out:16
   adapters.python.urirun.runtime.codegen  [19 funcs]
     _disambiguate_rpc_name  CC=8  out:9
     _field_snake  CC=1  out:5
@@ -3558,9 +3602,33 @@ MODULES:
     _routes  CC=7  out:9
     _rpc_name  CC=5  out:2
     _snake  CC=2  out:3
+  adapters.python.urirun.runtime.compat  [6 funcs]
+    _entry_point_names  CC=4  out:5
+    _importable  CC=3  out:1
+    _print_table  CC=10  out:17
+    main  CC=4  out:12
+    module_status  CC=8  out:9
+    report  CC=8  out:7
   adapters.python.urirun.runtime.daemon  [2 funcs]
     _main  CC=9  out:7
     serve  CC=14  out:41
+  adapters.python.urirun.runtime.discovery  [8 funcs]
+    _bindings_for_entry_point  CC=4  out:3
+    _fingerprint  CC=7  out:11
+    _index_path  CC=1  out:1
+    _scheme_of  CC=1  out:1
+    build_index  CC=6  out:11
+    full_registry  CC=5  out:14
+    load_index  CC=4  out:7
+    registry_for_uri  CC=3  out:15
+  adapters.python.urirun.runtime.dispatch_protocol  [7 funcs]
+    _norm_mode  CC=5  out:0
+    _parse_stdout  CC=4  out:3
+    dispatch  CC=4  out:8
+    make_request  CC=2  out:3
+    normalize_request  CC=5  out:9
+    reply_fields  CC=9  out:10
+    validate_request  CC=10  out:9
   adapters.python.urirun.runtime.errors  [31 funcs]
     _aggregate  CC=4  out:13
     _append  CC=3  out:13
@@ -3572,11 +3640,15 @@ MODULES:
     _cmd_ticket  CC=3  out:4
     _emit  CC=1  out:2
     _errno_category  CC=6  out:3
-  adapters.python.urirun.runtime.introspect  [4 funcs]
+  adapters.python.urirun.runtime.introspect  [3 funcs]
     _introspect_binding  CC=7  out:11
     _introspect_list  CC=9  out:10
-    registry_introspect_bindings  CC=1  out:0
     run_registry_introspect  CC=7  out:11
+  adapters.python.urirun.runtime.tree  [4 funcs]
+    build  CC=1  out:2
+    collect_uris  CC=11  out:20
+    main  CC=3  out:13
+    uri_tree  CC=4  out:6
   adapters.python.urirun.runtime.v1  [20 funcs]
     _binding_pairs  CC=8  out:11
     _env_flags  CC=3  out:5
@@ -3588,21 +3660,47 @@ MODULES:
     compile_registry  CC=1  out:2
     expand_binding  CC=7  out:6
     expand_bindings  CC=2  out:2
-  adapters.python.urirun.runtime.v2  [110 funcs]
-    _apply_defaults  CC=14  out:12
-    _binding_adapter_kind  CC=6  out:2
-    _binding_config  CC=6  out:3
-    _binding_pairs  CC=8  out:11
-    _bindings_as_map  CC=2  out:2
-    _build_parser  CC=1  out:484
-    _builtin_binding_items  CC=2  out:4
-    _builtin_error_route_entry  CC=4  out:2
-    _builtin_registry_route_entry  CC=3  out:2
-    _cmd_add_command  CC=2  out:4
+  adapters.python.urirun.runtime.v2  [5 funcs]
+    _handler_kwargs  CC=7  out:5
+    _load_manifest  CC=1  out:2
+    decorated_bindings  CC=2  out:1
+    uri_command  CC=1  out:6
+    uri_shell  CC=1  out:1
+  adapters.python.urirun.runtime.v2_adopt  [5 funcs]
+    _command_binding  CC=2  out:2
+    installed_python_bindings  CC=4  out:3
+    npm_package_bindings  CC=4  out:12
+    passthrough_schema  CC=2  out:1
+    python_package_bindings  CC=4  out:6
+  adapters.python.urirun.runtime.v2_grpc  [8 funcs]
+    _method  CC=2  out:1
+    _route_list  CC=2  out:5
+    _validate  CC=5  out:4
+    call  CC=6  out:7
+    channel_target  CC=3  out:3
+    list_routes  CC=1  out:3
+    serve  CC=2  out:17
+    stream  CC=4  out:7
+  adapters.python.urirun.runtime.v2_mcp  [11 funcs]
+    _handle_mcp_request  CC=7  out:16
+    _input_schema  CC=4  out:3
+    build_tool_index  CC=2  out:1
+    call_tool  CC=3  out:4
+    main  CC=9  out:16
+    serve_mcp  CC=9  out:8
+    to_a2a_card  CC=4  out:10
+    to_mcp_manifest  CC=4  out:2
+    to_mcp_tools  CC=4  out:8
+    tool_name  CC=1  out:3
   adapters.python.urirun.runtime.v2_service  [3 funcs]
     _post  CC=4  out:11
     call  CC=9  out:10
     service_base  CC=5  out:6
+  adapters.python.urirun.runtime.worker  [4 funcs]
+    _run_argv  CC=10  out:10
+    run_uri  CC=4  out:9
+    _cli_ref_for_script  CC=3  out:2
+    render_argv  CC=6  out:12
   adapters.python.urirun.testing  [6 funcs]
     _nonportable_routes  CC=5  out:8
     _resolve_bindings  CC=5  out:8
@@ -3650,7 +3748,7 @@ EDGES:
   adapters.python.urirun.dispatch → adapters.js.fn
   adapters.python.urirun.command → adapters.python.urirun.runtime.v2.uri_command
   adapters.python.urirun.shell → adapters.python.urirun.runtime.v2.uri_shell
-  adapters.python.urirun.handler → adapters.python.urirun.runtime.v2.uri_handler
+  adapters.python.urirun.handler → adapters.python.urirun.runtime._registry.uri_handler
   adapters.python.urirun.policy → adapters.python.urirun.runtime._runtime.build_policy
   adapters.python.urirun.result_degraded → adapters.python.urirun.result_data
   adapters.python.urirun.run_steps → adapters.python.urirun.run

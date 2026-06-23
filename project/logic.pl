@@ -1,5 +1,5 @@
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.64', 'javascript').
+project_metadata('urirun', '0.4.65', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -115,7 +115,7 @@ project_file('adapters/python/urirun/runtime/progress.py', 90, 'python').
 project_file('adapters/python/urirun/runtime/secrets.py', 235, 'python').
 project_file('adapters/python/urirun/runtime/tree.py', 92, 'python').
 project_file('adapters/python/urirun/runtime/v1.py', 472, 'python').
-project_file('adapters/python/urirun/runtime/v2.py', 2590, 'python').
+project_file('adapters/python/urirun/runtime/v2.py', 2599, 'python').
 project_file('adapters/python/urirun/runtime/v2_adopt.py', 194, 'python').
 project_file('adapters/python/urirun/runtime/v2_grpc.py', 205, 'python').
 project_file('adapters/python/urirun/runtime/v2_mcp.py', 210, 'python').
@@ -1096,7 +1096,9 @@ python_function('adapters/python/urirun/runtime/v2.py', '_load_many', 1, 4, 7).
 python_function('adapters/python/urirun/runtime/v2.py', '_package_version', 0, 3, 5).
 python_function('adapters/python/urirun/runtime/v2.py', '_is_pipx_env', 0, 3, 0).
 python_function('adapters/python/urirun/runtime/v2.py', '_add_connectors_subparser', 1, 1, 4).
-python_function('adapters/python/urirun/runtime/v2.py', '_build_parser', 1, 1, 7).
+python_function('adapters/python/urirun/runtime/v2.py', '_add_node_subparser', 1, 1, 5).
+python_function('adapters/python/urirun/runtime/v2.py', '_add_host_subparser', 1, 1, 4).
+python_function('adapters/python/urirun/runtime/v2.py', '_build_parser', 1, 1, 8).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_scan', 2, 3, 7).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_compile', 2, 3, 5).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_discover', 2, 2, 4).
