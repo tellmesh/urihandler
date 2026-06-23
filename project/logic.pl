@@ -1,5 +1,5 @@
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.63', 'javascript').
+project_metadata('urirun', '0.4.64', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -91,7 +91,7 @@ project_file('adapters/python/urirun/node/_version.py', 75, 'python').
 project_file('adapters/python/urirun/node/client.py', 319, 'python').
 project_file('adapters/python/urirun/node/config.py', 186, 'python').
 project_file('adapters/python/urirun/node/flow.py', 432, 'python').
-project_file('adapters/python/urirun/node/keyauth.py', 177, 'python').
+project_file('adapters/python/urirun/node/keyauth.py', 174, 'python').
 project_file('adapters/python/urirun/node/manage.py', 356, 'python').
 project_file('adapters/python/urirun/node/mesh.py', 2019, 'python').
 project_file('adapters/python/urirun/node/paths.py', 39, 'python').
@@ -101,7 +101,7 @@ project_file('adapters/python/urirun/planfile_adapter.py', 6, 'python').
 project_file('adapters/python/urirun/runtime/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/runtime/_registry.py', 719, 'python').
 project_file('adapters/python/urirun/runtime/_runtime.py', 541, 'python').
-project_file('adapters/python/urirun/runtime/_scan.py', 674, 'python').
+project_file('adapters/python/urirun/runtime/_scan.py', 667, 'python').
 project_file('adapters/python/urirun/runtime/adopt_pack.py', 246, 'python').
 project_file('adapters/python/urirun/runtime/agent.py', 152, 'python').
 project_file('adapters/python/urirun/runtime/codegen.py', 439, 'python').
@@ -115,7 +115,7 @@ project_file('adapters/python/urirun/runtime/progress.py', 90, 'python').
 project_file('adapters/python/urirun/runtime/secrets.py', 235, 'python').
 project_file('adapters/python/urirun/runtime/tree.py', 92, 'python').
 project_file('adapters/python/urirun/runtime/v1.py', 472, 'python').
-project_file('adapters/python/urirun/runtime/v2.py', 2585, 'python').
+project_file('adapters/python/urirun/runtime/v2.py', 2590, 'python').
 project_file('adapters/python/urirun/runtime/v2_adopt.py', 194, 'python').
 project_file('adapters/python/urirun/runtime/v2_grpc.py', 205, 'python').
 project_file('adapters/python/urirun/runtime/v2_mcp.py', 210, 'python').
@@ -627,7 +627,6 @@ python_function('adapters/python/urirun/node/flow.py', 'run_flow_document', 2, 7
 python_function('adapters/python/urirun/node/keyauth.py', 'new_enroll_token', 1, 2, 3).
 python_function('adapters/python/urirun/node/keyauth.py', 'token_matches', 2, 3, 4).
 python_function('adapters/python/urirun/node/keyauth.py', 'available', 0, 2, 0).
-python_function('adapters/python/urirun/node/keyauth.py', 'state_dir', 0, 1, 3).
 python_function('adapters/python/urirun/node/keyauth.py', 'authorized_keys_path', 0, 1, 1).
 python_function('adapters/python/urirun/node/keyauth.py', '_normalize', 1, 2, 4).
 python_function('adapters/python/urirun/node/keyauth.py', 'fingerprint', 1, 2, 9).
@@ -829,8 +828,6 @@ python_function('adapters/python/urirun/runtime/_runtime.py', 'main', 1, 10, 18)
 python_function('adapters/python/urirun/runtime/_scan.py', 'slugify', 2, 2, 4).
 python_function('adapters/python/urirun/runtime/_scan.py', 'relpath', 2, 2, 3).
 python_function('adapters/python/urirun/runtime/_scan.py', 'now_iso', 0, 1, 2).
-python_function('adapters/python/urirun/runtime/_scan.py', 'load_json', 1, 1, 3).
-python_function('adapters/python/urirun/runtime/_scan.py', 'write_json', 2, 1, 5).
 python_function('adapters/python/urirun/runtime/_scan.py', 'emit_json', 2, 3, 3).
 python_function('adapters/python/urirun/runtime/_scan.py', 'infer_kind', 1, 12, 1).
 python_function('adapters/python/urirun/runtime/_scan.py', 'normalize_binding', 2, 11, 7).
@@ -1098,7 +1095,8 @@ python_function('adapters/python/urirun/runtime/v2.py', '_load_json_arg', 1, 2, 
 python_function('adapters/python/urirun/runtime/v2.py', '_load_many', 1, 4, 7).
 python_function('adapters/python/urirun/runtime/v2.py', '_package_version', 0, 3, 5).
 python_function('adapters/python/urirun/runtime/v2.py', '_is_pipx_env', 0, 3, 0).
-python_function('adapters/python/urirun/runtime/v2.py', '_build_parser', 1, 1, 6).
+python_function('adapters/python/urirun/runtime/v2.py', '_add_connectors_subparser', 1, 1, 4).
+python_function('adapters/python/urirun/runtime/v2.py', '_build_parser', 1, 1, 7).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_scan', 2, 3, 7).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_compile', 2, 3, 5).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_discover', 2, 2, 4).

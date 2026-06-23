@@ -1403,79 +1403,9 @@ def _is_pipx_env() -> bool:
     return "/pipx/venvs/" in sys.executable or "/pipx/venvs/" in (sys.argv[0] or "")
 
 
-def _build_parser(prog: str) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=prog)
-    parser.add_argument("--version", action="version", version=f"urirun {_package_version()}")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    doctor_parser = subparsers.add_parser("doctor", help="Diagnose this urirun install: resolved binary, version, interpreter, connectors")
-    doctor_parser.add_argument("--json", action="store_true")
-
-    scan_parser = subparsers.add_parser("scan", help="Adopt project artifacts and optionally installed connector bindings")
-    scan_parser.add_argument("path", nargs="?", default=".")
-    scan_parser.add_argument("--out", default="-")
-    scan_parser.add_argument("--registry-out")
-    scan_parser.add_argument("--entry-points", action="store_true", help="Include installed connector bindings")
-    scan_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
-
-    compile_parser = subparsers.add_parser("compile", help="Compile v2 bindings, adopted artifact dirs, and optional connector entry points")
-    compile_parser.add_argument("sources", nargs="*")
-    compile_parser.add_argument("--out", default=".urirun/reglib.merged.json")
-    compile_parser.add_argument("--generated-at")
-    compile_parser.add_argument("--on-conflict", choices=["error", "keep", "replace"], default="keep")
-    compile_parser.add_argument("--entry-points", action="store_true", help="Include installed connector bindings")
-    compile_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
-
-    discover_parser = subparsers.add_parser("discover", help="Emit installed connector bindings from Python entry points")
-    discover_parser.add_argument("--out", default="-")
-    discover_parser.add_argument("--registry-out")
-    discover_parser.add_argument("--generated-at")
-    discover_parser.add_argument("--on-conflict", choices=["error", "keep", "replace"], default="keep")
-    discover_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
-
-    validate_parser = subparsers.add_parser("validate", help="Validate v2 bindings and schemas")
-    validate_parser.add_argument("source")
-    validate_parser.add_argument("--json", action="store_true")
-
-    add_command_parser = subparsers.add_parser("add-command", help="Append one argv/shell binding to a v2 bindings file")
-    add_command_parser.add_argument("uri")
-    add_command_parser.add_argument("--argv")
-    add_command_parser.add_argument("--shell")
-    add_command_parser.add_argument("--param", action="append", default=[], metavar="DECL")
-    add_command_parser.add_argument("--label")
-    add_command_parser.add_argument("--out", default="urirun.bindings.v2.json")
-
-    add_pypi_parser = subparsers.add_parser("add-pypi", help="Append a PyPI install binding in one line")
-    add_pypi_parser.add_argument("name")
-    add_pypi_parser.add_argument("--version")
-    add_pypi_parser.add_argument("--uri")
-    add_pypi_parser.add_argument("--out", default="urirun.bindings.v2.json")
-
-    add_openapi_parser = subparsers.add_parser("add-openapi", help="Import an OpenAPI doc (file or URL) into declarative fetch routes")
-    add_openapi_parser.add_argument("spec", help="Path or URL to an openapi.json")
-    add_openapi_parser.add_argument("--scheme", required=True, help="URI scheme for the generated routes, e.g. ksef")
-    add_openapi_parser.add_argument("--target", default="api", help="URI target / environment name (default: api)")
-    add_openapi_parser.add_argument("--base-url", default=None, help="Override base URL (else taken from servers[0])")
-
-    gen_parser = subparsers.add_parser("gen", help="Generate proto/openapi/client from a registry (the binding spec)")
-    gen_parser.add_argument("target", choices=["proto", "openapi", "client", "handlers"], help="artifact to generate")
-    gen_parser.add_argument("registry", help="a registry, bindings doc, or project dir")
-    gen_parser.add_argument("--out", default=None, help="write to a file (else stdout)")
-    gen_parser.add_argument("--package", default=None, help="proto package name")
-    gen_parser.add_argument("--title", default=None, help="openapi title")
-    gen_parser.add_argument("--nuances", default=None, help="write the proto nuance report to this file")
-
-    adopt_pack_parser = subparsers.add_parser("adopt-pack", help="Adopt a capability-pack manifest (file, project dir, or installed package) as bindings")
-    adopt_pack_parser.add_argument("target", help="manifest file, project dir ([tool.urirun]), or installed package name")
-    adopt_pack_parser.add_argument("--out", default="-")
-    adopt_pack_parser.add_argument("--registry-out")
-    adopt_pack_parser.add_argument("--generated-at")
-    adopt_pack_parser.add_argument("--on-conflict", choices=["error", "keep", "replace"], default="keep")
-
-    tree_parser = subparsers.add_parser("tree", help="Render a bindings/registry as a scheme->host->path->uri tree")
-    tree_parser.add_argument("source", help="a bindings.v2 doc or a compiled registry")
-    tree_parser.add_argument("--format", choices=["yaml", "json"], default="yaml")
-
+def _add_connectors_subparser(subparsers) -> None:
+    """The `connectors` command tree (list/show/install/index/resolve/check/lint/
+    verify/new/smoke/from-spec/doctor). Extracted from _build_parser to cut its fan-out."""
     connectors_parser = subparsers.add_parser("connectors", help="Browse and install connectors from connect.ifuri.com")
     connectors_sub = connectors_parser.add_subparsers(dest="connectors_command", required=True)
     connectors_common = argparse.ArgumentParser(add_help=False)
@@ -1563,27 +1493,105 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
     connectors_doctor.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
     connectors_doctor.add_argument("--json", action="store_true")
 
-    agent_parser = subparsers.add_parser("agent", help="Drive a registry as an LLM/agent action space")
-    agent_sub = agent_parser.add_subparsers(dest="agent_command", required=True)
-    agent_space = agent_sub.add_parser("space", help="Print the action space (routes, kind, inputs)")
-    agent_space.add_argument("registry", help="Path to a compiled registry JSON")
-    agent_run = agent_sub.add_parser("run", help="Run a planner's steps under policy")
-    agent_run.add_argument("registry", help="Path to a compiled registry JSON")
-    agent_run.add_argument("--goal", default="", help="Goal passed to the planner")
-    agent_run.add_argument("--planner", default=None, help="Planner as module:function (goal, space) -> steps")
-    agent_run.add_argument("--allow", action="append", default=None, help="Policy allow glob (repeatable)")
-    agent_run.add_argument("--allow-commands", action="store_true", help="Permit /command/ routes to execute")
 
-    errors_parser = subparsers.add_parser("errors", help="Browse error:// runtime errors")
-    errors_parser.add_argument(
-        "errors_args",
-        nargs=argparse.REMAINDER,
-        help="recent | info <code> | search <q> | ticket <code> | bindings",
-    )
+def _add_node_subparser(subparsers) -> None:
+    """The `node` command tree (init/config/list/stop/routes/serve). Extracted from _build_parser to cut fan-out."""
+    node_parser = subparsers.add_parser("node", help="Configure or serve a URI node")
+    node_sub = node_parser.add_subparsers(dest="node_command", required=True)
+    node_common = argparse.ArgumentParser(add_help=False)
+    node_common.add_argument("--config", default=None, help="node config path; default .urirun/node.json")
 
-    compat_parser = subparsers.add_parser("compat", help="Inspect legacy modules that are moving out of urirun core")
-    compat_parser.add_argument("compat_args", nargs=argparse.REMAINDER, help="list | check")
+    node_init = node_sub.add_parser("init", parents=[node_common], help="Create node config")
+    node_init.add_argument("--name")
+    node_init.add_argument("--registry", default=".urirun/registry.merged.json")
+    node_init.add_argument("--host", default="0.0.0.0")
+    node_init.add_argument("--port", type=int, default=8765)
+    node_init.add_argument("--execute", action="store_true")
 
+    node_sub.add_parser("config", parents=[node_common], help="Print node config")
+
+    node_list = node_sub.add_parser("list", parents=[node_common],
+                                    help="List running urirun node instances (by probing /health)")
+    node_list.add_argument("--host", default="127.0.0.1", help="host to probe; default 127.0.0.1")
+    node_list.add_argument("--ports", help="port or range to probe, e.g. 8765 or 8765-8815 (default: auto)")
+    node_list.add_argument("--json", action="store_true")
+
+    node_stop = node_sub.add_parser("stop", parents=[node_common],
+                                    help="Stop running node instance(s) on this machine")
+    node_stop.add_argument("--port", type=int, action="append", metavar="N",
+                           help="port to stop (repeatable)")
+    node_stop.add_argument("--all", action="store_true", help="stop every running urirun node found")
+    node_stop.add_argument("--host", default="127.0.0.1", help="host to probe/stop; default 127.0.0.1")
+    node_stop.add_argument("--json", action="store_true")
+
+    node_routes = node_sub.add_parser("routes", parents=[node_common], help="List URI routes in the node registry")
+    node_routes.add_argument("--registry")
+    node_routes.add_argument("--name")
+    node_routes.add_argument("--json", action="store_true")
+
+    node_serve = node_sub.add_parser("serve", parents=[node_common], help="Serve this node over HTTP")
+    node_serve.add_argument("--name")
+    node_serve.add_argument("--registry")
+    node_serve.add_argument("--host")
+    node_serve.add_argument("--port", type=int)
+    node_serve.add_argument("--execute", action="store_true")
+    node_serve.add_argument("--public-url")
+    node_serve.add_argument("--allow", action="append", default=[], metavar="GLOB",
+                            help="permit served routes matching this glob to execute (repeatable; the node's security boundary)")
+    node_serve.add_argument("--allow-secrets", action="store_true",
+                            help="permit secret:// resolution on this node (off by default; a remote /run must not read the host's local secrets)")
+    node_serve.add_argument("--pool", action="store_true",
+                            help="keep warm worker processes per connector so argv-template routes skip the cold start on every /run")
+    node_serve.add_argument("--admin-token", default=None, metavar="TOKEN",
+                            help="enable POST /deploy (remote provisioning) gated by this token; "
+                                 "also read from URIRUN_NODE_TOKEN. Pass 'auto' to generate+persist one. "
+                                 "Off by default — it can add executable routes.")
+    node_serve.add_argument("--generate-token", action="store_true",
+                            help="if no token is given, mint one and persist it to ~/.urirun-node/admin-token "
+                                 "(reused across restarts); enables POST /deploy")
+    node_serve.add_argument("--key-auth", action="store_true",
+                            help="enable SSH-key admin auth: accept ssh-copy-id enrollment and ed25519-signed "
+                                 "/deploy (no shared token). First key on a fresh node is trust-on-first-use.")
+    node_serve.add_argument("--manage", action="store_true",
+                            help="expose admin-gated node:// self-management URIs (pip install into the node's "
+                                 "venv, list packages, runtime info, connector install). Requires admin auth.")
+    node_serve.add_argument("--require-run-auth", action="store_true",
+                            help="require the same token/signature as /deploy on POST /run too "
+                                 "(needs --admin-token or --key-auth). Strongly recommended for any node "
+                                 "exposed beyond localhost, so /run is not an open execution endpoint.")
+
+    def add_source(p, with_uri=True):
+        if with_uri:
+            p.add_argument("uri")
+        p.add_argument("source", nargs="?", help="project directory, registry, or bindings file")
+        p.add_argument("--registry", default=".urirun/reglib.merged.json")
+        p.add_argument("--policy")
+        p.add_argument("--allow", action="append", default=[], metavar="GLOB")
+        p.add_argument("--deny", action="append", default=[], metavar="GLOB")
+        p.add_argument("--secret-allow", action="append", default=[], metavar="GLOB",
+                       help="permit a secret:// reference to resolve (deny-by-default)")
+        p.add_argument("--module", default=None,
+                       help="dispatch from a Python file's @handler/@command routes, no packaging")
+
+    run_parser = subparsers.add_parser("run", help="Validate input and run a URI")
+    add_source(run_parser)
+    run_parser.add_argument("--payload", default="null")
+    run_parser.add_argument("--execute", action="store_true")
+    run_parser.add_argument("--confirm", action="store_true")
+    run_parser.add_argument("--entry-points", action="store_true",
+                            help="resolve the URI against installed connector bindings (auto when no source given)")
+    run_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
+
+    list_parser = subparsers.add_parser("list", help="List available URIs")
+    add_source(list_parser, with_uri=False)
+    list_parser.add_argument("--entry-points", action="store_true", help="Include installed connector bindings")
+    list_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
+    list_parser.add_argument("--json", action="store_true")
+
+
+def _add_host_subparser(subparsers) -> None:
+    """The `host` command tree (init/add-node/config/nodes/routes/agents/watch/dashboard/data/monitor/task/run/...). Extracted from _build_parser to cut fan-out;
+    host_common and the nested data/monitor/task/dashboard commons live inside."""
     host_parser = subparsers.add_parser("host", help="Configure a host that controls URI nodes")
     host_sub = host_parser.add_subparsers(dest="host_command", required=True)
     host_common = argparse.ArgumentParser(add_help=False)
@@ -1931,98 +1939,104 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
     task_loop.add_argument("--artifact", action="append", default=[])
     task_loop.add_argument("--continue-on-error", action="store_true")
 
-    node_parser = subparsers.add_parser("node", help="Configure or serve a URI node")
-    node_sub = node_parser.add_subparsers(dest="node_command", required=True)
-    node_common = argparse.ArgumentParser(add_help=False)
-    node_common.add_argument("--config", default=None, help="node config path; default .urirun/node.json")
 
-    node_init = node_sub.add_parser("init", parents=[node_common], help="Create node config")
-    node_init.add_argument("--name")
-    node_init.add_argument("--registry", default=".urirun/registry.merged.json")
-    node_init.add_argument("--host", default="0.0.0.0")
-    node_init.add_argument("--port", type=int, default=8765)
-    node_init.add_argument("--execute", action="store_true")
+def _build_parser(prog: str) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog=prog)
+    parser.add_argument("--version", action="version", version=f"urirun {_package_version()}")
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    node_sub.add_parser("config", parents=[node_common], help="Print node config")
+    doctor_parser = subparsers.add_parser("doctor", help="Diagnose this urirun install: resolved binary, version, interpreter, connectors")
+    doctor_parser.add_argument("--json", action="store_true")
 
-    node_list = node_sub.add_parser("list", parents=[node_common],
-                                    help="List running urirun node instances (by probing /health)")
-    node_list.add_argument("--host", default="127.0.0.1", help="host to probe; default 127.0.0.1")
-    node_list.add_argument("--ports", help="port or range to probe, e.g. 8765 or 8765-8815 (default: auto)")
-    node_list.add_argument("--json", action="store_true")
+    scan_parser = subparsers.add_parser("scan", help="Adopt project artifacts and optionally installed connector bindings")
+    scan_parser.add_argument("path", nargs="?", default=".")
+    scan_parser.add_argument("--out", default="-")
+    scan_parser.add_argument("--registry-out")
+    scan_parser.add_argument("--entry-points", action="store_true", help="Include installed connector bindings")
+    scan_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
 
-    node_stop = node_sub.add_parser("stop", parents=[node_common],
-                                    help="Stop running node instance(s) on this machine")
-    node_stop.add_argument("--port", type=int, action="append", metavar="N",
-                           help="port to stop (repeatable)")
-    node_stop.add_argument("--all", action="store_true", help="stop every running urirun node found")
-    node_stop.add_argument("--host", default="127.0.0.1", help="host to probe/stop; default 127.0.0.1")
-    node_stop.add_argument("--json", action="store_true")
+    compile_parser = subparsers.add_parser("compile", help="Compile v2 bindings, adopted artifact dirs, and optional connector entry points")
+    compile_parser.add_argument("sources", nargs="*")
+    compile_parser.add_argument("--out", default=".urirun/reglib.merged.json")
+    compile_parser.add_argument("--generated-at")
+    compile_parser.add_argument("--on-conflict", choices=["error", "keep", "replace"], default="keep")
+    compile_parser.add_argument("--entry-points", action="store_true", help="Include installed connector bindings")
+    compile_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
 
-    node_routes = node_sub.add_parser("routes", parents=[node_common], help="List URI routes in the node registry")
-    node_routes.add_argument("--registry")
-    node_routes.add_argument("--name")
-    node_routes.add_argument("--json", action="store_true")
+    discover_parser = subparsers.add_parser("discover", help="Emit installed connector bindings from Python entry points")
+    discover_parser.add_argument("--out", default="-")
+    discover_parser.add_argument("--registry-out")
+    discover_parser.add_argument("--generated-at")
+    discover_parser.add_argument("--on-conflict", choices=["error", "keep", "replace"], default="keep")
+    discover_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
 
-    node_serve = node_sub.add_parser("serve", parents=[node_common], help="Serve this node over HTTP")
-    node_serve.add_argument("--name")
-    node_serve.add_argument("--registry")
-    node_serve.add_argument("--host")
-    node_serve.add_argument("--port", type=int)
-    node_serve.add_argument("--execute", action="store_true")
-    node_serve.add_argument("--public-url")
-    node_serve.add_argument("--allow", action="append", default=[], metavar="GLOB",
-                            help="permit served routes matching this glob to execute (repeatable; the node's security boundary)")
-    node_serve.add_argument("--allow-secrets", action="store_true",
-                            help="permit secret:// resolution on this node (off by default; a remote /run must not read the host's local secrets)")
-    node_serve.add_argument("--pool", action="store_true",
-                            help="keep warm worker processes per connector so argv-template routes skip the cold start on every /run")
-    node_serve.add_argument("--admin-token", default=None, metavar="TOKEN",
-                            help="enable POST /deploy (remote provisioning) gated by this token; "
-                                 "also read from URIRUN_NODE_TOKEN. Pass 'auto' to generate+persist one. "
-                                 "Off by default — it can add executable routes.")
-    node_serve.add_argument("--generate-token", action="store_true",
-                            help="if no token is given, mint one and persist it to ~/.urirun-node/admin-token "
-                                 "(reused across restarts); enables POST /deploy")
-    node_serve.add_argument("--key-auth", action="store_true",
-                            help="enable SSH-key admin auth: accept ssh-copy-id enrollment and ed25519-signed "
-                                 "/deploy (no shared token). First key on a fresh node is trust-on-first-use.")
-    node_serve.add_argument("--manage", action="store_true",
-                            help="expose admin-gated node:// self-management URIs (pip install into the node's "
-                                 "venv, list packages, runtime info, connector install). Requires admin auth.")
-    node_serve.add_argument("--require-run-auth", action="store_true",
-                            help="require the same token/signature as /deploy on POST /run too "
-                                 "(needs --admin-token or --key-auth). Strongly recommended for any node "
-                                 "exposed beyond localhost, so /run is not an open execution endpoint.")
+    validate_parser = subparsers.add_parser("validate", help="Validate v2 bindings and schemas")
+    validate_parser.add_argument("source")
+    validate_parser.add_argument("--json", action="store_true")
 
-    def add_source(p, with_uri=True):
-        if with_uri:
-            p.add_argument("uri")
-        p.add_argument("source", nargs="?", help="project directory, registry, or bindings file")
-        p.add_argument("--registry", default=".urirun/reglib.merged.json")
-        p.add_argument("--policy")
-        p.add_argument("--allow", action="append", default=[], metavar="GLOB")
-        p.add_argument("--deny", action="append", default=[], metavar="GLOB")
-        p.add_argument("--secret-allow", action="append", default=[], metavar="GLOB",
-                       help="permit a secret:// reference to resolve (deny-by-default)")
-        p.add_argument("--module", default=None,
-                       help="dispatch from a Python file's @handler/@command routes, no packaging")
+    add_command_parser = subparsers.add_parser("add-command", help="Append one argv/shell binding to a v2 bindings file")
+    add_command_parser.add_argument("uri")
+    add_command_parser.add_argument("--argv")
+    add_command_parser.add_argument("--shell")
+    add_command_parser.add_argument("--param", action="append", default=[], metavar="DECL")
+    add_command_parser.add_argument("--label")
+    add_command_parser.add_argument("--out", default="urirun.bindings.v2.json")
 
-    run_parser = subparsers.add_parser("run", help="Validate input and run a URI")
-    add_source(run_parser)
-    run_parser.add_argument("--payload", default="null")
-    run_parser.add_argument("--execute", action="store_true")
-    run_parser.add_argument("--confirm", action="store_true")
-    run_parser.add_argument("--entry-points", action="store_true",
-                            help="resolve the URI against installed connector bindings (auto when no source given)")
-    run_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
+    add_pypi_parser = subparsers.add_parser("add-pypi", help="Append a PyPI install binding in one line")
+    add_pypi_parser.add_argument("name")
+    add_pypi_parser.add_argument("--version")
+    add_pypi_parser.add_argument("--uri")
+    add_pypi_parser.add_argument("--out", default="urirun.bindings.v2.json")
 
-    list_parser = subparsers.add_parser("list", help="List available URIs")
-    add_source(list_parser, with_uri=False)
-    list_parser.add_argument("--entry-points", action="store_true", help="Include installed connector bindings")
-    list_parser.add_argument("--entry-point-group", default=ENTRY_POINT_GROUP)
-    list_parser.add_argument("--json", action="store_true")
+    add_openapi_parser = subparsers.add_parser("add-openapi", help="Import an OpenAPI doc (file or URL) into declarative fetch routes")
+    add_openapi_parser.add_argument("spec", help="Path or URL to an openapi.json")
+    add_openapi_parser.add_argument("--scheme", required=True, help="URI scheme for the generated routes, e.g. ksef")
+    add_openapi_parser.add_argument("--target", default="api", help="URI target / environment name (default: api)")
+    add_openapi_parser.add_argument("--base-url", default=None, help="Override base URL (else taken from servers[0])")
 
+    gen_parser = subparsers.add_parser("gen", help="Generate proto/openapi/client from a registry (the binding spec)")
+    gen_parser.add_argument("target", choices=["proto", "openapi", "client", "handlers"], help="artifact to generate")
+    gen_parser.add_argument("registry", help="a registry, bindings doc, or project dir")
+    gen_parser.add_argument("--out", default=None, help="write to a file (else stdout)")
+    gen_parser.add_argument("--package", default=None, help="proto package name")
+    gen_parser.add_argument("--title", default=None, help="openapi title")
+    gen_parser.add_argument("--nuances", default=None, help="write the proto nuance report to this file")
+
+    adopt_pack_parser = subparsers.add_parser("adopt-pack", help="Adopt a capability-pack manifest (file, project dir, or installed package) as bindings")
+    adopt_pack_parser.add_argument("target", help="manifest file, project dir ([tool.urirun]), or installed package name")
+    adopt_pack_parser.add_argument("--out", default="-")
+    adopt_pack_parser.add_argument("--registry-out")
+    adopt_pack_parser.add_argument("--generated-at")
+    adopt_pack_parser.add_argument("--on-conflict", choices=["error", "keep", "replace"], default="keep")
+
+    tree_parser = subparsers.add_parser("tree", help="Render a bindings/registry as a scheme->host->path->uri tree")
+    tree_parser.add_argument("source", help="a bindings.v2 doc or a compiled registry")
+    tree_parser.add_argument("--format", choices=["yaml", "json"], default="yaml")
+
+    _add_connectors_subparser(subparsers)
+    agent_parser = subparsers.add_parser("agent", help="Drive a registry as an LLM/agent action space")
+    agent_sub = agent_parser.add_subparsers(dest="agent_command", required=True)
+    agent_space = agent_sub.add_parser("space", help="Print the action space (routes, kind, inputs)")
+    agent_space.add_argument("registry", help="Path to a compiled registry JSON")
+    agent_run = agent_sub.add_parser("run", help="Run a planner's steps under policy")
+    agent_run.add_argument("registry", help="Path to a compiled registry JSON")
+    agent_run.add_argument("--goal", default="", help="Goal passed to the planner")
+    agent_run.add_argument("--planner", default=None, help="Planner as module:function (goal, space) -> steps")
+    agent_run.add_argument("--allow", action="append", default=None, help="Policy allow glob (repeatable)")
+    agent_run.add_argument("--allow-commands", action="store_true", help="Permit /command/ routes to execute")
+
+    errors_parser = subparsers.add_parser("errors", help="Browse error:// runtime errors")
+    errors_parser.add_argument(
+        "errors_args",
+        nargs=argparse.REMAINDER,
+        help="recent | info <code> | search <q> | ticket <code> | bindings",
+    )
+
+    compat_parser = subparsers.add_parser("compat", help="Inspect legacy modules that are moving out of urirun core")
+    compat_parser.add_argument("compat_args", nargs=argparse.REMAINDER, help="list | check")
+
+    _add_host_subparser(subparsers)
+    _add_node_subparser(subparsers)
     return parser
 
 

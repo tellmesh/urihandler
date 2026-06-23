@@ -259,8 +259,8 @@ Language-agnostic URI to handler adapter
 ### `project/map.toon.yaml`
 
 ```toon markpact:analysis path=project/map.toon.yaml
-# urirun | 150f 26289L | python:128,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-23
-# stats: 1041 func | 46 cls | 150 mod | CC̄=4.5 | critical:108 | cycles:0
+# urirun | 150f 26284L | python:128,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-23
+# stats: 1039 func | 46 cls | 150 mod | CC̄=4.5 | critical:108 | cycles:0
 # alerts[5]: CC apply_deploy=20; CC _host_mesh_command=18; CC main=18; CC main=17; CC watch_command=17
 # hotspots[5]: serve fan=28; run_command fan=27; main fan=23; main fan=23; serve_node fan=21
 # evolution: baseline
@@ -355,7 +355,7 @@ M[150]:
   adapters/python/urirun/node/client.py,319
   adapters/python/urirun/node/config.py,186
   adapters/python/urirun/node/flow.py,432
-  adapters/python/urirun/node/keyauth.py,177
+  adapters/python/urirun/node/keyauth.py,174
   adapters/python/urirun/node/manage.py,356
   adapters/python/urirun/node/mesh.py,2019
   adapters/python/urirun/node/paths.py,39
@@ -365,7 +365,7 @@ M[150]:
   adapters/python/urirun/runtime/__init__.py,2
   adapters/python/urirun/runtime/_registry.py,719
   adapters/python/urirun/runtime/_runtime.py,541
-  adapters/python/urirun/runtime/_scan.py,674
+  adapters/python/urirun/runtime/_scan.py,667
   adapters/python/urirun/runtime/adopt_pack.py,246
   adapters/python/urirun/runtime/agent.py,152
   adapters/python/urirun/runtime/codegen.py,439
@@ -379,7 +379,7 @@ M[150]:
   adapters/python/urirun/runtime/secrets.py,235
   adapters/python/urirun/runtime/tree.py,92
   adapters/python/urirun/runtime/v1.py,472
-  adapters/python/urirun/runtime/v2.py,2585
+  adapters/python/urirun/runtime/v2.py,2590
   adapters/python/urirun/runtime/v2_adopt.py,194
   adapters/python/urirun/runtime/v2_grpc.py,205
   adapters/python/urirun/runtime/v2_mcp.py,210
@@ -1071,11 +1071,10 @@ D:
     verify_flow_execution(document;execution)
     run_flow_document(document;mesh)
   adapters/python/urirun/node/keyauth.py:
-    e: new_enroll_token,token_matches,available,state_dir,authorized_keys_path,_normalize,fingerprint,load_authorized,is_authorized,add_authorized,_canonical,public_openssh,sign,verify,_replay_seen,verify_request
+    e: new_enroll_token,token_matches,available,authorized_keys_path,_normalize,fingerprint,load_authorized,is_authorized,add_authorized,_canonical,public_openssh,sign,verify,_replay_seen,verify_request
     new_enroll_token(length)
     token_matches(expected;provided)
     available()
-    state_dir()
     authorized_keys_path()
     _normalize(openssh)
     fingerprint(openssh)
@@ -1295,12 +1294,10 @@ D:
     format_route_table(items;show_decision)
     main(argv)
   adapters/python/urirun/runtime/_scan.py:
-    e: slugify,relpath,now_iso,load_json,write_json,emit_json,infer_kind,normalize_binding,binding_to_route_source,route_source_to_binding,load_bindings_from_manifest,build_binding_document,compile_registry_document,iter_project_files,scan_manifest_files,npm_command_for_script,github_dependency_binding,scan_package_json,_read_toml,scan_pyproject,scan_makefile,scan_shell_script,module_ref_for_python,scan_python_code,scan_js_code,parse_compose_label_line,scan_docker_compose,scan_openapi,_scan_one_file,scan_path,scan_github,load_binding_source,load_binding_sources,load_registry_arg,list_bindings,format_binding_table,main
+    e: slugify,relpath,now_iso,emit_json,infer_kind,normalize_binding,binding_to_route_source,route_source_to_binding,load_bindings_from_manifest,build_binding_document,compile_registry_document,iter_project_files,scan_manifest_files,npm_command_for_script,github_dependency_binding,scan_package_json,_read_toml,scan_pyproject,scan_makefile,scan_shell_script,module_ref_for_python,scan_python_code,scan_js_code,parse_compose_label_line,scan_docker_compose,scan_openapi,_scan_one_file,scan_path,scan_github,load_binding_source,load_binding_sources,load_registry_arg,list_bindings,format_binding_table,main
     slugify(value;fallback)
     relpath(path;root)
     now_iso()
-    load_json(path)
-    write_json(path;value)
     emit_json(value;out)
     infer_kind(binding)
     normalize_binding(binding;default_source)
@@ -1507,7 +1504,7 @@ D:
     load_registry_arg(arg;openapi_base_url)
     main(argv)
   adapters/python/urirun/runtime/v2.py:
-    e: model_from_function,_placeholder_kwargs,uri_command,uri_shell,_handler_kwargs,uri_handler,decorated_bindings,_document_binding_from_expanded,connector_bindings,_select_entry_points,_load_entry_point_bindings,entry_point_bindings,_entry_point_script_issues,connector_health,_collision_index,connector_collisions,entry_point_binding_document,entry_point_registry,_schema_for,_apply_defaults,_input_values,validate_input,render_value,render_sequence,render_argv,run_argv_template,run_shell_template,_first_payload_value,_resolve_error_action,_error_recent,_error_search,_error_info,_error_ticket,run_error_store,_host_integrations,planfile_task_bindings,run_planfile_task,host_data_bindings,run_host_data,domain_monitor_bindings,run_domain_monitor,run_local_function_subprocess,_builtin_error_route_entry,_builtin_registry_route_entry,_record_error,_run_parse,_run_resolve_route,_run_validate,_run_executor,_run_dry,_run_execute,run,check,list_routes,_strip_runtime_only,_binding_config,_binding_adapter_kind,expand_binding,_binding_pairs,expand_bindings,compile_registry,build_binding_document,_bindings_as_map,merge_binding_document,write_or_emit_binding,_coerce_default,parse_param_declaration,input_schema_from_params,command_binding_from_cli,pypi_binding,load_registry_arg,_placeholders_in,validate_binding_document,_iter_files,_rel,_empty_input_schema,_load_manifest,_scan_package_json,_read_toml,_scan_pyproject,_scan_shell_script,_scan_makefile,_parse_dockerfile_labels,_manifest_candidates,_scan_dockerfile,scan_artifacts,_load_json_arg,_load_many,_package_version,_is_pipx_env,_build_parser,_cmd_scan,_cmd_compile,_cmd_discover,_cmd_adopt_pack,_cmd_tree,_cmd_validate,_cmd_add_command,_cmd_add_pypi,_cmd_add_openapi,_cmd_gen,_cmd_doctor,_pip_command,_resolve_pip_targets,_pip_install_args,_cmd_install,_cmd_upgrade,_pipspec_version,_outdated_rows,_cmd_outdated,_cmd_agent,_print_doctor_report,_cmd_connectors_doctor,_cmd_connectors,_cmd_errors,_cmd_compat,_cmd_host,_cmd_node,_builtin_binding_items,_registry_from_module,_resolve_list_registry,_cmd_run_or_list,_cmd_version,main,_RunAbort
+    e: model_from_function,_placeholder_kwargs,uri_command,uri_shell,_handler_kwargs,uri_handler,decorated_bindings,_document_binding_from_expanded,connector_bindings,_select_entry_points,_load_entry_point_bindings,entry_point_bindings,_entry_point_script_issues,connector_health,_collision_index,connector_collisions,entry_point_binding_document,entry_point_registry,_schema_for,_apply_defaults,_input_values,validate_input,render_value,render_sequence,render_argv,run_argv_template,run_shell_template,_first_payload_value,_resolve_error_action,_error_recent,_error_search,_error_info,_error_ticket,run_error_store,_host_integrations,planfile_task_bindings,run_planfile_task,host_data_bindings,run_host_data,domain_monitor_bindings,run_domain_monitor,run_local_function_subprocess,_builtin_error_route_entry,_builtin_registry_route_entry,_record_error,_run_parse,_run_resolve_route,_run_validate,_run_executor,_run_dry,_run_execute,run,check,list_routes,_strip_runtime_only,_binding_config,_binding_adapter_kind,expand_binding,_binding_pairs,expand_bindings,compile_registry,build_binding_document,_bindings_as_map,merge_binding_document,write_or_emit_binding,_coerce_default,parse_param_declaration,input_schema_from_params,command_binding_from_cli,pypi_binding,load_registry_arg,_placeholders_in,validate_binding_document,_iter_files,_rel,_empty_input_schema,_load_manifest,_scan_package_json,_read_toml,_scan_pyproject,_scan_shell_script,_scan_makefile,_parse_dockerfile_labels,_manifest_candidates,_scan_dockerfile,scan_artifacts,_load_json_arg,_load_many,_package_version,_is_pipx_env,_add_connectors_subparser,_build_parser,_cmd_scan,_cmd_compile,_cmd_discover,_cmd_adopt_pack,_cmd_tree,_cmd_validate,_cmd_add_command,_cmd_add_pypi,_cmd_add_openapi,_cmd_gen,_cmd_doctor,_pip_command,_resolve_pip_targets,_pip_install_args,_cmd_install,_cmd_upgrade,_pipspec_version,_outdated_rows,_cmd_outdated,_cmd_agent,_print_doctor_report,_cmd_connectors_doctor,_cmd_connectors,_cmd_errors,_cmd_compat,_cmd_host,_cmd_node,_builtin_binding_items,_registry_from_module,_resolve_list_registry,_cmd_run_or_list,_cmd_version,main,_RunAbort
     _RunAbort: __init__(1)  # Carries a finished (error) envelope to the single exit point
     model_from_function(fn)
     _placeholder_kwargs(fn)
@@ -1599,6 +1596,7 @@ D:
     _load_many(sources)
     _package_version()
     _is_pipx_env()
+    _add_connectors_subparser(subparsers)
     _build_parser(prog)
     _cmd_scan(args;parser)
     _cmd_compile(args;parser)
@@ -1738,7 +1736,7 @@ D:
 
 ```prolog markpact:analysis path=project/logic.pl
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.63', 'javascript').
+project_metadata('urirun', '0.4.64', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -1830,7 +1828,7 @@ project_file('adapters/python/urirun/node/_version.py', 75, 'python').
 project_file('adapters/python/urirun/node/client.py', 319, 'python').
 project_file('adapters/python/urirun/node/config.py', 186, 'python').
 project_file('adapters/python/urirun/node/flow.py', 432, 'python').
-project_file('adapters/python/urirun/node/keyauth.py', 177, 'python').
+project_file('adapters/python/urirun/node/keyauth.py', 174, 'python').
 project_file('adapters/python/urirun/node/manage.py', 356, 'python').
 project_file('adapters/python/urirun/node/mesh.py', 2019, 'python').
 project_file('adapters/python/urirun/node/paths.py', 39, 'python').
@@ -1840,7 +1838,7 @@ project_file('adapters/python/urirun/planfile_adapter.py', 6, 'python').
 project_file('adapters/python/urirun/runtime/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/runtime/_registry.py', 719, 'python').
 project_file('adapters/python/urirun/runtime/_runtime.py', 541, 'python').
-project_file('adapters/python/urirun/runtime/_scan.py', 674, 'python').
+project_file('adapters/python/urirun/runtime/_scan.py', 667, 'python').
 project_file('adapters/python/urirun/runtime/adopt_pack.py', 246, 'python').
 project_file('adapters/python/urirun/runtime/agent.py', 152, 'python').
 project_file('adapters/python/urirun/runtime/codegen.py', 439, 'python').
@@ -1854,7 +1852,7 @@ project_file('adapters/python/urirun/runtime/progress.py', 90, 'python').
 project_file('adapters/python/urirun/runtime/secrets.py', 235, 'python').
 project_file('adapters/python/urirun/runtime/tree.py', 92, 'python').
 project_file('adapters/python/urirun/runtime/v1.py', 472, 'python').
-project_file('adapters/python/urirun/runtime/v2.py', 2585, 'python').
+project_file('adapters/python/urirun/runtime/v2.py', 2590, 'python').
 project_file('adapters/python/urirun/runtime/v2_adopt.py', 194, 'python').
 project_file('adapters/python/urirun/runtime/v2_grpc.py', 205, 'python').
 project_file('adapters/python/urirun/runtime/v2_mcp.py', 210, 'python').
@@ -2366,7 +2364,6 @@ python_function('adapters/python/urirun/node/flow.py', 'run_flow_document', 2, 7
 python_function('adapters/python/urirun/node/keyauth.py', 'new_enroll_token', 1, 2, 3).
 python_function('adapters/python/urirun/node/keyauth.py', 'token_matches', 2, 3, 4).
 python_function('adapters/python/urirun/node/keyauth.py', 'available', 0, 2, 0).
-python_function('adapters/python/urirun/node/keyauth.py', 'state_dir', 0, 1, 3).
 python_function('adapters/python/urirun/node/keyauth.py', 'authorized_keys_path', 0, 1, 1).
 python_function('adapters/python/urirun/node/keyauth.py', '_normalize', 1, 2, 4).
 python_function('adapters/python/urirun/node/keyauth.py', 'fingerprint', 1, 2, 9).
@@ -2568,8 +2565,6 @@ python_function('adapters/python/urirun/runtime/_runtime.py', 'main', 1, 10, 18)
 python_function('adapters/python/urirun/runtime/_scan.py', 'slugify', 2, 2, 4).
 python_function('adapters/python/urirun/runtime/_scan.py', 'relpath', 2, 2, 3).
 python_function('adapters/python/urirun/runtime/_scan.py', 'now_iso', 0, 1, 2).
-python_function('adapters/python/urirun/runtime/_scan.py', 'load_json', 1, 1, 3).
-python_function('adapters/python/urirun/runtime/_scan.py', 'write_json', 2, 1, 5).
 python_function('adapters/python/urirun/runtime/_scan.py', 'emit_json', 2, 3, 3).
 python_function('adapters/python/urirun/runtime/_scan.py', 'infer_kind', 1, 12, 1).
 python_function('adapters/python/urirun/runtime/_scan.py', 'normalize_binding', 2, 11, 7).
@@ -2837,7 +2832,8 @@ python_function('adapters/python/urirun/runtime/v2.py', '_load_json_arg', 1, 2, 
 python_function('adapters/python/urirun/runtime/v2.py', '_load_many', 1, 4, 7).
 python_function('adapters/python/urirun/runtime/v2.py', '_package_version', 0, 3, 5).
 python_function('adapters/python/urirun/runtime/v2.py', '_is_pipx_env', 0, 3, 0).
-python_function('adapters/python/urirun/runtime/v2.py', '_build_parser', 1, 1, 6).
+python_function('adapters/python/urirun/runtime/v2.py', '_add_connectors_subparser', 1, 1, 4).
+python_function('adapters/python/urirun/runtime/v2.py', '_build_parser', 1, 1, 7).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_scan', 2, 3, 7).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_compile', 2, 3, 5).
 python_function('adapters/python/urirun/runtime/v2.py', '_cmd_discover', 2, 2, 4).
@@ -3376,7 +3372,7 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 | `_write_planfile_action` *(in adapters.python.urirun.host.host_integrations)* | 8 | 1 | 39 | **40** |
 | `info` *(in adapters.python.urirun.runtime.errors)* | 13 ⚠ | 2 | 27 | **29** |
 | `main` *(in scripts.repin_connectors)* | 18 ⚠ | 0 | 28 | **28** |
-| `main` *(in scripts.lint_connectors)* | 14 ⚠ | 0 | 27 | **27** |
+| `_cmd_upgrade` *(in adapters.python.urirun.runtime.v2)* | 14 ⚠ | 0 | 27 | **27** |
 | `proto_from_registry` *(in adapters.python.urirun.runtime.codegen)* | 13 ⚠ | 2 | 25 | **27** |
 | `_run_query_route` *(in adapters.python.urirun.host.host_db)* | 7 | 1 | 26 | **27** |
 
@@ -3397,36 +3393,36 @@ HUBS[20]:
     CC=13  in:2  out:27  total:29
   scripts.repin_connectors.main
     CC=18  in:0  out:28  total:28
-  scripts.lint_connectors.main
+  adapters.python.urirun.runtime.v2._cmd_upgrade
     CC=14  in:0  out:27  total:27
   adapters.python.urirun.runtime.codegen.proto_from_registry
     CC=13  in:2  out:25  total:27
   adapters.python.urirun.host.host_db._run_query_route
     CC=7  in:1  out:26  total:27
-  adapters.python.urirun.runtime.v2._cmd_upgrade
+  scripts.lint_connectors.main
     CC=14  in:0  out:27  total:27
+  adapters.python.urirun.host.host_dashboard._dashboard_api_response
+    CC=13  in:1  out:25  total:26
   adapters.python.urirun.host.host_dashboard.summary
     CC=6  in:1  out:25  total:26
   adapters.python.urirun.runtime.v2.validate_binding_document
     CC=12  in:2  out:24  total:26
-  adapters.python.urirun.host.host_dashboard._dashboard_api_response
-    CC=13  in:1  out:25  total:26
-  adapters.python.urirun.runtime.v1.run
-    CC=14  in:1  out:23  total:24
   adapters.python.urirun.testing.smoke
     CC=9  in:1  out:23  total:24
-  adapters.python.urirun.runtime.v2.scan_artifacts
-    CC=11  in:4  out:19  total:23
+  adapters.python.urirun.runtime.v1.run
+    CC=14  in:1  out:23  total:24
   adapters.python.urirun.connectors.connector_lint.lint_connector
     CC=10  in:3  out:20  total:23
-  adapters.python.urirun.host.host_db.search_records
-    CC=6  in:1  out:21  total:22
+  adapters.python.urirun.runtime.v2.scan_artifacts
+    CC=11  in:4  out:19  total:23
   adapters.python.urirun.runtime.errors.problem
     CC=10  in:0  out:22  total:22
+  adapters.python.urirun.host.host_db.search_records
+    CC=6  in:1  out:21  total:22
   adapters.python.urirun.runtime.v1._run_process_streaming
     CC=7  in:1  out:20  total:21
-  examples.matrix.verify.main
-    CC=9  in:0  out:20  total:20
+  adapters.python.urirun.host.host_db.init_db
+    CC=2  in:14  out:6  total:20
 
 MODULES:
   adapters.c.urirun  [3 funcs]
