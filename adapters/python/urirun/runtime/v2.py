@@ -679,9 +679,33 @@ def run_local_function_subprocess(ctx: dict, policy: dict, execute: bool) -> dic
     try:
         value = json.loads(proc.stdout) if proc.stdout.strip() else {}
     except json.JSONDecodeError:
-        value = {"stdout": proc.stdout}
+        # A pre-redirect runner (older node) or a stray print can prepend noise to the result
+        # JSON. Recover the handler's result by parsing the LAST balanced {...} on stdout rather
+        # than surfacing {stdout: …} (which has no `ok` and breaks every caller's contract).
+        value = _last_json_object(proc.stdout)
     return {"type": "function-subprocess", "ref": ref, "isolated": True,
             "exitCode": proc.returncode, "value": value, "stderr": proc.stderr[-2000:]}
+
+
+def _last_json_object(text: str) -> dict:
+    """The last top-level JSON object in `text` (handler result amid leading noise), or
+    {stdout: text} if none parses — so a polluted subprocess stdout still yields the result."""
+    end = text.rfind("}")
+    while end != -1:
+        depth = 0
+        for i in range(end, -1, -1):
+            c = text[i]
+            if c == "}":
+                depth += 1
+            elif c == "{":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(text[i:end + 1])
+                    except json.JSONDecodeError:
+                        break
+        end = text.rfind("}", 0, end)
+    return {"stdout": text}
 
 
 from urirun.runtime.introspect import run_registry_introspect

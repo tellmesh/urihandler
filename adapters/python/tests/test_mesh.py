@@ -61,6 +61,14 @@ def _post_run(base, body, headers, *, timeout=20):
 
 
 class MeshTests(unittest.TestCase):
+    def test_package_install_source_classification_handles_remote_wheels(self):
+        self.assertEqual(manage._classify_source("urirun-connector-camera"), "catalog")
+        self.assertEqual(manage._classify_source("http://node.local/pkg.whl"), "catalog")
+        self.assertEqual(manage._classify_source("https://node.local/pkg.tar.gz"), "catalog")
+        self.assertEqual(manage._classify_source("https://github.com/if-uri/urirun-connector-camera.git"), "git")
+        self.assertEqual(manage._classify_source("git+https://github.com/if-uri/urirun-connector-camera.git"), "git")
+        self.assertEqual(manage._classify_source("/home/tom/github/if-uri/urirun-connector-camera"), "local")
+
     def test_host_config_add_node(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "mesh.json")
@@ -1220,6 +1228,30 @@ class MeshTests(unittest.TestCase):
         ])
         self.assertEqual(flow["steps"][0]["payload"]["url"], "https://www.linkedin.com/feed/")
 
+    def test_heuristic_flow_maps_downloads_invoice_prompt_to_filesystem(self):
+        nodes = [{"name": "lenovo", "reachable": True}]
+        routes = [
+            {"uri": "env://laptop/runtime/query/health", "node": "lenovo", "safe": True},
+            {"uri": "proc://laptop/process/query/list", "node": "lenovo", "safe": True},
+            {"uri": "fs://host/dir/query/list", "node": "lenovo", "safe": True},
+        ]
+
+        flow = mesh.heuristic_flow("pokaz liste faktur z folderu downloads", routes, nodes, selected_nodes=["lenovo"])
+
+        self.assertEqual([step["uri"] for step in flow["steps"]], ["fs://host/dir/query/list"])
+        self.assertEqual(flow["steps"][0]["payload"], {"path": "~/Downloads"})
+
+    def test_heuristic_flow_does_not_fake_invoice_prompt_with_processes(self):
+        nodes = [{"name": "lenovo", "reachable": True}]
+        routes = [
+            {"uri": "env://laptop/runtime/query/health", "node": "lenovo", "safe": True},
+            {"uri": "proc://laptop/process/query/list", "node": "lenovo", "safe": True},
+        ]
+
+        flow = mesh.heuristic_flow("pokaz liste faktur z folderu downloads", routes, nodes, selected_nodes=["lenovo"])
+
+        self.assertEqual(flow["steps"], [])
+
     def test_registry_from_remote_routes(self):
         registry = mesh.registry_from_routes([
             {
@@ -1584,6 +1616,32 @@ def test_make_flow_empty_has_actionable_error():
 
     assert "Discovered 0 safe route" in message
     assert "--node-url" in message
+
+
+def test_node_client_identity_signs_run_and_node_management(monkeypatch):
+    from urirun.node import keyauth
+    from urirun.node import client as client_mod
+    from urirun.node.client import NodeClient
+
+    signed: list[tuple[str, bytes]] = []
+
+    monkeypatch.setattr(client_mod, "_get", lambda *a, **k: {"ok": True, "name": "laptop", "version": "test"})
+
+    def fake_sign(identity: str, purpose: str, raw: bytes) -> dict:
+        signed.append((purpose, raw))
+        return {"X-Urirun-Sig": purpose, "X-Urirun-Key": identity, "X-Urirun-Date": "1"}
+
+    def fake_post(url: str, body: dict, headers: dict | None = None, timeout: float = 120.0, raw: bytes | None = None) -> dict:
+        return {"ok": True, "headers": headers or {}, "raw": raw}
+
+    monkeypatch.setattr(client_mod.keyauth, "sign", fake_sign)
+    monkeypatch.setattr(client_mod, "_post", fake_post)
+
+    c = NodeClient("http://node", identity="/tmp/id_ed25519")
+    c.run("demo://laptop/thing/query/ping", {})
+    c.run("node://laptop/registry/command/adopt", {"scheme": "fs"})
+
+    assert [purpose for purpose, _raw in signed] == [keyauth.PURPOSE_RUN, keyauth.PURPOSE_DEPLOY]
 
 
 def test_maybe_load_dotenv(tmp_path, monkeypatch):

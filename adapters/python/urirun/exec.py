@@ -15,6 +15,7 @@ no argv shim of its own.
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import inspect
 import json
@@ -44,7 +45,13 @@ def main(argv: list[str] | None = None) -> int:
             payload = {k: v for k, v in payload.items() if k in params}
     except (TypeError, ValueError):
         pass
-    result = fn(**payload)
+    # STDOUT is the result channel — its only content must be the JSON below, so the
+    # subprocess adapter can `json.loads` it. A handler (or a library it imports, e.g.
+    # litellm's "Provider List" banner) that prints to stdout would otherwise corrupt the
+    # contract. Send any such chatter to stderr while the handler runs; restore stdout for
+    # the one authoritative result write.
+    with contextlib.redirect_stdout(sys.stderr):
+        result = fn(**payload)
     sys.stdout.write(json.dumps(result))
     sys.stdout.flush()
     return 0

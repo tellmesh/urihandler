@@ -1,52 +1,52 @@
-# urirun | 1075 func | 79f | 22996L | python | 2026-06-23
+# urirun | 1089 func | 79f | 23751L | python | 2026-06-23
 # generated in 0.00s
 
 HEALTH:
-  CC̄=4.5  critical=124 (limit:10)  dup=2  cycles=0
+  CC̄=4.5  critical=126 (limit:10)  dup=2  cycles=0
 
 ALERTS[20]:
-  !!! high_fan_out     run_command = 33 (limit:10)
+  !!! high_fan_out     run_command = 34 (limit:10)
   !!! high_fan_out     serve = 30 (limit:10)
   !!! high_fan_out     main = 29 (limit:10)
   !!! high_fan_out     NodeHandler._stream_events = 28 (limit:10)
   !!! high_fan_out     _add_host_subparser = 27 (limit:10)
   !!! high_fan_out     main = 26 (limit:10)
-  !!! high_fan_out     _build_parser = 25 (limit:10)
   !!! high_fan_out     main = 25 (limit:10)
-  !!! high_fan_out     _add_host_task_subparser = 23 (limit:10)
-  !!! high_fan_out     main = 23 (limit:10)
+  !!! high_fan_out     _build_parser = 25 (limit:10)
+  !!! high_fan_out     scanner_capture = 24 (limit:10)
+  !!! high_fan_out     chat_ask = 24 (limit:10)
 
 MODULES[146] (top by size):
-  M[adapters/python/urirun/node/mesh.py] 2070L C:3 F:94 CC↑20 D:1 (python)
+  M[adapters/python/urirun/node/mesh.py] 2073L C:3 F:94 CC↑20 D:1 (python)
   M[adapters/python/urirun/runtime/v2.py] 1967L C:1 F:124 CC↑14 D:4 (python)
   M[planfile.yaml] 1319L C:0 F:0 CC↑0 D:0 (yaml)
+  M[adapters/python/urirun/host/host_dashboard.py] 1274L C:0 F:29 CC↑20 D:0 (python)
   M[adapters/python/urirun/runtime/_registry.py] 718L C:0 F:43 CC↑14 D:1 (python)
   M[adapters/python/urirun/__init__.py] 702L C:1 F:49 CC↑14 D:10 (python)
+  M[adapters/python/urirun/runtime/cli.py] 673L C:0 F:7 CC↑1 D:1 (python)
   M[adapters/python/urirun/runtime/_scan.py] 666L C:0 F:35 CC↑14 D:0 (python)
-  M[adapters/python/urirun/runtime/cli.py] 666L C:0 F:7 CC↑1 D:1 (python)
-  M[adapters/python/urirun/host/host_dashboard.py] 609L C:0 F:16 CC↑13 D:0 (python)
   M[adapters/python/urirun/runtime/errors.py] 563L C:0 F:31 CC↑13 D:1 (python)
   M[adapters/python/urirun/runtime/_runtime.py] 540L C:1 F:27 CC↑13 D:2 (python)
   M[goal.yaml] 538L C:0 F:0 CC↑0 D:0 (yaml)
   M[adapters/python/urirun/host/host_db.py] 499L C:0 F:29 CC↑11 D:0 (python)
   M[adapters/python/urirun/host/domain_monitor.py] 485L C:1 F:25 CC↑11 D:1 (python)
+  M[adapters/python/urirun/node/flow.py] 481L C:0 F:22 CC↑15 D:1 (python)
   M[adapters/python/urirun/runtime/v1.py] 471L C:0 F:25 CC↑14 D:0 (python)
-  M[adapters/python/urirun/runtime/codegen.py] 438L C:0 F:19 CC↑14 D:0 (python)
   LANGS: python:87/json:12/shell:10/csharp:4/yaml:4/javascript:3/c:3/txt:3/ruby:2/typescript:2/go:2/php:2/java:2/rust:2/other:2/toml:2/yml:2/pm:1/perl:1
 
 HOTSPOTS[10]:
-  ★ run_command fan=33  // `urirun host run <node> <uri> [--payload JSON] [--stream]` — dispatch a URI to a
+  ★ run_command fan=34  // `urirun host run <node> <uri> [--payload JSON] [--stream]` — dispatch a URI to a
   ★ serve fan=30  // Run the daemon: warm registry + worker pool, one Unix socket, one process.
   ★ main fan=29  // Orchestrates 29 calls
   ★ NodeHandler._stream_events fan=28  // Orchestrates 28 calls
   ★ _add_host_subparser fan=27  // The `host` command tree (init/add-node/config/nodes/routes/agents/watch/dashboar
 
 REFACTOR[15]:
-  [1] H/H Split god module adapters/python/urirun/node/mesh.py (2070L, 3 classes)
-  [2] H/H Split god module adapters/python/urirun/__init__.py (702L, 1 classes)
-  [3] H/H Split god module adapters/python/urirun/runtime/_registry.py (718L, 0 classes)
-  [4] H/H Split god module adapters/python/urirun/runtime/_scan.py (666L, 0 classes)
-  [5] H/H Split god module adapters/python/urirun/runtime/v2.py (1967L, 1 classes)
+  [1] H/H Split god module adapters/python/urirun/host/host_dashboard.py (1274L, 0 classes)
+  [2] H/H Split god module adapters/python/urirun/node/mesh.py (2073L, 3 classes)
+  [3] H/H Split god module adapters/python/urirun/__init__.py (702L, 1 classes)
+  [4] H/H Split god module adapters/python/urirun/runtime/_registry.py (718L, 0 classes)
+  [5] H/H Split god module adapters/python/urirun/runtime/_scan.py (666L, 0 classes)
 
 EVOLUTION:
-  2026-06-23 CC̄=4.5 crit=124 22996L // Automated analysis
+  2026-06-23 CC̄=4.5 crit=126 23751L // Automated analysis

@@ -14,6 +14,7 @@ import urllib.request
 from typing import Any, Iterator
 from urllib.parse import unquote, urlencode
 
+from urirun.node import keyauth
 from urirun.node.transport import _annotate_deploy_allow_compat
 
 
@@ -23,8 +24,8 @@ def _get(url: str, timeout: float = 6.0, headers: dict | None = None) -> dict:
         return json.loads(r.read().decode("utf-8") or "{}")
 
 
-def _post(url: str, body: dict, headers: dict | None = None, timeout: float = 120.0) -> dict:
-    data = json.dumps(body).encode("utf-8")
+def _post(url: str, body: dict, headers: dict | None = None, timeout: float = 120.0, raw: bytes | None = None) -> dict:
+    data = raw if raw is not None else json.dumps(body).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST",
                                  headers={"Content-Type": "application/json", **(headers or {})})
     try:
@@ -38,16 +39,23 @@ def _post(url: str, body: dict, headers: dict | None = None, timeout: float = 12
 class NodeClient:
     """Drive one urirun node: ``c = NodeClient("http://host:8765"); c.run(uri, payload)``."""
 
-    def __init__(self, url: str, token: str | None = None) -> None:
+    def __init__(self, url: str, token: str | None = None, identity: str | None = None) -> None:
         self.base = url.rstrip("/")
         self.token = token  # sent as X-Urirun-Token on every request when set
+        self.identity = identity  # SSH ed25519 key; signs POST /run and /deploy when set
         h = _get(self.base + "/health", headers=self._auth())
         self.name = h.get("name", "node")
         self.version = h.get("version")
         self.has_events = "events" in h
 
-    def _auth(self, extra: dict | None = None) -> dict:
-        h = {"X-Urirun-Token": self.token} if self.token else {}
+    def _auth(self, extra: dict | None = None, *, raw: bytes | None = None, purpose: str | None = None) -> dict:
+        h: dict = {}
+        identity = getattr(self, "identity", None)
+        token = getattr(self, "token", None)
+        if identity and raw is not None and purpose:
+            h.update(keyauth.sign(identity, purpose, raw))
+        elif token:
+            h["X-Urirun-Token"] = token
         return {**h, **(extra or {})}
 
     # --- discovery ---
@@ -72,20 +80,24 @@ class NodeClient:
         body: dict = {"uri": uri, "payload": payload or {}}
         if mode:
             body["mode"] = mode
-        headers = self._auth()
+        raw = json.dumps(body).encode("utf-8")
+        purpose = keyauth.PURPOSE_DEPLOY if uri.startswith("node://") else keyauth.PURPOSE_RUN
+        headers = self._auth(raw=raw, purpose=purpose)
         if run_id:
             headers["X-Urirun-Run-Id"] = run_id
         if expect_etag:
             headers["If-Registry-Match"] = expect_etag
-        return _post(self.base + "/run", body, headers=headers, timeout=timeout)
+        return _post(self.base + "/run", body, headers=headers, timeout=timeout, raw=raw)
 
     def run_async(self, uri: str, payload: dict | None = None, run_id: str | None = None) -> dict:
         """Start a run without blocking: returns 202 envelope with runId; stream via watch(run=)."""
         body: dict = {"uri": uri, "payload": payload or {}}
-        headers = self._auth({"Prefer": "respond-async"})
+        raw = json.dumps(body).encode("utf-8")
+        purpose = keyauth.PURPOSE_DEPLOY if uri.startswith("node://") else keyauth.PURPOSE_RUN
+        headers = self._auth({"Prefer": "respond-async"}, raw=raw, purpose=purpose)
         if run_id:
             headers["X-Urirun-Run-Id"] = run_id
-        return _post(self.base + "/run", body, headers=headers, timeout=10.0)
+        return _post(self.base + "/run", body, headers=headers, timeout=10.0, raw=raw)
 
     def cancel(self, run_id: str) -> dict:
         return self.run(f"run://{run_id}/command/cancel")
@@ -115,7 +127,14 @@ class NodeClient:
                 before = _get(self.base + "/health", timeout=min(timeout, 8.0), headers=self._auth())
             except Exception:
                 before = None
-        result = _post(self.base + "/deploy", body, headers=self._auth(), timeout=timeout)
+        raw = json.dumps(body).encode("utf-8")
+        result = _post(
+            self.base + "/deploy",
+            body,
+            headers=self._auth(raw=raw, purpose=keyauth.PURPOSE_DEPLOY),
+            timeout=timeout,
+            raw=raw,
+        )
         return _annotate_deploy_allow_compat(result, merge=merge, before=before, requested_allow=allow)
 
     def schemes(self) -> set:
@@ -137,8 +156,13 @@ class NodeClient:
             adopt = self.run(adopt_uri, {"scheme": scheme})
             if not isinstance(adopt, dict):
                 return {"ok": False, "error": "invalid adopt response"}
-            if adopt.get("ok") and scheme in self.schemes():
-                return {"ok": True, "scheme": scheme, "acquired": True, "adopted": adopt.get("adopted")}
+            if adopt.get("ok"):
+                live = self.schemes()
+                if scheme in live:
+                    return {"ok": True, "scheme": scheme, "acquired": True, "adopted": adopt.get("adopted")}
+                return {"ok": False, "scheme": scheme,
+                        "error": "adopt completed but scheme is not live",
+                        "adopted": adopt.get("adopted"), "schemes": sorted(live)}
             return adopt
 
         adopted = try_adopt()
@@ -276,7 +300,7 @@ class NodeClient:
             params.append(("last_event_id", str(last_event_id)))
         query = urlencode(params)
         url = self.base + "/events" + (f"?{query}" if query else "")
-        headers = self._auth({"Accept": "text/event-stream"})
+        headers = self._auth({"Accept": "text/event-stream"}, raw=b"", purpose=keyauth.PURPOSE_RUN)
         if last_event_id is not None:
             headers["Last-Event-ID"] = str(last_event_id)
         cur_id = last_event_id or 0

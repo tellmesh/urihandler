@@ -806,9 +806,10 @@ def supply_command(args: argparse.Namespace) -> int:
     config = host_config_for_args(args)
     url = node_url(config, args.node)
     token = getattr(args, "token", None) or os.environ.get("URIRUN_NODE_TOKEN")
+    identity = os.path.expanduser(args.identity) if getattr(args, "identity", None) and not token else None
     roots = getattr(args, "roots", None)
     once = bool(getattr(args, "once", False))
-    client = NodeClient(url, token=token)
+    client = NodeClient(url, token=token, identity=identity)
     sys.stderr.write(f"supplying {client.name}: watching need:// — Ctrl-C to stop\n")
     sys.stderr.flush()
     rc = 0
@@ -830,7 +831,8 @@ def ensure_command(args: argparse.Namespace) -> int:
     config = host_config_for_args(args)
     url = node_url(config, args.node)
     token = getattr(args, "token", None) or os.environ.get("URIRUN_NODE_TOKEN")
-    client = NodeClient(url, token=token)
+    identity = os.path.expanduser(args.identity) if getattr(args, "identity", None) and not token else None
+    client = NodeClient(url, token=token, identity=identity)
     res = client.ensure_scheme(args.scheme, roots=getattr(args, "roots", None),
                                install=not getattr(args, "no_install", False))
     reglib._emit_json(res, "-")
@@ -844,7 +846,8 @@ def run_command(args: argparse.Namespace) -> int:
     config = host_config_for_args(args)
     url = node_url(config, args.node)
     token = getattr(args, "token", None) or os.environ.get("URIRUN_NODE_TOKEN")
-    client = NodeClient(url, token=token)
+    identity = os.path.expanduser(args.identity) if getattr(args, "identity", None) and not token else None
+    client = NodeClient(url, token=token, identity=identity)
     payload = json.loads(args.payload) if getattr(args, "payload", None) else {}
     uri = client.concretize(args.uri)
     timeout = float(getattr(args, "timeout", 120.0) or 120.0)

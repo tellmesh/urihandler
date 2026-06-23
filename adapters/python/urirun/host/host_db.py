@@ -314,7 +314,7 @@ def list_artifacts(path: str | None = None, kind: str | None = None, limit: int 
     if kind:
         sql += " WHERE kind = ?"
         params.append(kind)
-    sql += " ORDER BY created_at DESC LIMIT ?"
+    sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
     params.append(limit)
     with connection(path) as conn:
         return rows_dict(conn.execute(sql, params).fetchall())
@@ -338,7 +338,7 @@ def recent_checks(path: str | None = None, subject: str | None = None, limit: in
     if subject:
         sql += " WHERE subject = ?"
         params.append(subject)
-    sql += " ORDER BY created_at DESC LIMIT ?"
+    sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
     params.append(limit)
     with connection(path) as conn:
         return rows_dict(conn.execute(sql, params).fetchall())
@@ -362,7 +362,7 @@ def recent_logs(path: str | None = None, stream: str | None = None, limit: int =
     if stream:
         sql += " WHERE stream = ?"
         params.append(stream)
-    sql += " ORDER BY created_at DESC LIMIT ?"
+    sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
     params.append(limit)
     with connection(path) as conn:
         return rows_dict(conn.execute(sql, params).fetchall())

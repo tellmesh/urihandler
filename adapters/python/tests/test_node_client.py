@@ -56,7 +56,7 @@ class NodeClientTests(unittest.TestCase):
         client_mod._get = lambda url, timeout=6.0, headers=None: (
             calls.append(("GET", url, headers, timeout)) or {"ok": True, "policy": {"allow": []}}
         )
-        client_mod._post = lambda url, body, headers=None, timeout=120.0: (
+        client_mod._post = lambda url, body, headers=None, timeout=120.0, raw=None: (
             calls.append(("POST", url, body, headers, timeout)) or {"ok": True, "allow": ["browser://**"]}
         )
         try:
@@ -89,7 +89,7 @@ class NodeClientTests(unittest.TestCase):
             "ok": True,
             "policy": {"allow": ["app://**", "screen://**"]},
         }
-        client_mod._post = lambda url, body, headers=None, timeout=120.0: {
+        client_mod._post = lambda url, body, headers=None, timeout=120.0, raw=None: {
             "ok": True,
             "allow": ["browser://**"],
         }
@@ -138,6 +138,29 @@ class NodeClientTests(unittest.TestCase):
         self.assertEqual(calls[1][0], "deploy")
         self.assertEqual(calls[1][1]["allow"], ["browser://**"])
         self.assertTrue(calls[1][1]["merge"])
+
+    def test_ensure_scheme_does_not_accept_adopt_without_live_scheme(self):
+        client = NodeClient.__new__(NodeClient)
+        client.name = "lab"
+        routes = [{"uri": "node://lab/registry/command/adopt"}]
+        calls = []
+        client.routes = lambda: routes
+
+        def run(uri, payload=None):
+            calls.append((uri, payload))
+            if uri == "node://lab/registry/command/adopt":
+                return {"ok": True, "adopted": 3, "schemes": ["env"]}
+            if uri == "node://lab/registry/query/installed":
+                return {"ok": True, "result": {"value": {"bindings": {}}}}
+            raise AssertionError(uri)
+
+        client.run = run
+
+        out = client.ensure_scheme("ocr", install=False)
+
+        self.assertFalse(out["ok"])
+        self.assertIn(("node://lab/registry/command/adopt", {"scheme": "ocr"}), calls)
+        self.assertIn(("node://lab/registry/query/installed", {"scheme": "ocr"}), calls)
 
     def test_ensure_scheme_installs_discovered_local_source_then_deploys(self):
         client = NodeClient.__new__(NodeClient)

@@ -1,46 +1,46 @@
-# code2llm/evolution | 1062 func | 74f | 2026-06-23
+# code2llm/evolution | 1076 func | 74f | 2026-06-23
 # generated in 0.00s
 
 NEXT[10] (ranked by impact):
   [1] !! SPLIT           adapters/python/urirun/node/mesh.py
-      WHY: 2070L, 3 classes, max CC=20
-      EFFORT: ~4h  IMPACT: 41400
+      WHY: 2073L, 3 classes, max CC=20
+      EFFORT: ~4h  IMPACT: 41460
 
   [2] !! SPLIT           adapters/python/urirun/runtime/v2.py
       WHY: 1967L, 1 classes, max CC=14
       EFFORT: ~4h  IMPACT: 27538
 
-  [3] !  SPLIT-FUNC      NodeHandler._stream_events  CC=19  fan=28
+  [3] !  SPLIT-FUNC      run_command  CC=16  fan=34
+      WHY: CC=16 exceeds 15
+      EFFORT: ~1h  IMPACT: 544
+
+  [4] !  SPLIT-FUNC      NodeHandler._stream_events  CC=19  fan=28
       WHY: CC=19 exceeds 15
       EFFORT: ~1h  IMPACT: 532
 
-  [4] !  SPLIT-FUNC      main  CC=17  fan=29
+  [5] !  SPLIT-FUNC      main  CC=17  fan=29
       WHY: CC=17 exceeds 15
       EFFORT: ~1h  IMPACT: 493
 
-  [5] !  SPLIT-FUNC      apply_deploy  CC=20  fan=21
+  [6] !  SPLIT-FUNC      chat_ask  CC=20  fan=24
+      WHY: CC=20 exceeds 15
+      EFFORT: ~1h  IMPACT: 480
+
+  [7] !  SPLIT-FUNC      apply_deploy  CC=20  fan=21
       WHY: CC=20 exceeds 15
       EFFORT: ~1h  IMPACT: 420
 
-  [6] !  SPLIT-FUNC      serve_node  CC=17  fan=21
+  [8] !  SPLIT-FUNC      serve_node  CC=17  fan=21
       WHY: CC=17 exceeds 15
       EFFORT: ~1h  IMPACT: 357
 
-  [7] !  SPLIT-FUNC      watch_command  CC=17  fan=19
+  [9] !  SPLIT-FUNC      NodeClient.ensure_scheme  CC=20  fan=17
+      WHY: CC=20 exceeds 15
+      EFFORT: ~1h  IMPACT: 340
+
+  [10] !  SPLIT-FUNC      watch_command  CC=17  fan=19
       WHY: CC=17 exceeds 15
       EFFORT: ~1h  IMPACT: 323
-
-  [8] !  SPLIT-FUNC      NodeClient.ensure_scheme  CC=20  fan=16
-      WHY: CC=20 exceeds 15
-      EFFORT: ~1h  IMPACT: 320
-
-  [9] !  SPLIT-FUNC      _host_mesh_command  CC=18  fan=16
-      WHY: CC=18 exceeds 15
-      EFFORT: ~1h  IMPACT: 288
-
-  [10] !  SPLIT-FUNC      NodeHandler._get  CC=16  fan=18
-      WHY: CC=16 exceeds 15
-      EFFORT: ~1h  IMPACT: 288
 
 
 RISKS[3]:
@@ -49,10 +49,10 @@ RISKS[3]:
   ⚠ Splitting planfile.yaml may break 0 import paths
 
 METRICS-TARGET:
-  CC̄:          4.4 → ≤3.1
+  CC̄:          4.5 → ≤3.1
   max-CC:      20 → ≤10
   god-modules: 11 → 0
-  high-CC(≥15): 16 → ≤8
+  high-CC(≥15): 19 → ≤9
   hub-types:   0 → ≤0
 
 PATTERNS (language parser shared logic):
@@ -80,4 +80,4 @@ PATTERNS (language parser shared logic):
     - Standardized FunctionInfo/ClassInfo models
 
 HISTORY:
-  prev CC̄=4.4 → now CC̄=4.4
+  prev CC̄=4.4 → now CC̄=4.5

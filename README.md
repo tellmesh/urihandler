@@ -3,11 +3,11 @@
 
 ## AI Cost Tracking
 
-![PyPI](https://img.shields.io/badge/pypi-costs-blue) ![Version](https://img.shields.io/badge/version-0.4.71-blue) ![Python](https://img.shields.io/badge/python-3.9+-blue) ![License](https://img.shields.io/badge/license-Apache--2.0-green)
-![AI Cost](https://img.shields.io/badge/AI%20Cost-$8.34-orange) ![Human Time](https://img.shields.io/badge/Human%20Time-55.0h-blue) ![Model](https://img.shields.io/badge/Model-openrouter%2Fqwen%2Fqwen3--coder--next-lightgrey)
+![PyPI](https://img.shields.io/badge/pypi-costs-blue) ![Version](https://img.shields.io/badge/version-0.4.72-blue) ![Python](https://img.shields.io/badge/python-3.9+-blue) ![License](https://img.shields.io/badge/license-Apache--2.0-green)
+![AI Cost](https://img.shields.io/badge/AI%20Cost-$8.72-orange) ![Human Time](https://img.shields.io/badge/Human%20Time-56.7h-blue) ![Model](https://img.shields.io/badge/Model-openrouter%2Fqwen%2Fqwen3--coder--next-lightgrey)
 
-- 🤖 **LLM usage:** $8.3389 (185 commits)
-- 👤 **Human dev:** ~$5502 (55.0h @ $100/h, 30min dedup)
+- 🤖 **LLM usage:** $8.7243 (186 commits)
+- 👤 **Human dev:** ~$5666 (56.7h @ $100/h, 30min dedup)
 
 Generated on 2026-06-23 using [openrouter/qwen/qwen3-coder-next](https://openrouter.ai/qwen/qwen3-coder-next)
 
@@ -378,14 +378,24 @@ urirun host task run PLF-001 --project . --config ~/.urirun/mesh.json --no-llm -
 urirun host task loop --project . --config ~/.urirun/mesh.json --queue daily --execute
 ```
 
-Serve the local operator dashboard for tasks, nodes, URI processes and recent
-host activity:
+Serve the local operator dashboard for chat-driven URI operations, tasks, nodes,
+URI processes and recent host activity. The Chat tab turns natural language into
+a validated URI flow across selected nodes. It runs as dry-run by default; the
+`Execute URI operations` checkbox is required before it calls node `/run`.
 
 ```bash
 urirun host dashboard serve \
   --project . \
   --db ~/.urirun/host.db \
   --config ~/.urirun/mesh.json \
+  --port 8194
+```
+
+For one-off nodes, pass transient endpoints without editing the mesh config:
+
+```bash
+urirun host dashboard serve \
+  --node-url lenovo=http://192.168.188.201:8765 \
   --port 8194
 ```
 

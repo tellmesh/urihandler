@@ -475,6 +475,10 @@ def _add_host_subparser(subparsers) -> None:
     dashboard_serve.add_argument("--db", help="host SQLite db path; default ~/.urirun/host.db")
     dashboard_serve.add_argument("--host", default="127.0.0.1")
     dashboard_serve.add_argument("--port", type=int, default=8194)
+    dashboard_serve.add_argument("--token", help="X-Urirun-Token for auth-gated nodes used from the dashboard")
+    dashboard_serve.add_argument("--identity", help="SSH private key to sign dashboard /run calls with an enrolled key")
+    dashboard_serve.add_argument("--tls-cert", help="serve HTTPS with this certificate file; needed by most phones for camera access")
+    dashboard_serve.add_argument("--tls-key", help="serve HTTPS with this private key file")
     dashboard_url = dashboard_sub.add_parser("url", parents=[host_common], help="Print the dashboard URL")
     dashboard_url.add_argument("--host", default="127.0.0.1")
     dashboard_url.add_argument("--port", type=int, default=8194)
@@ -527,6 +531,7 @@ def _add_host_subparser(subparsers) -> None:
     host_run.add_argument("--stream", action="store_true", help="start async and stream the node's live progress until done")
     host_run.add_argument("--run-id", dest="run_id", help="correlation id for the run (default: generated)")
     host_run.add_argument("--token", help="X-Urirun-Token for an auth-gated node")
+    host_run.add_argument("--identity", help="SSH private key to sign /run with an enrolled key")
     host_run.add_argument("--ensure", action="store_true", help="acquire the URI's scheme first if the node lacks it (self-heal)")
     host_run.add_argument("--roots", help="connector search roots for --ensure (default ~/github / $URIRUN_CONNECTOR_ROOTS)")
     host_run.add_argument("--timeout", type=float, default=120.0, help="run timeout in seconds")
@@ -538,6 +543,7 @@ def _add_host_subparser(subparsers) -> None:
     host_ensure.add_argument("--roots", help="connector search roots (default ~/github / $URIRUN_CONNECTOR_ROOTS)")
     host_ensure.add_argument("--no-install", action="store_true", help="only use already-installed bindings; don't install")
     host_ensure.add_argument("--token", help="admin token for node:// management / deploy")
+    host_ensure.add_argument("--identity", help="SSH private key to sign node:// management with an enrolled key")
 
     host_supply = host_sub.add_parser("supply", parents=[host_common],
                                       help="Watch a node's need:// events and supply the connectors/folders it asks for")
@@ -545,6 +551,7 @@ def _add_host_subparser(subparsers) -> None:
     host_supply.add_argument("--roots", help="connector/folder search roots (default ~/github / $URIRUN_CONNECTOR_ROOTS)")
     host_supply.add_argument("--once", action="store_true", help="fulfill one need and exit")
     host_supply.add_argument("--token", help="admin token for node:// management / deploy")
+    host_supply.add_argument("--identity", help="SSH private key to sign node:// management with an enrolled key")
 
     host_ask = host_sub.add_parser("ask", parents=[host_common], help="Generate a URI flow from natural language and dispatch it")
     host_ask.add_argument("prompt", nargs="+")

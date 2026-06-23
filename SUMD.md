@@ -259,13 +259,13 @@ Language-agnostic URI to handler adapter
 ### `project/map.toon.yaml`
 
 ```toon markpact:analysis path=project/map.toon.yaml
-# urirun | 153f 26538L | python:131,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-23
-# stats: 1061 func | 46 cls | 153 mod | CC̄=4.4 | critical:107 | cycles:0
-# alerts[5]: CC apply_deploy=20; CC _host_mesh_command=18; CC main=18; CC main=17; CC watch_command=17
-# hotspots[5]: serve fan=28; run_command fan=27; main fan=23; main fan=23; serve_node fan=21
+# urirun | 155f 27642L | python:133,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-23
+# stats: 1083 func | 49 cls | 155 mod | CC̄=4.5 | critical:110 | cycles:0
+# alerts[5]: CC chat_ask=20; CC apply_deploy=20; CC _resolve_serve_opts=20; CC _host_mesh_command=18; CC main=18
+# hotspots[5]: run_command fan=28; serve fan=28; main fan=23; main fan=23; scanner_capture fan=22
 # evolution: baseline
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
-M[153]:
+M[155]:
   adapters/bash/example/hash-connector.sh,10
   adapters/bash/urirun.sh,18
   adapters/conformance.py,149
@@ -299,9 +299,9 @@ M[153]:
   adapters/python/tests/test_host_db.py,113
   adapters/python/tests/test_install_upgrade.py,109
   adapters/python/tests/test_introspect.py,76
-  adapters/python/tests/test_mesh.py,1608
+  adapters/python/tests/test_mesh.py,1666
   adapters/python/tests/test_minimal_imports.py,91
-  adapters/python/tests/test_node_client.py,221
+  adapters/python/tests/test_node_client.py,244
   adapters/python/tests/test_node_diagnostics.py,46
   adapters/python/tests/test_node_extracted.py,84
   adapters/python/tests/test_openapi_import.py,49
@@ -340,7 +340,7 @@ M[153]:
   adapters/python/urirun/exec.py,55
   adapters/python/urirun/host/__init__.py,2
   adapters/python/urirun/host/domain_monitor.py,486
-  adapters/python/urirun/host/host_dashboard.py,610
+  adapters/python/urirun/host/host_dashboard.py,1285
   adapters/python/urirun/host/host_db.py,500
   adapters/python/urirun/host/host_integrations.py,356
   adapters/python/urirun/host/planfile_adapter.py,280
@@ -354,12 +354,12 @@ M[153]:
   adapters/python/urirun/node/_artifacts.py,111
   adapters/python/urirun/node/_util.py,31
   adapters/python/urirun/node/_version.py,75
-  adapters/python/urirun/node/client.py,319
-  adapters/python/urirun/node/config.py,186
-  adapters/python/urirun/node/flow.py,432
+  adapters/python/urirun/node/client.py,343
+  adapters/python/urirun/node/config.py,194
+  adapters/python/urirun/node/flow.py,482
   adapters/python/urirun/node/keyauth.py,174
-  adapters/python/urirun/node/manage.py,356
-  adapters/python/urirun/node/mesh.py,2053
+  adapters/python/urirun/node/manage.py,358
+  adapters/python/urirun/node/mesh.py,2074
   adapters/python/urirun/node/paths.py,39
   adapters/python/urirun/node/routing.py,144
   adapters/python/urirun/node/transport.py,436
@@ -370,7 +370,7 @@ M[153]:
   adapters/python/urirun/runtime/_scan.py,667
   adapters/python/urirun/runtime/adopt_pack.py,246
   adapters/python/urirun/runtime/agent.py,152
-  adapters/python/urirun/runtime/cli.py,667
+  adapters/python/urirun/runtime/cli.py,674
   adapters/python/urirun/runtime/codegen.py,439
   adapters/python/urirun/runtime/compat.py,200
   adapters/python/urirun/runtime/daemon.py,117
@@ -386,7 +386,7 @@ M[153]:
   adapters/python/urirun/runtime/v2_adopt.py,194
   adapters/python/urirun/runtime/v2_grpc.py,205
   adapters/python/urirun/runtime/v2_mcp.py,210
-  adapters/python/urirun/runtime/v2_service.py,112
+  adapters/python/urirun/runtime/v2_service.py,116
   adapters/python/urirun/runtime/worker.py,267
   adapters/python/urirun/scheduler.py,6
   adapters/python/urirun/task_planner.py,6
@@ -416,7 +416,9 @@ M[153]:
   scripts/sync-versions.sh,26
   security/mesh-probe/probe.py,115
   test/urirun.test.js,11
+  tests/test_host_dashboard.py,185
   tests/test_urirun.py,12
+  tests/test_v2_service_auth.py,47
   tree.sh,5
   v1/js/urirun-v1.js,335
 D:
@@ -611,8 +613,8 @@ D:
     test_no_registry_payload_introspects_live_runtime(tmp_path)
     test_zero_config_registry_carries_builtin_routes()
   adapters/python/tests/test_mesh.py:
-    e: _wait_healthy,_wait_subscribers,_post_run,test_deploy_dir_adds_to_sys_path_and_pythonpath,test_deploy_registry_merge_adds_and_preserves_argv,test_quiet_completion_keeps_banner_off_stdout,test_deploy_registry_merge_handles_sibling_ops,test_registry_fingerprint_stable_and_changes,test_apply_deploy_bumps_generation_and_reports_etag,test_config_with_transient_node_urls,test_deploy_command_uses_transient_node_url,test_deploy_allow_compat_warning_when_merge_narrows_policy,test_deploy_allow_compat_warning_when_merge_clears_policy,test_deploy_to_node_warns_on_remote_allow_merge_mismatch,test_apply_deploy_merge_preserves_existing_allowlist,test_materialize_base64_artifacts,test_make_flow_empty_has_actionable_error,test_maybe_load_dotenv,MeshTests
-    MeshTests: test_host_config_add_node(0),test_apply_deploy_hot_swaps_registry_code_and_allow(0),test_apply_deploy_requires_a_surface(0),test_apply_deploy_accepts_code_only_hot_swap(0),test_watch_node_url_encodes_filters_and_replay_cursor(0),test_parse_sse_line_tracks_event_id_and_ignores_bad_payloads(0),test_emit_streams_progress_to_events_by_run_id(0),test_argv_template_streams_stdout_to_events_by_run_id(0),test_async_run_202_and_cancel_stops_a_streaming_process(0),test_node_client_drives_a_live_node(0),test_node_client_token_auth(0),test_watch_resume_replays_missed_progress_by_event_id(0),test_host_run_stream_command(0),test_route_source_provenance(0),test_apply_deploy_reloads_pushed_code_without_restart(0),test_resolve_admin_token_generate_reuse_and_precedence(0),test_enroll_token_shape_and_match(0),test_copy_id_requires_console_enroll_token_for_first_key(0),test_verify_request_rejects_replay(0),test_apply_deploy_ignores_dangerous_env(0),test_oversized_body_rejected_with_413(0),test_run_rejects_malformed_body_with_400(0),test_parse_ports(0),test_node_list_running_discovers_a_live_node(0),test_require_run_auth_gates_run(0),test_keyauth_sign_verify_and_enrollment(0),test_stop_node_port_when_nothing_listening(0),test_copy_id_gives_actionable_error_not_bare_404(0),test_node_config_defaults(0),test_manage_bindings_and_install(0),test_node_requests_and_host_supplies_connector_and_folder(0),test_node_side_adopt_makes_installed_routes_live(0),test_run_ensuring_self_heals_then_runs(0),test_ensure_scheme_acquires_capability_and_makes_it_live(0),test_fulfill_need_dispatches_scheme_and_folder_requests(0),test_install_source_policy(0),test_connector_install_from_any_source(0),test_connector_discover_scans_local_projects(0),test_discover_derives_routes_from_uninstalled_local_connector(0),test_node_management_routes_admin_gated(0),test_run_with_broken_handler_returns_json_not_dropped_connection(0),test_event_topic_mapping(0),test_fanout_to_mqtt_publishes_each_event(0),test_event_hub_ids_and_replay(0),test_events_endpoint_auth_gating(0),test_heuristic_flow_uses_all_reachable_nodes(0),test_heuristic_flow_maps_config_node_name_to_route_target(0),test_heuristic_flow_maps_linkedin_screen_prompt_to_capture(0),test_heuristic_flow_filters_selected_node_when_route_targets_overlap(0),test_heuristic_flow_maps_browser_linkedin_prompt_to_cdp(0),test_registry_from_remote_routes(0),test_service_map_prefers_exact_uri_over_shared_target(0),test_resolve_step_payload_chains_prior_results(0),test_dig_path_indexes_lists(0),test_resolve_step_payload_passthrough_without_from(0),test_flow_document_round_trips_yaml(0),test_verify_flow_execution_checks_read_back_fragment(0),test_verify_flow_execution_can_fail_result(0),test_run_flow_document_dry_run(0)
+    e: _wait_healthy,_wait_subscribers,_post_run,test_deploy_dir_adds_to_sys_path_and_pythonpath,test_deploy_registry_merge_adds_and_preserves_argv,test_quiet_completion_keeps_banner_off_stdout,test_deploy_registry_merge_handles_sibling_ops,test_registry_fingerprint_stable_and_changes,test_apply_deploy_bumps_generation_and_reports_etag,test_config_with_transient_node_urls,test_deploy_command_uses_transient_node_url,test_deploy_allow_compat_warning_when_merge_narrows_policy,test_deploy_allow_compat_warning_when_merge_clears_policy,test_deploy_to_node_warns_on_remote_allow_merge_mismatch,test_apply_deploy_merge_preserves_existing_allowlist,test_materialize_base64_artifacts,test_make_flow_empty_has_actionable_error,test_node_client_identity_signs_run_and_node_management,test_maybe_load_dotenv,MeshTests
+    MeshTests: test_package_install_source_classification_handles_remote_wheels(0),test_host_config_add_node(0),test_apply_deploy_hot_swaps_registry_code_and_allow(0),test_apply_deploy_requires_a_surface(0),test_apply_deploy_accepts_code_only_hot_swap(0),test_watch_node_url_encodes_filters_and_replay_cursor(0),test_parse_sse_line_tracks_event_id_and_ignores_bad_payloads(0),test_emit_streams_progress_to_events_by_run_id(0),test_argv_template_streams_stdout_to_events_by_run_id(0),test_async_run_202_and_cancel_stops_a_streaming_process(0),test_node_client_drives_a_live_node(0),test_node_client_token_auth(0),test_watch_resume_replays_missed_progress_by_event_id(0),test_host_run_stream_command(0),test_route_source_provenance(0),test_apply_deploy_reloads_pushed_code_without_restart(0),test_resolve_admin_token_generate_reuse_and_precedence(0),test_enroll_token_shape_and_match(0),test_copy_id_requires_console_enroll_token_for_first_key(0),test_verify_request_rejects_replay(0),test_apply_deploy_ignores_dangerous_env(0),test_oversized_body_rejected_with_413(0),test_run_rejects_malformed_body_with_400(0),test_parse_ports(0),test_node_list_running_discovers_a_live_node(0),test_require_run_auth_gates_run(0),test_keyauth_sign_verify_and_enrollment(0),test_stop_node_port_when_nothing_listening(0),test_copy_id_gives_actionable_error_not_bare_404(0),test_node_config_defaults(0),test_manage_bindings_and_install(0),test_node_requests_and_host_supplies_connector_and_folder(0),test_node_side_adopt_makes_installed_routes_live(0),test_run_ensuring_self_heals_then_runs(0),test_ensure_scheme_acquires_capability_and_makes_it_live(0),test_fulfill_need_dispatches_scheme_and_folder_requests(0),test_install_source_policy(0),test_connector_install_from_any_source(0),test_connector_discover_scans_local_projects(0),test_discover_derives_routes_from_uninstalled_local_connector(0),test_node_management_routes_admin_gated(0),test_run_with_broken_handler_returns_json_not_dropped_connection(0),test_event_topic_mapping(0),test_fanout_to_mqtt_publishes_each_event(0),test_event_hub_ids_and_replay(0),test_events_endpoint_auth_gating(0),test_heuristic_flow_uses_all_reachable_nodes(0),test_heuristic_flow_maps_config_node_name_to_route_target(0),test_heuristic_flow_maps_linkedin_screen_prompt_to_capture(0),test_heuristic_flow_filters_selected_node_when_route_targets_overlap(0),test_heuristic_flow_maps_browser_linkedin_prompt_to_cdp(0),test_heuristic_flow_maps_downloads_invoice_prompt_to_filesystem(0),test_heuristic_flow_does_not_fake_invoice_prompt_with_processes(0),test_registry_from_remote_routes(0),test_service_map_prefers_exact_uri_over_shared_target(0),test_resolve_step_payload_chains_prior_results(0),test_dig_path_indexes_lists(0),test_resolve_step_payload_passthrough_without_from(0),test_flow_document_round_trips_yaml(0),test_verify_flow_execution_checks_read_back_fragment(0),test_verify_flow_execution_can_fail_result(0),test_run_flow_document_dry_run(0)
     _wait_healthy(base;tries;delay)
     _wait_subscribers(base;want;tries;delay)
     _post_run(base;body;headers)
@@ -630,13 +632,14 @@ D:
     test_apply_deploy_merge_preserves_existing_allowlist()
     test_materialize_base64_artifacts(tmp_path)
     test_make_flow_empty_has_actionable_error()
+    test_node_client_identity_signs_run_and_node_management(monkeypatch)
     test_maybe_load_dotenv(tmp_path;monkeypatch)
   adapters/python/tests/test_minimal_imports.py:
     e: MinimalImportTests
     MinimalImportTests: test_core_import_keeps_host_and_domain_modules_lazy(0),test_host_binding_generation_keeps_executors_lazy(0)
   adapters/python/tests/test_node_client.py:
     e: NodeClientTests
-    NodeClientTests: test_concretize_decodes_uri_and_uses_node_name_default(0),test_auth_merges_token_header(0),test_value_unwraps_common_run_envelopes(0),test_resolve_refs_replaces_nested_step_outputs(0),test_deploy_posts_to_deploy_endpoint_with_auth_and_merge(0),test_deploy_warns_when_merge_narrows_allow_policy(0),test_ensure_scheme_noops_when_scheme_is_already_live(0),test_ensure_scheme_deploys_installed_bindings(0),test_ensure_scheme_installs_discovered_local_source_then_deploys(0),test_ensure_scheme_reports_missing_candidate(0),test_request_capability_emits_need_route(0),test_push_folder_deploys_text_files(0)
+    NodeClientTests: test_concretize_decodes_uri_and_uses_node_name_default(0),test_auth_merges_token_header(0),test_value_unwraps_common_run_envelopes(0),test_resolve_refs_replaces_nested_step_outputs(0),test_deploy_posts_to_deploy_endpoint_with_auth_and_merge(0),test_deploy_warns_when_merge_narrows_allow_policy(0),test_ensure_scheme_noops_when_scheme_is_already_live(0),test_ensure_scheme_deploys_installed_bindings(0),test_ensure_scheme_does_not_accept_adopt_without_live_scheme(0),test_ensure_scheme_installs_discovered_local_source_then_deploys(0),test_ensure_scheme_reports_missing_candidate(0),test_request_capability_emits_need_route(0),test_push_folder_deploys_text_files(0)
   adapters/python/tests/test_node_diagnostics.py:
     e: _template_registry,test_concrete_uri_resolves_against_host_template,test_template_route_denied_without_allow_still_resolves
     _template_registry()
@@ -898,21 +901,34 @@ D:
     _route_flow(rc)
     run_uri_route(ctx;execute)
   adapters/python/urirun/host/host_dashboard.py:
-    e: _json_response,_html_response,_read_json,_first,_host_db,_mesh,_planfile_adapter,_safe_tickets,_task_counts,summary,task_action,_dashboard_api_response,create_handler,serve,command,default_host
+    e: _json_response,_html_response,_read_json,_file_response,_preview_url,_is_image_path,_collect_attachments,_chat_message,_add_chat_message,chat_history,_local_image_ocr,shutil_which,scanner_capture,_first,_host_db,_mesh,_planfile_adapter,_host_config,_safe_tickets,_task_counts,summary,_compact_chat_result,chat_ask,task_action,_dashboard_api_response,create_handler,serve,command,default_host
     _json_response(handler;status;payload)
     _html_response(handler;html)
     _read_json(handler)
+    _file_response(handler;path;project)
+    _preview_url(path;project)
+    _is_image_path(path)
+    _collect_attachments(value;project)
+    _chat_message(role;content)
+    _add_chat_message(db;message)
+    chat_history(db;project;limit)
+    _local_image_ocr(path)
+    shutil_which(binary)
+    scanner_capture(project;db;payload)
     _first(query;name;default)
     _host_db()
     _mesh()
     _planfile_adapter()
+    _host_config(config;node_urls)
     _safe_tickets(project;sprint;status;queue)
     _task_counts(tickets)
-    summary(project;db;config)
+    summary(project;db;config;node_urls)
+    _compact_chat_result(result;payload)
+    chat_ask(project;db;config;payload;node_urls;token;identity)
     task_action(project;ticket_id;action;payload)
-    _dashboard_api_response(path;project;db;config;query)
-    create_handler(project;db;config)
-    serve(project;db;config;host;port)
+    _dashboard_api_response(path;project;db;config;query;node_urls)
+    create_handler(project;db;config;node_urls;token;identity)
+    serve(project;db;config;host;port;node_urls;token;identity;tls_cert;tls_key)
     command(args)
     default_host()
   adapters/python/urirun/host/host_db.py:
@@ -1048,9 +1064,9 @@ D:
     version_line(check_latest)
   adapters/python/urirun/node/client.py:
     e: _get,_post,NodeClient
-    NodeClient: __init__(2),_auth(1),routes(0),get(1),concretize(2),run(6),run_async(3),cancel(1),status(1),deploy(6),schemes(0),ensure_scheme(3),run_ensuring(3),request_capability(2),push_folder(3),value(1),resolve_refs(2),recent_log(1),watch(5),stream_run(3)  # Drive one urirun node: ``c = NodeClient("http://host:8765");
+    NodeClient: __init__(3),_auth(1),routes(0),get(1),concretize(2),run(6),run_async(3),cancel(1),status(1),deploy(6),schemes(0),ensure_scheme(3),run_ensuring(3),request_capability(2),push_folder(3),value(1),resolve_refs(2),recent_log(1),watch(5),stream_run(3)  # Drive one urirun node: ``c = NodeClient("http://host:8765");
     _get(url;timeout;headers)
-    _post(url;body;headers;timeout)
+    _post(url;body;headers;timeout;raw)
   adapters/python/urirun/node/config.py:
     e: host_config_path,node_config_path,default_host_config,load_host_config,save_host_config,init_host,add_node,_coerce_node_url,_node_name_from_url,config_with_transient_node_urls,host_config_for_args,default_node_config,load_node_config,save_node_config,init_node,node_url
     host_config_path(path)
@@ -1070,7 +1086,7 @@ D:
     init_node(path;name;registry;host;port;execute)
     node_url(config;name_or_url)
   adapters/python/urirun/node/flow.py:
-    e: _flow_format,flow_document,write_flow_document,load_flow_document,first_url,nl_key,append_if_available,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,execute_flow,_flow_stdout,verify_flow_execution,run_flow_document
+    e: _flow_format,flow_document,write_flow_document,load_flow_document,first_url,nl_key,append_if_available,requested_folder_path,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,execute_flow,_flow_stdout,verify_flow_execution,run_flow_document
     _flow_format(path;requested)
     flow_document(flow)
     write_flow_document(path;document;fmt)
@@ -1078,6 +1094,7 @@ D:
     first_url(prompt)
     nl_key(text)
     append_if_available(steps;route_uris;uri;payload;previous)
+    requested_folder_path(lowered)
     _flow_intents(lowered)
     _append_target_steps(steps;route_uris;target;intents;url;previous)
     heuristic_flow(prompt;routes;nodes;selected_nodes)
@@ -1195,7 +1212,7 @@ D:
     _registry_to_bindings(registry)
     _deploy_registry(body;existing)
     apply_deploy(state;body)
-    serve_node(name;registry;host;port;execute;public_url;allow_secrets;allow;pool;admin_token;key_auth;require_run_auth;manage;registry_path;config_path)
+    serve_node(name;registry;host;port;execute;public_url;allow_secrets;allow;pool;admin_token;key_auth;require_run_auth;manage;registry_path;config_path;kind;runtime;services)
     _resolve_serve_opts(args;node)
     _node_serve(args;node;name;registry)
     node_list_command(args)
@@ -1757,17 +1774,31 @@ D:
     http(method;path)
     _attacker_key()
     record(cat;fid;bad;note)
+  tests/test_host_dashboard.py:
+    e: test_chat_ask_generates_and_dry_runs_uri_flow,test_chat_ask_execute_and_transient_node_urls,test_chat_ask_requires_prompt,test_chat_history_reads_message_logs,test_chat_history_limit_ignores_technical_ask_logs,test_scanner_capture_registers_artifact_and_chat_message,FakeMesh,FakeHostDb
+    FakeMesh: __init__(0),load_host_config(1),config_with_transient_node_urls(2),discover_mesh(1),make_flow(4),registry_from_routes(1),execute_flow(4)
+    FakeHostDb: __init__(0),add_log(4),recent_logs(3),register_artifact(5)
+    test_chat_ask_generates_and_dry_runs_uri_flow(monkeypatch)
+    test_chat_ask_execute_and_transient_node_urls(monkeypatch)
+    test_chat_ask_requires_prompt()
+    test_chat_history_reads_message_logs(monkeypatch)
+    test_chat_history_limit_ignores_technical_ask_logs(monkeypatch)
+    test_scanner_capture_registers_artifact_and_chat_message(monkeypatch;tmp_path)
   tests/test_urirun.py:
     e: test_placeholder,test_import
     test_placeholder()
     test_import()
+  tests/test_v2_service_auth.py:
+    e: test_v2_service_post_signs_with_identity,_Resp
+    _Resp: __enter__(0),__exit__(0),read(0)
+    test_v2_service_post_signs_with_identity(monkeypatch)
 ```
 
 ### `project/logic.pl`
 
 ```prolog markpact:analysis path=project/logic.pl
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.70', 'javascript').
+project_metadata('urirun', '0.4.71', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -1803,9 +1834,9 @@ project_file('adapters/python/tests/test_host_dashboard.py', 97, 'python').
 project_file('adapters/python/tests/test_host_db.py', 113, 'python').
 project_file('adapters/python/tests/test_install_upgrade.py', 109, 'python').
 project_file('adapters/python/tests/test_introspect.py', 76, 'python').
-project_file('adapters/python/tests/test_mesh.py', 1608, 'python').
+project_file('adapters/python/tests/test_mesh.py', 1666, 'python').
 project_file('adapters/python/tests/test_minimal_imports.py', 91, 'python').
-project_file('adapters/python/tests/test_node_client.py', 221, 'python').
+project_file('adapters/python/tests/test_node_client.py', 244, 'python').
 project_file('adapters/python/tests/test_node_diagnostics.py', 46, 'python').
 project_file('adapters/python/tests/test_node_extracted.py', 84, 'python').
 project_file('adapters/python/tests/test_openapi_import.py', 49, 'python').
@@ -1844,7 +1875,7 @@ project_file('adapters/python/urirun/errors.py', 9, 'python').
 project_file('adapters/python/urirun/exec.py', 55, 'python').
 project_file('adapters/python/urirun/host/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/host/domain_monitor.py', 486, 'python').
-project_file('adapters/python/urirun/host/host_dashboard.py', 610, 'python').
+project_file('adapters/python/urirun/host/host_dashboard.py', 1285, 'python').
 project_file('adapters/python/urirun/host/host_db.py', 500, 'python').
 project_file('adapters/python/urirun/host/host_integrations.py', 356, 'python').
 project_file('adapters/python/urirun/host/planfile_adapter.py', 280, 'python').
@@ -1858,12 +1889,12 @@ project_file('adapters/python/urirun/node/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/node/_artifacts.py', 111, 'python').
 project_file('adapters/python/urirun/node/_util.py', 31, 'python').
 project_file('adapters/python/urirun/node/_version.py', 75, 'python').
-project_file('adapters/python/urirun/node/client.py', 319, 'python').
-project_file('adapters/python/urirun/node/config.py', 186, 'python').
-project_file('adapters/python/urirun/node/flow.py', 432, 'python').
+project_file('adapters/python/urirun/node/client.py', 343, 'python').
+project_file('adapters/python/urirun/node/config.py', 194, 'python').
+project_file('adapters/python/urirun/node/flow.py', 482, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 174, 'python').
-project_file('adapters/python/urirun/node/manage.py', 356, 'python').
-project_file('adapters/python/urirun/node/mesh.py', 2053, 'python').
+project_file('adapters/python/urirun/node/manage.py', 358, 'python').
+project_file('adapters/python/urirun/node/mesh.py', 2074, 'python').
 project_file('adapters/python/urirun/node/paths.py', 39, 'python').
 project_file('adapters/python/urirun/node/routing.py', 144, 'python').
 project_file('adapters/python/urirun/node/transport.py', 436, 'python').
@@ -1874,7 +1905,7 @@ project_file('adapters/python/urirun/runtime/_runtime.py', 541, 'python').
 project_file('adapters/python/urirun/runtime/_scan.py', 667, 'python').
 project_file('adapters/python/urirun/runtime/adopt_pack.py', 246, 'python').
 project_file('adapters/python/urirun/runtime/agent.py', 152, 'python').
-project_file('adapters/python/urirun/runtime/cli.py', 667, 'python').
+project_file('adapters/python/urirun/runtime/cli.py', 674, 'python').
 project_file('adapters/python/urirun/runtime/codegen.py', 439, 'python').
 project_file('adapters/python/urirun/runtime/compat.py', 200, 'python').
 project_file('adapters/python/urirun/runtime/daemon.py', 117, 'python').
@@ -1890,7 +1921,7 @@ project_file('adapters/python/urirun/runtime/v2.py', 1968, 'python').
 project_file('adapters/python/urirun/runtime/v2_adopt.py', 194, 'python').
 project_file('adapters/python/urirun/runtime/v2_grpc.py', 205, 'python').
 project_file('adapters/python/urirun/runtime/v2_mcp.py', 210, 'python').
-project_file('adapters/python/urirun/runtime/v2_service.py', 112, 'python').
+project_file('adapters/python/urirun/runtime/v2_service.py', 116, 'python').
 project_file('adapters/python/urirun/runtime/worker.py', 267, 'python').
 project_file('adapters/python/urirun/scheduler.py', 6, 'python').
 project_file('adapters/python/urirun/task_planner.py', 6, 'python').
@@ -1920,7 +1951,9 @@ project_file('scripts/repin_connectors.py', 167, 'python').
 project_file('scripts/sync-versions.sh', 26, 'shell').
 project_file('security/mesh-probe/probe.py', 115, 'python').
 project_file('test/urirun.test.js', 11, 'javascript').
+project_file('tests/test_host_dashboard.py', 185, 'python').
 project_file('tests/test_urirun.py', 12, 'python').
+project_file('tests/test_v2_service_auth.py', 47, 'python').
 project_file('tree.sh', 5, 'shell').
 project_file('v1/js/urirun-v1.js', 335, 'javascript').
 
@@ -2063,6 +2096,7 @@ python_function('adapters/python/tests/test_mesh.py', 'test_deploy_to_node_warns
 python_function('adapters/python/tests/test_mesh.py', 'test_apply_deploy_merge_preserves_existing_allowlist', 0, 3, 3).
 python_function('adapters/python/tests/test_mesh.py', 'test_materialize_base64_artifacts', 1, 6, 7).
 python_function('adapters/python/tests/test_mesh.py', 'test_make_flow_empty_has_actionable_error', 0, 5, 3).
+python_function('adapters/python/tests/test_mesh.py', 'test_node_client_identity_signs_run_and_node_management', 1, 2, 4).
 python_function('adapters/python/tests/test_mesh.py', 'test_maybe_load_dotenv', 2, 6, 6).
 python_function('adapters/python/tests/test_node_diagnostics.py', '_template_registry', 0, 1, 1).
 python_function('adapters/python/tests/test_node_diagnostics.py', 'test_concrete_uri_resolves_against_host_template', 0, 3, 5).
@@ -2251,18 +2285,31 @@ python_function('adapters/python/urirun/host/domain_monitor.py', 'run_uri_route'
 python_function('adapters/python/urirun/host/host_dashboard.py', '_json_response', 3, 1, 8).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_html_response', 2, 1, 7).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_read_json', 1, 3, 5).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_file_response', 3, 6, 16).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_preview_url', 2, 6, 9).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_is_image_path', 1, 1, 2).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_collect_attachments', 2, 1, 13).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_chat_message', 2, 3, 0).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_add_chat_message', 2, 2, 2).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'chat_history', 3, 4, 9).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_local_image_ocr', 1, 5, 4).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'shutil_which', 1, 1, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'scanner_capture', 3, 9, 22).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_first', 3, 2, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_host_db', 0, 1, 0).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_mesh', 0, 1, 0).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_planfile_adapter', 0, 1, 0).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_host_config', 2, 2, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_safe_tickets', 4, 2, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_task_counts', 1, 3, 2).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'summary', 3, 6, 17).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'summary', 4, 6, 17).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_compact_chat_result', 2, 5, 3).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'chat_ask', 7, 20, 20).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'task_action', 4, 8, 9).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_dashboard_api_response', 5, 13, 13).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'create_handler', 3, 1, 10).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'serve', 5, 1, 7).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'command', 1, 8, 4).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_dashboard_api_response', 6, 15, 14).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'create_handler', 6, 1, 15).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'serve', 10, 3, 11).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'command', 1, 9, 6).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'default_host', 0, 1, 2).
 python_function('adapters/python/urirun/host/host_db.py', 'db_path', 1, 2, 3).
 python_function('adapters/python/urirun/host/host_db.py', 'now_iso', 0, 1, 2).
@@ -2372,7 +2419,7 @@ python_function('adapters/python/urirun/node/_version.py', 'latest_version', 2, 
 python_function('adapters/python/urirun/node/_version.py', 'version_status', 1, 5, 3).
 python_function('adapters/python/urirun/node/_version.py', 'version_line', 1, 3, 1).
 python_function('adapters/python/urirun/node/client.py', '_get', 3, 3, 5).
-python_function('adapters/python/urirun/node/client.py', '_post', 4, 7, 9).
+python_function('adapters/python/urirun/node/client.py', '_post', 5, 8, 9).
 python_function('adapters/python/urirun/node/config.py', 'host_config_path', 1, 5, 4).
 python_function('adapters/python/urirun/node/config.py', 'node_config_path', 1, 2, 2).
 python_function('adapters/python/urirun/node/config.py', 'default_host_config', 1, 3, 2).
@@ -2396,9 +2443,10 @@ python_function('adapters/python/urirun/node/flow.py', 'load_flow_document', 1, 
 python_function('adapters/python/urirun/node/flow.py', 'first_url', 1, 2, 2).
 python_function('adapters/python/urirun/node/flow.py', 'nl_key', 1, 1, 6).
 python_function('adapters/python/urirun/node/flow.py', 'append_if_available', 5, 5, 5).
+python_function('adapters/python/urirun/node/flow.py', 'requested_folder_path', 1, 3, 2).
 python_function('adapters/python/urirun/node/flow.py', '_flow_intents', 1, 4, 3).
-python_function('adapters/python/urirun/node/flow.py', '_append_target_steps', 6, 10, 2).
-python_function('adapters/python/urirun/node/flow.py', 'heuristic_flow', 4, 8, 12).
+python_function('adapters/python/urirun/node/flow.py', '_append_target_steps', 6, 14, 4).
+python_function('adapters/python/urirun/node/flow.py', 'heuristic_flow', 4, 10, 13).
 python_function('adapters/python/urirun/node/flow.py', 'json_from_text', 1, 5, 7).
 python_function('adapters/python/urirun/node/flow.py', 'normalize_flow', 2, 15, 9).
 python_function('adapters/python/urirun/node/flow.py', 'normalize_flow_or_explain', 2, 10, 7).
@@ -2480,9 +2528,9 @@ python_function('adapters/python/urirun/node/mesh.py', '_task_loop', 2, 10, 11).
 python_function('adapters/python/urirun/node/mesh.py', 'task_command', 1, 2, 2).
 python_function('adapters/python/urirun/node/mesh.py', '_host_delegated_command', 1, 14, 14).
 python_function('adapters/python/urirun/node/mesh.py', 'fulfill_need', 3, 4, 5).
-python_function('adapters/python/urirun/node/mesh.py', 'supply_command', 1, 6, 11).
-python_function('adapters/python/urirun/node/mesh.py', 'ensure_command', 1, 3, 7).
-python_function('adapters/python/urirun/node/mesh.py', 'run_command', 1, 14, 27).
+python_function('adapters/python/urirun/node/mesh.py', 'supply_command', 1, 8, 12).
+python_function('adapters/python/urirun/node/mesh.py', 'ensure_command', 1, 5, 8).
+python_function('adapters/python/urirun/node/mesh.py', 'run_command', 1, 16, 28).
 python_function('adapters/python/urirun/node/mesh.py', '_print_event', 2, 6, 4).
 python_function('adapters/python/urirun/node/mesh.py', 'watch_command', 1, 17, 18).
 python_function('adapters/python/urirun/node/mesh.py', '_host_mesh_command', 3, 18, 15).
@@ -2504,8 +2552,8 @@ python_function('adapters/python/urirun/node/mesh.py', '_apply_deploy_env', 2, 4
 python_function('adapters/python/urirun/node/mesh.py', '_registry_to_bindings', 1, 5, 4).
 python_function('adapters/python/urirun/node/mesh.py', '_deploy_registry', 2, 8, 4).
 python_function('adapters/python/urirun/node/mesh.py', 'apply_deploy', 2, 20, 19).
-python_function('adapters/python/urirun/node/mesh.py', 'serve_node', 15, 15, 21).
-python_function('adapters/python/urirun/node/mesh.py', '_resolve_serve_opts', 2, 17, 10).
+python_function('adapters/python/urirun/node/mesh.py', 'serve_node', 18, 17, 21).
+python_function('adapters/python/urirun/node/mesh.py', '_resolve_serve_opts', 2, 20, 10).
 python_function('adapters/python/urirun/node/mesh.py', '_node_serve', 4, 3, 6).
 python_function('adapters/python/urirun/node/mesh.py', 'node_list_command', 1, 7, 7).
 python_function('adapters/python/urirun/node/mesh.py', 'node_stop_command', 1, 14, 9).
@@ -2954,7 +3002,7 @@ python_function('adapters/python/urirun/runtime/v2_mcp.py', '_handle_mcp_request
 python_function('adapters/python/urirun/runtime/v2_mcp.py', 'serve_mcp', 5, 9, 8).
 python_function('adapters/python/urirun/runtime/v2_mcp.py', 'main', 1, 9, 11).
 python_function('adapters/python/urirun/runtime/v2_service.py', 'service_base', 2, 5, 4).
-python_function('adapters/python/urirun/runtime/v2_service.py', '_post', 3, 4, 8).
+python_function('adapters/python/urirun/runtime/v2_service.py', '_post', 3, 5, 11).
 python_function('adapters/python/urirun/runtime/v2_service.py', 'call', 6, 9, 9).
 python_function('adapters/python/urirun/runtime/worker.py', 'render_argv', 2, 6, 8).
 python_function('adapters/python/urirun/runtime/worker.py', '_worker_main', 1, 13, 17).
@@ -2984,8 +3032,15 @@ python_function('scripts/repin_connectors.py', 'main', 1, 18, 14).
 python_function('security/mesh-probe/probe.py', 'http', 2, 4, 5).
 python_function('security/mesh-probe/probe.py', '_attacker_key', 0, 1, 5).
 python_function('security/mesh-probe/probe.py', 'record', 4, 2, 2).
+python_function('tests/test_host_dashboard.py', 'test_chat_ask_generates_and_dry_runs_uri_flow', 1, 13, 4).
+python_function('tests/test_host_dashboard.py', 'test_chat_ask_execute_and_transient_node_urls', 1, 5, 4).
+python_function('tests/test_host_dashboard.py', 'test_chat_ask_requires_prompt', 0, 4, 3).
+python_function('tests/test_host_dashboard.py', 'test_chat_history_reads_message_logs', 1, 3, 4).
+python_function('tests/test_host_dashboard.py', 'test_chat_history_limit_ignores_technical_ask_logs', 1, 2, 4).
+python_function('tests/test_host_dashboard.py', 'test_scanner_capture_registers_artifact_and_chat_message', 2, 4, 7).
 python_function('tests/test_urirun.py', 'test_placeholder', 0, 2, 0).
 python_function('tests/test_urirun.py', 'test_import', 0, 1, 0).
+python_function('tests/test_v2_service_auth.py', 'test_v2_service_post_signs_with_identity', 1, 7, 7).
 
 % ── Python Classes ───────────────────────────────────────
 python_class('adapters/python/tests/test_adopt_pack.py', 'AdoptPackTests').
@@ -3081,6 +3136,7 @@ python_method('HostDbTests', 'test_dataset_schema_and_record_search', 0, 1, 8).
 python_method('HostDbTests', 'test_v2_data_uri_bindings', 0, 1, 9).
 python_method('HostDbTests', 'test_artifact_and_check_storage', 0, 1, 7).
 python_class('adapters/python/tests/test_mesh.py', 'MeshTests').
+python_method('MeshTests', 'test_package_install_source_classification_handles_remote_wheels', 0, 1, 2).
 python_method('MeshTests', 'test_host_config_add_node', 0, 1, 7).
 python_method('MeshTests', 'test_apply_deploy_hot_swaps_registry_code_and_allow', 0, 1, 7).
 python_method('MeshTests', 'test_apply_deploy_requires_a_surface', 0, 1, 2).
@@ -3131,6 +3187,8 @@ python_method('MeshTests', 'test_heuristic_flow_maps_config_node_name_to_route_t
 python_method('MeshTests', 'test_heuristic_flow_maps_linkedin_screen_prompt_to_capture', 0, 1, 2).
 python_method('MeshTests', 'test_heuristic_flow_filters_selected_node_when_route_targets_overlap', 0, 2, 2).
 python_method('MeshTests', 'test_heuristic_flow_maps_browser_linkedin_prompt_to_cdp', 0, 2, 2).
+python_method('MeshTests', 'test_heuristic_flow_maps_downloads_invoice_prompt_to_filesystem', 0, 2, 2).
+python_method('MeshTests', 'test_heuristic_flow_does_not_fake_invoice_prompt_with_processes', 0, 1, 2).
 python_method('MeshTests', 'test_registry_from_remote_routes', 0, 1, 3).
 python_method('MeshTests', 'test_service_map_prefers_exact_uri_over_shared_target', 0, 2, 5).
 python_method('MeshTests', 'test_resolve_step_payload_chains_prior_results', 0, 1, 2).
@@ -3152,6 +3210,7 @@ python_method('NodeClientTests', 'test_deploy_posts_to_deploy_endpoint_with_auth
 python_method('NodeClientTests', 'test_deploy_warns_when_merge_narrows_allow_policy', 0, 1, 3).
 python_method('NodeClientTests', 'test_ensure_scheme_noops_when_scheme_is_already_live', 0, 1, 3).
 python_method('NodeClientTests', 'test_ensure_scheme_deploys_installed_bindings', 0, 1, 6).
+python_method('NodeClientTests', 'test_ensure_scheme_does_not_accept_adopt_without_live_scheme', 0, 1, 6).
 python_method('NodeClientTests', 'test_ensure_scheme_installs_discovered_local_source_then_deploys', 0, 1, 7).
 python_method('NodeClientTests', 'test_ensure_scheme_reports_missing_candidate', 0, 1, 5).
 python_method('NodeClientTests', 'test_request_capability_emits_need_route', 0, 2, 5).
@@ -3243,18 +3302,18 @@ python_class('adapters/python/urirun/host/planfile_adapter.py', 'PlanfileUnavail
 python_class('adapters/python/urirun/host/task_planner.py', 'PlannedTicket').
 python_class('adapters/python/urirun/host/task_planner.py', 'TaskPlanningResult').
 python_class('adapters/python/urirun/node/client.py', 'NodeClient').
-python_method('NodeClient', '__init__', 2, 1, 4).
-python_method('NodeClient', '_auth', 1, 3, 0).
+python_method('NodeClient', '__init__', 3, 1, 4).
+python_method('NodeClient', '_auth', 1, 6, 3).
 python_method('NodeClient', 'routes', 0, 1, 3).
 python_method('NodeClient', 'get', 1, 1, 3).
 python_method('NodeClient', 'concretize', 2, 4, 3).
-python_method('NodeClient', 'run', 6, 5, 2).
-python_method('NodeClient', 'run_async', 3, 3, 2).
+python_method('NodeClient', 'run', 6, 6, 5).
+python_method('NodeClient', 'run_async', 3, 4, 5).
 python_method('NodeClient', 'cancel', 1, 1, 1).
 python_method('NodeClient', 'status', 1, 1, 1).
-python_method('NodeClient', 'deploy', 6, 9, 5).
+python_method('NodeClient', 'deploy', 6, 9, 7).
 python_method('NodeClient', 'schemes', 0, 2, 4).
-python_method('NodeClient', 'ensure_scheme', 3, 20, 10).
+python_method('NodeClient', 'ensure_scheme', 3, 20, 11).
 python_method('NodeClient', 'run_ensuring', 3, 4, 5).
 python_method('NodeClient', 'request_capability', 2, 1, 1).
 python_method('NodeClient', 'push_folder', 3, 16, 15).
@@ -3279,7 +3338,7 @@ python_method('NodeHandler', 'do_OPTIONS', 0, 1, 1).
 python_method('NodeHandler', '_guarded', 1, 3, 3).
 python_method('NodeHandler', 'do_GET', 0, 1, 1).
 python_method('NodeHandler', 'do_POST', 0, 1, 1).
-python_method('NodeHandler', '_get', 0, 13, 16).
+python_method('NodeHandler', '_get', 0, 16, 17).
 python_method('NodeHandler', '_get_errors', 2, 8, 12).
 python_method('NodeHandler', '_post', 0, 6, 6).
 python_method('NodeHandler', '_run_target', 2, 6, 6).
@@ -3331,6 +3390,23 @@ python_method('ConnectorPools', 'run_route', 2, 3, 3).
 python_method('ConnectorPools', '_run_handler', 2, 5, 3).
 python_method('ConnectorPools', '_run_argv', 2, 10, 7).
 python_method('ConnectorPools', 'close', 0, 3, 3).
+python_class('tests/test_host_dashboard.py', 'FakeMesh').
+python_method('FakeMesh', '__init__', 0, 1, 0).
+python_method('FakeMesh', 'load_host_config', 1, 1, 0).
+python_method('FakeMesh', 'config_with_transient_node_urls', 2, 1, 0).
+python_method('FakeMesh', 'discover_mesh', 1, 1, 0).
+python_method('FakeMesh', 'make_flow', 4, 1, 0).
+python_method('FakeMesh', 'registry_from_routes', 1, 1, 0).
+python_method('FakeMesh', 'execute_flow', 4, 1, 0).
+python_class('tests/test_host_dashboard.py', 'FakeHostDb').
+python_method('FakeHostDb', '__init__', 0, 1, 0).
+python_method('FakeHostDb', 'add_log', 4, 2, 2).
+python_method('FakeHostDb', 'recent_logs', 3, 4, 2).
+python_method('FakeHostDb', 'register_artifact', 5, 2, 2).
+python_class('tests/test_v2_service_auth.py', '_Resp').
+python_method('_Resp', '__enter__', 0, 1, 0).
+python_method('_Resp', '__exit__', 0, 1, 0).
+python_method('_Resp', 'read', 0, 1, 2).
 
 % ── Dependencies ─────────────────────────────────────────
 
@@ -3417,7 +3493,7 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 
 ## Call Graph
 
-*385 nodes · 500 edges · 32 modules · CC̄=4.4*
+*436 nodes · 500 edges · 38 modules · CC̄=4.5*
 
 ### Hubs (by degree)
 
@@ -3427,16 +3503,16 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 | `serve` *(in adapters.python.urirun.runtime.daemon)* | 14 ⚠ | 1 | 41 | **42** |
 | `_write_planfile_action` *(in adapters.python.urirun.host.host_integrations)* | 8 | 1 | 39 | **40** |
 | `info` *(in adapters.python.urirun.runtime.errors)* | 13 ⚠ | 2 | 27 | **29** |
+| `adopt` *(in adapters.python.urirun.runtime.adopt_pack)* | 13 ⚠ | 1 | 28 | **29** |
 | `main` *(in scripts.repin_connectors)* | 18 ⚠ | 0 | 28 | **28** |
 | `_cmd_upgrade` *(in adapters.python.urirun.runtime.v2)* | 14 ⚠ | 0 | 27 | **27** |
-| `proto_from_registry` *(in adapters.python.urirun.runtime.codegen)* | 13 ⚠ | 2 | 25 | **27** |
-| `_run_query_route` *(in adapters.python.urirun.host.host_db)* | 7 | 1 | 26 | **27** |
+| `main` *(in scripts.lint_connectors)* | 14 ⚠ | 0 | 27 | **27** |
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.21s
-# nodes: 385 | edges: 500 | modules: 32
-# CC̄=4.4
+# generated in 0.20s
+# nodes: 436 | edges: 500 | modules: 38
+# CC̄=4.5
 
 HUBS[20]:
   adapters.python.urirun.runtime.cli._build_parser
@@ -3447,38 +3523,38 @@ HUBS[20]:
     CC=8  in:1  out:39  total:40
   adapters.python.urirun.runtime.errors.info
     CC=13  in:2  out:27  total:29
+  adapters.python.urirun.runtime.adopt_pack.adopt
+    CC=13  in:1  out:28  total:29
   scripts.repin_connectors.main
     CC=18  in:0  out:28  total:28
   adapters.python.urirun.runtime.v2._cmd_upgrade
     CC=14  in:0  out:27  total:27
-  adapters.python.urirun.runtime.codegen.proto_from_registry
-    CC=13  in:2  out:25  total:27
-  adapters.python.urirun.host.host_db._run_query_route
-    CC=7  in:1  out:26  total:27
   scripts.lint_connectors.main
     CC=14  in:0  out:27  total:27
-  adapters.python.urirun.host.host_dashboard._dashboard_api_response
-    CC=13  in:1  out:25  total:26
+  adapters.python.urirun.runtime.codegen.proto_from_registry
+    CC=13  in:2  out:25  total:27
+  adapters.python.urirun.runtime._runtime.run
+    CC=12  in:1  out:25  total:26
   adapters.python.urirun.runtime.v2.validate_binding_document
     CC=12  in:2  out:24  total:26
-  adapters.python.urirun.host.host_dashboard.summary
-    CC=6  in:1  out:25  total:26
-  adapters.python.urirun.runtime.v1.run
-    CC=14  in:1  out:23  total:24
   adapters.python.urirun.testing.smoke
     CC=9  in:1  out:23  total:24
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=10  in:3  out:20  total:23
+  adapters.python.urirun.runtime.v1.run
+    CC=14  in:1  out:23  total:24
   adapters.python.urirun.runtime.v2.scan_artifacts
     CC=11  in:4  out:19  total:23
-  adapters.python.urirun.host.host_db.search_records
-    CC=6  in:1  out:21  total:22
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=10  in:3  out:20  total:23
   adapters.python.urirun.runtime.errors.problem
     CC=10  in:0  out:22  total:22
+  adapters.python.urirun.runtime._registry.discover_manifest
+    CC=14  in:2  out:19  total:21
   adapters.python.urirun.runtime.v1._run_process_streaming
     CC=7  in:1  out:20  total:21
-  adapters.python.urirun.host.domain_monitor._route_flow
-    CC=4  in:0  out:20  total:20
+  examples.matrix.verify.main
+    CC=9  in:0  out:20  total:20
+  adapters.python.urirun.runtime.codegen.gen_command
+    CC=9  in:0  out:20  total:20
 
 MODULES:
   adapters.c.urirun  [3 funcs]
@@ -3529,28 +3605,6 @@ MODULES:
     _route_browser  CC=4  out:8
     _route_dns  CC=9  out:8
     _route_flow  CC=4  out:20
-  adapters.python.urirun.host.host_dashboard  [13 funcs]
-    _dashboard_api_response  CC=13  out:25
-    _first  CC=2  out:1
-    _host_db  CC=1  out:0
-    _html_response  CC=1  out:9
-    _json_response  CC=1  out:13
-    _mesh  CC=1  out:0
-    _planfile_adapter  CC=1  out:0
-    _safe_tickets  CC=2  out:3
-    command  CC=8  out:5
-    create_handler  CC=1  out:17
-  adapters.python.urirun.host.host_db  [28 funcs]
-    _run_command_route  CC=11  out:17
-    _run_query_route  CC=7  out:26
-    _schema_json  CC=2  out:2
-    _validate_record  CC=2  out:3
-    add_check  CC=2  out:9
-    add_llm_message  CC=2  out:9
-    add_log  CC=2  out:9
-    connect  CC=1  out:5
-    connection  CC=1  out:3
-    create_dataset  CC=1  out:7
   adapters.python.urirun.host.host_integrations  [10 funcs]
     _list_param  CC=6  out:6
     _planfile_action  CC=7  out:1
@@ -3592,17 +3646,46 @@ MODULES:
     is_destructive  CC=4  out:4
   adapters.python.urirun.node.mesh  [1 funcs]
     _pool_executors  CC=1  out:8
-  adapters.python.urirun.runtime._runtime  [18 funcs]
+  adapters.python.urirun.runtime._registry  [36 funcs]
+    _default_openapi_route  CC=9  out:11
+    _discover_python_module  CC=1  out:2
+    _emit_json  CC=3  out:3
+    _get_route_entry  CC=1  out:0
+    _iter_module_exports  CC=6  out:8
+    _load_sources  CC=2  out:3
+    _operation_from_method  CC=1  out:1
+    _resolve_from_index  CC=6  out:7
+    _route_entry_equal  CC=2  out:2
+    _walk_route_entries  CC=5  out:3
+  adapters.python.urirun.runtime._runtime  [23 funcs]
     _build_fetch_body  CC=4  out:9
     _fetch_fill  CC=1  out:6
     _fetch_render  CC=6  out:7
+    _hydrate_local_function  CC=6  out:9
     _looks_destructive  CC=5  out:10
     _make_secret_injector  CC=3  out:12
     _matches_any  CC=3  out:1
     _policy_allow  CC=3  out:3
     _policy_denial  CC=9  out:12
     _resolve_fetch_url  CC=8  out:17
-    _send_fetch  CC=2  out:9
+  adapters.python.urirun.runtime.adopt_pack  [11 funcs]
+    _config_manifest  CC=4  out:6
+    _document  CC=2  out:2
+    _handlers  CC=6  out:5
+    _load  CC=2  out:6
+    _package_json_manifest  CC=3  out:10
+    _policy  CC=3  out:2
+    adopt  CC=13  out:28
+    adopt_document  CC=1  out:2
+    installed_manifest_path  CC=13  out:14
+    main  CC=2  out:10
+  adapters.python.urirun.runtime.agent  [6 funcs]
+    _load_planner  CC=2  out:4
+    _parse_stdout  CC=9  out:8
+    _resolve_refs  CC=10  out:15
+    action_space  CC=9  out:13
+    agent_command  CC=7  out:16
+    run_plan  CC=7  out:16
   adapters.python.urirun.runtime.cli  [1 funcs]
     _build_parser  CC=1  out:78
   adapters.python.urirun.runtime.codegen  [19 funcs]
@@ -3616,9 +3699,21 @@ MODULES:
     _routes  CC=7  out:9
     _rpc_name  CC=5  out:2
     _snake  CC=2  out:3
+  adapters.python.urirun.runtime.compat  [3 funcs]
+    _entry_point_names  CC=4  out:5
+    _importable  CC=3  out:1
+    module_status  CC=8  out:9
   adapters.python.urirun.runtime.daemon  [2 funcs]
     _main  CC=9  out:7
     serve  CC=14  out:41
+  adapters.python.urirun.runtime.dispatch_protocol  [7 funcs]
+    _norm_mode  CC=5  out:0
+    _parse_stdout  CC=4  out:3
+    dispatch  CC=4  out:8
+    make_request  CC=2  out:3
+    normalize_request  CC=5  out:9
+    reply_fields  CC=9  out:10
+    validate_request  CC=10  out:9
   adapters.python.urirun.runtime.errors  [31 funcs]
     _aggregate  CC=4  out:13
     _append  CC=3  out:13
@@ -3657,10 +3752,36 @@ MODULES:
     _builtin_registry_route_entry  CC=3  out:2
     _cmd_add_command  CC=2  out:4
     _cmd_add_pypi  CC=1  out:2
-  adapters.python.urirun.runtime.v2_service  [3 funcs]
-    _post  CC=4  out:11
-    call  CC=9  out:10
-    service_base  CC=5  out:6
+  adapters.python.urirun.runtime.v2_adopt  [5 funcs]
+    _command_binding  CC=2  out:2
+    installed_python_bindings  CC=4  out:3
+    npm_package_bindings  CC=4  out:12
+    passthrough_schema  CC=2  out:1
+    python_package_bindings  CC=4  out:6
+  adapters.python.urirun.runtime.v2_grpc  [8 funcs]
+    _method  CC=2  out:1
+    _route_list  CC=2  out:5
+    _validate  CC=5  out:4
+    call  CC=6  out:7
+    channel_target  CC=3  out:3
+    list_routes  CC=1  out:3
+    serve  CC=2  out:17
+    stream  CC=4  out:7
+  adapters.python.urirun.runtime.v2_mcp  [11 funcs]
+    _handle_mcp_request  CC=7  out:16
+    _input_schema  CC=4  out:3
+    build_tool_index  CC=2  out:1
+    call_tool  CC=3  out:4
+    main  CC=9  out:16
+    serve_mcp  CC=9  out:8
+    to_a2a_card  CC=4  out:10
+    to_mcp_manifest  CC=4  out:2
+    to_mcp_tools  CC=4  out:8
+    tool_name  CC=1  out:3
+  adapters.python.urirun.runtime.worker  [3 funcs]
+    _run_argv  CC=10  out:10
+    run_uri  CC=4  out:9
+    _cli_ref_for_script  CC=3  out:2
   adapters.python.urirun.testing  [6 funcs]
     _nonportable_routes  CC=5  out:8
     _resolve_bindings  CC=5  out:8
@@ -3732,9 +3853,9 @@ EDGES:
   adapters.python.urirun.testing.smoke → adapters.python.urirun.testing._resolve_bindings
   adapters.python.urirun.testing.smoke → adapters.python.urirun.testing._nonportable_routes
   adapters.python.urirun.testing.assert_smoke → adapters.python.urirun.testing.smoke
-  adapters.python.urirun.host.host_db.connect → adapters.python.urirun.host.host_db.db_path
-  adapters.python.urirun.host.host_db.connection → adapters.python.urirun.host.host_db.connect
-  adapters.python.urirun.host.host_db.rows_dict → adapters.python.urirun.host.host_db.row_dict
+  adapters.python.urirun.host.domain_monitor.expected_records → adapters.python.urirun.host.domain_monitor._list
+  adapters.python.urirun.host.domain_monitor.dns_mismatches → adapters.python.urirun.host.domain_monitor._list
+  adapters.python.urirun.host.domain_monitor.capture_screenshot_artifact → adapters.python.urirun.host.domain_monitor.now_id
 ```
 
 ## Test Contracts

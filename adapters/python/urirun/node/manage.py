@@ -51,8 +51,10 @@ def _install_policy() -> dict:
 
 
 def _classify_source(s: str) -> str:
-    if s.startswith(("git+", "git@", "ssh://")) or (s.startswith(("http://", "https://")) and s.endswith(".git")):
+    if s.startswith(("git+", "git@", "ssh://")):
         return "git"
+    if s.startswith(("http://", "https://")):
+        return "git" if s.endswith(".git") else "catalog"
     if s.startswith(("~", "/", ".")) or os.sep in s or os.path.exists(os.path.expanduser(s)):
         return "local"
     return "catalog"

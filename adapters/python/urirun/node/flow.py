@@ -94,13 +94,28 @@ def append_if_available(steps: list[dict], route_uris: set[str], uri: str, paylo
 _FLOW_INTENT_WORDS = {
     "browser": ("browser", "przeglad", "stron", "url", "otworz", "open"),
     "screen": ("screen", "ekran", "monitor", "zrzut", "screenshot", "widz", "widac", "linkedin"),
+    "files": ("plik", "folder", "katalog", "downloads", "download", "pobran"),
+    "invoices": ("faktur", "invoice", "rachunk", "receipt"),
     "processes": ("proces", "process", "aplikac", "program"),
     "logs": ("log", "logi"),
     "python": ("python3", "python"),
     "git": ("git",),
     "date": ("date", "data"),
+    "health": ("health", "zdrow", "runtime"),
     "uname": ("uname", "system"),
 }
+
+
+def requested_folder_path(lowered: str) -> str:
+    """Best-effort folder path for common NL prompts.
+
+    Keep this conservative: it only maps well-known aliases. More specific paths should
+    come from an LLM planner or an explicit YAML flow, not from brittle string parsing.
+    """
+    lowered = lowered.lower()
+    if any(word in lowered for word in ("downloads", "download", "pobrane", "pobran")):
+        return "~/Downloads"
+    return "."
 
 
 def _flow_intents(lowered: str) -> dict[str, bool]:
@@ -113,8 +128,36 @@ def _flow_intents(lowered: str) -> dict[str, bool]:
 
 def _append_target_steps(steps: list[dict], route_uris: set, target: str, intents: dict[str, bool], url: str, previous):
     """Append the available steps for one target node, returning the new previous-step id."""
-    previous = append_if_available(steps, route_uris, f"env://{target}/runtime/query/health", {}, previous)
+    health_added = False
+
+    def ensure_health(previous_id: str | None) -> str | None:
+        nonlocal health_added
+        if health_added:
+            return previous_id
+        health_added = True
+        return append_if_available(steps, route_uris, f"env://{target}/runtime/query/health", {}, previous_id)
+
+    if intents["health"]:
+        previous = ensure_health(previous)
+    if intents["invoices"]:
+        folder = requested_folder_path(url)
+        previous = append_if_available(
+            steps,
+            route_uris,
+            f"invoice://{target}/folder/query/audit",
+            {"root": folder, "extensions": "pdf,txt", "recursive": True},
+            previous,
+        )
+    if intents["files"] or intents["invoices"]:
+        previous = append_if_available(
+            steps,
+            route_uris,
+            f"fs://{target}/dir/query/list",
+            {"path": requested_folder_path(url)},
+            previous,
+        )
     if intents["screen"]:
+        previous = ensure_health(previous)
         previous = append_if_available(steps, route_uris, f"screen://{target}/portal/query/capture", {}, previous)
         previous = append_if_available(
             steps,
@@ -124,8 +167,10 @@ def _append_target_steps(steps: list[dict], route_uris: set, target: str, intent
             previous,
         )
     if intents["processes"]:
+        previous = ensure_health(previous)
         previous = append_if_available(steps, route_uris, f"proc://{target}/process/query/list", {"limit": 12}, previous)
     if intents["browser"]:
+        previous = ensure_health(previous)
         previous = append_if_available(steps, route_uris, f"browser://{target}/page/command/open", {"url": url}, previous)
         previous = append_if_available(steps, route_uris, f"browser://{target}/cdp/page/command/navigate", {"url": url}, previous)
         previous = append_if_available(
@@ -138,12 +183,16 @@ def _append_target_steps(steps: list[dict], route_uris: set, target: str, intent
         previous = append_if_available(steps, route_uris, f"browser://{target}/cdp/page/query/tabs", {}, previous)
     for binary, enabled in (("python3", intents["python"]), ("git", intents["git"])):
         if enabled:
+            previous = ensure_health(previous)
             previous = append_if_available(steps, route_uris, f"shell://{target}/command/which", {"binary": binary}, previous)
     if intents["date"]:
+        previous = ensure_health(previous)
         previous = append_if_available(steps, route_uris, f"shell://{target}/command/date", {}, previous)
     if intents["uname"]:
+        previous = ensure_health(previous)
         previous = append_if_available(steps, route_uris, f"shell://{target}/command/uname", {}, previous)
     if intents["logs"]:
+        previous = ensure_health(previous)
         previous = append_if_available(steps, route_uris, f"log://{target}/session/query/recent", {"limit": 20}, previous)
     return previous
 
@@ -167,10 +216,11 @@ def heuristic_flow(prompt: str, routes: list[dict], nodes: list[dict], selected_
     lowered = nl_key(prompt)
     intents = _flow_intents(lowered)
     url = first_url(prompt) or ("https://www.linkedin.com/feed/" if "linkedin" in lowered else "https://example.com/")
+    path = requested_folder_path(lowered)
     steps: list[dict] = []
     previous = None
     for target in targets:
-        previous = _append_target_steps(steps, route_uris, target, intents, url, previous)
+        previous = _append_target_steps(steps, route_uris, target, intents, path if (intents["files"] or intents["invoices"]) else url, previous)
 
     return {
         "task": {"id": f"nl_uri_flow_{now_id()}", "title": "NL to URI host flow", "source": "heuristic"},

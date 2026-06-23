@@ -32,6 +32,7 @@ import urllib.request
 from jsonschema import exceptions as jsonschema_exceptions
 
 from urirun import _registry as reglib, v2
+from urirun.node import keyauth
 
 DEFAULT_PORT = 8080
 
@@ -52,8 +53,11 @@ def _post(url: str, body: dict, timeout: float):
     headers = {"Content-Type": "application/json"}
     # opt-in auth for nodes started with --require-run-auth (token mode). No env → no
     # header → unchanged behaviour against open nodes.
+    identity = os.getenv("URIRUN_RUN_IDENTITY")
     token = os.getenv("URIRUN_RUN_TOKEN")
-    if token:
+    if identity:
+        headers.update(keyauth.sign(os.path.expanduser(identity), keyauth.PURPOSE_RUN, data))
+    elif token:
         headers["X-Urirun-Token"] = token
     request = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
