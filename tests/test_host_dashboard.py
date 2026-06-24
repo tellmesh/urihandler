@@ -99,6 +99,20 @@ class FakeHostDb:
         self.artifacts.append(item)
         return item
 
+    def list_artifacts(self, path=None, kind=None, limit=20):
+        items = [item for item in self.artifacts if kind is None or item["kind"] == kind]
+        return list(reversed(items[-limit:]))
+
+    def artifacts_by_ids(self, path, ids):
+        clean = set(ids)
+        return [item for item in self.artifacts if item["id"] in clean]
+
+    def delete_artifacts(self, path, ids):
+        clean = set(ids)
+        before = len(self.artifacts)
+        self.artifacts = [item for item in self.artifacts if item["id"] not in clean]
+        return before - len(self.artifacts)
+
 
 def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
     html = host_dashboard.INDEX_HTML
@@ -116,6 +130,8 @@ def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
     assert "renderIframeServiceView" in html
     assert "renderFormServiceView" in html
     assert "renderGraphServiceView" in html
+    assert "renderScannerStatusServiceView" in html
+    assert "scanner-status" in html
     assert "renderWidgetDashboard" in html
     assert "widgetGrid" in html
     assert "data-view=\"widgets\"" in html
@@ -125,6 +141,23 @@ def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
     assert "renderArtifactFileGrid" in html
     assert "data-view=\"artifacts\"" in html
     assert "/api/artifacts?limit=80" in html
+    assert "/api/artifacts/delete" in html
+    assert "artifactSelectVisibleBtn" in html
+    assert "artifactDeleteSelectedBtn" in html
+    assert "artifactDeleteVisibleBtn" in html
+    assert "artifactClearSelectionBtn" in html
+    assert "artifactSelectionSummary" in html
+    assert "name=\"artifactSelect\"" in html
+    assert "data-artifact-delete" in html
+    assert "selectedArtifactIds" in html
+    assert "deleteArtifacts" in html
+    assert "artifactRenderKey" in html
+    assert "chatRenderKey" in html
+    assert "artifact-thumb-pdf" in html
+    assert "attachment-pdf-preview" in html
+    assert "artifactVisualPreviewUrl" in html
+    assert "attachmentVisualPreviewUrl" in html
+    assert "#toolbar=0&navpanes=0" not in html
     assert "submitServiceForm" in html
     assert "data-service-form" in html
     assert "isGroupedScannerEventMessage" in html
@@ -232,6 +265,63 @@ def test_chat_delete_messages_removes_only_chat_messages(monkeypatch):
     assert result["ok"] is True
     assert result["deleted"] == 1
     assert [item["id"] for item in fake_db.logs] == ["log_1", "log_2"]
+
+
+def test_artifacts_delete_removes_db_rows_and_allowed_files(monkeypatch, tmp_path):
+    fake_db = FakeHostDb()
+    monkeypatch.setattr(host_dashboard, "_host_db", lambda: fake_db)
+    monkeypatch.setenv("URIRUN_ARTIFACT_DIR", str(tmp_path / "artifacts"))
+    safe = tmp_path / "artifacts" / "scan.jpg"
+    unsafe = tmp_path / "outside.jpg"
+    safe.parent.mkdir()
+    safe.write_bytes(b"jpg")
+    unsafe.write_bytes(b"jpg")
+    safe_artifact = fake_db.register_artifact(str(tmp_path), "camera-scan", "scanner://safe", str(safe))
+    unsafe_artifact = fake_db.register_artifact(str(tmp_path), "camera-scan", "scanner://unsafe", str(unsafe))
+
+    result = host_dashboard.artifacts_delete(str(tmp_path), str(tmp_path), {"ids": [safe_artifact["id"], unsafe_artifact["id"]]})
+
+    assert result["ok"] is True
+    assert result["deleted"] == 2
+    assert result["filesDeleted"] == 1
+    assert safe.exists() is False
+    assert unsafe.exists() is True
+    assert fake_db.artifacts == []
+    assert fake_db.logs[-1]["stream"] == "artifacts"
+    assert fake_db.logs[-1]["event"] == "delete"
+
+
+def test_public_artifact_uses_existing_preview_and_marks_missing_files(tmp_path):
+    pdf = tmp_path / "invoice.pdf"
+    image = tmp_path / "invoice.jpg"
+    missing = tmp_path / "missing.jpg"
+    pdf.write_bytes(b"%PDF-1.4\n")
+    image.write_bytes(b"jpg")
+
+    item = host_dashboard._public_artifact(
+        {
+            "id": "art_pdf",
+            "kind": "document-pdf",
+            "uri": "document://host/test",
+            "path": str(pdf),
+            "meta": {"displayImage": str(image)},
+        },
+        str(tmp_path),
+    )
+    assert item["fileExists"] is True
+    assert item["previewExists"] is True
+    assert item["filePreviewUrl"].startswith("/api/file?path=")
+    assert item["previewUrl"].startswith("/api/file?path=")
+    assert item["visualPath"] == str(image)
+
+    missing_item = host_dashboard._public_artifact(
+        {"id": "art_missing", "kind": "camera-scan", "uri": "scanner://missing", "path": str(missing), "meta": {}},
+        str(tmp_path),
+    )
+    assert missing_item["fileExists"] is False
+    assert missing_item["previewExists"] is False
+    assert missing_item["filePreviewUrl"] == ""
+    assert missing_item["previewUrl"] == ""
 
 
 def test_chat_ask_reports_missing_screen_capture_capability(monkeypatch):
@@ -383,6 +473,53 @@ def test_service_live_views_wraps_scanner_stream(tmp_path):
     assert view["refreshMs"] == 1000
     assert "table" in view["supportedViews"]
     assert view["data"]["streams"][0]["seriesId"] == "series-2"
+
+
+def test_service_live_views_includes_scanner_status_without_stream(monkeypatch, tmp_path):
+    fake_db = FakeHostDb()
+    monkeypatch.setattr(host_dashboard, "_host_db", lambda: fake_db)
+    host_dashboard._SCANNER_BEST_SESSIONS.clear()
+    host_dashboard._SCANNER_LIVE_STREAMS.clear()
+
+    fake_db.add_log(str(tmp_path), "page-action", "result", {
+        "id": "act_1",
+        "target": "scanner",
+        "uri": "scanner://page/ui/button/start-camera/command/click",
+        "ok": True,
+        "error": "",
+        "result": {
+            "status": {
+                "ok": True,
+                "ready": True,
+                "width": 1440,
+                "height": 1920,
+                "track": {"label": "Facing back:Camera 0", "readyState": "live", "enabled": True},
+                "localActions": [{"uri": "scanner://page/camera/query/status"}],
+            }
+        },
+        "at": "2026-06-23T20:48:20Z",
+    })
+    scan = tmp_path / "scan.jpg"
+    scan.write_bytes(b"jpg")
+    fake_db.register_artifact(
+        str(tmp_path),
+        "camera-scan",
+        "scanner://host/capture/abc",
+        str(scan),
+        {"detectedDocument": {"type": "rachunek", "date": "2026-06-19", "contractor": "QUO CAFE"}},
+    )
+
+    result = host_dashboard.service_live_views(str(tmp_path), db=str(tmp_path))
+
+    assert result["ok"] is True
+    view = result["views"][0]
+    assert view["view"] == "scanner-status"
+    assert view["target"] == "service:phone-scanner"
+    assert view["data"]["cameraStatus"]["ready"] is True
+    assert view["data"]["cameraStatus"]["width"] == 1440
+    assert "localActions" not in view["data"]["cameraStatus"]
+    assert view["data"]["recentArtifacts"][0]["type"] == "rachunek"
+    assert view["data"]["recentArtifacts"][0]["previewUrl"].startswith("/api/file?path=")
 
 
 def test_service_widget_html_and_svg_render_live_view(tmp_path):

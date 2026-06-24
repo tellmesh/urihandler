@@ -320,6 +320,27 @@ def list_artifacts(path: str | None = None, kind: str | None = None, limit: int 
         return rows_dict(conn.execute(sql, params).fetchall())
 
 
+def artifacts_by_ids(path: str | None, ids: list[str]) -> list[dict]:
+    init_db(path)
+    clean_ids = [str(item).strip() for item in ids if str(item).strip()]
+    if not clean_ids:
+        return []
+    placeholders = ",".join("?" for _ in clean_ids)
+    with connection(path) as conn:
+        return rows_dict(conn.execute(f"SELECT * FROM artifacts WHERE id IN ({placeholders})", clean_ids).fetchall())
+
+
+def delete_artifacts(path: str | None, ids: list[str]) -> int:
+    init_db(path)
+    clean_ids = [str(item).strip() for item in ids if str(item).strip()]
+    if not clean_ids:
+        return 0
+    placeholders = ",".join("?" for _ in clean_ids)
+    with connection(path) as conn:
+        cursor = conn.execute(f"DELETE FROM artifacts WHERE id IN ({placeholders})", clean_ids)
+        return int(cursor.rowcount or 0)
+
+
 def add_check(path: str | None, subject: str, check_uri: str, status: str, result: dict | None = None) -> dict:
     init_db(path)
     check_id = new_id("chk")

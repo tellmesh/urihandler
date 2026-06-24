@@ -378,10 +378,10 @@ INDEX_HTML = r"""<!doctype html>
     }
     .artifact-file-row {
       display: grid;
-      grid-template-columns: 96px minmax(180px, 1fr) minmax(160px, .65fr) minmax(120px, .45fr);
+      grid-template-columns: 32px 280px minmax(220px, 1fr) minmax(180px, .65fr) minmax(150px, .45fr);
       gap: 10px;
       align-items: start;
-      min-width: 760px;
+      min-width: 1060px;
       padding: 8px;
       border: 1px solid var(--line-soft);
       border-radius: 8px;
@@ -400,8 +400,8 @@ INDEX_HTML = r"""<!doctype html>
     .artifact-thumb {
       display: grid;
       place-items: center;
-      width: 88px;
-      height: 68px;
+      width: 264px;
+      height: 200px;
       overflow: hidden;
       border: 1px solid var(--line-soft);
       border-radius: 6px;
@@ -410,13 +410,35 @@ INDEX_HTML = r"""<!doctype html>
       font-size: 12px;
       text-transform: uppercase;
     }
-    .artifact-thumb img, .artifact-thumb iframe {
+    .artifact-thumb img {
       width: 100%;
       height: 100%;
       border: 0;
       object-fit: cover;
       background: var(--code-bg);
       pointer-events: none;
+    }
+    .artifact-thumb-pdf, .attachment-pdf-preview {
+      align-content: center;
+      gap: 8px;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(248, 250, 252, .08), rgba(15, 23, 42, .1)),
+        var(--code-bg);
+    }
+    .artifact-thumb-pdf span, .attachment-pdf-preview span {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+    .artifact-thumb-pdf small, .attachment-pdf-preview small {
+      color: var(--muted);
+      text-transform: none;
+    }
+    .artifact-thumb-missing {
+      color: var(--danger);
+      border-style: dashed;
+      text-transform: none;
     }
     .artifact-name {
       display: flex;
@@ -475,7 +497,7 @@ INDEX_HTML = r"""<!doctype html>
     .message-actions { display: inline-flex; align-items: center; gap: 8px; }
     .attachments {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 8px;
     }
     .attachment {
@@ -488,7 +510,7 @@ INDEX_HTML = r"""<!doctype html>
     }
     .attachment img {
       width: 100%;
-      max-height: 220px;
+      max-height: 420px;
       object-fit: contain;
       border: 1px solid var(--line-soft);
       border-radius: 6px;
@@ -496,10 +518,17 @@ INDEX_HTML = r"""<!doctype html>
     }
     .attachment iframe {
       width: 100%;
-      height: 220px;
+      height: 360px;
       border: 1px solid var(--line-soft);
       border-radius: 6px;
       background: var(--code-bg);
+    }
+    .attachment-pdf-preview {
+      display: grid;
+      place-items: center;
+      min-height: 260px;
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
     }
     .attachment.attachment-qr {
       max-width: 380px;
@@ -583,10 +612,10 @@ INDEX_HTML = r"""<!doctype html>
       .contacts-panel { border-right: 0; border-bottom: 1px solid var(--line-soft); padding-right: 0; padding-bottom: 10px; }
       .contact-list { max-height: 260px; }
       .artifact-file-row {
-        grid-template-columns: 76px minmax(180px, 1fr) minmax(140px, .65fr) minmax(120px, .45fr);
-        min-width: 720px;
+        grid-template-columns: 32px 188px minmax(180px, 1fr) minmax(140px, .65fr) minmax(150px, .45fr);
+        min-width: 850px;
       }
-      .artifact-thumb { width: 68px; height: 56px; }
+      .artifact-thumb { width: 180px; height: 136px; }
       .desktop-tabs { display: none; }
       .bottom-nav { display: grid; }
       table { min-width: 680px; }
@@ -637,6 +666,11 @@ INDEX_HTML = r"""<!doctype html>
             </div>
             <div class="actions">
               <span class="subtle" id="artifactCount"></span>
+              <span class="subtle" id="artifactSelectionSummary">0 selected</span>
+              <button type="button" id="artifactSelectVisibleBtn">Select visible</button>
+              <button type="button" id="artifactClearSelectionBtn">Clear</button>
+              <button type="button" class="danger" id="artifactDeleteSelectedBtn">Delete selected</button>
+              <button type="button" class="danger" id="artifactDeleteVisibleBtn">Delete visible</button>
               <button type="button" id="artifactRefreshBtn">Refresh files</button>
             </div>
           </div>
@@ -776,8 +810,11 @@ INDEX_HTML = r"""<!doctype html>
       summary: null,
       tasks: [],
       artifacts: [],
+      artifactRenderKey: '',
+      selectedArtifactIds: new Set(),
       view: initialView,
       chatMessages: [],
+      chatRenderKey: '',
       serviceViews: [],
       visibleChatMessages: [],
       visibleChatMessageIds: [],
@@ -813,6 +850,14 @@ INDEX_HTML = r"""<!doctype html>
 
     function empty(label) {
       return `<div class="item subtle">${label}</div>`;
+    }
+
+    function compactJson(value) {
+      try {
+        return JSON.stringify(value || null);
+      } catch (error) {
+        return String(value);
+      }
     }
 
     function setParam(search, key, value) {
@@ -1025,28 +1070,52 @@ INDEX_HTML = r"""<!doctype html>
       </div>`).join('') || empty('No logs recorded');
     }
 
-    function artifactPreviewUrl(item) {
-      const path = item && item.path ? String(item.path) : '';
+    function filePreviewUrl(path) {
       return path ? `/api/file?path=${encodeURIComponent(path)}` : '';
     }
 
-    function artifactPreview(item) {
+    function artifactFileUrl(item) {
+      if (item && item.filePreviewUrl !== undefined) return text(item.filePreviewUrl);
+      if (item && item.fileExists === false) return '';
+      return filePreviewUrl(item && item.path ? String(item.path) : '');
+    }
+
+    function artifactVisualPath(item) {
       const path = item && item.path ? String(item.path) : '';
-      const url = artifactPreviewUrl(item);
+      const meta = item && item.meta ? item.meta : {};
+      if (/\.pdf$/i.test(path)) {
+        return text(meta.displayImage || meta.displayPath || meta.previewImage || meta.image || '');
+      }
+      return path;
+    }
+
+    function artifactVisualPreviewUrl(item) {
+      if (item && item.previewUrl !== undefined) return text(item.previewUrl);
+      if (item && item.previewExists === false) return '';
+      return filePreviewUrl(artifactVisualPath(item));
+    }
+
+    function artifactPreview(item) {
+      const path = artifactVisualPath(item);
+      const url = artifactVisualPreviewUrl(item);
       if (!url || !/\.(png|jpe?g|webp|gif)$/i.test(path)) return '';
       return `<img src="${esc(url)}" alt="${esc(basename(path))}" loading="lazy">`;
     }
 
     function artifactThumb(item) {
       const path = item && item.path ? String(item.path) : '';
-      const url = artifactPreviewUrl(item);
+      const visualPath = artifactVisualPath(item);
+      const url = artifactVisualPreviewUrl(item);
       const ext = (path.match(/\.([a-z0-9]+)$/i) || [,'file'])[1].toLowerCase();
-      if (!url) return `<div class="artifact-thumb">uri</div>`;
-      if (/\.(png|jpe?g|webp|gif)$/i.test(path)) {
-        return `<div class="artifact-thumb"><img src="${esc(url)}" alt="${esc(basename(path))}" loading="lazy"></div>`;
-      }
       if (/\.pdf$/i.test(path)) {
-        return `<div class="artifact-thumb"><iframe src="${esc(url)}#toolbar=0&navpanes=0" title="${esc(basename(path))}" loading="lazy"></iframe></div>`;
+        if (url && /\.(png|jpe?g|webp|gif)$/i.test(visualPath)) {
+          return `<div class="artifact-thumb"><img src="${esc(url)}" alt="${esc(basename(visualPath))}" loading="lazy"></div>`;
+        }
+        return `<div class="artifact-thumb artifact-thumb-pdf"><span>PDF</span><small>${esc(basename(path))}</small></div>`;
+      }
+      if (!url) return path ? `<div class="artifact-thumb artifact-thumb-missing">missing<br>file</div>` : `<div class="artifact-thumb">uri</div>`;
+      if (/\.(png|jpe?g|webp|gif)$/i.test(visualPath)) {
+        return `<div class="artifact-thumb"><img src="${esc(url)}" alt="${esc(basename(visualPath))}" loading="lazy"></div>`;
       }
       return `<div class="artifact-thumb">${esc(ext)}</div>`;
     }
@@ -1064,16 +1133,20 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function renderArtifactFileRow(item) {
+      const id = text(item.id);
       const path = text(item.path);
       const name = basename(path || item.uri || item.id);
-      const url = artifactPreviewUrl(item);
+      const url = artifactFileUrl(item);
       const metaLine = artifactMetaSummary(item);
       const openLink = url ? `<a href="${esc(url)}" target="_blank" rel="noreferrer">open</a>` : '';
       const download = url ? `<a href="${esc(url)}" download>download</a>` : '';
+      const missing = path && item.fileExists === false ? '<span class="pill down">missing file</span>' : '';
+      const selected = id && state.selectedArtifactIds.has(id) ? 'checked' : '';
       return `<div class="artifact-file-row">
+        <div><input type="checkbox" name="artifactSelect" value="${esc(id)}" ${selected}></div>
         ${artifactThumb(item)}
         <div>
-          <div class="artifact-name"><strong>${esc(name)}</strong><span class="pill">${esc(item.kind || 'artifact')}</span></div>
+          <div class="artifact-name"><strong>${esc(name)}</strong><span class="pill">${esc(item.kind || 'artifact')}</span>${missing}</div>
           <div class="mono">${esc(path || item.uri || '')}</div>
           <div class="artifact-actions">${openLink}${download}</div>
         </div>
@@ -1083,22 +1156,58 @@ INDEX_HTML = r"""<!doctype html>
         </div>
         <div>
           <div class="subtle">${esc(item.created_at || '')}</div>
+          ${id ? `<button type="button" class="danger" data-artifact-delete="${esc(id)}">Delete</button>` : ''}
           ${item.meta ? `<details><summary>metadata</summary><pre>${esc(JSON.stringify(item.meta, null, 2))}</pre></details>` : ''}
         </div>
       </div>`;
+    }
+
+    function visibleArtifactIds() {
+      return state.artifacts.map((item) => item && item.id).filter(Boolean);
+    }
+
+    function selectedVisibleArtifactIds() {
+      const visible = new Set(visibleArtifactIds());
+      return [...state.selectedArtifactIds].filter((id) => visible.has(id));
+    }
+
+    function updateArtifactSelectionControls() {
+      const visibleCount = visibleArtifactIds().length;
+      const selectedCount = selectedVisibleArtifactIds().length;
+      $('artifactSelectionSummary').textContent = `${selectedCount} selected / ${visibleCount} visible`;
+      $('artifactDeleteSelectedBtn').disabled = selectedCount === 0;
+      $('artifactDeleteVisibleBtn').disabled = visibleCount === 0;
+      $('artifactSelectVisibleBtn').disabled = visibleCount === 0;
+      $('artifactClearSelectionBtn').disabled = selectedCount === 0;
     }
 
     function renderArtifactFileGrid(items) {
       $('artifactCount').textContent = `${items.length} file(s)`;
       $('artifactFileGrid').innerHTML = items.length
         ? `<div class="artifact-file-row header">
-            <div>Preview</div><div>File</div><div>URI / document</div><div>Created</div>
+            <div></div><div>Preview</div><div>File</div><div>URI / document</div><div>Created</div>
           </div>${items.map(renderArtifactFileRow).join('')}`
         : empty('No artifacts recorded');
+      updateArtifactSelectionControls();
     }
 
-    function renderArtifacts(items=[]) {
+    function artifactRenderSignature(items) {
+      return compactJson({
+        selected: [...state.selectedArtifactIds].sort(),
+        items: (items || []).map((item) => [
+          item.id, item.kind, item.uri, item.path, item.created_at, item.meta || null,
+        ]),
+      });
+    }
+
+    function renderArtifacts(items=[], options={}) {
       state.artifacts = items || [];
+      const renderKey = artifactRenderSignature(state.artifacts);
+      if (!options.force && renderKey === state.artifactRenderKey) {
+        updateArtifactSelectionControls();
+        return;
+      }
+      state.artifactRenderKey = renderKey;
       renderArtifactFileGrid(state.artifacts);
       $('artifactsList').innerHTML = state.artifacts.map((item) => `<div class="item">
         <div><strong>${item.kind}</strong></div>
@@ -1114,8 +1223,28 @@ INDEX_HTML = r"""<!doctype html>
       renderArtifacts(data.artifacts || []);
     }
 
+    async function deleteArtifacts(ids) {
+      const clean = [...new Set((ids || []).filter(Boolean))];
+      if (!clean.length) return;
+      const result = await api('/api/artifacts/delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids: clean, deleteFiles: true }),
+      });
+      clean.forEach((id) => state.selectedArtifactIds.delete(id));
+      state.artifacts = state.artifacts.filter((item) => !clean.includes(item.id));
+      renderArtifacts(state.artifacts, { force: true });
+      await loadArtifacts();
+      writeUrlState({ action: 'artifacts:delete', deleted: result.deleted || 0 }, { replace: true });
+    }
+
     function basename(path) {
       return text(path).split('/').filter(Boolean).pop() || text(path);
+    }
+
+    function attachmentVisualPreviewUrl(att) {
+      const meta = att.meta || {};
+      const displayPath = text(meta.displayImage || meta.displayPath || meta.previewImage || meta.image || '');
+      return displayPath ? filePreviewUrl(displayPath) : '';
     }
 
     function renderAttachment(att) {
@@ -1123,11 +1252,15 @@ INDEX_HTML = r"""<!doctype html>
       const ocr = meta.ocr || {};
       const qrClass = att.kind === 'qr-code' ? ' attachment-qr' : '';
       const isPdf = /\.pdf$/i.test(text(att.path));
-      const preview = att.previewUrl
-        ? (isPdf
-          ? `<iframe src="${esc(att.previewUrl)}" title="${esc(basename(att.path))}" loading="lazy"></iframe>`
-          : `<img src="${esc(att.previewUrl)}" alt="${esc(basename(att.path))}" loading="lazy">`)
-        : `<div class="subtle">preview unavailable</div>`;
+      const visualUrl = isPdf ? attachmentVisualPreviewUrl(att) : text(att.previewUrl || '');
+      const preview = visualUrl
+        ? `<img src="${esc(visualUrl)}" alt="${esc(basename(att.path))}" loading="lazy">`
+        : (isPdf
+          ? `<div class="attachment-pdf-preview"><span>PDF</span><small>${esc(basename(att.path))}</small></div>`
+          : `<div class="subtle">preview unavailable</div>`);
+      const open = att.previewUrl
+        ? `<a href="${esc(att.previewUrl)}" target="_blank" rel="noreferrer">open</a>`
+        : '';
       const download = att.previewUrl ? `<a href="${esc(att.previewUrl)}" download>download</a>` : '';
       const ocrLine = ocr.ok
         ? `<div class="subtle">OCR ${esc(ocr.backend || '')}: ${esc(text(ocr.text).slice(0, 160))}</div>`
@@ -1136,7 +1269,7 @@ INDEX_HTML = r"""<!doctype html>
         ${preview}
         <div class="mono">${esc(basename(att.path))}</div>
         <div class="subtle">${esc(att.kind || 'file')} ${meta.width && meta.height ? `· ${meta.width}x${meta.height}` : ''}</div>
-        ${download}
+        <div class="artifact-actions">${open}${download}</div>
         ${ocrLine}
         <details><summary>metadata</summary><pre>${esc(JSON.stringify(att, null, 2))}</pre></details>
       </div>`;
@@ -1190,6 +1323,46 @@ INDEX_HTML = r"""<!doctype html>
         ${frames.length ? `<div class="stream-frames">${frames.map(renderStreamFrame).join('')}</div>` : ''}
         <details><summary>URI / JSON</summary><pre>${esc(JSON.stringify(stream, null, 2))}</pre></details>
       </div>`;
+    }
+
+    function renderScannerArtifactFrame(item) {
+      const label = [item.type, item.date, item.contractor || item.supplier || item.category, item.amount].filter(Boolean).join(' · ')
+        || item.label || basename(item.path || item.uri || '');
+      const preview = item.previewUrl
+        ? `<img src="${esc(item.previewUrl)}" alt="${esc(label)}" loading="lazy">`
+        : '';
+      const href = item.filePreviewUrl || item.previewUrl || '';
+      return `<div class="stream-frame">
+        ${preview}
+        <div class="mono">${esc(item.kind || 'artifact')}</div>
+        <div class="subtle">${esc(label)}</div>
+        ${href ? `<a href="${esc(href)}" target="_blank" rel="noreferrer">open</a>` : ''}
+      </div>`;
+    }
+
+    function renderScannerStatusServiceView(view) {
+      const data = view.data || {};
+      const service = data.service || {};
+      const camera = data.cameraStatus || {};
+      const recent = Array.isArray(data.recentArtifacts) ? data.recentArtifacts : [];
+      const ready = camera.ready ? 'ready' : (camera.ok === false ? 'error' : 'not ready');
+      const track = camera.track || {};
+      const body = `<div class="service-graph">
+          <div class="item">
+            <strong>service</strong>
+            <div><span class="pill ${service.reachable ? 'up' : 'down'}">${esc(service.status || 'unknown')}</span></div>
+            <div class="mono">${esc(service.url || '')}</div>
+          </div>
+          <div class="item">
+            <strong>browser camera</strong>
+            <div><span class="pill ${camera.ready ? 'up' : 'down'}">${esc(ready)}</span></div>
+            <div class="subtle">${esc(camera.width || 0)}x${esc(camera.height || 0)} · ${esc(track.readyState || '')}</div>
+            <div class="mono">${esc(track.label || camera.uri || '')}</div>
+            ${camera.error ? `<div class="subtle">${esc(camera.error)}</div>` : ''}
+          </div>
+        </div>
+        ${recent.length ? `<div class="stream-frames">${recent.map(renderScannerArtifactFrame).join('')}</div>` : '<div class="subtle">No scanner artifacts yet</div>'}`;
+      return renderServiceViewShell(view, body);
     }
 
     function renderGenericServiceView(view) {
@@ -1303,6 +1476,7 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function renderServiceView(view) {
+      if (view.view === 'scanner-status') return renderScannerStatusServiceView(view);
       if (view.view === 'scanner-stream') {
         const streams = view.data && Array.isArray(view.data.streams) ? view.data.streams : [];
         return streams.map((stream) => renderScannerStream(stream, view.title || 'phone scanner stream')).join('');
@@ -1526,6 +1700,21 @@ INDEX_HTML = r"""<!doctype html>
       writeUrlState({ action: 'chat:copy', copied: state.visibleChatMessages.length }, { replace: true });
     }
 
+    function chatRenderSignature(visible) {
+      return compactJson({
+        selected: [...state.selectedChatMessageIds].sort(),
+        targets: state.selectedTargets,
+        messages: (visible || []).map((message) => [
+          message.id,
+          message.role,
+          message.created_at,
+          message.content,
+          (message.attachments || []).map((att) => [att.kind, att.path, att.previewUrl, att.uri, att.meta || null]),
+          message.detail || null,
+        ]),
+      });
+    }
+
     function renderChatHistory() {
       const seenQr = new Set();
       const resultEl = $('chatResult');
@@ -1540,6 +1729,12 @@ INDEX_HTML = r"""<!doctype html>
       }).reverse().filter(messageMatchesTargets).filter((message) => !isGroupedScannerEventMessage(message));
       state.visibleChatMessages = visible;
       state.visibleChatMessageIds = visible.map((message) => message.id).filter(Boolean);
+      const renderKey = chatRenderSignature(visible);
+      if (renderKey === state.chatRenderKey) {
+        updateChatSelectionControls();
+        return;
+      }
+      state.chatRenderKey = renderKey;
       resultEl.innerHTML = visible.map(renderChatMessage).join('') || empty('No chat messages yet');
       if (stickToBottom) resultEl.scrollTop = resultEl.scrollHeight;
       updateChatSelectionControls();
@@ -1677,6 +1872,11 @@ INDEX_HTML = r"""<!doctype html>
         deleteChatMessages([deleteId]).catch((error) => alert(error.message));
         return;
       }
+      const artifactDeleteId = event.target.dataset.artifactDelete;
+      if (artifactDeleteId) {
+        deleteArtifacts([artifactDeleteId]).catch((error) => alert(error.message));
+        return;
+      }
       const action = event.target.dataset.action;
       const id = event.target.dataset.id;
       const view = event.target.dataset.view;
@@ -1701,6 +1901,12 @@ INDEX_HTML = r"""<!doctype html>
         else state.selectedChatMessageIds.delete(id);
         updateChatSelectionControls();
       }
+      if (event.target && event.target.name === 'artifactSelect') {
+        const id = event.target.value;
+        if (event.target.checked) state.selectedArtifactIds.add(id);
+        else state.selectedArtifactIds.delete(id);
+        updateArtifactSelectionControls();
+      }
     });
     document.addEventListener('submit', (event) => {
       const form = event.target && event.target.closest ? event.target.closest('[data-service-form]') : null;
@@ -1722,6 +1928,22 @@ INDEX_HTML = r"""<!doctype html>
     $('artifactRefreshBtn').addEventListener('click', () => {
       writeUrlState({ action: 'artifacts:refresh' }, { replace: true });
       loadArtifacts().catch((error) => alert(error.message));
+    });
+    $('artifactSelectVisibleBtn').addEventListener('click', () => {
+      visibleArtifactIds().forEach((id) => state.selectedArtifactIds.add(id));
+      renderArtifacts(state.artifacts);
+      writeUrlState({ action: 'artifacts:select-visible' }, { replace: true });
+    });
+    $('artifactClearSelectionBtn').addEventListener('click', () => {
+      visibleArtifactIds().forEach((id) => state.selectedArtifactIds.delete(id));
+      renderArtifacts(state.artifacts);
+      writeUrlState({ action: 'artifacts:clear-selection' }, { replace: true });
+    });
+    $('artifactDeleteSelectedBtn').addEventListener('click', () => {
+      deleteArtifacts(selectedVisibleArtifactIds()).catch((error) => alert(error.message));
+    });
+    $('artifactDeleteVisibleBtn').addEventListener('click', () => {
+      deleteArtifacts(visibleArtifactIds()).catch((error) => alert(error.message));
     });
     $('widgetRefreshBtn').addEventListener('click', () => {
       writeUrlState({ action: 'widgets:refresh' }, { replace: true });
@@ -2587,6 +2809,42 @@ def _preview_url(path: str, project: str) -> str | None:
 
 def _is_image_path(path: str) -> bool:
     return Path(path).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+
+
+def _artifact_visual_path(artifact: dict) -> str:
+    path = str(artifact.get("path") or "")
+    meta = artifact.get("meta") if isinstance(artifact.get("meta"), dict) else {}
+    if path.lower().endswith(".pdf"):
+        return str(meta.get("displayImage") or meta.get("displayPath") or meta.get("previewImage") or meta.get("image") or "")
+    return path
+
+
+def _artifact_file_exists(path: str) -> bool:
+    if not path:
+        return False
+    try:
+        return Path(path).expanduser().resolve().is_file()
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _public_artifact(artifact: dict, project: str) -> dict:
+    path = str(artifact.get("path") or "")
+    visual_path = _artifact_visual_path(artifact)
+    file_preview = _preview_url(path, project) if path else None
+    visual_preview = _preview_url(visual_path, project) if visual_path else None
+    return {
+        **artifact,
+        "fileExists": _artifact_file_exists(path),
+        "previewExists": _artifact_file_exists(visual_path),
+        "visualPath": visual_path,
+        "filePreviewUrl": file_preview or "",
+        "previewUrl": visual_preview or "",
+    }
+
+
+def _public_artifacts(artifacts: list[dict], project: str) -> list[dict]:
+    return [_public_artifact(artifact, project) for artifact in artifacts]
 
 
 def _collect_attachments(value: Any, project: str, *, limit: int = 24) -> list[dict]:
@@ -3598,7 +3856,85 @@ def scanner_live_state(project: str, limit: int = 8) -> dict:
     return {"ok": True, "updatedAt": _utc_now(), "streams": public_streams}
 
 
-def service_live_views(project: str, limit: int = 8) -> dict:
+def _latest_scanner_page_status(db: str | None) -> dict:
+    try:
+        logs = _host_db().recent_logs(db, stream="page-action", limit=80)
+    except Exception:  # noqa: BLE001
+        return {}
+    for item in logs:
+        detail = item.get("detail") if isinstance(item.get("detail"), dict) else {}
+        if item.get("event") != "result" or (detail.get("target") or "scanner") != "scanner":
+            continue
+        uri = str(detail.get("uri") or "")
+        if not (
+            uri.endswith("/camera/query/status")
+            or uri.endswith("/camera/command/start")
+            or uri.endswith("/ui/button/start-camera/command/click")
+        ):
+            continue
+        result = detail.get("result") if isinstance(detail.get("result"), dict) else {}
+        status = result.get("status") if isinstance(result.get("status"), dict) else result
+        if not isinstance(status, dict):
+            continue
+        public_status = {key: value for key, value in status.items() if key != "localActions"}
+        public_status.update({
+            "actionUri": uri,
+            "ok": detail.get("ok"),
+            "error": detail.get("error") or public_status.get("error"),
+            "at": detail.get("at") or item.get("created_at"),
+        })
+        return public_status
+    return {}
+
+
+def _scanner_artifact_doc_meta(artifact: dict) -> dict:
+    meta = artifact.get("meta") if isinstance(artifact.get("meta"), dict) else {}
+    document = meta.get("document") if isinstance(meta.get("document"), dict) else {}
+    document_meta = document.get("metadata") if isinstance(document.get("metadata"), dict) else {}
+    detected = meta.get("detectedDocument") if isinstance(meta.get("detectedDocument"), dict) else {}
+    return {**detected, **document_meta}
+
+
+def _recent_scanner_artifacts(db: str | None, project: str, limit: int = 6) -> list[dict]:
+    try:
+        artifacts = _host_db().list_artifacts(db, limit=80)
+    except Exception:  # noqa: BLE001
+        return []
+    out: list[dict] = []
+    for artifact in artifacts:
+        kind = str(artifact.get("kind") or "")
+        uri = str(artifact.get("uri") or "")
+        meta = artifact.get("meta") if isinstance(artifact.get("meta"), dict) else {}
+        scanner_related = (
+            kind in {"camera-scan", "document-pdf", "dashboard-qr"}
+            and (
+                uri.startswith(("scanner://", "document://host/", "dashboard://host/qr/"))
+                or str(meta.get("sourceCaptureUri") or "").startswith("scanner://")
+            )
+        )
+        if not scanner_related:
+            continue
+        path = str(artifact.get("path") or "")
+        display_path = str(meta.get("displayImage") or meta.get("displayPath") or path)
+        doc = _scanner_artifact_doc_meta(artifact)
+        item = {
+            "id": artifact.get("id"),
+            "kind": kind,
+            "uri": uri,
+            "path": path,
+            "createdAt": artifact.get("created_at"),
+            "previewUrl": _preview_url(display_path, project) if display_path else "",
+            "filePreviewUrl": _preview_url(path, project) if path else "",
+            "label": Path(path).name if path else uri,
+            **{key: value for key, value in doc.items() if value},
+        }
+        out.append(item)
+        if len(out) >= max(1, int(limit or 6)):
+            break
+    return out
+
+
+def service_live_views(project: str, db: str | None = None, limit: int = 8) -> dict:
     scanner = scanner_live_state(project, limit=limit)
     views: list[dict] = []
     streams = scanner.get("streams") or []
@@ -3616,7 +3952,29 @@ def service_live_views(project: str, limit: int = 8) -> dict:
             "updatedAt": scanner.get("updatedAt"),
             "refreshMs": 1000,
             "data": {"streams": streams},
-            "supportedViews": ["scanner-stream", "table", "image-list", "video", "iframe", "form", "graph", "json"],
+            "supportedViews": ["scanner-stream", "scanner-status", "table", "image-list", "video", "iframe", "form", "graph", "json"],
+        })
+    service = next((item for item in _service_contacts() if item.get("id") == "service:phone-scanner"), {})
+    recent_artifacts = _recent_scanner_artifacts(db, project, limit=6)
+    camera_status = _latest_scanner_page_status(db)
+    if service or recent_artifacts or camera_status:
+        views.append({
+            "id": "service:phone-scanner/status",
+            "target": "service:phone-scanner",
+            "serviceId": "service:phone-scanner",
+            "title": "phone scanner status",
+            "kind": "status",
+            "view": "scanner-status",
+            "status": "running" if service.get("reachable") else "stopped",
+            "updatedAt": camera_status.get("at") or scanner.get("updatedAt"),
+            "refreshMs": 1000,
+            "data": {
+                "service": service,
+                "cameraStatus": camera_status,
+                "recentArtifacts": recent_artifacts,
+                "streamCount": len(streams),
+            },
+            "supportedViews": ["scanner-status", "scanner-stream", "image-list", "iframe", "json"],
         })
     return {"ok": True, "updatedAt": _utc_now(), "views": views}
 
@@ -3963,6 +4321,10 @@ def scanner_session(db: str | None, payload: dict) -> dict:
     }
     label = "Phone scanner opened" if event == "open" else "Phone scanner camera started" if event == "camera-started" else f"Phone scanner {event}"
     message = _chat_message("system", label, detail=detail)
+    try:
+        _host_db().add_log(db, "scanner-session", event, detail)
+    except Exception:  # noqa: BLE001
+        pass
     _add_chat_message(db, message)
     return {"ok": True, "uri": uri, "message": message}
 
@@ -4353,7 +4715,7 @@ def summary(project: str, db: str | None, config: str | None, node_urls: list[st
     except Exception as exc:  # noqa: BLE001
         discovered = {"nodes": [], "routes": [], "serviceMap": {}, "error": str(exc)}
     checks = host_db.recent_checks(db, limit=10)
-    artifacts = host_db.list_artifacts(db, limit=10)
+    artifacts = _public_artifacts(host_db.list_artifacts(db, limit=10), project)
     logs = host_db.recent_logs(db, limit=10)
     nodes = discovered.get("nodes") or []
     routes = discovered.get("routes") or []
@@ -4761,6 +5123,82 @@ def task_action(project: str, ticket_id: str, action: str, payload: dict) -> dic
     return {"ok": True, "ticket": ticket}
 
 
+def _artifact_delete_roots(project: str) -> list[Path]:
+    roots = [
+        Path(os.environ.get("URIRUN_ARTIFACT_DIR", "~/.urirun/artifacts")).expanduser(),
+        Path(os.environ.get("URIRUN_DOCUMENT_DIR", "~/.urirun/documents")).expanduser(),
+        Path("~/.urirun/host-dashboard").expanduser(),
+    ]
+    out: list[Path] = []
+    for root in roots:
+        try:
+            out.append(root.resolve())
+        except OSError:
+            continue
+    return out
+
+
+def _artifact_file_delete_allowed(path: str, project: str) -> bool:
+    if not path:
+        return False
+    try:
+        resolved = Path(path).expanduser().resolve()
+    except OSError:
+        return False
+    roots = _artifact_delete_roots(project)
+    return any(resolved == root or root in resolved.parents for root in roots)
+
+
+def artifacts_delete(project: str, db: str | None, payload: dict) -> dict:
+    ids = payload.get("ids") or payload.get("artifactIds") or []
+    if isinstance(ids, str):
+        ids = [ids]
+    clean_ids = [str(item).strip() for item in ids if str(item).strip()]
+    if not clean_ids:
+        return {"ok": False, "error": "ids are required", "deleted": 0, "filesDeleted": 0}
+    host_db = _host_db()
+    artifacts = host_db.artifacts_by_ids(db, clean_ids)
+    delete_files = bool(payload.get("deleteFiles", True))
+    files: list[dict] = []
+    if delete_files:
+        seen_paths: set[str] = set()
+        for item in artifacts:
+            artifact_path = str(item.get("path") or "")
+            if not artifact_path or artifact_path in seen_paths:
+                continue
+            seen_paths.add(artifact_path)
+            info = {"path": artifact_path, "deleted": False, "skipped": False, "error": ""}
+            if not _artifact_file_delete_allowed(artifact_path, project):
+                info["skipped"] = True
+                info["error"] = "path is outside allowed artifact roots"
+            else:
+                try:
+                    target = Path(artifact_path).expanduser().resolve()
+                    if target.is_file():
+                        target.unlink()
+                        info["deleted"] = True
+                    else:
+                        info["skipped"] = True
+                        info["error"] = "file missing"
+                except OSError as exc:
+                    info["error"] = str(exc)
+            files.append(info)
+    deleted = host_db.delete_artifacts(db, clean_ids)
+    result = {
+        "ok": True,
+        "requested": len(clean_ids),
+        "matched": len(artifacts),
+        "deleted": deleted,
+        "filesDeleted": len([item for item in files if item.get("deleted")]),
+        "files": files,
+    }
+    try:
+        host_db.add_log(db, "artifacts", "delete", result)
+    except Exception:  # noqa: BLE001
+        pass
+    return result
+
+
 def _dashboard_api_response(path: str, project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None = None) -> tuple[int, dict]:
     """Resolve a dashboard /api/* path to an (HTTP status, JSON payload) pair."""
     if path == "/api/summary":
@@ -4786,11 +5224,12 @@ def _dashboard_api_response(path: str, project: str, db: str | None, config: str
         return 200, {"ok": True, "logs": host_db.recent_logs(db, stream=_first(query, "stream"), limit=int(_first(query, "limit", "20") or 20))}
     if path == "/api/artifacts":
         host_db = _host_db()
-        return 200, {"ok": True, "artifacts": host_db.list_artifacts(db, kind=_first(query, "kind"), limit=int(_first(query, "limit", "20") or 20))}
+        artifacts = host_db.list_artifacts(db, kind=_first(query, "kind"), limit=int(_first(query, "limit", "20") or 20))
+        return 200, {"ok": True, "artifacts": _public_artifacts(artifacts, project)}
     if path == "/api/chat/history":
         return 200, chat_history(db, project, limit=int(_first(query, "limit", "80") or 80))
     if path == "/api/services/live":
-        return 200, service_live_views(project, limit=int(_first(query, "limit", "8") or 8))
+        return 200, service_live_views(project, db=db, limit=int(_first(query, "limit", "8") or 8))
     if path == "/api/scanner/live":
         return 200, scanner_live_state(project, limit=int(_first(query, "limit", "8") or 8))
     return 404, {"ok": False, "error": "not found"}
@@ -4874,6 +5313,10 @@ def create_handler(
                 if parsed.path == "/api/chat/messages/delete":
                     payload = _read_json(self)
                     _json_response(self, 200, chat_delete_messages(db, payload))
+                    return
+                if parsed.path == "/api/artifacts/delete":
+                    payload = _read_json(self)
+                    _json_response(self, 200, artifacts_delete(project, db, payload))
                     return
                 if parsed.path == "/api/uri/invoke":
                     payload = _read_json(self)
