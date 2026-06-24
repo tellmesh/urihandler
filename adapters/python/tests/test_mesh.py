@@ -1285,6 +1285,34 @@ class MeshTests(unittest.TestCase):
 
         self.assertEqual(flow["steps"], [])
 
+    def test_heuristic_flow_does_not_fake_browser_prompt_with_lone_health(self):
+        # Browser intent injects a health probe before the (unavailable) browser:// steps.
+        # When no browser route exists, the lone probe must not masquerade as a fulfilled flow.
+        nodes = [{"name": "lenovo", "reachable": True}]
+        routes = [
+            {"uri": "env://laptop/runtime/query/health", "node": "lenovo", "safe": True},
+        ]
+
+        flow = mesh.heuristic_flow(
+            "otwórz przegladarke z url linkedin.com i opublikuj post",
+            routes,
+            nodes,
+            selected_nodes=["lenovo"],
+        )
+
+        self.assertEqual(flow["steps"], [])
+
+    def test_heuristic_flow_keeps_health_when_explicitly_requested(self):
+        # An explicit health request should still yield the probe (it is the real intent).
+        nodes = [{"name": "lenovo", "reachable": True}]
+        routes = [
+            {"uri": "env://laptop/runtime/query/health", "node": "lenovo", "safe": True},
+        ]
+
+        flow = mesh.heuristic_flow("sprawdź health węzła laptop", routes, nodes, selected_nodes=["lenovo"])
+
+        self.assertEqual([step["uri"] for step in flow["steps"]], ["env://laptop/runtime/query/health"])
+
     def test_registry_from_remote_routes(self):
         registry = mesh.registry_from_routes([
             {

@@ -226,6 +226,14 @@ def heuristic_flow(prompt: str, routes: list[dict], nodes: list[dict], selected_
     for target in targets:
         previous = _append_target_steps(steps, route_uris, target, intents, path if (intents["files"] or intents["invoices"]) else url, previous)
 
+    # The health probe is a companion to real work, never a result on its own: when the
+    # user's actual intent (browser, screen, …) had no available route, every real step is
+    # skipped and only `ensure_health` survives. Returning that lone probe would report a
+    # misleading "ok: 1 URI step" for a request we couldn't fulfil — so drop it and let the
+    # caller raise the honest "no URI steps; check the mesh config" explanation instead.
+    if not intents["health"] and all(step["uri"].endswith("/runtime/query/health") for step in steps):
+        steps = []
+
     return {
         "task": {"id": f"nl_uri_flow_{now_id()}", "title": "NL to URI host flow", "source": "heuristic"},
         "steps": steps,
