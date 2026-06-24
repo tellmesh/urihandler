@@ -1538,7 +1538,10 @@ def test_scanner_best_finish_archives_best_candidate(monkeypatch, tmp_path):
     assert result["ok"] is True
     assert result["best"]["frameIndex"] == 2
     assert result["document"]["docId"] == "DOC-PAR-BEST"
-    assert [item["kind"] for item in fake_db.artifacts] == ["camera-scan", "document-pdf"]
+    assert [item["kind"] for item in fake_db.artifacts] == ["document-pdf"]
+    assert result["artifact"]["kind"] == "document-pdf"
+    assert result["primaryArtifact"]["kind"] == "document-pdf"
+    assert result["scanArtifact"]["skipped"] is True
     assert [item["kind"] for item in fake_db.logs[-1]["detail"]["attachments"]] == ["document-pdf"]
     # Candidates scored cheap (tesseract); the kept best frame was re-OCR'd with the full default backend.
     assert ocr_backends == ["tesseract", "tesseract", None]
@@ -1565,15 +1568,18 @@ def test_duplicate_scanner_result_registers_only_canonical_document_artifact(mon
         document={
             "ok": True,
             "duplicate": True,
-            "docId": "DOC-DUP",
-            "uri": "document://host/DOC-DUP",
+            "docId": "DOC-RESCAN",
+            "duplicateOf": "DOC-DUP",
             "path": str(pdf),
         },
         content_prefix="Phone scan saved",
     )
 
-    assert result["artifact"]["skipped"] is True
+    assert result["scanArtifact"]["skipped"] is True
+    assert result["artifact"]["path"] == str(pdf)
+    assert result["primaryArtifact"]["path"] == str(pdf)
     assert result["documentArtifact"]["path"] == str(pdf)
+    assert result["documentArtifact"]["uri"] == "document://host/DOC-DUP"
     assert [item["kind"] for item in fake_db.artifacts] == ["document-pdf"]
     assert fake_db.artifacts[0]["path"] == str(pdf)
     assert [item["kind"] for item in fake_db.logs[-1]["detail"]["attachments"]] == ["document-pdf"]

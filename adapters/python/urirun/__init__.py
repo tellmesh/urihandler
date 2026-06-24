@@ -121,6 +121,26 @@ def plan(**fields) -> dict:
     return {"ok": True, "dryRun": True, **fields}
 
 
+def tag(result: dict, kind: str, *, live: bool = False) -> dict:
+    """Stamp a connector result with the artifact/widget contract and return it.
+
+    ``kind`` names the output (e.g. ``photo``/``scan``/``text``/``crop``/``document``/
+    ``stream``) and ``live`` declares its nature:
+
+    * ``live=False`` -- a frozen, immutable **artifact** (a captured frame, a rendered
+      PDF, a finished crop). The host catalogs these in the artifact store.
+    * ``live=True`` -- a self-updating **widget** / live view (an open camera stream).
+
+    A UI renders by ``live``, not by media type: a captured frame and a recorded clip
+    are both artifacts; only the open stream is a widget. This is the single shared
+    contract so every connector declares its output the same way instead of inventing
+    ad-hoc fields. No-ops on a non-dict (e.g. an already-built failure envelope)."""
+    if isinstance(result, dict):
+        result["kind"] = kind
+        result["live"] = bool(live)
+    return result
+
+
 def policy(allow=None, deny=None, secret_allow=None, policy_file=None) -> dict | None:
     """Build an execution policy from allow/deny/secret-allow globs (and an optional
     policy file) — the public builder, so callers no longer reach into

@@ -2766,7 +2766,8 @@ SCANNER_HTML = r"""<!doctype html>
         }
         const kind = captureFeedbackKind(data);
         const label = kind === 'duplicate' ? 'already saved' : kind === 'superseded' ? 'updated' : 'saved';
-        setState(`${label} ${data.artifact && data.artifact.path ? data.artifact.path : data.uri}`);
+        const savedArtifact = data.primaryArtifact || data.documentArtifact || data.artifact || {};
+        setState(`${label} ${savedArtifact.path || data.uri}`);
         feedbackTone(kind);
         return data;
       } catch (err) {
@@ -3561,16 +3562,11 @@ def _local_image_ocr_llm(path: str) -> dict | None:
         return None
     if not (path and Path(str(path)).is_file()):
         return None
-    _ensure_llm_env()
-    model = (
-        os.environ.get("URIRUN_SCANNER_LLM_VISION_MODEL")
-        or os.environ.get("URIRUN_SCANNER_LLM_MODEL")
-        or os.environ.get("LLM_MODEL")
-        or ""
-    )
+    model = _llm_model(vision=True)
     if not model:
         return None
-    if model.startswith("openrouter/") and not os.environ.get("OPENROUTER_API_KEY"):
+    key_ref = _llm_api_key_ref()
+    if model.startswith("openrouter/") and not key_ref:
         return None
     try:
         from urirun_connector_llm.core import complete  # type: ignore
@@ -3581,7 +3577,9 @@ def _local_image_ocr_llm(path: str) -> dict | None:
         "Zwróć wyłącznie tekst, bez komentarzy."
     )
     try:
-        res = complete(prompt, model=model, image=str(path))
+        # The key is passed by reference and resolved inside the connector under a
+        # deny-by-default allow-list — never copied into this process's environment.
+        res = complete(prompt, model=model, image=str(path), api_key=key_ref, secret_allow=key_ref)
     except Exception:  # noqa: BLE001
         return None
     if not isinstance(res, dict) or not res.get("ok"):
@@ -4112,16 +4110,14 @@ def _load_env_file(path: Path) -> dict[str, str]:
     return values
 
 
-def _ensure_llm_env() -> None:
-    """Best-effort: populate OPENROUTER_API_KEY / LLM_MODEL from a .env if not already set.
+def _llm_env_file() -> Path | None:
+    """The .env that carries LLM config/credentials, if present.
 
-    Looks at ``URIRUN_LLM_ENV_FILE``, then this repo's ``examples/.env``, then
-    ``~/.urirun/llm.env``. Only fills variables that are missing, never overrides the
-    process environment.
+    ``URIRUN_LLM_ENV_FILE``, then this repo's ``examples/.env``, then ``~/.urirun/llm.env``.
+    Used both to read the (non-secret) model name and to *address* the API key by reference —
+    never to copy the key into the process environment.
     """
-    if os.environ.get("OPENROUTER_API_KEY") and os.environ.get("LLM_MODEL"):
-        return
-    candidates = []
+    candidates: list[Path] = []
     explicit = os.environ.get("URIRUN_LLM_ENV_FILE")
     if explicit:
         candidates.append(Path(explicit).expanduser())
@@ -4131,13 +4127,49 @@ def _ensure_llm_env() -> None:
         pass
     candidates.append(Path("~/.urirun/llm.env").expanduser())
     for path in candidates:
-        if not path.is_file():
-            continue
-        for key, val in _load_env_file(path).items():
-            if key in {"OPENROUTER_API_KEY", "LLM_MODEL"} and not os.environ.get(key) and val:
-                os.environ[key] = val
-        if os.environ.get("OPENROUTER_API_KEY"):
-            break
+        if path.is_file():
+            return path
+    return None
+
+
+def _llm_model(*, vision: bool = False) -> str:
+    """Resolve the LLM model name (config, not a secret).
+
+    Env wins (``URIRUN_SCANNER_LLM_VISION_MODEL`` for the vision pass, then
+    ``URIRUN_SCANNER_LLM_MODEL`` / ``LLM_MODEL``); otherwise ``LLM_MODEL`` is read from the
+    .env file as plain config. The model name is never a credential, so reading it directly
+    is fine — only the API key goes through the secret layer.
+    """
+    if vision and os.environ.get("URIRUN_SCANNER_LLM_VISION_MODEL"):
+        return os.environ["URIRUN_SCANNER_LLM_VISION_MODEL"].strip()
+    model = (os.environ.get("URIRUN_SCANNER_LLM_MODEL") or os.environ.get("LLM_MODEL") or "").strip()
+    if model:
+        return model
+    env_file = _llm_env_file()
+    if env_file:
+        return str(_load_env_file(env_file).get("LLM_MODEL", "")).strip()
+    return ""
+
+
+def _llm_api_key_ref() -> str:
+    """Return the API key as a *secret reference*, never the value.
+
+    Honours ``URIRUN_SCANNER_LLM_API_KEY_REF`` (e.g. ``secret://keyring/openrouter#key``).
+    Otherwise: if ``OPENROUTER_API_KEY`` is already in the process env, reference it with
+    ``getv://OPENROUTER_API_KEY``; else point at the .env file via
+    ``secret://dotenv/<file>#OPENROUTER_API_KEY``. Returns '' when nothing is configured.
+    The value is resolved inside the llm connector under a deny-by-default allow-list — it is
+    never copied into ``os.environ`` here.
+    """
+    explicit = os.environ.get("URIRUN_SCANNER_LLM_API_KEY_REF")
+    if explicit:
+        return explicit.strip()
+    if os.environ.get("OPENROUTER_API_KEY"):
+        return "getv://OPENROUTER_API_KEY"
+    env_file = _llm_env_file()
+    if env_file and "OPENROUTER_API_KEY" in _load_env_file(env_file):
+        return f"secret://dotenv/{env_file}#OPENROUTER_API_KEY"
+    return ""
 
 
 def _coerce_amount(value: object) -> str:
@@ -4200,22 +4232,19 @@ def _llm_extract_metadata(ocr_text: str, *, captured_at: str | None = None,
     )
     if not use_vision and len(text) < 8:
         return None
-    _ensure_llm_env()
-    model = (
-        (os.environ.get("URIRUN_SCANNER_LLM_VISION_MODEL") if use_vision else "")
-        or os.environ.get("URIRUN_SCANNER_LLM_MODEL")
-        or os.environ.get("LLM_MODEL")
-        or ""
-    )
+    model = _llm_model(vision=use_vision)
     if not model:
         return None
-    if model.startswith("openrouter/") and not os.environ.get("OPENROUTER_API_KEY"):
+    key_ref = _llm_api_key_ref()
+    if model.startswith("openrouter/") and not key_ref:
         return None
     try:
         from urirun_connector_llm.core import complete  # type: ignore
     except Exception:  # noqa: BLE001
         return None
 
+    # The API key travels as a reference (getv:// or secret://dotenv/...) and is resolved
+    # inside the llm connector under a deny-by-default allow-list — never via os.environ here.
     if use_vision:
         prompt = (
             "Przeanalizuj zdjęcie polskiego paragonu lub faktury i wyciągnij dane. "
@@ -4224,7 +4253,7 @@ def _llm_extract_metadata(ocr_text: str, *, captured_at: str | None = None,
         if text:
             prompt += "\nPomocniczy tekst z OCR (może zawierać błędy, zweryfikuj ze zdjęciem):\n" + text[:3000]
         try:
-            res = complete(prompt, model=model, image=str(image_path))
+            res = complete(prompt, model=model, image=str(image_path), api_key=key_ref, secret_allow=key_ref)
         except Exception:  # noqa: BLE001
             return None
     else:
@@ -4234,7 +4263,7 @@ def _llm_extract_metadata(ocr_text: str, *, captured_at: str | None = None,
             + "\nTEKST OCR:\n" + text[:6000]
         )
         try:
-            res = complete(prompt, model=model)
+            res = complete(prompt, model=model, api_key=key_ref, secret_allow=key_ref)
         except Exception:  # noqa: BLE001
             return None
     if not isinstance(res, dict) or not res.get("ok"):
@@ -4948,7 +4977,7 @@ def _archive_scanned_document(
                     "docIdProvider": docid_info.get("provider"),
                     "path": duplicate_path,
                     "jsonPath": duplicate.get("jsonPath"),
-                    "duplicateOf": duplicate.get("docId"),
+                    "duplicateOf": duplicate_entry["duplicateOf"],
                     "matchReason": duplicate_entry["matchReason"],
                     "enrichedFields": enriched_fields or None,
                     "existingFileExists": duplicate_entry["existingFileExists"],
@@ -5757,19 +5786,9 @@ def _register_scanner_result(
     # staging. In that case do not register a second artifact row that points at the
     # existing document PDF; the document-pdf artifact below is the canonical record.
     display_exists = Path(str(display_path)).expanduser().is_file()
-    if display_exists:
-        artifact = _host_db().register_artifact(db, "camera-scan", uri, str(display_path), meta)
-    else:
-        artifact = {
-            "kind": "camera-scan",
-            "uri": uri,
-            "path": None,
-            "meta": meta,
-            "skipped": True,
-            "reason": "staged display image is not available",
-        }
     attachments = []
     document_artifact = None
+    scan_artifact = None
     overlay_path = str(meta.get("overlayPath") or "")
     if overlay_path and Path(overlay_path).expanduser().is_file():
         attachments.append({
@@ -5785,7 +5804,8 @@ def _register_scanner_result(
             },
         })
     if document.get("ok") and document.get("path"):
-        document_uri = str(document.get("uri") or f"document://host/{quote(str(document.get('docId') or meta.get('sha256') or ''), safe='')}")
+        document_id = str(document.get("duplicateOf") or document.get("docId") or meta.get("sha256") or "")
+        document_uri = str(document.get("uri") or f"document://host/{quote(document_id, safe='')}")
         document_meta = {
             "document": document,
             "ocr": {key: value for key, value in ocr.items() if key != "text"},
@@ -5801,6 +5821,18 @@ def _register_scanner_result(
             "previewUrl": _preview_url(str(document["path"]), project),
             "meta": document_meta,
         })
+    if document_artifact is None and display_exists:
+        scan_artifact = _host_db().register_artifact(db, "camera-scan", uri, str(display_path), meta)
+    else:
+        scan_artifact = {
+            "kind": "camera-scan",
+            "uri": uri,
+            "path": None,
+            "meta": meta,
+            "skipped": True,
+            "reason": "document-pdf artifact is canonical" if document_artifact else "staged display image is not available",
+        }
+    primary_artifact = document_artifact or scan_artifact
     content = content_prefix
     if crop.get("ok"):
         content += " (cropped to receipt)"
@@ -5819,11 +5851,26 @@ def _register_scanner_result(
     message = _chat_message(
         "system",
         content,
-        detail={"artifact": artifact, "documentArtifact": document_artifact, "uri": uri, "selectedTargets": ["service:phone-scanner"], "ocr": ocr, "document": document},
+        detail={
+            "artifact": primary_artifact,
+            "scanArtifact": scan_artifact,
+            "documentArtifact": document_artifact,
+            "primaryArtifact": primary_artifact,
+            "uri": uri,
+            "selectedTargets": ["service:phone-scanner"],
+            "ocr": ocr,
+            "document": document,
+        },
         attachments=attachments,
     )
     _add_chat_message(db, message)
-    return {"artifact": artifact, "documentArtifact": document_artifact, "message": message}
+    return {
+        "artifact": primary_artifact,
+        "scanArtifact": scan_artifact,
+        "documentArtifact": document_artifact,
+        "primaryArtifact": primary_artifact,
+        "message": message,
+    }
 
 
 def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
@@ -5979,7 +6026,9 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
         "ok": True,
         "uri": uri,
         "artifact": registered["artifact"],
+        "scanArtifact": registered["scanArtifact"],
         "documentArtifact": registered["documentArtifact"],
+        "primaryArtifact": registered["primaryArtifact"],
         "ocr": ocr,
         "detectedDocument": detected_document,
         "quality": quality,
@@ -6120,7 +6169,9 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
         "best": _scanner_public_candidate_for_live(best, project),
         "uri": uri,
         "artifact": registered["artifact"],
+        "scanArtifact": registered["scanArtifact"],
         "documentArtifact": registered["documentArtifact"],
+        "primaryArtifact": registered["primaryArtifact"],
         "ocr": ocr,
         "detectedDocument": best.get("detectedDocument") or {},
         "quality": quality,

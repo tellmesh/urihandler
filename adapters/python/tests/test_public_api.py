@@ -22,6 +22,22 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(p["secretAllow"], ["getv://T"])
 
 
+class TagContractTests(unittest.TestCase):
+    def test_artifact_default_is_frozen(self):
+        result = urirun.tag(urirun.ok(path="/x/scan.pdf"), "document")
+        self.assertEqual(result["kind"], "document")
+        self.assertFalse(result["live"])
+        self.assertTrue(result["ok"])
+
+    def test_live_marks_widget(self):
+        result = urirun.tag(urirun.ok(url="rtsp://cam"), "stream", live=True)
+        self.assertEqual(result["kind"], "stream")
+        self.assertTrue(result["live"])
+
+    def test_noop_on_non_dict(self):
+        self.assertIsNone(urirun.tag(None, "photo"))
+
+
 class ResultDataTests(unittest.TestCase):
     def test_local_function_value(self):
         self.assertEqual(urirun.result_data({"result": {"type": "function", "value": {"ok": True, "x": 1}}}),
