@@ -3171,6 +3171,13 @@ def _public_artifacts(artifacts: list[dict], project: str) -> list[dict]:
     return [_public_artifact(artifact, project) for artifact in artifacts]
 
 
+def _visible_public_artifacts(artifacts: list[dict], project: str, *, include_missing: bool = False) -> list[dict]:
+    public = _public_artifacts(artifacts, project)
+    if include_missing:
+        return public
+    return [item for item in public if item.get("fileExists") or item.get("previewExists")]
+
+
 def _collect_attachments(value: Any, project: str, *, limit: int = 24) -> list[dict]:
     """Find screenshot/photo/OCR artifacts in a URI result tree for chat rendering."""
     attachments: list[dict] = []
@@ -4913,6 +4920,8 @@ def _recent_scanner_artifacts(db: str | None, project: str, limit: int = 6) -> l
             continue
         path = str(artifact.get("path") or "")
         display_path = str(meta.get("displayImage") or meta.get("displayPath") or path)
+        if not _artifact_file_exists(path) and not _artifact_file_exists(display_path):
+            continue
         doc = _scanner_artifact_doc_meta(artifact)
         item = {
             "id": artifact.get("id"),
@@ -6270,7 +6279,8 @@ def _dashboard_api_response(path: str, project: str, db: str | None, config: str
     if path == "/api/artifacts":
         host_db = _host_db()
         artifacts = host_db.list_artifacts(db, kind=_first(query, "kind"), limit=int(_first(query, "limit", "20") or 20))
-        return 200, {"ok": True, "artifacts": _public_artifacts(artifacts, project)}
+        include_missing = str(_first(query, "includeMissing", "") or "").lower() in {"1", "true", "yes", "on"}
+        return 200, {"ok": True, "artifacts": _visible_public_artifacts(artifacts, project, include_missing=include_missing)}
     if path == "/api/chat/history":
         return 200, chat_history(db, project, limit=int(_first(query, "limit", "80") or 80))
     if path == "/api/services/live":
@@ -6297,6 +6307,11 @@ def create_handler(
             try:
                 if parsed.path in {"/", "/index.html"}:
                     _html_response(self)
+                    return
+                if parsed.path == "/favicon.ico":
+                    self.send_response(204)
+                    self.send_header("Cache-Control", "public, max-age=86400")
+                    self.end_headers()
                     return
                 if parsed.path == "/scanner":
                     _html_response(self, SCANNER_HTML)

@@ -52,6 +52,24 @@ A rejected capture returns `{"ok": true, "rejected": true, "reason": "low-qualit
 its staged scan + crop files are deleted, and no document/artifact/chat message is
 created. Pass `"force": true` in the capture payload to archive regardless of score.
 
+## Staging retention
+
+The best-frame scanner stages several candidate frames per capture and archives
+only the chosen one, so `URIRUN_SCANNER_DIR` (`~/.urirun/host-dashboard/scans`)
+would grow without bound. A throttled prune runs on each capture and removes
+orphaned frames, but **never** deletes:
+
+- files of an archived document (referenced by the index),
+- files of an active, not-yet-finished best series,
+- any file newer than `URIRUN_SCANNER_KEEP_RECENT` seconds (default `90`).
+
+The recent-file window is deliberate: while scanning, a frame may still be needed
+if image manipulation/capture errors and the user retries within the minute.
+
+```bash
+export URIRUN_SCANNER_KEEP_RECENT=90   # seconds; 0 disables pruning
+```
+
 ## Files
 
 Final documents are stored by month:

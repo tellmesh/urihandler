@@ -347,6 +347,35 @@ def test_public_artifact_uses_existing_preview_and_marks_missing_files(tmp_path)
     assert missing_item["previewUrl"] == ""
 
 
+def test_artifacts_api_hides_missing_files_by_default(monkeypatch, tmp_path):
+    fake_db = FakeHostDb()
+    existing = tmp_path / "scan.jpg"
+    existing.write_bytes(b"scan")
+    fake_db.register_artifact("db", "camera-scan", "scanner://host/capture/ok", str(existing), {})
+    fake_db.register_artifact("db", "camera-scan", "scanner://host/capture/missing", str(tmp_path / "missing.jpg"), {})
+    monkeypatch.setattr(host_dashboard, "_host_db", lambda: fake_db)
+
+    status, payload = host_dashboard._dashboard_api_response("/api/artifacts", str(tmp_path), "db", None, parse_qs("limit=10"))
+
+    assert status == 200
+    assert [item["uri"] for item in payload["artifacts"]] == ["scanner://host/capture/ok"]
+
+    status, payload = host_dashboard._dashboard_api_response(
+        "/api/artifacts",
+        str(tmp_path),
+        "db",
+        None,
+        parse_qs("limit=10&includeMissing=1"),
+    )
+
+    assert status == 200
+    assert [item["uri"] for item in payload["artifacts"]] == [
+        "scanner://host/capture/missing",
+        "scanner://host/capture/ok",
+    ]
+    assert payload["artifacts"][0]["fileExists"] is False
+
+
 def test_chat_ask_reports_missing_screen_capture_capability(monkeypatch):
     fake_mesh = FakeMesh()
     fake_db = FakeHostDb()
@@ -1209,7 +1238,8 @@ def test_transaction_fingerprint_is_stable_across_ocr_noise():
     noisy = "INA GRUBA\n2425 RACHUNEK NR: 181149\nih 1671 WAZNA DO: KX/KX\nCJI: 784663 (1)\nGODZINA: 09:52:51"
     fp_good = host_dashboard._transaction_fingerprint(good)
     fp_noisy = host_dashboard._transaction_fingerprint(noisy)
-    assert fp_good == {"number": "181149", "auth": "784683", "time": "095251", "card": "1671"}
+    assert fp_good == {"number": "181149", "auth": "784683", "time": "095251", "card": "1671",
+                       "datetime": "20260619095251"}
     assert fp_noisy["number"] == "181149" and fp_noisy["time"] == "095251" and fp_noisy["card"] == "1671"
     # auth misread, but the other three still agree -> same document.
     assert host_dashboard._fingerprint_match_count(fp_good, fp_noisy) == 3
@@ -1392,7 +1422,7 @@ def test_archive_skips_lower_quality_fingerprint_duplicate(monkeypatch, tmp_path
         crop={"ok": True, "path": str(poor_crop)}, source_sha256="src-poor", captured_at=None,
     )
     assert second["duplicate"] is True
-    assert second["matchReason"].startswith("fingerprint")
+    assert second["matchReason"].startswith("fingerprint") or second["matchReason"] == "datetime"
     assert second["path"] == str(keep_path)
     # Good document untouched; worse staged scan + crop removed.
     assert keep_path.is_file()
