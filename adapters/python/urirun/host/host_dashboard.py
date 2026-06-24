@@ -3269,7 +3269,11 @@ def chat_delete_messages(db: str | None, payload: dict) -> dict:
     return {"ok": True, "deleted": deleted, "ids": ids}
 
 
-def _local_image_ocr(path: str) -> dict:
+def _truthy_env(name: str, default: str = "0") -> bool:
+    return str(os.environ.get(name, default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _local_image_ocr_tesseract(path: str) -> dict:
     if not shutil_which("tesseract"):
         return {"ok": False, "backend": "none", "error": "tesseract is not installed on host"}
     import subprocess
@@ -3283,6 +3287,47 @@ def _local_image_ocr(path: str) -> dict:
         return {"ok": False, "backend": "tesseract", "error": (proc.stderr or "").strip()}
     text = proc.stdout.strip()
     return {"ok": True, "backend": "tesseract", "text": text, "chars": len(text)}
+
+
+def _local_image_ocr(path: str) -> dict:
+    """OCR a scanned image for the phone-scanner pipeline.
+
+    Prefers the urirun-connector-ocr ``auto`` cascade, whose first backend is PaddleOCR
+    (PP-OCRv5/v6 det+rec with document orientation + dewarping). PaddleOCR reads Polish
+    receipts on the *full frame* far more reliably than plain tesseract and does not lose
+    the header/footer to an aggressive crop. Falls back to direct tesseract when the
+    connector or paddle is unavailable. Set ``URIRUN_SCANNER_OCR_BACKEND=tesseract`` to
+    force the old path.
+    """
+    backend = str(os.environ.get("URIRUN_SCANNER_OCR_BACKEND", "auto")).strip().lower()
+    if backend in {"", "tesseract"}:
+        return _local_image_ocr_tesseract(path)
+    try:
+        from urirun_connector_ocr.core import image_text  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        result = _local_image_ocr_tesseract(path)
+        result.setdefault("connectorError", f"urirun-connector-ocr unavailable: {exc}")
+        return result
+    try:
+        envelope = image_text(image=path, backend=backend, lang="eng+pol", max_chars=20000)
+    except Exception as exc:  # noqa: BLE001
+        result = _local_image_ocr_tesseract(path)
+        result.setdefault("connectorError", str(exc))
+        return result
+    if envelope.get("ok") and str(envelope.get("text") or "").strip():
+        return {
+            "ok": True,
+            "backend": envelope.get("backend", backend),
+            "text": str(envelope.get("text") or ""),
+            "chars": envelope.get("chars") or len(str(envelope.get("text") or "")),
+            "boxCount": envelope.get("box_count"),
+            "docPreprocess": envelope.get("docPreprocess"),
+        }
+    # Connector found nothing usable; fall back to tesseract so a scan never silently fails.
+    fallback = _local_image_ocr_tesseract(path)
+    if not fallback.get("ok"):
+        fallback.setdefault("connectorError", str(envelope.get("error") or "connector OCR returned no text"))
+    return fallback
 
 
 def _document_archive_root() -> Path:
@@ -4382,16 +4427,14 @@ def _lan_host() -> str:
     configured = os.environ.get("URIRUN_DASHBOARD_PUBLIC_HOST")
     if configured:
         return configured
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        sock.connect(("8.8.8.8", 80))
-        host = sock.getsockname()[0]
-        if host and not host.startswith("127."):
-            return host
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            host = sock.getsockname()[0]
+            if host and not host.startswith("127."):
+                return host
     except OSError:
         pass
-    finally:
-        sock.close()
     try:
         host = socket.gethostbyname(socket.gethostname())
         if host and not host.startswith("127."):
@@ -4534,6 +4577,30 @@ def _probe_scanner_url(url: str, timeout: float = 1.5) -> bool:
             return 200 <= int(response.status) < 500
     except Exception:  # noqa: BLE001
         return False
+
+
+def _phone_scanner_url(port: int, *, scheme: str | None = None) -> str:
+    scanner_scheme = (scheme or os.environ.get("URIRUN_PHONE_SCANNER_SCHEME", "https")).strip() or "https"
+    return _scanner_page_url(f"{scanner_scheme}://{_url_host(_lan_host())}:{int(port)}/scanner")
+
+
+def _phone_scanner_external_status(port: int, *, timeout: float = 0.35) -> dict:
+    primary_scheme = os.environ.get("URIRUN_PHONE_SCANNER_SCHEME", "https").strip().lower() or "https"
+    schemes = [primary_scheme]
+    if os.environ.get("URIRUN_PHONE_SCANNER_PROBE_BOTH", "1").lower() in {"1", "true", "yes", "on"}:
+        fallback = "http" if primary_scheme == "https" else "https"
+        schemes.append(fallback)
+
+    seen: set[str] = set()
+    primary_url = _phone_scanner_url(port, scheme=primary_scheme)
+    for scheme in schemes:
+        if scheme in seen:
+            continue
+        seen.add(scheme)
+        url = _phone_scanner_url(port, scheme=scheme)
+        if _probe_scanner_url(url, timeout=timeout):
+            return {"status": "external-running", "reachable": True, "url": url}
+    return {"status": "stopped", "reachable": False, "url": primary_url}
 
 
 def _nl_text(text: str) -> str:
@@ -5095,7 +5162,12 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
     path.write_bytes(raw)
     crop = _auto_crop_receipt(path)
     display_path = Path(crop["path"]) if crop.get("ok") and crop.get("path") else path
-    ocr = _local_image_ocr(str(display_path))
+    # OCR the full original frame, not the crop: PaddleOCR handles the background and the
+    # crop tended to cut the header/footer (losing seller name / "Do zapłaty" total). The
+    # crop is kept only as the display thumbnail / archived preview. Set
+    # URIRUN_SCANNER_OCR_FULLFRAME=0 to OCR the crop instead (legacy behaviour).
+    ocr_source = path if _truthy_env("URIRUN_SCANNER_OCR_FULLFRAME", "1") else display_path
+    ocr = _local_image_ocr(str(ocr_source))
     detected_document = _extract_document_metadata(str(ocr.get("text") or ""), captured_at=payload.get("capturedAt"))
     quality = _document_frame_quality(crop, ocr, detected_document, display_path)
     uri = f"scanner://host/capture/{digest[:16]}"
@@ -5719,15 +5791,15 @@ def _task_counts(tickets: list[dict]) -> dict[str, int]:
 
 def _service_contacts() -> list[dict]:
     scanner_port = int(os.environ.get("URIRUN_PHONE_SCANNER_PORT", "8196"))
-    scanner_url = _scanner_page_url(f"https://{_url_host(_lan_host())}:{scanner_port}/scanner")
+    scanner_state = _phone_scanner_external_status(scanner_port)
     phone_scanner = {
         "id": "service:phone-scanner",
         "kind": "service",
         "name": "phone-scanner",
         "label": "urirun service: photo scanner",
-        "url": scanner_url,
-        "status": "stopped",
-        "reachable": False,
+        "url": scanner_state["url"],
+        "status": scanner_state["status"],
+        "reachable": scanner_state["reachable"],
         "routes": [
             "dashboard://host/phone-scanner/command/start",
             "scanner://page/camera/command/scan",
@@ -5741,17 +5813,19 @@ def _service_contacts() -> list[dict]:
             thread = _SERVICE_THREADS.get(service_id)
             parsed = urlparse(service_id)
             port = int(parsed.port or scanner_port)
-            service_url = _scanner_page_url(f"https://{_url_host(_lan_host())}:{port}/scanner")
+            service_url = _phone_scanner_url(port)
             name = "phone-scanner" if port == scanner_port else f"service-{port}"
+            alive = bool(thread is not None and thread.is_alive())
+            external = {"status": "stopped", "reachable": False, "url": service_url} if alive else _phone_scanner_external_status(port)
             item = {
                 **phone_scanner,
                 "id": f"service:{name}",
                 "name": name,
                 "label": f"urirun service: {name}",
-                "url": service_url,
+                "url": service_url if alive else external["url"],
                 "bindUrl": service_id,
-                "status": "running" if thread is not None and thread.is_alive() else "stopped",
-                "reachable": bool(thread is not None and thread.is_alive()),
+                "status": "running" if alive else external["status"],
+                "reachable": alive or bool(external["reachable"]),
                 "serverName": getattr(server, "server_name", ""),
             }
             contacts = [entry for entry in contacts if entry.get("id") != item["id"]]
@@ -6203,6 +6277,68 @@ def _artifact_file_delete_allowed(path: str, project: str) -> bool:
     return any(resolved == root or root in resolved.parents for root in roots)
 
 
+def _payload_bool(payload: dict, name: str, default: bool) -> bool:
+    if name not in payload:
+        return default
+    value = payload.get(name)
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _global_document_metadata_paths() -> set[Path]:
+    paths: set[Path] = set()
+    for candidate in (_document_index_path(), _scanned_id_log_path()):
+        try:
+            paths.add(candidate.expanduser().resolve())
+        except OSError:
+            continue
+    return paths
+
+
+def _safe_artifact_sidecar_path(path: str | None, project: str) -> str | None:
+    if not path:
+        return None
+    try:
+        target = Path(str(path)).expanduser().resolve()
+    except OSError:
+        return None
+    if target.suffix.lower() != ".json":
+        return None
+    if target in _global_document_metadata_paths():
+        return None
+    if not _artifact_file_delete_allowed(str(target), project):
+        return None
+    return str(target)
+
+
+def _artifact_delete_candidate_paths(item: dict, project: str) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    artifact_path = str(item.get("path") or "")
+    if artifact_path:
+        out.append((artifact_path, "artifact"))
+        try:
+            sibling = Path(artifact_path).expanduser().resolve().with_suffix(".json")
+            if sibling.is_file():
+                sidecar = _safe_artifact_sidecar_path(str(sibling), project)
+                if sidecar:
+                    out.append((sidecar, "sidecar"))
+        except OSError:
+            pass
+
+    meta = item.get("meta") if isinstance(item.get("meta"), dict) else {}
+    document = meta.get("document") if isinstance(meta.get("document"), dict) else {}
+    for candidate in (meta.get("jsonPath"), document.get("jsonPath")):
+        sidecar = _safe_artifact_sidecar_path(str(candidate or ""), project)
+        if sidecar:
+            out.append((sidecar, "sidecar"))
+    return out
+
+
 def artifacts_delete(project: str, db: str | None, payload: dict) -> dict:
     ids = payload.get("ids") or payload.get("artifactIds") or []
     if isinstance(ids, str):
@@ -6212,20 +6348,22 @@ def artifacts_delete(project: str, db: str | None, payload: dict) -> dict:
         return {"ok": False, "error": "ids are required", "deleted": 0, "filesDeleted": 0}
     host_db = _host_db()
     artifacts = host_db.artifacts_by_ids(db, clean_ids)
-    delete_files = bool(payload.get("deleteFiles", True))
+    delete_files = _payload_bool(payload, "deleteFiles", True)
     files: list[dict] = []
     if delete_files:
         seen_paths: set[str] = set()
         for item in artifacts:
-            artifact_path = str(item.get("path") or "")
-            if not artifact_path or artifact_path in seen_paths:
-                continue
-            seen_paths.add(artifact_path)
-            info = {"path": artifact_path, "deleted": False, "skipped": False, "error": ""}
-            if not _artifact_file_delete_allowed(artifact_path, project):
-                info["skipped"] = True
-                info["error"] = "path is outside allowed artifact roots"
-            else:
+            candidates = _artifact_delete_candidate_paths(item, project)
+            for artifact_path, role in candidates:
+                if not artifact_path or artifact_path in seen_paths:
+                    continue
+                seen_paths.add(artifact_path)
+                info = {"path": artifact_path, "role": role, "deleted": False, "skipped": False, "error": ""}
+                if not _artifact_file_delete_allowed(artifact_path, project):
+                    info["skipped"] = True
+                    info["error"] = "path is outside allowed artifact roots"
+                    files.append(info)
+                    continue
                 try:
                     target = Path(artifact_path).expanduser().resolve()
                     if target.is_file():
@@ -6236,7 +6374,7 @@ def artifacts_delete(project: str, db: str | None, payload: dict) -> dict:
                         info["error"] = "file missing"
                 except OSError as exc:
                     info["error"] = str(exc)
-            files.append(info)
+                files.append(info)
     deleted = host_db.delete_artifacts(db, clean_ids)
     result = {
         "ok": True,

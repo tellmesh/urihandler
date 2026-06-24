@@ -314,6 +314,66 @@ def test_artifacts_delete_removes_db_rows_and_allowed_files(monkeypatch, tmp_pat
     assert fake_db.logs[-1]["event"] == "delete"
 
 
+def test_artifacts_delete_removes_document_json_sidecar_but_keeps_global_indexes(monkeypatch, tmp_path):
+    fake_db = FakeHostDb()
+    monkeypatch.setattr(host_dashboard, "_host_db", lambda: fake_db)
+    document_root = tmp_path / "documents"
+    monkeypatch.setenv("URIRUN_DOCUMENT_DIR", str(document_root))
+    monkeypatch.setenv("URIRUN_DOCUMENT_INDEX", str(document_root / "index.json"))
+    monkeypatch.setenv("URIRUN_SCANNED_ID_LOG", str(document_root / "scanned.id.jsonl"))
+    month = document_root / "2026-06"
+    month.mkdir(parents=True)
+    pdf = month / "paragon_2026-06-24_test_doc-123.pdf"
+    sidecar = month / "paragon_2026-06-24_test_doc-123.json"
+    index = document_root / "index.json"
+    scanned = document_root / "scanned.id.jsonl"
+    pdf.write_bytes(b"%PDF")
+    sidecar.write_text("{}", encoding="utf-8")
+    index.write_text('{"documents":[]}', encoding="utf-8")
+    scanned.write_text('{"docId":"doc-123"}\n', encoding="utf-8")
+    artifact = fake_db.register_artifact(
+        str(tmp_path),
+        "document-pdf",
+        "document://host/doc-123",
+        str(pdf),
+        {
+            "document": {
+                "jsonPath": str(sidecar),
+                "indexPath": str(index),
+                "scannedIdLogPath": str(scanned),
+            }
+        },
+    )
+
+    result = host_dashboard.artifacts_delete(str(tmp_path), str(tmp_path), {"ids": [artifact["id"]]})
+
+    assert result["ok"] is True
+    assert result["filesDeleted"] == 2
+    assert pdf.exists() is False
+    assert sidecar.exists() is False
+    assert index.exists() is True
+    assert scanned.exists() is True
+    assert {item["role"] for item in result["files"] if item["deleted"]} == {"artifact", "sidecar"}
+
+
+def test_artifacts_delete_respects_delete_files_false_string(monkeypatch, tmp_path):
+    fake_db = FakeHostDb()
+    monkeypatch.setattr(host_dashboard, "_host_db", lambda: fake_db)
+    monkeypatch.setenv("URIRUN_ARTIFACT_DIR", str(tmp_path / "artifacts"))
+    safe = tmp_path / "artifacts" / "scan.jpg"
+    safe.parent.mkdir()
+    safe.write_bytes(b"jpg")
+    artifact = fake_db.register_artifact(str(tmp_path), "camera-scan", "scanner://safe-false", str(safe))
+
+    result = host_dashboard.artifacts_delete(str(tmp_path), str(tmp_path), {"ids": [artifact["id"]], "deleteFiles": "false"})
+
+    assert result["ok"] is True
+    assert result["deleted"] == 1
+    assert result["filesDeleted"] == 0
+    assert safe.exists() is True
+    assert fake_db.artifacts == []
+
+
 def test_public_artifact_uses_existing_preview_and_marks_missing_files(tmp_path):
     pdf = tmp_path / "invoice.pdf"
     image = tmp_path / "invoice.jpg"
@@ -572,6 +632,36 @@ def test_service_live_views_includes_scanner_status_without_stream(monkeypatch, 
     assert "localActions" not in view["data"]["cameraStatus"]
     assert view["data"]["recentArtifacts"][0]["type"] == "rachunek"
     assert view["data"]["recentArtifacts"][0]["previewUrl"].startswith("/api/file?path=")
+
+
+def test_service_contacts_marks_external_phone_scanner_running(monkeypatch):
+    monkeypatch.setenv("URIRUN_PHONE_SCANNER_PORT", "8196")
+    monkeypatch.setattr(host_dashboard, "_lan_host", lambda: "192.168.188.212")
+    monkeypatch.setattr(host_dashboard, "_probe_scanner_url", lambda url, timeout=0.35: url.startswith("https://192.168.188.212:8196/"))
+    with host_dashboard._SERVICE_LOCK:
+        host_dashboard._SERVICE_SERVERS.clear()
+        host_dashboard._SERVICE_THREADS.clear()
+
+    services = host_dashboard._service_contacts()
+    scanner = next(item for item in services if item["id"] == "service:phone-scanner")
+
+    assert scanner["status"] == "external-running"
+    assert scanner["reachable"] is True
+    assert scanner["url"].startswith("https://192.168.188.212:8196/scanner?")
+
+
+def test_service_contacts_marks_phone_scanner_stopped_when_probe_fails(monkeypatch):
+    monkeypatch.setenv("URIRUN_PHONE_SCANNER_PORT", "8196")
+    monkeypatch.setattr(host_dashboard, "_lan_host", lambda: "192.168.188.212")
+    monkeypatch.setattr(host_dashboard, "_probe_scanner_url", lambda url, timeout=0.35: False)
+    with host_dashboard._SERVICE_LOCK:
+        host_dashboard._SERVICE_SERVERS.clear()
+        host_dashboard._SERVICE_THREADS.clear()
+
+    scanner = next(item for item in host_dashboard._service_contacts() if item["id"] == "service:phone-scanner")
+
+    assert scanner["status"] == "stopped"
+    assert scanner["reachable"] is False
 
 
 def test_service_widget_html_and_svg_render_live_view(tmp_path):
@@ -1589,6 +1679,13 @@ def test_free_port_noop_when_nothing_to_replace(monkeypatch):
     monkeypatch.setattr(host_dashboard.os, "kill", lambda pid, sig: killed.append(pid))
     host_dashboard._free_port_from_old_dashboard(8194)
     assert killed == []
+
+
+def test_lan_host_falls_back_when_socket_is_unavailable(monkeypatch):
+    monkeypatch.delenv("URIRUN_DASHBOARD_PUBLIC_HOST", raising=False)
+    monkeypatch.setattr(host_dashboard.socket, "socket", lambda *a, **k: (_ for _ in ()).throw(PermissionError("denied")))
+    monkeypatch.setattr(host_dashboard.socket, "gethostbyname", lambda *a, **k: (_ for _ in ()).throw(OSError("denied")))
+    assert host_dashboard._lan_host() == "127.0.0.1"
 
 
 def _data_image_payload(color=(245, 244, 235)):
