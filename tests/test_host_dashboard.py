@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from PIL import Image
+
 from urirun.host import host_dashboard
 
 
@@ -132,6 +134,8 @@ def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
     assert "renderGraphServiceView" in html
     assert "renderScannerStatusServiceView" in html
     assert "scanner-status" in html
+    assert "streamQualityLabel" in html
+    assert "overlayPreviewUrl" in html
     assert "renderWidgetDashboard" in html
     assert "widgetGrid" in html
     assert "data-view=\"widgets\"" in html
@@ -149,6 +153,7 @@ def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
     assert "artifactCleanupOrphansBtn" in html
     assert "artifactCopyJsonBtn" in html
     assert "artifactClearSelectionBtn" in html
+    assert "dashboard://host/service/phone-scanner/command/restart" in html
     assert "artifactSelectionSummary" in html
     assert "name=\"artifactSelect\"" in html
     assert "data-artifact-delete" in html
@@ -448,6 +453,47 @@ def test_public_artifact_uses_existing_preview_and_marks_missing_files(tmp_path)
     assert missing_item["previewExists"] is False
     assert missing_item["filePreviewUrl"] == ""
     assert missing_item["previewUrl"] == ""
+
+
+def test_scanner_crop_overlay_draws_diagnostic_image(tmp_path):
+    source = tmp_path / "scan.jpg"
+    Image.new("RGB", (320, 480), (210, 205, 190)).save(source)
+
+    overlay = host_dashboard._scanner_crop_overlay(
+        source,
+        {"ok": True, "method": "text-boundary", "box": [60, 80, 260, 410]},
+        {"score": 88.5},
+    )
+
+    assert overlay["ok"] is True
+    overlay_path = Path(overlay["path"])
+    assert overlay_path.is_file()
+    assert overlay_path.name == "scan-crop-overlay.jpg"
+    with Image.open(overlay_path) as image:
+        assert image.size == (320, 480)
+
+
+def test_public_scanner_candidate_exposes_overlay_preview(tmp_path):
+    display = tmp_path / "crop.jpg"
+    original = tmp_path / "raw.jpg"
+    overlay = tmp_path / "overlay.jpg"
+    for path in (display, original, overlay):
+        path.write_bytes(b"jpg")
+
+    public = host_dashboard._scanner_public_candidate_for_live(
+        {
+            "displayPath": str(display),
+            "originalPath": str(original),
+            "overlayPath": str(overlay),
+            "quality": {"score": 90},
+            "crop": {"ok": True},
+        },
+        str(tmp_path),
+    )
+
+    assert public["previewUrl"].startswith("/api/file?path=")
+    assert public["originalPreviewUrl"].startswith("/api/file?path=")
+    assert public["overlayPreviewUrl"].startswith("/api/file?path=")
 
 
 def test_artifacts_api_hides_missing_files_by_default(monkeypatch, tmp_path):
@@ -851,6 +897,7 @@ def test_uri_invoke_lists_supported_host_actions():
     assert "scanner://page/camera/command/torch" in uris
     assert "scanner://page/camera/command/best-pdf" in uris
     assert "scanner://host/capture/command/run" in uris
+    assert "dashboard://host/service/phone-scanner/command/restart" in uris
     assert "dashboard://host/service/chat/command/restart" in uris
     assert "document://host/archive/command/sync-to-node" in uris
     assert all("layer" in item for item in result["actions"])
@@ -888,18 +935,30 @@ def test_uri_invoke_execute_session_logs(monkeypatch):
     assert fake_db.logs[-1]["detail"]["detail"]["href"] == "https://host/scanner"
 
 
-def test_uri_invoke_chat_restart_requires_configuration(monkeypatch):
+def test_uri_invoke_chat_restart_schedules_port_replace_without_supervisor(monkeypatch):
     monkeypatch.delenv("URIRUN_CHAT_RESTART_MANAGER", raising=False)
     monkeypatch.delenv("URIRUN_CHAT_RESTART_CMD", raising=False)
+    calls = []
+
+    class _P:
+        pass
+
+    monkeypatch.setattr(host_dashboard.subprocess, "Popen", lambda argv, **kwargs: calls.append((argv, kwargs)) or _P())
 
     result = host_dashboard.uri_invoke(".", ":memory:", None, {
         "uri": "service://host/chat/command/restart",
         "mode": "execute",
+        "payload": {"command": "urirun-service-chat", "delaySeconds": 0.01},
     })
 
-    assert result["ok"] is False
+    assert result["ok"] is True
     assert result["invokedUri"] == "service://host/chat/command/restart"
-    assert "not configured" in result["error"]
+    assert result["manager"] == "port-replace"
+    assert "error" not in result
+    assert result["command"][:3] == ["urirun-service-chat", "restart", "--project"]
+    assert "--db" in result["command"]
+    assert calls
+    assert calls[0][1]["start_new_session"] is True
 
 
 def test_uri_invoke_chat_restart_schedules_systemd(monkeypatch):
@@ -923,6 +982,153 @@ def test_uri_invoke_chat_restart_schedules_systemd(monkeypatch):
     assert calls
     assert calls[0][0][-4:] == ["systemctl", "--user", "restart", "urirun-service-chat.service"]
     assert calls[0][1]["start_new_session"] is True
+
+
+def test_uri_invoke_phone_scanner_restart_requires_configuration_for_external(monkeypatch):
+    monkeypatch.delenv("URIRUN_PHONE_SCANNER_RESTART_MANAGER", raising=False)
+    monkeypatch.delenv("URIRUN_PHONE_SCANNER_RESTART_CMD", raising=False)
+    monkeypatch.setattr(host_dashboard, "_free_port_from_old_scanner", lambda *a, **k: {
+        "ok": True,
+        "holders": [],
+        "targets": [],
+        "killed": [],
+        "remaining": [],
+    })
+    monkeypatch.setattr(host_dashboard, "_phone_scanner_external_status", lambda port: {
+        "status": "running",
+        "reachable": True,
+        "url": f"https://192.168.1.10:{port}/scanner",
+    })
+
+    result = host_dashboard.uri_invoke(".", ":memory:", None, {
+        "uri": "service://host/phone-scanner/command/restart",
+        "mode": "execute",
+    })
+
+    assert result["ok"] is False
+    assert result["invokedUri"] == "service://host/phone-scanner/command/restart"
+    assert "not configured" in result["error"]
+    assert result["status"]["reachable"] is True
+
+
+def test_uri_invoke_phone_scanner_restart_replaces_old_scanner_port(monkeypatch):
+    fake_db = FakeHostDb()
+    monkeypatch.setattr(host_dashboard, "_host_db", lambda: fake_db)
+    monkeypatch.delenv("URIRUN_PHONE_SCANNER_RESTART_MANAGER", raising=False)
+    monkeypatch.delenv("URIRUN_PHONE_SCANNER_RESTART_CMD", raising=False)
+    monkeypatch.setattr(host_dashboard, "_free_port_from_old_scanner", lambda port, force=False: {
+        "ok": True,
+        "port": port,
+        "force": force,
+        "holders": [321],
+        "targets": [321],
+        "killed": [321],
+        "remaining": [],
+    })
+    monkeypatch.setattr(host_dashboard, "ensure_phone_scanner_service", lambda *args, **kwargs: {
+        "ok": True,
+        "status": "started",
+        "service": "phone-scanner",
+        "url": "https://192.168.1.10:8196/scanner",
+    })
+
+    result = host_dashboard.uri_invoke(".", ":memory:", None, {
+        "uri": "service://host/phone-scanner/command/restart",
+        "mode": "execute",
+    })
+
+    assert result["ok"] is True
+    assert result["manager"] == "port-replace"
+    assert result["restart"] is True
+    assert result["replace"]["killed"] == [321]
+    assert result["status"] == "started"
+
+
+def test_uri_invoke_phone_scanner_restart_schedules_systemd(monkeypatch):
+    calls = []
+
+    class _P:
+        pass
+
+    monkeypatch.setattr(host_dashboard.subprocess, "Popen", lambda argv, **kwargs: calls.append((argv, kwargs)) or _P())
+
+    result = host_dashboard.uri_invoke(".", ":memory:", None, {
+        "uri": "service://host/phone-scanner/command/restart",
+        "mode": "execute",
+        "payload": {"manager": "systemd", "unit": "urirun-service-scanner.service", "delaySeconds": 0.01},
+    })
+
+    assert result["ok"] is True
+    assert result["scheduled"] is True
+    assert result["manager"] == "systemd"
+    assert result["command"] == ["systemctl", "--user", "restart", "urirun-service-scanner.service"]
+    assert calls
+    assert calls[0][0][-4:] == ["systemctl", "--user", "restart", "urirun-service-scanner.service"]
+    assert calls[0][1]["start_new_session"] is True
+
+
+def test_free_port_from_old_scanner_only_kills_scanner_process(monkeypatch):
+    live = {11}
+    killed = []
+    monkeypatch.setattr(host_dashboard, "_port_holder_pids", lambda port: sorted(live))
+    monkeypatch.setattr(host_dashboard, "_process_cmdline", lambda pid: "python urirun-service-scanner serve" if pid == 11 else "")
+
+    def fake_kill(pid, sig):
+        killed.append((pid, sig))
+        live.discard(pid)
+
+    monkeypatch.setattr(host_dashboard.os, "kill", fake_kill)
+
+    result = host_dashboard._free_port_from_old_scanner(8196)
+
+    assert result["ok"] is True
+    assert result["targets"] == [11]
+    assert result["killed"] == [11]
+    assert killed
+
+
+def test_free_port_from_old_scanner_refuses_unrelated_process(monkeypatch):
+    monkeypatch.setattr(host_dashboard, "_port_holder_pids", lambda port: [22])
+    monkeypatch.setattr(host_dashboard, "_process_cmdline", lambda pid: "python other_server.py")
+    monkeypatch.setattr(host_dashboard.os, "kill", lambda pid, sig: (_ for _ in ()).throw(AssertionError("must not kill")))
+
+    result = host_dashboard._free_port_from_old_scanner(8196)
+
+    assert result["ok"] is False
+    assert result["targets"] == []
+    assert result["skipped"][0]["pid"] == 22
+
+
+def test_free_port_from_old_chat_only_kills_chat_process(monkeypatch):
+    live = {33}
+    killed = []
+    monkeypatch.setattr(host_dashboard, "_port_holder_pids", lambda port: sorted(live))
+    monkeypatch.setattr(host_dashboard, "_process_cmdline", lambda pid: "python urirun-service-chat serve" if pid == 33 else "")
+
+    def fake_kill(pid, sig):
+        killed.append((pid, sig))
+        live.discard(pid)
+
+    monkeypatch.setattr(host_dashboard.os, "kill", fake_kill)
+
+    result = host_dashboard._free_port_from_old_chat(8194)
+
+    assert result["ok"] is True
+    assert result["targets"] == [33]
+    assert result["killed"] == [33]
+    assert killed
+
+
+def test_free_port_from_old_chat_refuses_unrelated_process(monkeypatch):
+    monkeypatch.setattr(host_dashboard, "_port_holder_pids", lambda port: [44])
+    monkeypatch.setattr(host_dashboard, "_process_cmdline", lambda pid: "python other_server.py")
+    monkeypatch.setattr(host_dashboard.os, "kill", lambda pid, sig: (_ for _ in ()).throw(AssertionError("must not kill")))
+
+    result = host_dashboard._free_port_from_old_chat(8194)
+
+    assert result["ok"] is False
+    assert result["targets"] == []
+    assert result["skipped"][0]["pid"] == 44
 
 
 def test_sync_documents_to_node_copies_pdfs_and_logs_chat(monkeypatch, tmp_path):
@@ -1811,6 +2017,125 @@ def test_document_metadata_does_not_parse_date_as_amount():
     assert metadata["currency"] == ""
 
 
+def test_parse_document_date_handles_glued_and_labeled_dates():
+    fallback = "2026-06-24T10:00:00Z"
+    # OCR often glues the printed date to the preceding word (no word boundary).
+    assert host_dashboard._parse_document_date(
+        "F62995 #0 Dorota Betkowska06-03-2025 11:43", fallback) == "2025-03-06"
+    # Labeled ISO dates still work; the earliest is chosen.
+    assert host_dashboard._parse_document_date(
+        "Data sprzedazy: 2026-05-16\nData wystawienia: 2026-05-16", fallback) == "2026-05-16"
+    # Postal codes / NIPs must not be misread as dates -> falls back to the scan date.
+    assert host_dashboard._parse_document_date(
+        "83-330 Malkowo\n30-385 Krakow\nNIP: 6790163448", fallback) == "2026-06-24"
+
+
+def test_extract_metadata_handles_adjacent_date_time_and_amount():
+    text = "\n".join([
+        "PARAGON FISKALNY",
+        "CYFRONIKA",
+        "F62995 #0 Dorota Betkowska06-03-2025 11:43RAZEM54,61PLN",
+    ])
+
+    metadata = host_dashboard._extract_document_metadata(text, captured_at="2026-06-24T10:00:00Z")
+
+    assert metadata["type"] == "paragon"
+    assert metadata["date"] == "2025-03-06"
+    assert metadata["amount"] == "54.61"
+    assert metadata["currency"] == "PLN"
+
+
+def test_extract_metadata_llm_overrides_regex_and_keeps_blanks(monkeypatch):
+    # LLM disabled by the autouse fixture -> pure regex baseline.
+    text = "PARAGON FISKALNY\nSklepik\nRAZEM 10,00 PLN\n06-03-2025"
+    base = host_dashboard._extract_document_metadata(text, captured_at="2026-06-24T10:00:00Z")
+    assert base["metaSource"] == "regex"
+
+    # Now stub the LLM extractor: it fills contractor/amount/date, leaves type blank.
+    monkeypatch.setattr(host_dashboard, "_llm_extract_metadata", lambda ocr_text, captured_at=None, **kwargs: {
+        "type": "",  # blank -> regex type kept
+        "contractor": "CYFRONIKA Sp. z o.o.",
+        "amount": "54.61",
+        "currency": "PLN",
+        "date": "2025-03-06",
+        "nip": "6790163448",
+        "number": "F62995",
+        "model": "test/model",
+    })
+    meta = host_dashboard._extract_document_metadata(text, captured_at="2026-06-24T10:00:00Z")
+    assert meta["metaSource"] == "llm"
+    assert meta["contractor"] == "CYFRONIKA Sp. z o.o."   # overridden
+    assert meta["amount"] == "54.61"                       # overridden
+    assert meta["date"] == "2025-03-06"                    # overridden
+    assert meta["type"] == "paragon"                       # blank LLM -> regex kept
+    assert meta["nip"] == "6790163448"                     # extra field added
+    assert meta["llmModel"] == "test/model"
+
+
+def test_local_image_ocr_falls_back_to_llm_vision(monkeypatch, tmp_path):
+    import urirun_connector_ocr.core as ocr_core
+    import urirun_connector_llm.core as llm_core
+
+    img = tmp_path / "scan.jpg"
+    img.write_bytes(b"\xff\xd8\xff\xe0jpeg")
+    monkeypatch.setenv("URIRUN_SCANNER_OCR_BACKEND", "auto")
+    monkeypatch.setenv("URIRUN_SCANNER_OCR_LLM_FALLBACK", "1")
+    monkeypatch.setenv("URIRUN_SCANNER_LLM_MODEL", "test/vision-model")
+    # paddle/connector returns nothing, tesseract is blank -> LLM vision is the last resort.
+    monkeypatch.setattr(ocr_core, "image_text", lambda **k: {"ok": False, "error": "no text"})
+    monkeypatch.setattr(host_dashboard, "_local_image_ocr_tesseract",
+                        lambda p: {"ok": False, "backend": "tesseract", "error": "missing"})
+    monkeypatch.setattr(llm_core, "complete",
+                        lambda prompt, model=None, image="", **k: {"ok": True, "response": "CYFRONIKA\nSUMA 54,61"})
+
+    out = host_dashboard._local_image_ocr(str(img))
+    assert out["backend"] == "llm-vision"
+    assert "CYFRONIKA" in out["text"]
+
+    # And the fallback can be disabled.
+    monkeypatch.setenv("URIRUN_SCANNER_OCR_LLM_FALLBACK", "0")
+    out2 = host_dashboard._local_image_ocr(str(img))
+    assert out2["backend"] != "llm-vision"
+
+
+def test_llm_extract_vision_mode_sends_image(monkeypatch, tmp_path):
+    import urirun_connector_llm.core as llm_core
+
+    monkeypatch.setenv("URIRUN_SCANNER_LLM_EXTRACT", "1")
+    monkeypatch.setenv("URIRUN_SCANNER_LLM_VISION", "1")
+    monkeypatch.setenv("URIRUN_SCANNER_LLM_MODEL", "test/vision-model")
+    img = tmp_path / "scan.jpg"
+    img.write_bytes(b"\xff\xd8\xff\xe0jpegbytes")
+    seen = {}
+
+    def fake_complete(prompt, model=None, image="", **kwargs):
+        seen["model"] = model
+        seen["image"] = image
+        seen["prompt"] = prompt
+        return {"ok": True, "response": '{"type":"paragon","date":"2025-03-06","contractor":"CYFRONIKA",'
+                                        '"amount":"54.61","currency":"PLN","nip":"6790163448","number":"F1"}'}
+
+    monkeypatch.setattr(llm_core, "complete", fake_complete)
+
+    out = host_dashboard._llm_extract_metadata("hint text from ocr", image_path=str(img))
+    assert out is not None
+    assert out["mode"] == "vision"
+    assert out["amount"] == "54.61"
+    assert out["date"] == "2025-03-06"
+    assert seen["image"] == str(img)            # the image was handed to the vision model
+    assert "zdjęcie" in seen["prompt"].lower()  # vision prompt, not the text prompt
+
+
+def test_extract_metadata_llm_generic_type_does_not_override_specific(monkeypatch):
+    text = "FAKTURA VAT\nACME\nDo zapłaty 100,00 PLN"
+    monkeypatch.setattr(host_dashboard, "_llm_extract_metadata", lambda ocr_text, captured_at=None, **kwargs: {
+        "type": "dokument", "contractor": "ACME", "amount": "100.00", "currency": "PLN",
+        "date": "", "nip": "", "number": "", "model": "test/model",
+    })
+    meta = host_dashboard._extract_document_metadata(text)
+    assert meta["type"] == "faktura"  # specific regex type beats generic LLM "dokument"
+
+
 def test_port_holder_pids_parses_ss_output(monkeypatch):
     sample = (
         'LISTEN 0 5 0.0.0.0:8194 0.0.0.0:* users:(("urirun",pid=4242,fd=3))\n'
@@ -1947,6 +2272,7 @@ def test_prune_scanner_staging_keeps_recent_referenced_and_active(monkeypatch, t
     recent = mk("20260624T000001Z-phone-scan-recent.jpg", age_old=False)  # young -> keep
     referenced = mk("20260624T000002Z-phone-scan-ref.jpg")        # old but archived -> keep
     active = mk("20260624T000003Z-phone-scan-active.jpg")         # old but in-progress series -> keep
+    active_overlay = mk("20260624T000003Z-phone-scan-active-crop-overlay.jpg")
 
     # archived document references one file
     (docroot / "index.json").write_text(json.dumps({"documents": [
@@ -1954,7 +2280,7 @@ def test_prune_scanner_staging_keeps_recent_referenced_and_active(monkeypatch, t
     ]}), encoding="utf-8")
     # an active (not-yet-finished) best series holds another
     host_dashboard._SCANNER_BEST_SESSIONS["series-x"] = {
-        "candidates": [{"originalPath": str(active), "displayPath": ""}]
+        "candidates": [{"originalPath": str(active), "displayPath": "", "overlayPath": str(active_overlay)}]
     }
     monkeypatch.setattr(host_dashboard, "_LAST_STAGING_PRUNE", 0.0)
     try:
@@ -1964,7 +2290,7 @@ def test_prune_scanner_staging_keeps_recent_referenced_and_active(monkeypatch, t
 
     assert removed == 1
     assert not stale.exists()
-    assert recent.is_file() and referenced.is_file() and active.is_file()
+    assert recent.is_file() and referenced.is_file() and active.is_file() and active_overlay.is_file()
 
 
 def test_prune_scanner_staging_throttles(monkeypatch, tmp_path):

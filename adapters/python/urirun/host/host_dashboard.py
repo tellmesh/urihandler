@@ -34,6 +34,7 @@ try:
         FINGERPRINT_DISTINCT_FIELDS as _DOCID_FINGERPRINT_DISTINCT_FIELDS,
         VISUAL_NEAR_DISTANCE as _DOCID_VISUAL_NEAR_DISTANCE,
         VISUAL_STRONG_DISTANCE as _DOCID_VISUAL_STRONG_DISTANCE,
+        business_key as _dedup_business_key,
         dhash_distance as _dedup_dhash_distance,
         document_id as _dedup_document_id,
         document_matches as _dedup_document_matches,
@@ -51,6 +52,7 @@ except Exception as _DOCID_DEDUP_IMPORT_ERROR:  # noqa: BLE001
     _DOCID_VISUAL_NEAR_DISTANCE = 10
     _DOCID_VISUAL_STRONG_DISTANCE = 6
     _DocidFieldSource = None
+    _dedup_business_key = None
     _dedup_dhash_distance = None
     _dedup_document_id = None
     _dedup_document_matches = None
@@ -729,6 +731,7 @@ INDEX_HTML = r"""<!doctype html>
               <button type="button" class="danger" id="artifactDeleteSelectedBtn">Delete selected</button>
               <button type="button" class="danger" id="artifactDeleteVisibleBtn">Delete visible</button>
               <button type="button" id="artifactCleanupOrphansBtn">Cleanup orphan JSON</button>
+              <button type="button" id="documentReconcileBtn">Reconcile docs index</button>
               <button type="button" id="artifactCopyJsonBtn">Copy JSON</button>
               <button type="button" id="artifactRefreshBtn">Refresh files</button>
             </div>
@@ -875,6 +878,7 @@ INDEX_HTML = r"""<!doctype html>
       chatMessages: [],
       chatRenderKey: '',
       serviceViews: [],
+      widgetRender: null,
       visibleChatMessages: [],
       visibleChatMessageIds: [],
       selectedChatMessageIds: new Set(),
@@ -1033,9 +1037,11 @@ INDEX_HTML = r"""<!doctype html>
 	      const pillClass = contact.reachable === false ? 'down' : contact.status === 'running' || contact.reachable ? 'up' : '';
 	      const isPhoneScanner = contact.id === 'service:phone-scanner';
 	      const startUri = isPhoneScanner ? 'dashboard://host/phone-scanner/command/start' : '';
+	      const restartUri = isPhoneScanner ? 'dashboard://host/service/phone-scanner/command/restart' : '';
 	      const inputId = `chat-target-${String(contact.id || 'target').replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 	      const actions = [
 	        startUri ? `<button type="button" data-contact-action="invoke-uri" data-uri="${esc(startUri)}" data-target="${esc(contact.id)}">Start</button>` : '',
+	        restartUri ? `<button type="button" data-contact-action="invoke-uri" data-uri="${esc(restartUri)}" data-target="${esc(contact.id)}">Restart</button>` : '',
 	        contact.url ? `<button type="button" data-contact-action="open-url" data-url="${esc(contact.url)}" data-target="${esc(contact.id)}">Open</button>` : '',
 	      ].filter(Boolean).join('');
 	      return `<div class="contact-card">
@@ -1330,6 +1336,14 @@ INDEX_HTML = r"""<!doctype html>
       writeUrlState({ action: 'artifacts:cleanup-orphans', deleted: result.filesDeleted || 0 }, { replace: true });
     }
 
+    async function reconcileDocumentsIndex() {
+      const result = await api('/api/documents/reconcile', { method: 'POST', body: '{}' });
+      await loadArtifacts();
+      const pruned = result.prunedCount || 0;
+      writeUrlState({ action: 'documents:reconcile', pruned }, { replace: true });
+      alert(pruned ? `Pruned ${pruned} orphaned document(s) from the index.` : 'Index already consistent; nothing pruned.');
+    }
+
     function artifactTableJsonRow(item) {
       const path = text(item.path);
       return {
@@ -1443,16 +1457,28 @@ INDEX_HTML = r"""<!doctype html>
       return parts.join(' · ') || 'document candidate';
     }
 
+    function streamQualityLabel(candidate) {
+      const quality = candidate && candidate.quality ? candidate.quality : {};
+      const reasons = Array.isArray(quality.reasons) ? quality.reasons.filter(Boolean) : [];
+      const crop = candidate && candidate.crop ? candidate.crop : {};
+      const cropReason = quality.cropReason || crop.reason || '';
+      return [...reasons, cropReason].filter(Boolean).join(' · ');
+    }
+
     function renderStreamFrame(candidate) {
       const quality = candidate && candidate.quality ? candidate.quality : {};
       const score = Number(quality.score || 0).toFixed(1);
-      const preview = candidate && candidate.previewUrl
-        ? `<img src="${esc(candidate.previewUrl)}" alt="${esc(streamDocLabel(candidate))}" loading="lazy">`
+      const qualityLabel = streamQualityLabel(candidate);
+      const previewUrl = candidate && (candidate.overlayPreviewUrl || candidate.previewUrl || '');
+      const preview = previewUrl
+        ? `<img src="${esc(previewUrl)}" alt="${esc(streamDocLabel(candidate))}" loading="lazy">`
         : '';
       return `<div class="stream-frame">
         ${preview}
         <div class="mono">#${esc(candidate && candidate.frameIndex || '')} · ${score}</div>
         <div class="subtle">${esc(streamDocLabel(candidate))}</div>
+        ${qualityLabel ? `<div class="subtle">${esc(qualityLabel)}</div>` : ''}
+        ${candidate && candidate.overlayPreviewUrl ? `<a href="${esc(candidate.overlayPreviewUrl)}" target="_blank" rel="noreferrer">overlay</a>` : ''}
       </div>`;
     }
 
@@ -1463,6 +1489,7 @@ INDEX_HTML = r"""<!doctype html>
       const status = stream.status || 'running';
       const accepted = status === 'accepted' && document.path;
       const bestScore = Number(quality.score || 0).toFixed(1);
+      const bestQualityLabel = streamQualityLabel(best);
       const frames = stream.candidates || [];
       return `<div class="stream-card">
         <div class="stream-head">
@@ -1474,7 +1501,7 @@ INDEX_HTML = r"""<!doctype html>
           <span class="subtle">${esc(stream.updatedAt || '')}</span>
         </div>
         <div><strong>${esc(streamDocLabel(best))}</strong></div>
-        <div class="subtle">${esc(stream.count || 0)} frame(s) · best score ${esc(bestScore)}${stream.error ? ` · ${esc(stream.error)}` : ''}</div>
+        <div class="subtle">${esc(stream.count || 0)} frame(s) · best score ${esc(bestScore)}${bestQualityLabel ? ` · ${esc(bestQualityLabel)}` : ''}${stream.error ? ` · ${esc(stream.error)}` : ''}</div>
         ${accepted ? `<div><a href="${esc(document.previewUrl || `/api/file?path=${encodeURIComponent(document.path)}`)}" download>${esc(basename(document.path))}</a></div>` : ''}
         ${frames.length ? `<div class="stream-frames">${frames.map(renderStreamFrame).join('')}</div>` : ''}
         <details><summary>URI / JSON</summary><pre>${esc(JSON.stringify(stream, null, 2))}</pre></details>
@@ -1702,8 +1729,49 @@ INDEX_HTML = r"""<!doctype html>
     function renderServiceViews() {
       const active = state.selectedTargets.length ? state.selectedTargets : ['host'];
       const visible = state.serviceViews.filter((view) => active.includes(view.target) || active.includes(view.serviceId));
-      $('chatStreamList').innerHTML = visible.map(renderServiceView).join('');
+      // Prefer the widget catalogue loaded over widget://host/bundle/query/js; fall back to the
+      // inline renderers if that URI request hasn't resolved (or failed).
+      const render = state.widgetRender || renderServiceView;
+      $('chatStreamList').innerHTML = visible.map(render).join('');
       renderWidgetDashboard();
+    }
+
+    // Load the chat-stream widgets from the widget:// connector over a URI request, so the page
+    // renders chatStreamList from the published catalogue instead of its inline copy. Best-effort:
+    // any failure leaves state.widgetRender null and the inline renderers keep working.
+    async function loadWidgetBundleViaUri() {
+      try {
+        const jsRes = await api('/api/uri/invoke', {
+          method: 'POST',
+          body: JSON.stringify({ uri: 'widget://host/bundle/query/js', mode: 'execute', payload: {}, source: 'widget-bundle' }),
+        });
+        const js = jsRes && jsRes.result && jsRes.result.js;
+        if (js) {
+          // The bundle is a single concatenated module (imports/exports stripped); evaluate it in
+          // its own scope and hand back its renderServiceView.
+          const factory = new Function(js + "\n;return (typeof renderServiceView === 'function') ? renderServiceView : null;");
+          const fn = factory();
+          if (typeof fn === 'function') state.widgetRender = fn;
+        }
+        const cssRes = await api('/api/uri/invoke', {
+          method: 'POST',
+          body: JSON.stringify({ uri: 'widget://host/bundle/query/css', mode: 'execute', payload: {}, source: 'widget-bundle' }),
+        });
+        const css = cssRes && cssRes.result && cssRes.result.css;
+        if (css) {
+          let styleEl = $('urirunWidgetCss');
+          if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'urirunWidgetCss';
+            document.head.appendChild(styleEl);
+          }
+          styleEl.textContent = css;
+        }
+        if (state.widgetRender) renderServiceViews();
+      } catch (error) {
+        // keep the inline renderers (state.widgetRender stays null)
+        if (window.console) console.warn('widget bundle load failed, using inline renderers:', error.message);
+      }
     }
 
     async function loadServiceViews() {
@@ -2151,6 +2219,9 @@ INDEX_HTML = r"""<!doctype html>
     $('artifactCleanupOrphansBtn').addEventListener('click', () => {
       cleanupArtifactOrphans().catch((error) => alert(error.message));
     });
+    $('documentReconcileBtn').addEventListener('click', () => {
+      reconcileDocumentsIndex().catch((error) => alert(error.message));
+    });
     $('artifactCopyJsonBtn').addEventListener('click', () => {
       copyArtifactsJson().catch((error) => alert(error.message));
     });
@@ -2218,6 +2289,7 @@ INDEX_HTML = r"""<!doctype html>
     setInterval(() => loadServiceViews().catch(() => {}), 1000);
     setInterval(() => loadArtifacts().catch(() => {}), 4000);
     loadServiceViews().catch(() => {});
+    loadWidgetBundleViaUri().catch(() => {});
     load().catch((error) => {
       $('contextLine').textContent = error.message;
     });
@@ -2686,7 +2758,9 @@ SCANNER_HTML = r"""<!doctype html>
         if (!data || data.ok === false) throw new Error((data && data.error) || 'scan failed');
         if (data.rejected) {
           const sc = data.quality && data.quality.score != null ? Number(data.quality.score).toFixed(0) : '?';
-          setState(`discarded — low quality (score ${sc} < ${data.minScore})`, true);
+          const reasons = data.quality && Array.isArray(data.quality.reasons) ? data.quality.reasons.join(', ') : '';
+          const why = data.reason || reasons || 'low quality scan';
+          setState(`discarded — ${why} (score ${sc}, min ${data.minScore})`, true);
           feedbackTone('error');
           return data;
         }
@@ -3427,9 +3501,10 @@ def _local_image_ocr(path: str, backend: str | None = None) -> dict:
     Prefers the urirun-connector-ocr ``auto`` cascade, whose first backend is PaddleOCR
     (PP-OCRv5/v6 det+rec with document orientation + dewarping). PaddleOCR reads Polish
     receipts on the *full frame* far more reliably than plain tesseract and does not lose
-    the header/footer to an aggressive crop. Falls back to direct tesseract when the
-    connector or paddle is unavailable. Set ``URIRUN_SCANNER_OCR_BACKEND=tesseract`` to
-    force the old path.
+    the header/footer to an aggressive crop. Falls back to direct tesseract, then — when both
+    paddle and tesseract come back empty — to a vision-LLM read (`_local_image_ocr_llm`), so a
+    scan never yields empty text. Set ``URIRUN_SCANNER_OCR_BACKEND=tesseract`` to force the old
+    path; ``URIRUN_SCANNER_OCR_LLM_FALLBACK=0`` to disable the LLM last resort.
 
     ``backend`` overrides the env default for one call. The live "best frame" loop scores
     transient candidates with the cheap ``tesseract`` backend and only pays for the full
@@ -3462,9 +3537,59 @@ def _local_image_ocr(path: str, backend: str | None = None) -> dict:
         }
     # Connector found nothing usable; fall back to tesseract so a scan never silently fails.
     fallback = _local_image_ocr_tesseract(path)
+    if fallback.get("ok") and str(fallback.get("text") or "").strip():
+        return fallback
+    # Last resort: read the image with a vision LLM. Covers the case where paddle is broken
+    # AND tesseract is missing/blank — the scan still yields text instead of empty metadata.
+    llm = _local_image_ocr_llm(path)
+    if llm and llm.get("ok") and str(llm.get("text") or "").strip():
+        return llm
     if not fallback.get("ok"):
         fallback.setdefault("connectorError", str(envelope.get("error") or "connector OCR returned no text"))
     return fallback
+
+
+def _local_image_ocr_llm(path: str) -> dict | None:
+    """OCR an image with a vision LLM — the final fallback when paddle and tesseract fail.
+
+    Returns ``None`` when disabled (``URIRUN_SCANNER_OCR_LLM_FALLBACK=0``) or no vision
+    model/key is configured, so it is always a safe last resort. Uses the same model
+    resolution as the metadata extractor (``URIRUN_SCANNER_LLM_VISION_MODEL`` /
+    ``URIRUN_SCANNER_LLM_MODEL`` / ``LLM_MODEL``).
+    """
+    if not _truthy_env("URIRUN_SCANNER_OCR_LLM_FALLBACK", "1"):
+        return None
+    if not (path and Path(str(path)).is_file()):
+        return None
+    _ensure_llm_env()
+    model = (
+        os.environ.get("URIRUN_SCANNER_LLM_VISION_MODEL")
+        or os.environ.get("URIRUN_SCANNER_LLM_MODEL")
+        or os.environ.get("LLM_MODEL")
+        or ""
+    )
+    if not model:
+        return None
+    if model.startswith("openrouter/") and not os.environ.get("OPENROUTER_API_KEY"):
+        return None
+    try:
+        from urirun_connector_llm.core import complete  # type: ignore
+    except Exception:  # noqa: BLE001
+        return None
+    prompt = (
+        "Przepisz CAŁY tekst z tego paragonu/faktury dokładnie tak jak widać, linia po linii. "
+        "Zwróć wyłącznie tekst, bez komentarzy."
+    )
+    try:
+        res = complete(prompt, model=model, image=str(path))
+    except Exception:  # noqa: BLE001
+        return None
+    if not isinstance(res, dict) or not res.get("ok"):
+        return None
+    text = str(res.get("response") or "").strip()
+    if not text:
+        return None
+    return {"ok": True, "backend": "llm-vision", "text": text, "chars": len(text), "model": model}
 
 
 def _document_archive_root() -> Path:
@@ -3689,6 +3814,62 @@ def _save_document_index(index: dict) -> None:
     tmp.replace(path)
 
 
+def _document_files_exist(item: dict) -> bool:
+    """True if the document still has at least one on-disk artifact (PDF or JSON sidecar)."""
+    for key in ("pdfPath", "path", "jsonPath"):
+        value = item.get(key)
+        if value and Path(str(value)).expanduser().is_file():
+            return True
+    return False
+
+
+def _prune_orphaned_documents(index: dict) -> list[dict]:
+    """Drop index entries whose PDF and JSON sidecar are both gone from disk.
+
+    Returns the removed entries. Non-destructive to real files -- the artifacts are
+    already missing; this only repairs the index so it stops listing dead documents.
+    Any entry that still has at least one on-disk file is kept.
+    """
+    docs = index.get("documents")
+    if not isinstance(docs, list):
+        return []
+    kept: list[dict] = []
+    pruned: list[dict] = []
+    for item in docs:
+        if isinstance(item, dict) and not _document_files_exist(item):
+            pruned.append(item)
+        else:
+            kept.append(item)
+    if pruned:
+        index["documents"] = kept
+    return pruned
+
+
+def reconcile_document_index() -> dict:
+    """Reconcile the document index with the filesystem by pruning orphaned entries.
+
+    Safe and non-destructive: only index entries whose PDF *and* JSON sidecar are both
+    missing are removed; existing files are never touched. Returns a summary report.
+    """
+    with _DOCUMENT_INDEX_LOCK:
+        index = _load_document_index()
+        before = len(index.get("documents", []))
+        pruned = _prune_orphaned_documents(index)
+        if pruned:
+            _save_document_index(index)
+    return {
+        "ok": True,
+        "indexPath": str(_document_index_path()),
+        "before": before,
+        "after": before - len(pruned),
+        "prunedCount": len(pruned),
+        "pruned": [
+            {"docId": p.get("docId"), "pdfPath": p.get("pdfPath"), "jsonPath": p.get("jsonPath")}
+            for p in pruned
+        ],
+    }
+
+
 def _iter_scanned_id_log() -> list[dict]:
     path = _scanned_id_log_path()
     if not path.is_file():
@@ -3815,12 +3996,15 @@ def _docid_for_file(path: str | Path, ocr_text: str) -> dict:
 
 def _parse_document_date(text: str, fallback: str | None = None) -> str:
     candidates: list[date] = []
-    for year, month, day in re.findall(r"\b(20\d{2})[-./](\d{1,2})[-./](\d{1,2})\b", text):
+    # Guard ends with "not a digit" rather than \b: receipt OCR often glues the date to the
+    # preceding word (e.g. "Betkowska06-03-2025"), where there is no word boundary between a
+    # letter and a digit. (?<!\d)/(?!\d) still prevents slicing a date out of a longer number.
+    for year, month, day in re.findall(r"(?<!\d)(20\d{2})[-./](\d{1,2})[-./](\d{1,2})(?!\d)", text):
         try:
             candidates.append(date(int(year), int(month), int(day)))
         except ValueError:
             pass
-    for day, month, year in re.findall(r"\b(\d{1,2})[-./](\d{1,2})[-./](20\d{2})\b", text):
+    for day, month, year in re.findall(r"(?<!\d)(\d{1,2})[-./](\d{1,2})[-./](20\d{2})(?!\d)", text):
         try:
             candidates.append(date(int(year), int(month), int(day)))
         except ValueError:
@@ -3905,15 +4089,241 @@ def _parse_contractor(text: str) -> str:
     return max(candidates, key=lambda item: item[0])[1]
 
 
-def _extract_document_metadata(ocr_text: str, *, captured_at: str | None = None) -> dict:
-    amount = _parse_amount(ocr_text)
+_LLM_DOC_TYPES = ("paragon", "faktura", "rachunek", "potwierdzenie", "dokument")
+
+
+def _load_env_file(path: Path) -> dict[str, str]:
+    """Minimal KEY=VALUE .env reader (ignores comments / blanks / `export `)."""
+    values: dict[str, str] = {}
+    try:
+        for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            if line.startswith("export "):
+                line = line[len("export "):]
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key:
+                values[key] = val
+    except OSError:
+        return {}
+    return values
+
+
+def _ensure_llm_env() -> None:
+    """Best-effort: populate OPENROUTER_API_KEY / LLM_MODEL from a .env if not already set.
+
+    Looks at ``URIRUN_LLM_ENV_FILE``, then this repo's ``examples/.env``, then
+    ``~/.urirun/llm.env``. Only fills variables that are missing, never overrides the
+    process environment.
+    """
+    if os.environ.get("OPENROUTER_API_KEY") and os.environ.get("LLM_MODEL"):
+        return
+    candidates = []
+    explicit = os.environ.get("URIRUN_LLM_ENV_FILE")
+    if explicit:
+        candidates.append(Path(explicit).expanduser())
+    try:
+        candidates.append(Path(__file__).resolve().parents[5] / "examples" / ".env")
+    except IndexError:
+        pass
+    candidates.append(Path("~/.urirun/llm.env").expanduser())
+    for path in candidates:
+        if not path.is_file():
+            continue
+        for key, val in _load_env_file(path).items():
+            if key in {"OPENROUTER_API_KEY", "LLM_MODEL"} and not os.environ.get(key) and val:
+                os.environ[key] = val
+        if os.environ.get("OPENROUTER_API_KEY"):
+            break
+
+
+def _coerce_amount(value: object) -> str:
+    """Normalise an LLM-supplied amount to ``NNN.NN`` (or '' when not a number)."""
+    if value is None:
+        return ""
+    raw = str(value).strip()
+    if not raw:
+        return ""
+    raw = raw.replace(" ", "").replace(" ", "")
+    # Keep the last decimal separator, drop thousands separators.
+    raw = re.sub(r"[^0-9,.\-]", "", raw)
+    if "," in raw and "." in raw:
+        raw = raw.replace(".", "").replace(",", ".") if raw.rfind(",") > raw.rfind(".") else raw.replace(",", "")
+    else:
+        raw = raw.replace(",", ".")
+    try:
+        return f"{float(raw):.2f}"
+    except ValueError:
+        return ""
+
+
+_LLM_FIELDS_SPEC = (
+    "Zwróć WYŁĄCZNIE obiekt JSON, bez komentarzy, z polami:\n"
+    '{"type": jeden z ["paragon","faktura","rachunek","potwierdzenie","dokument"],\n'
+    ' "date": data wystawienia/sprzedaży dokumentu w formacie YYYY-MM-DD (NIE dzisiejsza data),\n'
+    ' "contractor": nazwa sprzedawcy/firmy (nie etykieta "Sprzedawca"),\n'
+    ' "amount": kwota DO ZAPŁATY / SUMA / RAZEM jako liczba z kropką (np. "200.62"),\n'
+    ' "currency": kod waluty ISO np. "PLN",\n'
+    ' "nip": NIP sprzedawcy (same cyfry) lub "",\n'
+    ' "number": numer dokumentu/faktury/paragonu lub ""}\n'
+    "Gdy pola nie ma w dokumencie, użyj pustego stringa. Nie zgaduj daty — jeśli brak, zwróć \"\".\n"
+)
+
+
+def _llm_extract_metadata(ocr_text: str, *, captured_at: str | None = None,
+                          image_path: str | None = None) -> dict | None:
+    """Extract structured document fields with an LLM, from OCR text and/or the image itself.
+
+    The regex parsers are brittle on real receipts (glued tokens, layout noise); an LLM reads
+    the document in context and returns clean fields. Two modes:
+
+    * **text** (default): the OCR text is sent to the model.
+    * **vision** (``URIRUN_SCANNER_LLM_VISION=1``): the *image* is sent directly to a multimodal
+      model (the OCR text, if any, rides along as a hint). This reads layout/totals the OCR may
+      have mangled, and works even when OCR returned nothing.
+
+    Returns ``None`` (caller keeps the regex result) when disabled, no model/key is configured,
+    or the call/parse fails — always a safe augmentation, never a hard dependency. Pick the
+    model with ``URIRUN_SCANNER_LLM_MODEL`` / ``LLM_MODEL`` (or ``URIRUN_SCANNER_LLM_VISION_MODEL``
+    for the vision pass).
+    """
+    if not _truthy_env("URIRUN_SCANNER_LLM_EXTRACT", "1"):
+        return None
+    text = (ocr_text or "").strip()
+    use_vision = bool(
+        _truthy_env("URIRUN_SCANNER_LLM_VISION", "0")
+        and image_path
+        and Path(str(image_path)).is_file()
+    )
+    if not use_vision and len(text) < 8:
+        return None
+    _ensure_llm_env()
+    model = (
+        (os.environ.get("URIRUN_SCANNER_LLM_VISION_MODEL") if use_vision else "")
+        or os.environ.get("URIRUN_SCANNER_LLM_MODEL")
+        or os.environ.get("LLM_MODEL")
+        or ""
+    )
+    if not model:
+        return None
+    if model.startswith("openrouter/") and not os.environ.get("OPENROUTER_API_KEY"):
+        return None
+    try:
+        from urirun_connector_llm.core import complete  # type: ignore
+    except Exception:  # noqa: BLE001
+        return None
+
+    if use_vision:
+        prompt = (
+            "Przeanalizuj zdjęcie polskiego paragonu lub faktury i wyciągnij dane. "
+            + _LLM_FIELDS_SPEC
+        )
+        if text:
+            prompt += "\nPomocniczy tekst z OCR (może zawierać błędy, zweryfikuj ze zdjęciem):\n" + text[:3000]
+        try:
+            res = complete(prompt, model=model, image=str(image_path))
+        except Exception:  # noqa: BLE001
+            return None
+    else:
+        prompt = (
+            "Jesteś ekstraktorem danych z polskich paragonów i faktur. Poniżej tekst z OCR "
+            "(zachowana kolejność linii). " + _LLM_FIELDS_SPEC
+            + "\nTEKST OCR:\n" + text[:6000]
+        )
+        try:
+            res = complete(prompt, model=model)
+        except Exception:  # noqa: BLE001
+            return None
+    if not isinstance(res, dict) or not res.get("ok"):
+        return None
+    raw = str(res.get("response") or "").strip()
+    if not raw:
+        return None
+    # Strip ```json fences and isolate the JSON object.
+    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.S)
+    if fenced:
+        raw = fenced.group(1)
+    else:
+        brace = re.search(r"\{.*\}", raw, re.S)
+        if brace:
+            raw = brace.group(0)
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    doc_type = str(data.get("type") or "").strip().lower()
+    if doc_type not in _LLM_DOC_TYPES:
+        doc_type = ""
+    date_val = str(data.get("date") or "").strip()
+    if not re.fullmatch(r"20\d{2}-\d{2}-\d{2}", date_val):
+        date_val = ""
+    else:
+        try:
+            date.fromisoformat(date_val)
+        except ValueError:
+            date_val = ""
+    contractor = re.sub(r"\s+", " ", str(data.get("contractor") or "").strip())
+    if len(contractor) > 70:
+        contractor = contractor[:70].strip()
+    amount = _coerce_amount(data.get("amount"))
+    currency = re.sub(r"[^A-Za-z]", "", str(data.get("currency") or "")).upper()[:3]
+    if amount and not currency:
+        currency = "PLN"
+    nip = re.sub(r"\D", "", str(data.get("nip") or ""))
+    number = re.sub(r"\s+", " ", str(data.get("number") or "").strip())[:40]
     return {
+        "type": doc_type,
+        "date": date_val,
+        "contractor": contractor,
+        "amount": amount,
+        "currency": currency,
+        "nip": nip,
+        "number": number,
+        "model": model,
+        "mode": "vision" if use_vision else "text",
+    }
+
+
+def _extract_document_metadata(ocr_text: str, *, captured_at: str | None = None,
+                               image_path: str | None = None, use_llm: bool = True) -> dict:
+    amount = _parse_amount(ocr_text)
+    meta = {
         "type": _document_type(ocr_text),
         "date": _parse_document_date(ocr_text, captured_at),
         "contractor": _parse_contractor(ocr_text),
         "amount": amount["amount"],
         "currency": amount["currency"],
+        "metaSource": "regex",
     }
+    # LLM augmentation: an LLM reads the document in context and beats the regex parsers on
+    # real-world receipts. With URIRUN_SCANNER_LLM_VISION=1 it reads the image directly. It
+    # only overrides a field when it returns a confident value; everything it leaves blank
+    # keeps the regex result. Failures fall back silently. ``use_llm=False`` keeps transient
+    # candidate frames on the cheap regex path (no per-frame LLM cost in the live loop).
+    llm = _llm_extract_metadata(ocr_text, captured_at=captured_at, image_path=image_path) if use_llm else None
+    if llm:
+        for key in ("type", "contractor", "amount", "currency", "date"):
+            value = str(llm.get(key) or "").strip()
+            if not value:
+                continue
+            if key == "type" and value == "dokument" and meta["type"] != "dokument":
+                continue  # keep the more specific regex type over a generic LLM guess
+            if key == "contractor" and value.lower() in {"kontrahent-nieznany", "sprzedawca", "sprzedauca"}:
+                continue
+            meta[key] = value
+        for extra in ("nip", "number"):
+            if str(llm.get(extra) or "").strip():
+                meta[extra] = str(llm[extra]).strip()
+        meta["metaSource"] = "llm"
+        meta["llmModel"] = llm.get("model", "")
+        meta["llmMode"] = llm.get("mode", "text")
+    return meta
 
 
 def _filename_part(value: str, *, default: str, max_len: int = 48) -> str:
@@ -4112,6 +4522,76 @@ def _cleanup_duplicate_scan_files(paths: list) -> list[str]:
     return removed
 
 
+def _scanner_crop_overlay(original_path: str | Path, crop: dict, quality: dict | None = None) -> dict:
+    """Write a diagnostic image with the detected crop box drawn over the raw frame."""
+    try:
+        from PIL import Image, ImageDraw, ImageFont, ImageOps
+
+        source = Path(original_path).expanduser().resolve()
+        if not source.is_file():
+            return {"ok": False, "reason": "source image missing"}
+        with Image.open(source) as opened:
+            image = ImageOps.exif_transpose(opened).convert("RGB")
+        original_width, original_height = image.size
+        max_side = int(os.environ.get("URIRUN_SCANNER_OVERLAY_MAX_SIDE", "1100") or "1100")
+        scale = min(1.0, max(240, max_side) / max(original_width, original_height))
+        canvas = image.resize((max(1, int(original_width * scale)), max(1, int(original_height * scale)))) if scale < 1.0 else image.copy()
+        draw = ImageDraw.Draw(canvas)
+        ok = bool(crop.get("ok"))
+        partial = bool(crop.get("partialEdge"))
+        color = (48, 214, 126) if ok else (239, 68, 68) if partial else (245, 158, 11)
+        box = crop.get("box") if isinstance(crop.get("box"), (list, tuple)) else None
+        if box and len(box) == 4:
+            left, top, right, bottom = (float(value) for value in box)
+            scaled_box = (
+                int(max(0, min(original_width, left)) * scale),
+                int(max(0, min(original_height, top)) * scale),
+                int(max(0, min(original_width, right)) * scale),
+                int(max(0, min(original_height, bottom)) * scale),
+            )
+            for offset in range(4):
+                draw.rectangle(
+                    (
+                        scaled_box[0] - offset,
+                        scaled_box[1] - offset,
+                        scaled_box[2] + offset,
+                        scaled_box[3] + offset,
+                    ),
+                    outline=color,
+                )
+        else:
+            draw.rectangle((3, 3, canvas.size[0] - 4, canvas.size[1] - 4), outline=color, width=4)
+        quality = quality or {}
+        score = quality.get("score")
+        label_parts = [
+            "crop:ok" if ok else "crop:rejected",
+            str(crop.get("method") or crop.get("reason") or ""),
+            f"score={score}" if score is not None else "",
+        ]
+        label = " | ".join(part for part in label_parts if part)[:180]
+        font = ImageFont.load_default()
+        try:
+            text_box = draw.textbbox((0, 0), label, font=font)
+            text_width = text_box[2] - text_box[0]
+            text_height = text_box[3] - text_box[1]
+        except Exception:  # noqa: BLE001
+            text_width = min(canvas.size[0] - 16, max(80, len(label) * 6))
+            text_height = 12
+        draw.rectangle((6, 6, min(canvas.size[0] - 6, text_width + 18), text_height + 18), fill=(0, 0, 0))
+        draw.text((12, 10), label, fill=(255, 255, 255), font=font)
+        target = source.with_name(f"{source.stem}-crop-overlay.jpg")
+        canvas.save(target, format="JPEG", quality=88, optimize=True)
+        return {
+            "ok": True,
+            "path": str(target),
+            "width": canvas.size[0],
+            "height": canvas.size[1],
+            "scale": round(scale, 6),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "reason": str(exc)}
+
+
 _LAST_STAGING_PRUNE = 0.0
 
 
@@ -4160,7 +4640,7 @@ def _prune_scanner_staging(*, min_interval: float = 60.0) -> int:
         for session in sessions:
             for cand in (session.get("candidates") or []):
                 if isinstance(cand, dict):
-                    for key in ("originalPath", "displayPath"):
+                    for key in ("originalPath", "displayPath", "overlayPath"):
                         if cand.get(key):
                             keep.add(str(Path(str(cand[key])).expanduser().resolve()))
     except Exception:  # noqa: BLE001
@@ -4204,6 +4684,7 @@ if _dedup_transaction_fingerprint is not None:
     _dhash_distance = _dedup_dhash_distance
     _metadata_completeness = _dedup_metadata_completeness
     _document_matches = _dedup_document_matches
+    _business_key = _dedup_business_key
 else:
     def _transaction_fingerprint(text: str) -> dict:
         return {}
@@ -4224,7 +4705,8 @@ else:
         return 0
 
     def _document_matches(existing: dict, *, doc_id: str, source_sha256: str, text_sha256: str,
-                          fingerprint: dict, dhash: str, phash: str = "") -> str:
+                          fingerprint: dict, dhash: str, phash: str = "",
+                          metadata: dict | None = None, text: str = "") -> str:
         if doc_id and existing.get("docId") == doc_id:
             return "docId"
         if source_sha256 and existing.get("sourceSha256") == source_sha256:
@@ -4232,6 +4714,9 @@ else:
         if text_sha256 and existing.get("textSha256") == text_sha256:
             return "textSha256"
         return ""
+
+    def _business_key(meta: dict | None):
+        return None
 
 
 _MERGE_METADATA_FIELDS = ("type", "date", "contractor", "amount", "currency")
@@ -4325,20 +4810,42 @@ def _enrich_archived_record(existing: dict, fused: dict, enriched_fields: list[s
         pass
 
 
+def _sidecar_text(item: dict) -> str:
+    """OCR text for an archived record, read from its JSON sidecar (the index omits it)."""
+    json_path = item.get("jsonPath")
+    if not json_path:
+        return ""
+    try:
+        path = Path(str(json_path)).expanduser()
+        if not path.is_file():
+            return ""
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return str(data.get("text") or "") if isinstance(data, dict) else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _find_duplicate_document(index: dict, *, doc_id: str, source_sha256: str, text_sha256: str,
-                             fingerprint: dict, dhash: str, phash: str = "") -> dict | None:
+                             fingerprint: dict, dhash: str, phash: str = "",
+                             metadata: dict | None = None, text: str = "") -> dict | None:
     """Find an already-archived document that is the same as the incoming scan."""
     match: dict | None = None
+    cand_key = _business_key(metadata) if (metadata and _business_key) else None
     for item in index.get("documents", []):
         if not isinstance(item, dict):
             continue
+        existing = item
+        # Index entries omit full OCR text. Hydrate it from the sidecar only when the
+        # business key matches (rare: same merchant + date + total), so the monetary-token
+        # corroboration can run without reading every sidecar on every scan.
+        if cand_key is not None and not item.get("text") and _business_key(item) == cand_key:
+            existing = {**item, "text": _sidecar_text(item)}
         reason = _document_matches(
-            item, doc_id=doc_id, source_sha256=source_sha256, text_sha256=text_sha256,
-            fingerprint=fingerprint, dhash=dhash, phash=phash,
+            existing, doc_id=doc_id, source_sha256=source_sha256, text_sha256=text_sha256,
+            fingerprint=fingerprint, dhash=dhash, phash=phash, metadata=metadata, text=text,
         )
         if reason:
-            item = {**item, "_matchReason": reason}
-            match = item  # last match wins, mirroring _existing_scanned_id
+            match = {**item, "_matchReason": reason}  # last match wins, mirroring _existing_scanned_id
     return match
 
 
@@ -4350,9 +4857,13 @@ def _archive_scanned_document(
     crop: dict,
     source_sha256: str,
     captured_at: str | None,
+    metadata: dict | None = None,
 ) -> dict:
     ocr_text = str(ocr.get("text") or "")
-    extracted = _extract_document_metadata(ocr_text, captured_at=captured_at)
+    # Reuse pre-computed metadata when the caller already extracted it (avoids a second LLM
+    # call); otherwise extract here, feeding the full original frame to the vision pass.
+    extracted = metadata if metadata is not None else _extract_document_metadata(
+        ocr_text, captured_at=captured_at, image_path=str(original_path))
     docid_info = _docid_for_file(display_path, ocr_text)
     doc_id = str(docid_info["id"])
     normalized_text = _normalized_document_text(ocr_text)
@@ -4372,6 +4883,7 @@ def _archive_scanned_document(
         index_match = _find_duplicate_document(
             index, doc_id=doc_id, source_sha256=source_sha256, text_sha256=text_sha256,
             fingerprint=fingerprint, dhash=dhash, phash=phash,
+            metadata=extracted, text=ocr_text,
         )
         duplicate = index_match or _existing_scanned_id(
             doc_id=doc_id, source_sha256=source_sha256, text_sha256=text_sha256,
@@ -4500,6 +5012,9 @@ def _archive_scanned_document(
             "mergedFields": merged_fields or None,
             "ocrBackend": ocr.get("backend"),
             "ocrChars": ocr.get("chars"),
+            # OCR text is kept in the index so the business-key monetary-token dedup can run
+            # against archived records without re-reading every sidecar on each scan.
+            "text": ocr_text,
             "crop": crop,
             "createdAt": _utc_now(),
             **extracted,
@@ -4942,6 +5457,10 @@ def _document_frame_quality(crop: dict, ocr: dict, metadata: dict, display_path:
             reasons.append("portrait")
     else:
         score -= 20.0
+        if crop.get("partialEdge"):
+            reasons.append("partial-edge")
+        elif crop.get("reason"):
+            reasons.append("crop-rejected")
 
     doc_type = str(metadata.get("type") or "dokument")
     if doc_type in {"paragon", "faktura"}:
@@ -4976,6 +5495,7 @@ def _document_frame_quality(crop: dict, ocr: dict, metadata: dict, display_path:
         "score": round(max(0.0, score), 3),
         "documentLike": document_like,
         "reasons": reasons,
+        "cropReason": str(crop.get("reason") or ""),
         "visual": visual,
     }
 
@@ -4988,6 +5508,8 @@ def _public_scanner_candidate(candidate: dict) -> dict:
         "uri": candidate.get("uri"),
         "path": candidate.get("displayPath"),
         "originalPath": candidate.get("originalPath"),
+        "overlayPath": candidate.get("overlayPath"),
+        "overlay": candidate.get("overlay"),
         "sha256": candidate.get("sha256"),
         "quality": candidate.get("quality"),
         "detectedDocument": candidate.get("detectedDocument"),
@@ -5035,6 +5557,9 @@ def _scanner_public_candidate_for_live(candidate: dict | None, project: str) -> 
     original = public.get("originalPath")
     if original:
         public["originalPreviewUrl"] = _preview_url(str(original), project)
+    overlay = public.get("overlayPath")
+    if overlay:
+        public["overlayPreviewUrl"] = _preview_url(str(overlay), project)
     return public
 
 
@@ -5238,6 +5763,20 @@ def _register_scanner_result(
     artifact = _host_db().register_artifact(db, "camera-scan", uri, primary_target, meta)
     attachments = []
     document_artifact = None
+    overlay_path = str(meta.get("overlayPath") or "")
+    if overlay_path and Path(overlay_path).expanduser().is_file():
+        attachments.append({
+            "kind": "crop-overlay",
+            "path": overlay_path,
+            "uri": f"{uri}/crop-overlay",
+            "previewUrl": _preview_url(overlay_path, project),
+            "meta": {
+                "crop": crop,
+                "quality": meta.get("quality"),
+                "sourceCaptureUri": uri,
+                "sourceImage": str(original_path),
+            },
+        })
     if document.get("ok") and document.get("path"):
         document_uri = str(document.get("uri") or f"document://host/{quote(str(document.get('docId') or meta.get('sha256') or ''), safe='')}")
         document_meta = {
@@ -5309,8 +5848,17 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
     # (_scanner_best_take). This keeps the live loop responsive while the kept document
     # still gets the accurate paddle read.
     ocr = _local_image_ocr(str(ocr_source), backend=None if archive else "tesseract")
-    detected_document = _extract_document_metadata(str(ocr.get("text") or ""), captured_at=payload.get("capturedAt"))
+    # LLM metadata extraction (incl. the optional vision pass on the full frame) is paid only
+    # for a kept document. Transient candidate frames stay on the cheap regex path.
+    detected_document = _extract_document_metadata(
+        str(ocr.get("text") or ""),
+        captured_at=payload.get("capturedAt"),
+        image_path=str(path) if archive else None,
+        use_llm=archive,
+    )
     quality = _document_frame_quality(crop, ocr, detected_document, display_path)
+    overlay = _scanner_crop_overlay(path, crop, quality)
+    overlay_path = str(overlay.get("path") or "") if overlay.get("ok") else ""
     uri = f"scanner://host/capture/{digest[:16]}"
     document = {"ok": False, "reason": "analysis-only", "metadata": detected_document}
     # Reject low-confidence single captures (blurry/partial/non-document frames) instead of
@@ -5321,16 +5869,22 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
         float(quality.get("score") or 0.0) >= min_score and bool(quality.get("documentLike"))
     )
     if archive and not quality_ok:
-        removed_scan_files = _cleanup_duplicate_scan_files([path, display_path])
+        removed_scan_files = _cleanup_duplicate_scan_files([path, display_path, overlay_path])
+        reject_reason = str(quality.get("cropReason") or "")
+        if not reject_reason and not quality.get("documentLike"):
+            reject_reason = "not document-like"
+        if not reject_reason:
+            reject_reason = "low-quality scan"
         return {
             "ok": True,
             "rejected": True,
             "uri": uri,
-            "reason": "low-quality scan",
+            "reason": reject_reason,
             "minScore": min_score,
             "quality": quality,
             "ocr": ocr,
             "crop": crop,
+            "overlay": overlay,
             "detectedDocument": detected_document,
             "removedScanFiles": removed_scan_files,
         }
@@ -5343,6 +5897,7 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
                 crop=crop,
                 source_sha256=digest,
                 captured_at=payload.get("capturedAt"),
+                metadata=detected_document,
             )
         except Exception as exc:  # noqa: BLE001
             document = {"ok": False, "error": str(exc), "metadata": detected_document}
@@ -5355,6 +5910,8 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
         "bytes": len(raw),
         "originalPath": str(path),
         "displayPath": str(display_path),
+        "overlayPath": overlay_path,
+        "overlay": overlay,
         "crop": crop,
         "capturedAt": payload.get("capturedAt"),
         "userAgent": payload.get("userAgent", ""),
@@ -5373,6 +5930,8 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
             "bytes": len(raw),
             "originalPath": str(path),
             "displayPath": str(display_path),
+            "overlayPath": overlay_path,
+            "overlay": overlay,
             "crop": crop,
             "ocr": ocr,
             "detectedDocument": detected_document,
@@ -5388,10 +5947,11 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
         return {
             "ok": True,
             "uri": uri,
-            "candidate": _public_scanner_candidate(candidate),
+            "candidate": _scanner_public_candidate_for_live(candidate, project),
             "series": series,
             "ocr": ocr,
             "crop": crop,
+            "overlay": overlay,
             "quality": quality,
             "detectedDocument": detected_document,
         }
@@ -5416,6 +5976,7 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
         "ocr": ocr,
         "detectedDocument": detected_document,
         "quality": quality,
+        "overlay": overlay,
         "document": document,
         "message": registered["message"],
     }
@@ -5460,7 +6021,7 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
             "ok": False,
             "error": "no reliable receipt or invoice candidate found",
             "seriesId": series_id,
-            "best": _public_scanner_candidate(best),
+            "best": _scanner_public_candidate_for_live(best, project),
             "minScore": min_score,
         }
 
@@ -5470,7 +6031,7 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
         with _SCANNER_BEST_LOCK:
             series["best"] = best
             _scanner_live_store_locked(series_id, series, status="failed", error="best candidate file is missing")
-        return {"ok": False, "error": "best candidate file is missing", "seriesId": series_id, "best": _public_scanner_candidate(best)}
+        return {"ok": False, "error": "best candidate file is missing", "seriesId": series_id, "best": _scanner_public_candidate_for_live(best, project)}
     crop = best.get("crop") if isinstance(best.get("crop"), dict) else {}
     ocr = best.get("ocr") if isinstance(best.get("ocr"), dict) else {}
     # Candidates were scored with the cheap OCR backend; pay for the accurate full read
@@ -5493,6 +6054,13 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
     except Exception as exc:  # noqa: BLE001
         document = {"ok": False, "error": str(exc), "metadata": best.get("detectedDocument") or {}}
     uri = str(best.get("uri") or f"scanner://host/capture/{digest[:16]}")
+    overlay = best.get("overlay") if isinstance(best.get("overlay"), dict) else {}
+    overlay_path = str(best.get("overlayPath") or overlay.get("path") or "")
+    if not overlay_path or not Path(overlay_path).expanduser().is_file():
+        overlay = _scanner_crop_overlay(original_path, crop, quality)
+        overlay_path = str(overlay.get("path") or "") if overlay.get("ok") else ""
+        best["overlay"] = overlay
+        best["overlayPath"] = overlay_path
     meta = {
         "source": "phone-best",
         "seriesId": series_id,
@@ -5505,6 +6073,8 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
         "bytes": best.get("bytes"),
         "originalPath": str(original_path),
         "displayPath": str(display_path),
+        "overlayPath": overlay_path,
+        "overlay": overlay,
         "crop": crop,
         "capturedAt": best.get("capturedAt"),
         "userAgent": best.get("userAgent", ""),
@@ -5540,13 +6110,14 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
     return {
         "ok": True,
         "seriesId": series_id,
-        "best": _public_scanner_candidate(best),
+        "best": _scanner_public_candidate_for_live(best, project),
         "uri": uri,
         "artifact": registered["artifact"],
         "documentArtifact": registered["documentArtifact"],
         "ocr": ocr,
         "detectedDocument": best.get("detectedDocument") or {},
         "quality": quality,
+        "overlay": overlay,
         "document": document,
         "message": registered["message"],
     }
@@ -5767,6 +6338,14 @@ def _uri_action_catalog() -> list[dict]:
             "where": "host dashboard /api/uri/invoke",
         },
         {
+            "uri": "dashboard://host/service/phone-scanner/command/restart",
+            "layer": "dashboard",
+            "kind": "command",
+            "label": "Restart the phone scanner service on its configured port",
+            "sideEffects": ["service-restart", "service-start", "chat-message", "qr-artifact"],
+            "where": "host dashboard /api/uri/invoke",
+        },
+        {
             "uri": "dashboard://host/service/chat/command/restart",
             "layer": "dashboard",
             "kind": "command",
@@ -5797,6 +6376,10 @@ def _uri_action_lookup(uri: str) -> dict | None:
         "scanner://page/torch": "scanner://page/camera/command/torch",
         "scanner://page/torch-button": "scanner://page/ui/button/torch/command/click",
         "dashboard://host/actions/query/list": "scanner://host/actions/query/list",
+        "dashboard://host/phone-scanner/command/restart": "dashboard://host/service/phone-scanner/command/restart",
+        "service://host/phone-scanner/command/restart": "dashboard://host/service/phone-scanner/command/restart",
+        "service://phone-scanner/command/restart": "dashboard://host/service/phone-scanner/command/restart",
+        "scanner://host/service/command/restart": "dashboard://host/service/phone-scanner/command/restart",
         "dashboard://host/chat/command/restart": "dashboard://host/service/chat/command/restart",
         "service://host/chat/command/restart": "dashboard://host/service/chat/command/restart",
         "service://chat/command/restart": "dashboard://host/service/chat/command/restart",
@@ -5815,39 +6398,35 @@ def _uri_mode(value: Any) -> str:
     return "dry-run"
 
 
-def _chat_restart_argv(payload: dict) -> tuple[list[str] | None, dict]:
-    manager = str(payload.get("manager") or os.environ.get("URIRUN_CHAT_RESTART_MANAGER") or "").strip().lower()
+def _service_restart_argv(payload: dict, *, service: str, env_prefix: str, default_unit: str) -> tuple[list[str] | None, dict]:
+    manager = str(payload.get("manager") or os.environ.get(f"{env_prefix}_RESTART_MANAGER") or "").strip().lower()
     if manager in {"systemd", "systemctl"}:
-        unit = str(payload.get("unit") or os.environ.get("URIRUN_CHAT_SYSTEMD_UNIT") or "urirun-service-chat.service").strip()
+        unit = str(payload.get("unit") or os.environ.get(f"{env_prefix}_SYSTEMD_UNIT") or default_unit).strip()
         if not unit:
             return None, {"error": "systemd unit is empty"}
         return ["systemctl", "--user", "restart", unit], {"manager": "systemd", "unit": unit}
 
-    configured = str(os.environ.get("URIRUN_CHAT_RESTART_CMD") or "").strip()
+    configured = str(os.environ.get(f"{env_prefix}_RESTART_CMD") or "").strip()
     if configured:
         try:
             argv = shlex.split(configured)
         except ValueError as exc:
-            return None, {"error": f"invalid URIRUN_CHAT_RESTART_CMD: {exc}"}
+            return None, {"error": f"invalid {env_prefix}_RESTART_CMD: {exc}"}
         if argv:
-            return argv, {"manager": "command", "source": "URIRUN_CHAT_RESTART_CMD"}
+            return argv, {"manager": "command", "source": f"{env_prefix}_RESTART_CMD"}
 
     return None, {
-        "error": "chat restart is not configured",
+        "error": f"{service} restart is not configured",
         "configureAnyOf": [
             "payload.manager=systemd with optional payload.unit",
-            "URIRUN_CHAT_RESTART_MANAGER=systemd",
-            "URIRUN_CHAT_RESTART_CMD='<restart command>'",
+            f"{env_prefix}_RESTART_MANAGER=systemd",
+            f"{env_prefix}_RESTART_CMD='<restart command>'",
         ],
-        "exampleUri": "dashboard://host/service/chat/command/restart",
-        "examplePayload": {"manager": "systemd", "unit": "urirun-service-chat.service"},
+        "examplePayload": {"manager": "systemd", "unit": default_unit},
     }
 
 
-def restart_chat_service(payload: dict) -> dict:
-    argv, meta = _chat_restart_argv(payload)
-    if not argv:
-        return {"ok": False, **meta}
+def _schedule_restart_command(argv: list[str], payload: dict, meta: dict) -> dict:
     delay = float(payload.get("delaySeconds") or 0.35)
     runner = (
         "import subprocess, sys, time; "
@@ -5862,6 +6441,180 @@ def restart_chat_service(payload: dict) -> dict:
         start_new_session=True,
     )
     return {"ok": True, "scheduled": True, "delaySeconds": delay, "command": argv, **meta}
+
+
+def _chat_service_restart_argv(
+    project: str,
+    db: str | None,
+    config: str | None,
+    node_urls: list[str] | None,
+    token: str | None,
+    identity: str | None,
+    payload: dict,
+) -> tuple[list[str] | None, dict]:
+    import shutil
+
+    script = str(payload.get("command") or os.environ.get("URIRUN_CHAT_SERVICE_CMD") or "").strip()
+    if not script:
+        script = shutil.which("urirun-service-chat") or str(Path(sys.executable).with_name("urirun-service-chat"))
+    if not script or (os.path.sep in script and not Path(script).expanduser().exists()):
+        return None, {
+            "error": "urirun-service-chat command was not found",
+            "configureAnyOf": [
+                "install urirun-service-chat in the active venv",
+                "payload.command=/path/to/urirun-service-chat",
+                "URIRUN_CHAT_SERVICE_CMD=/path/to/urirun-service-chat",
+            ],
+        }
+    host = str(payload.get("host") or os.environ.get("URIRUN_CHAT_HOST", "127.0.0.1"))
+    port = int(payload.get("port") or os.environ.get("URIRUN_CHAT_PORT", "8194"))
+    argv = [script, "restart", "--project", str(Path(project).expanduser().resolve()), "--host", host, "--port", str(port)]
+    if db:
+        argv.extend(["--db", db])
+    if config:
+        argv.extend(["--config", config])
+    for node_url in node_urls or []:
+        argv.extend(["--node-url", node_url])
+    if token:
+        argv.extend(["--token", token])
+    if identity:
+        argv.extend(["--identity", identity])
+    if str(payload.get("forcePortKill") or payload.get("force") or "").strip().lower() in {"1", "true", "yes", "on"}:
+        argv.append("--force-replace")
+    return argv, {"manager": "port-replace", "port": port, "commandSource": script}
+
+
+def restart_chat_service(
+    payload: dict,
+    *,
+    project: str = ".",
+    db: str | None = None,
+    config: str | None = None,
+    node_urls: list[str] | None = None,
+    token: str | None = None,
+    identity: str | None = None,
+) -> dict:
+    argv, meta = _service_restart_argv(
+        payload,
+        service="chat",
+        env_prefix="URIRUN_CHAT",
+        default_unit="urirun-service-chat.service",
+    )
+    meta.setdefault("exampleUri", "dashboard://host/service/chat/command/restart")
+    if not argv:
+        fallback_argv, auto_meta = _chat_service_restart_argv(project, db, config, node_urls, token, identity, payload)
+        if fallback_argv:
+            argv = fallback_argv
+            meta = {"exampleUri": meta.get("exampleUri"), **auto_meta}
+        else:
+            meta = {**meta, **auto_meta}
+    if not argv:
+        return {"ok": False, **meta}
+    return _schedule_restart_command(argv, payload, meta)
+
+
+def _phone_scanner_service_id(bind_host: str, port: int) -> str:
+    return f"https://{bind_host}:{port}"
+
+
+def restart_phone_scanner_service(
+    project: str,
+    db: str | None,
+    config: str | None = None,
+    node_urls: list[str] | None = None,
+    token: str | None = None,
+    identity: str | None = None,
+    payload: dict | None = None,
+) -> dict:
+    payload = payload or {}
+    force_port_kill = str(payload.get("forcePortKill") or payload.get("force") or "").strip().lower() in {"1", "true", "yes", "on"}
+    argv, meta = _service_restart_argv(
+        payload,
+        service="phone-scanner",
+        env_prefix="URIRUN_PHONE_SCANNER",
+        default_unit="urirun-service-scanner.service",
+    )
+    meta.setdefault("exampleUri", "dashboard://host/service/phone-scanner/command/restart")
+    if argv:
+        return _schedule_restart_command(argv, payload, meta)
+
+    bind_host = str(payload.get("host") or os.environ.get("URIRUN_PHONE_SCANNER_HOST", "0.0.0.0"))
+    scanner_port = int(payload.get("port") or os.environ.get("URIRUN_PHONE_SCANNER_PORT", "8196"))
+    service_id = _phone_scanner_service_id(bind_host, scanner_port)
+    with _SERVICE_LOCK:
+        server = _SERVICE_SERVERS.pop(service_id, None)
+        thread = _SERVICE_THREADS.pop(service_id, None)
+
+    if server is not None and thread is not None and thread.is_alive():
+        def _restart() -> None:
+            try:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=3)
+            except Exception:  # noqa: BLE001
+                pass
+            ensure_phone_scanner_service(
+                project,
+                db,
+                config,
+                node_urls=node_urls,
+                token=token,
+                identity=identity,
+                host=bind_host,
+                port=scanner_port,
+            )
+
+        threading.Thread(target=_restart, name=f"urirun-phone-scanner-restart-{scanner_port}", daemon=True).start()
+        return {
+            "ok": True,
+            "scheduled": True,
+            "manager": "in-process",
+            "service": "phone-scanner",
+            "port": scanner_port,
+            "url": _phone_scanner_url(scanner_port),
+        }
+
+    replaced = _free_port_from_old_scanner(scanner_port, force=force_port_kill)
+    if replaced.get("holders"):
+        if not replaced.get("ok") or replaced.get("remaining"):
+            return {
+                "ok": False,
+                **meta,
+                "replace": replaced,
+                "reason": "port is owned by a process that was not safely replaceable; use forcePortKill only in a controlled environment",
+            }
+        started = ensure_phone_scanner_service(
+            project,
+            db,
+            config,
+            node_urls=node_urls,
+            token=token,
+            identity=identity,
+            host=bind_host,
+            port=scanner_port,
+        )
+        return {"ok": True, "manager": "port-replace", "restart": True, "replace": replaced, **started}
+
+    status = _phone_scanner_external_status(scanner_port)
+    if not status.get("reachable"):
+        started = ensure_phone_scanner_service(
+            project,
+            db,
+            config,
+            node_urls=node_urls,
+            token=token,
+            identity=identity,
+            host=bind_host,
+            port=scanner_port,
+        )
+        return {"ok": True, "manager": "start-if-stopped", "restart": False, **started}
+
+    return {
+        "ok": False,
+        **meta,
+        "status": status,
+        "reason": "scanner is reachable but is not managed by this dashboard process; configure a supervisor restart command",
+    }
 
 
 def _uri_simulated_result(uri: str, mode: str, action_payload: dict, action: dict | None) -> dict:
@@ -5881,6 +6634,37 @@ def _uri_simulated_result(uri: str, mode: str, action_payload: dict, action: dic
             "sideEffects": (action or {}).get("sideEffects", []),
         },
     }
+
+
+_INPROCESS_BINDINGS_GROUP = "urirun.bindings"
+
+
+def _run_inprocess_connector_uri(uri: str, action_payload: dict) -> dict | None:
+    """Execute an installed in-process connector URI (widget://, artifact://, …) through the
+    urirun runtime and return its unwrapped handler value. Returns None when no connector owns
+    the route, so :func:`uri_invoke` can fall back to its legacy "unsupported URI action" error.
+
+    This is what lets the dashboard pull connector output over a URI request rather than baking
+    it into the page — e.g. the chat-stream widgets are loaded from
+    ``widget://host/bundle/query/js`` instead of being inlined in INDEX_HTML."""
+    try:
+        import urirun
+        from urirun.runtime import discovery
+
+        registry = discovery.registry_for_uri(uri, _INPROCESS_BINDINGS_GROUP)
+        env = urirun.run(uri, registry, payload=dict(action_payload or {}),
+                         mode="execute", policy={"allowExecute": True})
+    except Exception as exc:  # noqa: BLE001 - a connector error must not crash the API
+        return {"ok": False, "invokedUri": uri, "error": str(exc)}
+    if not env.get("ok") and (env.get("error") or {}).get("category") == "NOT_FOUND":
+        return None  # no connector owns this route → let the caller raise the legacy error
+    try:
+        value = urirun.result_data(env)
+    except Exception:  # noqa: BLE001
+        value = (env.get("result") or {}).get("value") if isinstance(env.get("result"), dict) else None
+    return {"ok": bool(env.get("ok")), "invokedUri": uri,
+            "result": value if value is not None else env.get("result"),
+            "error": (env.get("error") or {}).get("message") if not env.get("ok") else None}
 
 
 def uri_invoke(
@@ -5935,8 +6719,26 @@ def uri_invoke(
             token=token,
             identity=identity,
         )
+    elif effective_uri == "dashboard://host/service/phone-scanner/command/restart":
+        result = restart_phone_scanner_service(
+            project,
+            db,
+            config,
+            node_urls=node_urls,
+            token=token,
+            identity=identity,
+            payload=action_payload,
+        )
     elif effective_uri == "dashboard://host/service/chat/command/restart":
-        result = restart_chat_service(action_payload)
+        result = restart_chat_service(
+            action_payload,
+            project=project,
+            db=db,
+            config=config,
+            node_urls=node_urls,
+            token=token,
+            identity=identity,
+        )
     elif effective_uri in {"document://host/archive/command/sync-to-node", "document://host/archive/sync"}:
         result = sync_documents_to_node(
             project,
@@ -5948,6 +6750,11 @@ def uri_invoke(
             identity=identity,
         )
     else:
+        # Not a hardcoded dashboard/scanner action: try an installed in-process connector
+        # (widget://, artifact://, …) over the urirun runtime before giving up.
+        dispatched = _run_inprocess_connector_uri(effective_uri, action_payload)
+        if dispatched is not None:
+            return dispatched
         raise ValueError(f"unsupported URI action: {uri}")
 
     if isinstance(result, dict):
@@ -6013,6 +6820,9 @@ def _service_contacts() -> list[dict]:
         "reachable": scanner_state["reachable"],
         "routes": [
             "dashboard://host/phone-scanner/command/start",
+            "dashboard://host/service/phone-scanner/command/restart",
+            "service://host/phone-scanner/command/restart",
+            "service://phone-scanner/command/restart",
             "scanner://page/camera/command/scan",
             "scanner://page/camera/command/best-pdf",
             "scanner://page/camera/command/autonomous",
@@ -6656,6 +7466,20 @@ def artifacts_cleanup_orphan_sidecars(project: str, db: str | None, payload: dic
     return result
 
 
+def documents_reconcile(project: str, db: str | None, payload: dict | None = None) -> dict:
+    """Prune document-index entries whose artifacts are gone from disk.
+
+    Index-only and non-destructive: existing files are never touched. Returns the
+    summary report from :func:`reconcile_document_index` and logs it.
+    """
+    result = reconcile_document_index()
+    try:
+        _host_db().add_log(db, "documents", "reconcile-index", result)
+    except Exception:  # noqa: BLE001
+        pass
+    return result
+
+
 def _dashboard_api_response(path: str, project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None = None) -> tuple[int, dict]:
     """Resolve a dashboard /api/* path to an (HTTP status, JSON payload) pair."""
     if path == "/api/summary":
@@ -6794,6 +7618,10 @@ def create_handler(
                     payload = _read_json(self)
                     _json_response(self, 200, artifacts_cleanup_orphan_sidecars(project, db, payload))
                     return
+                if parsed.path == "/api/documents/reconcile":
+                    payload = _read_json(self)
+                    _json_response(self, 200, documents_reconcile(project, db, payload))
+                    return
                 if parsed.path == "/api/uri/invoke":
                     payload = _read_json(self)
                     if not payload.get("source"):
@@ -6852,15 +7680,122 @@ def _port_holder_pids(port: int) -> list[int]:
     return pids
 
 
+def _process_cmdline(pid: int) -> str:
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as fh:
+            return fh.read().replace(b"\x00", b" ").decode("utf-8", "replace")
+    except OSError:
+        return ""
+
+
 def _is_dashboard_process(pid: int) -> bool:
     """True only if `pid` is a urirun host dashboard serve process (cmdline check). The guard
     that keeps auto-replace from ever killing an unrelated service that owns the port."""
-    try:
-        with open(f"/proc/{pid}/cmdline", "rb") as fh:
-            cmd = fh.read().replace(b"\x00", b" ").decode("utf-8", "replace")
-    except OSError:
-        return False
+    cmd = _process_cmdline(pid)
     return "host dashboard serve" in cmd
+
+
+def _is_scanner_process(pid: int) -> bool:
+    cmd = _process_cmdline(pid)
+    return any(term in cmd for term in (
+        "urirun-service-scanner",
+        "urirun-scanner",
+        "urirun_service_scanner",
+    ))
+
+
+def _is_chat_process(pid: int) -> bool:
+    cmd = _process_cmdline(pid)
+    return any(term in cmd for term in (
+        "urirun-service-chat",
+        "urirun_service_chat",
+    ))
+
+
+def _free_port_from_matching_processes(
+    port: int,
+    *,
+    force: bool,
+    emit: bool,
+    is_target: Any,
+    event_prefix: str,
+) -> dict:
+    import signal
+
+    me = os.getpid()
+
+    def holders() -> list[int]:
+        return [p for p in _port_holder_pids(port) if p != me]
+
+    def targets() -> list[int]:
+        return [p for p in holders() if force or is_target(p)]
+
+    initial_holders = holders()
+    initial_targets = targets()
+    skipped = [p for p in initial_holders if p not in initial_targets]
+    killed: list[int] = []
+    for pid in initial_targets:
+        try:
+            os.kill(pid, signal.SIGTERM)
+            killed.append(pid)
+            if emit:
+                print(json.dumps({"event": f"{event_prefix}.replacing_old", "pid": pid, "port": port}), flush=True)
+        except OSError:
+            pass
+    if initial_targets:
+        deadline = time.time() + 8.0
+        while time.time() < deadline:
+            if not targets():
+                break
+            time.sleep(0.2)
+        for pid in targets():
+            try:
+                os.kill(pid, signal.SIGKILL)
+                killed.append(pid)
+                if emit:
+                    print(json.dumps({"event": f"{event_prefix}.force_killed_old", "pid": pid, "port": port}), flush=True)
+            except OSError:
+                pass
+        time.sleep(0.3)
+
+    remaining = holders()
+    remaining_blockers = [p for p in remaining if force or is_target(p)]
+    return {
+        "ok": not remaining_blockers and (force or not skipped),
+        "port": port,
+        "force": bool(force),
+        "holders": initial_holders,
+        "targets": initial_targets,
+        "skipped": [{"pid": p, "cmdline": _process_cmdline(p)} for p in skipped],
+        "killed": sorted(set(killed)),
+        "remaining": [{"pid": p, "cmdline": _process_cmdline(p)} for p in remaining],
+    }
+
+
+def _free_port_from_old_scanner(port: int, *, force: bool = False, emit: bool = False) -> dict:
+    """Free a scanner-owned port before rebinding it.
+
+    By default this only terminates processes whose cmdline is clearly the scanner service.
+    `force=True` may be used by an explicit URI/CLI request in a controlled dev environment.
+    """
+    return _free_port_from_matching_processes(
+        port,
+        force=force,
+        emit=emit,
+        is_target=_is_scanner_process,
+        event_prefix="urirun.service_scanner",
+    )
+
+
+def _free_port_from_old_chat(port: int, *, force: bool = False, emit: bool = False) -> dict:
+    """Free a chat-dashboard-owned port before rebinding it."""
+    return _free_port_from_matching_processes(
+        port,
+        force=force,
+        emit=emit,
+        is_target=_is_chat_process,
+        event_prefix="urirun.service_chat",
+    )
 
 
 def _free_port_from_old_dashboard(port: int) -> None:
