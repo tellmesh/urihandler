@@ -9,6 +9,8 @@ from typing import Any, Callable
 from .contracts import file_transfer_verification
 
 _DEFAULT_SYNC_TIMEOUT = 120.0
+_MAX_FILE_BYTES = 25_000_000  # 25 MB read-back verification ceiling
+_UPLOAD_TIMEOUT_S = 30.0      # preflight route-check per-request timeout cap
 
 
 @dataclass(frozen=True)
@@ -156,7 +158,7 @@ def _build_sync_params(payload: dict, deps: DocumentSyncDeps, *, source_root: Pa
         fs_uri=f"fs://{fs_target}/file/command/write-b64",
         fs_read_uri=f"fs://{fs_target}/file/query/read-b64",
         read_back=boolish(payload.get("verify_read_back", payload.get("verifyReadBack", payload.get("verify"))), True),
-        verify_max_bytes=int(payload.get("verify_max_bytes") or payload.get("verifyMaxBytes") or 25_000_000),
+        verify_max_bytes=int(payload.get("verify_max_bytes") or payload.get("verifyMaxBytes") or _MAX_FILE_BYTES),
         ensure_routes=boolish(payload.get("ensure_routes", payload.get("ensureRoutes")), True),
         connector_roots=payload.get("connector_roots", payload.get("connectorRoots", payload.get("roots"))),
     )
@@ -185,7 +187,7 @@ def _check_preflight(
             node=params.node,
             token=token,
             identity=identity,
-            timeout=min(params.timeout, 30.0),
+            timeout=min(params.timeout, _UPLOAD_TIMEOUT_S),
             roots=params.connector_roots,
         )
     except Exception as exc:  # noqa: BLE001 - surface as a structured preflight failure.

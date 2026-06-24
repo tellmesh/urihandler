@@ -24,9 +24,10 @@ import socket
 import sys
 
 DEFAULT_SOCKET = ".urirun/daemon.sock"
+_DAEMON_TIMEOUT_S = 30.0  # default socket round-trip timeout for daemon calls
 
 
-def call(socket_path: str, request: dict, timeout: float = 30.0) -> dict:
+def call(socket_path: str, request: dict, timeout: float = _DAEMON_TIMEOUT_S) -> dict:
     """Send ``{uri, payload, ...}`` to a running daemon and return its envelope.
     Pure stdlib — importing this does not pull in the urirun runtime."""
     client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

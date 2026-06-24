@@ -104,7 +104,7 @@ def _coerce_node_url(raw: str) -> str:
     if not value:
         raise ValueError("node URL must not be empty")
     if "://" not in value:
-        value = f"http://{value if ':' in value else f'{value}:8765'}"
+        value = f"http://{value if ':' in value else f'{value}:{DEFAULT_NODE_PORT}'}"
     return value.rstrip("/")
 
 
@@ -204,6 +204,6 @@ def node_url(config: dict, name_or_url: str) -> str:
             return str(node["url"]).rstrip("/")
     # a bare IP / hostname[:port] (has a dot or a colon) -> default urirun port
     if "." in name_or_url or ":" in name_or_url or name_or_url == "localhost":
-        host = name_or_url if ":" in name_or_url else f"{name_or_url}:8765"
+        host = name_or_url if ":" in name_or_url else f"{name_or_url}:{DEFAULT_NODE_PORT}"
         return f"http://{host}"
     raise SystemExit(f"unknown node {name_or_url!r}; pass a URL, host[:port], or a configured node name")

@@ -411,7 +411,7 @@ def sync_manifest(pkg_dir: str | Path, write: bool = True) -> dict:
     if write and changed:
         for f in changed:
             manifest[f] = desired[f]
-        mpath.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        mpath.write_text(f"{json.dumps(manifest, indent=2, ensure_ascii=False)}\n", encoding="utf-8")
     return {"ok": True, "manifest": str(mpath), "changed": changed, "wrote": bool(write and changed), **desired}
 
 

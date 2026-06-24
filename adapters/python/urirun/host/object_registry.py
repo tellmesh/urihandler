@@ -53,8 +53,7 @@ def _uri_target(uri: str) -> str:
     return rest.split("/", 1)[0]
 
 
-def route_owner_route(route: dict, owner: dict) -> dict:
-    uri = str(route.get("uri") or "")
+def _route_core_fields(route: dict, uri: str, owner: dict) -> dict:
     return {
         "uri": uri,
         "kind": route.get("kind") or "",
@@ -65,6 +64,13 @@ def route_owner_route(route: dict, owner: dict) -> dict:
         "layer": route.get("layer") or "",
         "node": route.get("node") or "",
         "target": route.get("target") or route.get("node") or _uri_target(uri) or owner.get("id"),
+    }
+
+
+def route_owner_route(route: dict, owner: dict) -> dict:
+    uri = str(route.get("uri") or "")
+    return {
+        **_route_core_fields(route, uri, owner),
         "ownerId": owner.get("id"),
         "ownerKind": owner.get("kind"),
         "ownerLabel": owner.get("label"),

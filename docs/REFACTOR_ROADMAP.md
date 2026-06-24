@@ -54,8 +54,9 @@ Priority improvements:
 
 The practical operator guide now lives in `docs/NODE_CONNECTIONS.md`. It
 documents all currently supported connection paths: classic urirun nodes,
-transient `--node-url`, desktop/PC nodes, server/container nodes, browser/web
-nodes, smartphone/web/mobile nodes, configured API nodes, multi-interface device
+transient `--node-url`, desktop/PC nodes, server/container nodes,
+browser-debug/browser-plugin/webpage nodes, smartphone/webpage/mobile nodes,
+configured API nodes, multi-interface device
 nodes, URI services, connector adoption, dashboard chat, widgets and artifacts.
 
 Implemented in this pass:
@@ -76,6 +77,11 @@ Implemented in this pass:
 - `urirun host add-node` supports `--kind`, `--api`, `--api-id`,
   `--api-kind`, `--auth-*` and `--capability`.
 - Example `48-api-device-node` shows CLI registration and URI flows.
+- Browser/web control is split into `browser-debug`, `browser-chrome-plugin`,
+  `browser-firefox-plugin` and `webpage`. The old `browser`/`web` names remain
+  compatibility aliases.
+- The `8195` android/webpage service now exposes webpage relay endpoints that can
+  behave like a small node after registration: `/health`, `/routes` and `/run`.
 
 Verified local target set:
 
@@ -110,6 +116,9 @@ P1:
   `command/restart`, `command/stop`.
 - Implement concrete non-HTTP device connectors: RTSP/camera/media,
   SSH-device and fileshare/NAS.
+- Add authenticated host callback registration for webpage nodes so opening the
+  page can persist the node in the host mesh without a manual "save as node"
+  click.
 
 P2:
 

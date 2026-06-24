@@ -20,7 +20,6 @@ import importlib
 import json
 import os
 import queue
-import re
 import socket
 import sys
 import threading
@@ -1060,7 +1059,7 @@ def resolve_admin_token(explicit: str | None, config_token: str | None, generate
     import secrets
 
     token = secrets.token_hex(16)
-    path.write_text(token + "\n", encoding="utf-8")
+    path.write_text(f"{token}\n", encoding="utf-8")
     try:
         os.chmod(path, 0o600)
     except OSError:

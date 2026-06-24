@@ -1,30 +1,22 @@
-# code2llm/evolution | 1633 func | 88f | 2026-06-24
+# code2llm/evolution | 1646 func | 88f | 2026-06-24
 # generated in 0.01s
 
-NEXT[5] (ranked by impact):
+NEXT[3] (ranked by impact):
   [1] !! SPLIT           adapters/python/urirun/host/host_dashboard.py
-      WHY: 10905L, 0 classes, max CC=15
-      EFFORT: ~4h  IMPACT: 163575
+      WHY: 11238L, 0 classes, max CC=15
+      EFFORT: ~4h  IMPACT: 168570
 
   [2] !! SPLIT           adapters/python/urirun/runtime/v2.py
       WHY: 2003L, 1 classes, max CC=14
       EFFORT: ~4h  IMPACT: 28042
 
   [3] !! SPLIT           adapters/python/urirun/node/mesh.py
-      WHY: 1976L, 3 classes, max CC=14
-      EFFORT: ~4h  IMPACT: 27664
-
-  [4] !  SPLIT-FUNC      uri_invoke  CC=15  fan=18
-      WHY: CC=15 exceeds 15
-      EFFORT: ~1h  IMPACT: 270
-
-  [5] !  SPLIT-FUNC      connector_install  CC=15  fan=15
-      WHY: CC=15 exceeds 15
-      EFFORT: ~1h  IMPACT: 225
+      WHY: 1975L, 3 classes, max CC=14
+      EFFORT: ~4h  IMPACT: 27650
 
 
 RISKS[3]:
-  ⚠ Splitting adapters/python/urirun/host/host_dashboard.py may break 329 import paths
+  ⚠ Splitting adapters/python/urirun/host/host_dashboard.py may break 340 import paths
   ⚠ Splitting adapters/python/urirun/runtime/v2.py may break 122 import paths
   ⚠ Splitting adapters/python/urirun/node/mesh.py may break 102 import paths
 
@@ -32,7 +24,7 @@ METRICS-TARGET:
   CC̄:          4.7 → ≤3.3
   max-CC:      15 → ≤7
   god-modules: 18 → 0
-  high-CC(≥15): 4 → ≤2
+  high-CC(≥15): 1 → ≤0
   hub-types:   0 → ≤0
 
 PATTERNS (language parser shared logic):

@@ -6,7 +6,8 @@ zrozumieć, z czego składa się urirun: host, node, service, connector, widget 
 artifact.
 
 Praktyczne komendy podłączania klasycznych node'ów, API node, device node,
-browser/web/smartphone node oraz services są w `docs/NODE_CONNECTIONS.md`.
+browser-debug/browser-plugin/webpage/smartphone node oraz services są w
+`docs/NODE_CONNECTIONS.md`.
 
 ## Model w skrócie
 
@@ -151,7 +152,7 @@ transportu i runtime'u host powinien oczekiwać. Kanoniczna lista jest w
 | `server` | headless Linux/VM z dostępem SSH | `ssh+http`, `urirun-node` |
 | `pc` | fizyczny komputer z GUI, np. Lenovo | `http+kvm`, `urirun-node` |
 | `rdp` | pulpit zdalny Windows/xrdp | `rdp+http+kvm`, `remote-desktop-node` |
-| `smartphone` | telefon, najpierw web node, potem APK/Termux | `https+js`, `mobile-web-or-node` |
+| `smartphone` | telefon, najpierw webpage node, potem APK/Termux | `https+js`, `mobile-web-or-node` |
 | `browser-debug` | cała przeglądarka przez CDP/debug port | `cdp`, `browser-cdp` |
 | `browser-chrome-plugin` | aktywna karta przez rozszerzenie Chrome | `extension+http`, `chrome-extension` |
 | `browser-firefox-plugin` | aktywna karta przez rozszerzenie Firefox | `extension+http`, `firefox-extension` |

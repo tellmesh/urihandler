@@ -47,7 +47,7 @@ NODE_TYPE_PROFILES: tuple[dict[str, Any], ...] = (
     {
         "id": "smartphone",
         "label": "Smartphone",
-        "description": "Phone that starts as a web node and can become a fuller mobile node through APK or Termux.",
+        "description": "Phone that starts as a webpage node and can become a fuller mobile node through APK or Termux.",
         "transport": "https+js",
         "runtime": "mobile-web-or-node",
         "integrationLevel": "mobile",

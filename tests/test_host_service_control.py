@@ -100,6 +100,21 @@ def test_port_holder_pids_parses_ss_output(monkeypatch) -> None:
     assert service_control.port_holder_pids(9999) == []
 
 
+def test_is_android_node_process_matches_service_names() -> None:
+    assert service_control.is_android_node_process(
+        1,
+        process_cmdline_fn=lambda pid: "python -m urirun_service_android_node.core serve",
+    )
+    assert service_control.is_android_node_process(
+        2,
+        process_cmdline_fn=lambda pid: "/venv/bin/urirun-android-node serve --port 8195",
+    )
+    assert not service_control.is_android_node_process(
+        3,
+        process_cmdline_fn=lambda pid: "python other_server.py",
+    )
+
+
 def test_free_port_from_matching_processes_refuses_unrelated_holder() -> None:
     killed = []
 

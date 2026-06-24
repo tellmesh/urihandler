@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+_DOMAIN_RESULT_MAX = 50  # default upper bound on records returned by run_daily
+
 
 def now_id() -> str:
     return time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
@@ -297,7 +299,7 @@ def run_daily(
     project: str | None,
     execute: bool,
     dataset: str = "domains",
-    limit: int = 50,
+    limit: int = _DOMAIN_RESULT_MAX,
     screenshot_when: str = "failure",
     screenshot_dir: str | None = None,
 ) -> dict:

@@ -84,7 +84,7 @@ def _python_manifest(connector_id: str, scheme: str) -> str:
         "language": "python",
         "keywords": [connector_id, "python", "connector"],
     }
-    return json.dumps(manifest, indent=2) + "\n"
+    return f"{json.dumps(manifest, indent=2)}\n"
 
 
 def _write(files: dict[str, str], out_dir: Path) -> list[str]:
@@ -250,14 +250,15 @@ function main(argv) {{
 }}
 process.exit(main(process.argv.slice(2)));
 '''
-    pkg = json.dumps({
+    _pkg_dict = {
         "name": f"urirun-connector-{cid}",
         "version": "0.1.0",
         "description": f"{cid} connector for ifuri and urirun (JavaScript)",
         "bin": {bin_name: "cli.js"},
         "license": "Apache-2.0",
         "author": "if-uri",
-    }, indent=2) + "\n"
+    }
+    pkg = f"{json.dumps(_pkg_dict, indent=2)}\n"
     readme = f"# urirun-connector-{cid} (JavaScript)\n\nScaffolded JS connector. Route: `{route}`.\n\n```bash\nnode cli.js ping --name you\nnode cli.js bindings | urirun validate /dev/stdin\n```\n"
     return {"cli.js": cli, "package.json": pkg, "connector.manifest.json": _manifest(cid, scheme, "js", route), "README.md": readme}
 

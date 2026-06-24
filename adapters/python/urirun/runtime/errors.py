@@ -134,7 +134,7 @@ def _normalize_message(message: str) -> str:
 def error_code(error_type: str, message: str, scheme: str = "") -> str:
     """Deterministic short code; same error class -> same code."""
     basis = f"{scheme}|{error_type}|{_normalize_message(message)}"
-    return "E-" + hashlib.sha1(basis.encode("utf-8")).hexdigest()[:8]
+    return f"E-{hashlib.sha1(basis.encode('utf-8')).hexdigest()[:8]}"
 
 
 # High-signal message patterns, checked before the exception-type map because a
@@ -206,7 +206,7 @@ def address(code: str) -> str:
 
 def help_url(code: str, category: str = "") -> str:
     anchor = category.lower().replace("_", "-")
-    return f"{DOCS_BASE}?code={code}&category={category}" + (f"#{anchor}" if anchor else "")
+    return f"{DOCS_BASE}?code={code}&category={category}{'#' + anchor if anchor else ''}"
 
 
 def stamp(error: dict, scheme: str = "") -> dict:

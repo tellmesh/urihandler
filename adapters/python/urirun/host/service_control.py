@@ -233,6 +233,18 @@ def is_chat_process(pid: int, *, process_cmdline_fn: Callable[[int], str] = proc
     )
 
 
+def is_android_node_process(pid: int, *, process_cmdline_fn: Callable[[int], str] = process_cmdline) -> bool:
+    return _cmdline_contains(
+        pid,
+        (
+            "urirun-service-android-node",
+            "urirun-android-node",
+            "urirun_service_android_node",
+        ),
+        process_cmdline_fn=process_cmdline_fn,
+    )
+
+
 def _signal_pids(pids: list[int], sig: int, *, port: int, emit: bool, emit_fn: Callable[..., Any],
                  kill_fn: Callable[[int, int], Any], event_prefix: str, event: str) -> list[int]:
     """Send `sig` to each pid (best-effort), emitting an event per kill; return the pids signalled."""

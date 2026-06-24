@@ -26,9 +26,11 @@ import sys
 from typing import Any
 
 _PIP_LIST_TIMEOUT = 120
+_START_TIMEOUT_S = 900       # 15 min: pip install / connector install ceiling
+_SCAN_MANIFEST_MAX = 500     # max connector manifests scanned per root
 
 
-def _pip(args: list[str], timeout: float = 900) -> dict:
+def _pip(args: list[str], timeout: float = _START_TIMEOUT_S) -> dict:
     cmd = [sys.executable, "-m", "pip", *args]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
@@ -187,7 +189,7 @@ def _scan_local_connectors(roots: list, match: str) -> list:
         patterns = [os.path.join(base, *(["*"] * d), name)
                     for d in (1, 2, 3) for name in ("connector.manifest.json", "*/connector.manifest.json")]
         patterns += [os.path.join(base, *(["*"] * d), "manifest.yaml") for d in (2, 3)]
-        for mf in sorted({p for pat in patterns for p in glob.glob(pat)})[:500]:
+        for mf in sorted({p for pat in patterns for p in glob.glob(pat)})[:_SCAN_MANIFEST_MAX]:
             path = os.path.dirname(mf)
             if path in seen:
                 continue

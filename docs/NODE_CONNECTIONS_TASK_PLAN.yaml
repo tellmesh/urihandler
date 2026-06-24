@@ -12,7 +12,7 @@ scope:
 landed:
   - id: node-types-canonical
     status: done
-    summary: Canonical node types include server, pc, rdp, smartphone, browser, web, api and device.
+    summary: Canonical node types include server, pc, rdp, smartphone, browser-debug, browser-chrome-plugin, browser-firefox-plugin, webpage, api and device.
     files:
       - adapters/python/urirun/host/node_types.py
       - tests/test_host_node_types.py
@@ -61,6 +61,15 @@ landed:
       - docs/REFACTOR_ROADMAP.md
       - docs/COMPONENTS.md
       - README.md
+  - id: browser-webpage-split
+    status: done
+    summary: Browser control is split into debug mode, Chrome plugin, Firefox plugin and webpage node.
+    files:
+      - adapters/python/urirun/host/node_types.py
+      - adapters/python/urirun/host/host_dashboard.py
+      - /home/tom/github/if-uri/chrome-plugin
+      - /home/tom/github/if-uri/firefox-plugin
+      - /home/tom/github/if-uri/urirun-service-android-node
   - id: example-48-api-device-node
     status: done
     summary: Example for API node and device node registration and flow usage.
@@ -157,6 +166,14 @@ todo:
       - Duplicate test module names no longer cause import mismatch.
       - Socket-dependent tests are marked and skippable.
       - A documented host/CLI subset remains green without network/socket permissions.
+  - id: webpage-auto-host-registration
+    priority: P1
+    status: open
+    summary: Let webpage service register a page node directly in the host mesh when host callback auth is configured.
+    acceptance:
+      - Service can POST a signed add-node request to host dashboard.
+      - Host config stores kind:webpage and relay URL without manual click.
+      - Registration is opt-in and token/key protected.
 
 verification:
   last_targeted_command: >

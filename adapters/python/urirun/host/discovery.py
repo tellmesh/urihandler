@@ -88,7 +88,7 @@ def normalize_known_node_url(raw: Any) -> str:
     if not value:
         return ""
     if "://" not in value:
-        value = f"http://{value if ':' in value else value + ':8765'}"
+        value = f"http://{value if ':' in value else f'{value}:8765'}"
     return value.rstrip("/")
 
 

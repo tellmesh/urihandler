@@ -116,6 +116,7 @@ from .service_control import (
     chat_service_restart_argv as _chat_service_restart_argv_impl,
     free_port_from_matching_processes as _free_port_from_matching_processes_impl,
     free_port_from_old_dashboard as _free_port_from_old_dashboard_impl,
+    is_android_node_process as _is_android_node_process_impl,
     is_chat_process as _is_chat_process_impl,
     is_dashboard_process as _is_dashboard_process_impl,
     is_scanner_process as _is_scanner_process_impl,
@@ -1173,9 +1174,9 @@ INDEX_HTML = r"""<!doctype html>
                   </div>
                 </div>
 
-                <!-- SMARTPHONE (two-stage: web node now then mobile node after APK) -->
+                <!-- SMARTPHONE (two-stage: webpage node now then mobile node after APK) -->
                 <div class="node-kind-form" id="nodeForm-smartphone" style="display:none">
-                  <p class="subtle">📱 <strong>Smartphone</strong> — dwa etapy: <strong>(1) web node</strong> od razu po otwarciu strony w przeglądarce telefonu (sterowanie przez JS na stronie), <strong>(2) mobile node</strong> po instalacji APK/Termux (pełny węzeł: pliki, system). Wymaga: serwis android-node (port 8195) + telefon w tej samej sieci. <a href="/docs/nodes#smartphone" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <p class="subtle">📱 <strong>Smartphone</strong> — dwa etapy: <strong>(1) webpage node</strong> od razu po otwarciu strony w przeglądarce telefonu (sterowanie przez JS na stronie), <strong>(2) mobile node</strong> po instalacji APK/Termux (pełny węzeł: pliki, system). Wymaga: serwis android-node (port 8195) + telefon w tej samej sieci. <a href="/docs/nodes#smartphone" target="_blank" rel="noreferrer">instrukcja</a></p>
                   <div class="artifact-actions">
                     <button type="button" id="phoneSvcBtn" onclick="startPhoneService()">▶ Uruchom serwis android-node</button>
                     <button type="button" id="addPhoneNodeBtn" onclick="showAddPhoneNodeQR()">📱 Pokaż QR</button>
@@ -1185,7 +1186,7 @@ INDEX_HTML = r"""<!doctype html>
                     <div id="phoneNodeQr" class="phone-node-qr"></div>
                     <p class="subtle">URL instalacji: <code id="phoneNodeUrl"></code></p>
                     <p class="subtle" id="phoneNodeReach"></p>
-                    <div id="phoneWebNodes" class="subtle">Brak podłączonych telefonów (web node) — otwórz URL na telefonie.</div>
+                    <div id="phoneWebNodes" class="subtle">Brak podłączonych telefonów (webpage node) — otwórz URL na telefonie.</div>
                     <label class="stack" style="margin-top:6px"><span class="subtle">Po instalacji APK — zarejestruj jako mobile node (nazwa + URL telefonu, port 8765)</span></label>
                     <div class="artifact-actions">
                       <input id="phoneNodeName" placeholder="nexus7">
@@ -1202,7 +1203,8 @@ INDEX_HTML = r"""<!doctype html>
                   <div class="phone-node-qr" id="connectQr-browser-debug"></div>
                   <p class="subtle">QR powyżej = ścieżka <strong>relay</strong> (otwórz na urządzeniu, <code>http://HOST:8195/</code>, <strong>HTTP</strong>). Pola CDP poniżej = osobny tryb debugowania: lista kart i pełne sterowanie przez DevTools, ale wymaga uruchomienia przeglądarki z <code>--remote-debugging-port=9222</code>.</p>
                   <label class="stack"><span class="subtle">Nazwa node'a</span><input id="brName" placeholder="chrome"></label>
-                  <label class="stack"><span class="subtle">Endpoint debugowania (CDP)</span><input id="brUrl" placeholder="http://127.0.0.1:9222"></label>
+                  <label class="stack"><span class="subtle">Endpoint debugowania (CDP)</span><input id="brUrl" placeholder="http://127.0.0.1:9222" oninput="updateEndpointQr('brUrl','cdpQr-browser-debug')"></label>
+                  <div class="phone-node-qr" id="cdpQr-browser-debug"><span class="subtle">wpisz endpoint CDP — QR pojawi się tutaj</span></div>
                   <p class="subtle">Uruchom przeglądarkę z debugowaniem:</p>
                   <pre class="mono">google-chrome --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1</pre>
                   <div class="artifact-actions">
@@ -1237,20 +1239,17 @@ INDEX_HTML = r"""<!doctype html>
 
                 <!-- WEBPAGE -->
                 <div class="node-kind-form" id="nodeForm-webpage" style="display:none">
-                  <p class="subtle">📄 <strong>Webpage</strong> — sterowanie <strong>konkretną stroną</strong> przez HTML/JS. Dwie drogi: <strong>(A) relay</strong> — otwórz QR na urządzeniu, strona sama rejestruje się w serwisie android-node pod <code>http://HOST:8195/</code> (czysty <strong>HTTP</strong>, bez „s"); <strong>(B) CDP page scope</strong> — podaj endpoint DevTools <code>http://127.0.0.1:9222</code> + id karty (osobny mechanizm). <a href="/docs/nodes#webpage" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <p class="subtle">📄 <strong>Webpage</strong> — sterowanie <strong>konkretną stroną</strong> przez HTML/JS (relay). Otwórz QR na urządzeniu — strona rejestruje się sama w serwisie android-node pod <code>http://HOST:8195/</code> (czysty <strong>HTTP</strong>, bez „s") i staje się webpage node: lista URI process, urządzenia strony (kamera/mikrofon), sensory, akcje navigate/eval/iframe. Tryb debugowania przeglądarki (CDP/DevTools) jest w osobnej zakładce <strong>Browser Debug</strong>. <a href="/docs/nodes#webpage" target="_blank" rel="noreferrer">instrukcja</a></p>
                   <div class="phone-node-qr" id="connectQr-webpage"></div>
-                  <p class="subtle">(A) QR kieruje na <code>http://HOST:8195/</code> — <strong>HTTP, nie HTTPS</strong>. Po wejściu strona rejestruje się jako web node i wystawia listę URI process, urządzenia strony (kamera/mikrofon), sensory oraz akcje navigate/eval/iframe. (B) Pola CDP poniżej dotyczą lokalnej przeglądarki z debug portem 9222 — to inna ścieżka, nie ten QR.</p>
+                  <div id="webpageNodes" class="subtle">Brak podłączonych stron — otwórz QR na urządzeniu (telefon/przeglądarka).</div>
                   <label class="stack"><span class="subtle">Nazwa node'a</span><input id="webName" placeholder="page-checkout"></label>
-                  <label class="stack"><span class="subtle">Endpoint debugowania (CDP)</span><input id="webUrl" placeholder="http://127.0.0.1:9222"></label>
-                  <label class="stack"><span class="subtle">Target / id karty (opcjonalnie — pinuje jedną stronę)</span><input id="webTarget" placeholder="puste = aktywna karta"></label>
-                  <p class="subtle">Listę kart i ich id pobierzesz z route'a <code>webnode://browser/tabs/query/list</code>.</p>
                   <div class="artifact-actions">
-                    <button type="button" onclick="saveTypedNode('webpage','webName',document.getElementById('webUrl').value)">💾 Zapisz node</button>
+                    <button type="button" onclick="saveWebpageNode()">💾 Zapisz webpage node</button>
                     <span id="webStatus" class="subtle"></span>
-	                  </div>
-	                </div>
+                  </div>
+                </div>
 
-	                <!-- API NODE -->
+                <!-- API NODE -->
 	                <div class="node-kind-form" id="nodeForm-api" style="display:none">
 	                  <p class="subtle">🔌 <strong>API Node</strong> — zewnętrzne API HTTP/REST/OpenAPI z autoryzacją. Sekret zostanie zapisany w keyring, a w configu zostanie tylko <code>secretRef</code>. <a href="/docs/nodes#api" target="_blank" rel="noreferrer">instrukcja</a></p>
 	                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="apiNodeName" placeholder="crm-api"></label>
@@ -1880,6 +1879,11 @@ INDEX_HTML = r"""<!doctype html>
         f.style.display = (f.id === 'nodeForm-' + kind) ? '' : 'none');
       // browser-debug/webpage nodes can show a QR: opening it registers a webpage node.
       if (kind === 'browser-debug' || kind === 'webpage') renderConnectQr(kind);
+      // webpage = relay only: poll for pages that opened the QR and offer to save them.
+      if (kind === 'webpage') startWebpagePolling();
+      // Reflect the picked kind in the URL so it is shareable/bookmarkable, like the
+      // other dashboard actions (replace: no history spam from tab clicks).
+      writeUrlState({ kind }, { replace: true });
     }
 
     // Render a QR (default for browser-debug/webpage) that encodes the android/webpage service URL.
@@ -1894,6 +1898,61 @@ INDEX_HTML = r"""<!doctype html>
           el.dataset.loaded = '1';
         }
       } catch (e) { /* service may be down */ }
+    }
+
+    // Webpage relay: poll connected pages (devices that opened the QR) and render save buttons.
+    let _webpageTimer = null;
+    function startWebpagePolling() {
+      if (_webpageTimer) return;
+      const tick = async () => {
+        const box = document.getElementById('webpageNodes');
+        if (!box) return;
+        try {
+          const res = await api('/api/nodes/phone-web');
+          const devs = (res && res.devices) || [];
+          if (!devs.length) { box.innerHTML = 'Brak podłączonych stron — otwórz QR na urządzeniu (telefon/przeglądarka).'; return; }
+          box.innerHTML = '<strong>Podłączone strony (webpage node):</strong>' + devs.map((d) =>
+            '<div class="device" style="margin:4px 0">📄 <code>' + esc(d.name || d.id) + '</code> '
+            + '<span class="subtle">' + esc(d.platform || '') + ' · ' + (d.online ? 'online' : 'offline') + '</span> '
+            + '<button type="button" onclick="saveOneWebpageNode(' + JSON.stringify(d.id) + ',' + JSON.stringify(d.name || d.id) + ',' + JSON.stringify(d.nodeUrl || '') + ')">💾 zapisz</button>'
+            + '</div>').join('');
+        } catch (e) { /* service down */ }
+      };
+      tick();
+      _webpageTimer = setInterval(tick, 4000);
+    }
+
+    async function saveOneWebpageNode(id, name, nodeUrl) {
+      try {
+        await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url: nodeUrl, kind: 'webpage' }) });
+        if (typeof load === 'function') load().catch(() => {});
+      } catch (e) {}
+    }
+
+    // Save the first connected page under the typed name (when you just want one webpage node).
+    async function saveWebpageNode() {
+      const name = ((document.getElementById('webName') || {}).value || '').trim();
+      const status = document.getElementById('webStatus');
+      if (!name) { if (status) status.textContent = 'podaj nazwę'; return; }
+      try {
+        const res = await api('/api/nodes/phone-web');
+        const dev = ((res && res.devices) || [])[0];
+        if (!dev) { if (status) status.textContent = 'najpierw otwórz QR na urządzeniu (brak podłączonych stron)'; return; }
+        await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url: dev.nodeUrl, kind: 'webpage' }) });
+        if (status) status.textContent = 'zapisano: ' + name + ' → ' + dev.nodeUrl;
+        if (typeof load === 'function') load().catch(() => {});
+      } catch (e) { if (status) status.textContent = 'błąd: ' + e.message; }
+    }
+
+    // Option B (CDP page-scope): live QR encoding the endpoint URL the user types, so the
+    // debug endpoint can be transferred to another device/tool. Uses the generic /api/nodes/qr.
+    function updateEndpointQr(inputId, boxId) {
+      const url = ((document.getElementById(inputId) || {}).value || '').trim();
+      const box = document.getElementById(boxId);
+      if (!box) return;
+      if (!url) { box.innerHTML = '<span class="subtle">wpisz endpoint CDP — QR pojawi się tutaj</span>'; return; }
+      box.innerHTML = '<img src="/api/nodes/qr?url=' + encodeURIComponent(url) + '" alt="QR endpointu CDP">'
+        + '<div class="subtle">' + esc(url) + '</div>';
     }
 
     // Generic typed-node save: persists name + url + kind via /api/nodes/add.
@@ -3698,6 +3757,11 @@ INDEX_HTML = r"""<!doctype html>
     applyControlsFromUrl();
     setChatFullscreen(state.chatFullscreen, { silent: true });
     applyView(state.view);
+    // Restore a node-kind tab from ?kind=… (shareable deep link), if it names a real tab.
+    const initialKind = params.get('kind');
+    if (initialKind && document.querySelector('.node-kind-tab[data-kind="' + initialKind + '"]')) {
+      selectNodeKind(initialKind);
+    }
     writeUrlState({ action: params.get('action') || 'load' }, { replace: true });
     renderChatHistory();
     setInterval(() => loadChatHistory().catch(() => {}), 4000);
@@ -3771,7 +3835,7 @@ działa węzeł urirun z connectorem KVM.</p>
 <pre>xfreerdp /v:HOST:3389 /u:USER /p:PASS /cert:ignore</pre>
 <p>Na pulpicie uruchom węzeł (jak PC) i zapisz node z URL <code>http://HOST:8765</code>.</p>
 
-<h2 id="smartphone">📱 Smartphone — web node → mobile node</h2>
+<h2 id="smartphone">📱 Smartphone — webpage node → mobile node</h2>
 <p>Dwa etapy integracji telefonu:</p>
 <ol>
   <li><strong>Webpage node (od razu):</strong> uruchom serwis android-node/webpage i otwórz jego URL w przeglądarce
@@ -7813,6 +7877,14 @@ def _uri_action_catalog() -> list[dict]:
             "where": "host dashboard /api/uri/invoke",
         },
         {
+            "uri": "dashboard://host/service/android-node/command/restart",
+            "layer": "dashboard",
+            "kind": "command",
+            "label": "Restart the Android/webpage relay service on port 8195",
+            "sideEffects": ["service-restart", "service-start"],
+            "where": "host dashboard /api/uri/invoke",
+        },
+        {
             "uri": "document://host/archive/command/sync-to-node",
             "layer": "host",
             "kind": "command",
@@ -7866,6 +7938,10 @@ def _uri_action_lookup(uri: str) -> dict | None:
         "dashboard://host/chat/command/restart": "dashboard://host/service/chat/command/restart",
         "service://host/chat/command/restart": "dashboard://host/service/chat/command/restart",
         "service://chat/command/restart": "dashboard://host/service/chat/command/restart",
+        "dashboard://host/android-node/command/restart": "dashboard://host/service/android-node/command/restart",
+        "service://host/android-node/command/restart": "dashboard://host/service/android-node/command/restart",
+        "service://android-node/command/restart": "dashboard://host/service/android-node/command/restart",
+        "webpage://host/service/command/restart": "dashboard://host/service/android-node/command/restart",
         "document://host/archive/sync": "document://host/archive/command/sync-to-node",
         "api://host/node-api/command/request": "configured://host/node-api/command/request",
         "api://host/node-api/query/status": "configured://host/node-api/query/status",
@@ -8172,6 +8248,8 @@ def _uri_invoke_route(effective_uri: str, *, project: str, db: str | None, confi
             token=token,
             identity=identity,
         )
+    if effective_uri == "dashboard://host/service/android-node/command/restart":
+        return restart_android_node_service(action_payload)
     if effective_uri == "configured://host/node-api/command/request":
         return configured_node_api_request(config, node_urls, action_payload, uri=effective_uri)
     if effective_uri == "configured://host/node-api/query/status":
@@ -8218,6 +8296,19 @@ def _finalize_uri_result(result, uri: str) -> dict:
     return {"ok": True, "invokedUri": uri, "result": result}
 
 
+def _uri_invoke_fallback(effective_uri: str, uri: str, *, config: str | None,
+                         node_urls: list[str] | None, action_payload: dict, db: str | None) -> dict:
+    """Unrouted URI: try an in-process connector, then a configured node-API, else raise."""
+    dispatched = _run_inprocess_connector_uri(effective_uri, action_payload, db=db)
+    if dispatched is not None:
+        return dispatched
+    if effective_uri.startswith(("media://", "camera://", "ssh://", "fs://")):
+        configured = configured_node_api_request(config, node_urls, action_payload, uri=effective_uri)
+        if configured.get("error") not in {"node is required", "configured API not found"}:
+            return _finalize_uri_result(configured, uri)
+    raise ValueError(f"unsupported URI action: {uri}")
+
+
 def uri_invoke(
     project: str,
     db: str | None,
@@ -8250,17 +8341,8 @@ def uri_invoke(
         node_urls=node_urls, token=token, identity=identity,
     )
     if result is _UNROUTED:
-        # Not a hardcoded dashboard/scanner action: try an installed in-process connector
-        # (widget://, artifact://, …) over the urirun runtime before giving up.
-        dispatched = _run_inprocess_connector_uri(effective_uri, action_payload, db=db)
-        if dispatched is not None:
-            return dispatched
-        if effective_uri.startswith(("media://", "camera://", "ssh://", "fs://")):
-            configured = configured_node_api_request(config, node_urls, action_payload, uri=effective_uri)
-            if configured.get("error") not in {"node is required", "configured API not found"}:
-                return _finalize_uri_result(configured, uri)
-        raise ValueError(f"unsupported URI action: {uri}")
-
+        return _uri_invoke_fallback(effective_uri, uri, config=config, node_urls=node_urls,
+                                    action_payload=action_payload, db=db)
     return _finalize_uri_result(result, uri)
 
 
@@ -8510,14 +8592,20 @@ def _default_api_items(url: str, kind: str, payload: dict) -> list[dict]:
     }]
 
 
+def _api_item_fields(item: dict, url: str, index: int) -> tuple[str, str, str]:
+    """Resolve one raw API entry's (id, url, kind) across its accepted key aliases."""
+    api_id = _node_api_slug(item.get("id") or item.get("name") or item.get("role"), f"api-{index}")
+    api_url = str(item.get("url") or item.get("endpoint") or item.get("baseUrl") or url).strip()
+    api_kind = str(item.get("kind") or item.get("protocol") or item.get("transport") or "http").strip().lower()
+    return api_id, api_url, api_kind
+
+
 def _normalize_api_item(name: str, url: str, index: int, item: dict,
                         fallback_auth: Any) -> tuple[dict | None, str | None]:
     """Normalise one raw API dict entry; returns (api_dict, error) — api_dict is None to skip."""
-    api_id = _node_api_slug(item.get("id") or item.get("name") or item.get("role"), f"api-{index}")
-    api_url = str(item.get("url") or item.get("endpoint") or item.get("baseUrl") or url).strip()
+    api_id, api_url, api_kind = _api_item_fields(item, url, index)
     if not api_url:
         return None, None
-    api_kind = str(item.get("kind") or item.get("protocol") or item.get("transport") or "http").strip().lower()
     api: dict = {"id": api_id, "kind": api_kind, "url": api_url}
     for key in ("label", "role", "openapi", "basePath", "mount", "description"):
         if item.get(key) not in (None, ""):
@@ -8867,7 +8955,7 @@ def _node_kinds_path() -> str:
 
 
 def _node_kinds() -> dict:
-    """Read the name→kind sidecar (server/pc/rdp/smartphone/browser/web)."""
+    """Read the name→kind sidecar (server/pc/rdp/smartphone/browser/webpage)."""
     path = _node_kinds_path()
     try:
         with open(path, encoding="utf-8") as fh:
@@ -8937,6 +9025,37 @@ def start_android_node_service(payload: dict) -> dict:
         if _probe_scanner_url(url, timeout=0.5):
             return {"ok": True, "alreadyRunning": False, "url": url}
     return {"ok": True, "alreadyRunning": False, "url": url, "note": "started; still warming up"}
+
+
+def restart_android_node_service(payload: dict | None = None) -> dict:
+    payload = payload if isinstance(payload, dict) else {}
+    force_port_kill = str(payload.get("forcePortKill") or payload.get("force") or "").strip().lower() in {"1", "true", "yes", "on"}
+    argv, meta = _service_restart_argv(
+        payload,
+        service="android-node",
+        env_prefix="URIRUN_ANDROID_NODE",
+        default_unit="urirun-service-android-node.service",
+    )
+    meta.setdefault("exampleUri", "dashboard://host/service/android-node/command/restart")
+    if argv:
+        return _schedule_restart_command(argv, payload, meta)
+
+    port = int(payload.get("port") or os.environ.get("URIRUN_ANDROID_NODE_PORT") or 8195)
+    replaced = _free_port_from_old_android_node(port, force=force_port_kill)
+    if replaced.get("holders") and (not replaced.get("ok") or replaced.get("remaining")):
+        return {
+            "ok": False,
+            **meta,
+            "replace": replaced,
+            "reason": "port is owned by a process that was not safely replaceable; use forcePortKill only in a controlled environment",
+        }
+    started = start_android_node_service(payload)
+    return {
+        **started,
+        "manager": "port-replace" if replaced.get("holders") else "start-if-stopped",
+        "restart": True,
+        "replace": replaced,
+    }
 
 
 def phone_web_nodes(payload: dict) -> dict:
@@ -10166,13 +10285,29 @@ def _connector_pip_tail(source: str, spec: str) -> list[str] | None:
     return None
 
 
-def connector_install(project: str, payload: dict) -> dict:
+def _refresh_connector_schemes() -> list[str]:
+    """After a host pip-install, rebuild the discovery index and return the now-live schemes."""
+    try:
+        from urirun.runtime import discovery as _discovery
+        index = _discovery.build_index(_CONNECTOR_BINDINGS_GROUP)  # mtime-aware: busts the scheme cache
+        return sorted(str(k) for k in ((index or {}).get("schemes") or {}).keys())
+    except Exception:  # noqa: BLE001 - install still succeeded if introspection fails
+        return []
+
+
+def connector_install(project: str, payload: dict, *, config: str | None = None,
+                      node_urls: list[str] | None = None, token: str | None = None,
+                      identity: str | None = None) -> dict:
     """Install a URI connector on the host from a chosen source, then refresh discovery so its
     scheme/routes go live immediately. Real host installs cover the native pip-based sources
     (PyPI package, GitHub repo, local folder). npm/docker/http connectors are not host
     pip-installable, so we return the canonical command for their own runtime instead."""
     import sys
     payload = payload if isinstance(payload, dict) else {}
+    target = str(payload.get("target") or "host").strip()
+    if target.startswith("node:"):
+        return _connector_install_node(target[len("node:"):], payload, config=config,
+                                       node_urls=node_urls, token=token, identity=identity)
     source = str(payload.get("source") or "pip").strip().lower()
     spec = str(payload.get("spec") or "").strip()
     if not spec:
@@ -10196,14 +10331,7 @@ def connector_install(project: str, payload: dict) -> dict:
     except Exception as exc:  # noqa: BLE001 - report install launch failures to the UI
         return {"ok": False, "source": source, "spec": spec, "command": " ".join(cmd), "error": str(exc)}
     ok = proc.returncode == 0
-    schemes: list[str] = []
-    if ok:
-        try:
-            from urirun.runtime import discovery as _discovery
-            index = _discovery.build_index(_CONNECTOR_BINDINGS_GROUP)  # mtime-aware: busts the scheme cache
-            schemes = sorted(str(k) for k in ((index or {}).get("schemes") or {}).keys())
-        except Exception:  # noqa: BLE001 - install still succeeded if introspection fails
-            schemes = []
+    schemes = _refresh_connector_schemes() if ok else []
 
     def _tail(text: str) -> str:
         return "\n".join((text or "").strip().splitlines()[-12:])
@@ -10235,6 +10363,124 @@ def connector_test(project: str, db: str | None, config: str | None, payload: di
                           node_urls=node_urls, token=token, identity=identity)
     except Exception as exc:  # noqa: BLE001 - surface route/handler errors to the UI as a failed test
         return {"ok": False, "invokedUri": uri, "error": str(exc)}
+
+
+def _connector_install_node(node: str, payload: dict, *, config: str | None,
+                            node_urls: list[str] | None, token: str | None,
+                            identity: str | None) -> dict:
+    """Install a connector on a remote node by making its scheme live there (NodeClient.ensure_scheme:
+    adopt/discover/install/adopt within node policy). The node's management token is resolved from the
+    keyring set in the Nodes view. `spec`/`scheme` is reduced to a bare scheme token (e.g. 'time')."""
+    raw = str(payload.get("scheme") or payload.get("spec") or "").strip()
+    scheme = raw.split("://", 1)[0].strip().lower()
+    if scheme.startswith("urirun-connector-"):
+        scheme = scheme[len("urirun-connector-"):]
+    if not scheme:
+        return {"ok": False, "error": "scheme is required to install on a node (e.g. 'time')"}
+    node_url = _node_url_from_config(config, node_urls, node)
+    if not node_url:
+        return {"ok": False, "error": "unknown node '" + node + "'"}
+    tok = _node_token_for(node, token)
+    client = _node_client(node_url, token=tok, identity=identity)
+    try:
+        before = sorted(client.schemes())
+    except Exception:  # noqa: BLE001
+        before = []
+    try:
+        res = client.ensure_scheme(scheme, install=True)
+    except Exception as exc:  # noqa: BLE001 - node unreachable / unauthorized / install failure
+        return {"ok": False, "target": "node:" + node, "nodeUrl": node_url, "scheme": scheme, "error": str(exc)}
+    res = res if isinstance(res, dict) else {"ok": bool(res)}
+    try:
+        after = sorted(client.schemes())
+    except Exception:  # noqa: BLE001
+        after = before
+    ok = bool(res.get("ok"))
+    return {"ok": ok, "target": "node:" + node, "nodeUrl": node_url, "scheme": scheme,
+            "already": bool(res.get("already")), "schemes": after,
+            "added": sorted(set(after) - set(before)), "detail": res,
+            "error": None if ok else (res.get("error") or "ensure_scheme failed")}
+
+
+_CONNECTOR_DOCKER_TIMEOUT = 600
+
+
+def _docker_install_target(source: str, spec: str) -> tuple[list[str] | None, str | None, dict | None]:
+    """Resolve (docker mounts, pip install target) for a connector env-check by source kind,
+    or (None, None, error_dict) when the source/path is unusable."""
+    if source in {"local", "folder", "path"}:
+        abspath = str(Path(spec).expanduser().resolve())
+        if not Path(abspath).exists():
+            return None, None, {"ok": False, "error": "path not found: " + abspath}
+        return ["-v", abspath + ":/conn:ro"], "/conn", None
+    if source == "github":
+        tail = _connector_pip_tail("github", spec)
+        return [], (tail[0] if tail else spec), None
+    if source == "pip":
+        return [], spec, None
+    return None, None, {"ok": False, "error": "docker check supports pip/github/local, not '" + source + "'"}
+
+
+def _run_docker_check(cmd: list[str]) -> tuple[Any, dict | None]:
+    """Run the docker smoke command; return (completed_process, None) or (None, error_dict)."""
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=_CONNECTOR_DOCKER_TIMEOUT), None
+    except FileNotFoundError:
+        return None, {"ok": False, "error": "docker not available on host"}
+    except subprocess.TimeoutExpired:
+        return None, {"ok": False, "command": " ".join(cmd),
+                      "error": "docker check timed out after " + str(_CONNECTOR_DOCKER_TIMEOUT) + "s"}
+    except Exception as exc:  # noqa: BLE001
+        return None, {"ok": False, "command": " ".join(cmd), "error": str(exc)}
+
+
+def _parse_bindings_output(stdout: str | None) -> tuple[int, list[str]]:
+    """Parse the ``BINDINGS:<count>:<names>`` smoke marker into (count, names)."""
+    count, bindings = 0, []
+    for line in (stdout or "").splitlines():
+        if line.startswith("BINDINGS:"):
+            parts = line.split(":", 2)
+            try:
+                count = int(parts[1] or 0)
+            except ValueError:
+                count = 0
+            bindings = [b for b in (parts[2] if len(parts) > 2 else "").split(",") if b]
+    return count, bindings
+
+
+def connector_env_check(payload: dict) -> dict:
+    """Verify a connector installs and registers its urirun.bindings entry points inside a clean
+    Docker image — the 'does it work in a defined environment' smoke. Local folders are bind-mounted
+    read-only; pip/github specs install from the index. --no-deps (default) keeps it fast: entry-point
+    metadata registers without importing heavy deps."""
+    payload = payload if isinstance(payload, dict) else {}
+    image = str(payload.get("image") or "python:3.13-slim").strip()
+    source = str(payload.get("source") or "pip").strip().lower()
+    spec = str(payload.get("spec") or "").strip()
+    no_deps = payload.get("no_deps", True)
+    if not spec:
+        return {"ok": False, "error": "spec is required (package, repo or folder)"}
+    mounts, install_target, error = _docker_install_target(source, spec)
+    if error:
+        return error
+    smoke = ("import importlib.metadata as md; "
+             "eps=list(md.entry_points(group='urirun.bindings')); "
+             "print('BINDINGS:'+str(len(eps))+':'+','.join(sorted({e.name for e in eps})))")
+    pip_flags = "--no-deps " if no_deps else ""
+    inner = "pip install --quiet " + pip_flags + install_target + " && python -c \"" + smoke + "\""
+    cmd = ["docker", "run", "--rm", *mounts, image, "sh", "-lc", inner]
+    proc, error = _run_docker_check(cmd)
+    if error:
+        return error
+    count, bindings = _parse_bindings_output(proc.stdout)
+    combined = ((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()
+    tail = "\n".join(combined.splitlines()[-15:])
+    ok = proc.returncode == 0 and count > 0
+    return {"ok": ok, "image": image, "source": source, "spec": spec,
+            "returncode": proc.returncode, "bindings": bindings, "bindingCount": count,
+            "command": " ".join(cmd), "log": tail,
+            "error": None if ok else ("no urirun.bindings registered in " + image
+                                      if proc.returncode == 0 else (tail or "docker check failed"))}
 
 
 def _artifact_delete_roots(project: str) -> list[Path]:
@@ -10649,6 +10895,21 @@ def create_handler(
                 if parsed.path == "/api/nodes/phone-web":
                     _json_response(self, 200, phone_web_nodes(parse_qs(parsed.query)))
                     return
+                if parsed.path == "/api/nodes/qr":
+                    target = _first(parse_qs(parsed.query), "url") or ""
+                    if not target:
+                        _json_response(self, 400, {"ok": False, "error": "url is required"})
+                        return
+                    try:
+                        digest = hashlib.sha256(target.encode("utf-8")).hexdigest()[:16]
+                        root = Path(os.environ.get("URIRUN_DASHBOARD_QR_DIR", "~/.urirun/host-dashboard/qr")).expanduser()
+                        qr_path = root / f"endpoint-{digest}.png"
+                        if not qr_path.exists():
+                            _write_qr_png(target, qr_path)
+                        _asset_response(self, qr_path.read_bytes(), "image/png")
+                    except Exception as exc:  # noqa: BLE001
+                        _json_response(self, 500, {"ok": False, "error": str(exc)})
+                    return
                 if parsed.path == "/services/view":
                     _html_response(self, _service_widget_html(project, parse_qs(parsed.query)))
                     return
@@ -10700,7 +10961,12 @@ def create_handler(
                     return
                 if parsed.path == "/api/connectors/install":
                     payload = _read_json(self)
-                    _json_response(self, 200, connector_install(project, payload))
+                    _json_response(self, 200, connector_install(project, payload, config=config,
+                                                                node_urls=node_urls, token=token, identity=identity))
+                    return
+                if parsed.path == "/api/connectors/docker-check":
+                    payload = _read_json(self)
+                    _json_response(self, 200, connector_env_check(payload))
                     return
                 if parsed.path == "/api/connectors/test":
                     payload = _read_json(self)
@@ -10826,6 +11092,10 @@ def _is_chat_process(pid: int) -> bool:
     return _is_chat_process_impl(pid, process_cmdline_fn=_process_cmdline)
 
 
+def _is_android_node_process(pid: int) -> bool:
+    return _is_android_node_process_impl(pid, process_cmdline_fn=_process_cmdline)
+
+
 def _free_port_from_matching_processes(
     port: int,
     *,
@@ -10873,6 +11143,17 @@ def _free_port_from_old_chat(port: int, *, force: bool = False, emit: bool = Fal
         emit=emit,
         is_target=_is_chat_process,
         event_prefix="urirun.service_chat",
+    )
+
+
+def _free_port_from_old_android_node(port: int, *, force: bool = False, emit: bool = False) -> dict:
+    """Free an android-node/webpage-relay-owned port before rebinding it."""
+    return _free_port_from_matching_processes(
+        port,
+        force=force,
+        emit=emit,
+        is_target=_is_android_node_process,
+        event_prefix="urirun.service_android_node",
     )
 
 

@@ -16,6 +16,9 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
+_QR_BOX_SIZE = 12
+
+
 def _lan_host() -> str:
     configured = os.environ.get("URIRUN_DASHBOARD_PUBLIC_HOST")
     if configured:
@@ -76,7 +79,7 @@ def _write_qr_png(url: str, path: Path) -> None:
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=12,
+        box_size=_QR_BOX_SIZE,
         border=4,
     )
     qr.add_data(url)

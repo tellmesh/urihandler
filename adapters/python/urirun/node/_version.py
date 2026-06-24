@@ -12,6 +12,8 @@ import urllib.request
 
 from urirun.node.paths import node_state_dir
 
+_VERSION_CACHE_TTL_S = 21600  # 6 hours: how long the PyPI version check is cached
+
 
 def current_version() -> str:
     """Installed urirun version (delegates to the canonical v2._package_version)."""
@@ -30,7 +32,7 @@ def _vtuple(v: str):
     return tuple(parts)
 
 
-def latest_version(timeout: float = 1.5, ttl: int = 21600) -> str | None:
+def latest_version(timeout: float = 1.5, ttl: int = _VERSION_CACHE_TTL_S) -> str | None:
     """Newest urirun on PyPI, cached in ~/.urirun-node/.version-check.json (best-effort)."""
     cache = node_state_dir() / ".version-check.json"
     now = int(time.time())

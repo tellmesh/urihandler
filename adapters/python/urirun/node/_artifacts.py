@@ -19,6 +19,7 @@ from urirun.node._util import slug
 
 DEFAULT_HOST_ARTIFACT_DIR = "~/.urirun/artifacts/host"
 BASE64_ARTIFACT_MIN_CHARS = 4096
+_DIGEST_PREFIX_LEN = 12
 
 
 def _artifact_extension(raw: bytes, mime: str | None = None) -> tuple[str, str]:
@@ -58,7 +59,7 @@ def _write_artifact(raw: bytes, *, artifact_dir: str | None, hint: str, mime: st
     ext, detected_mime = _artifact_extension(raw, mime)
     root = Path(os.path.expanduser(artifact_dir or os.environ.get("URIRUN_ARTIFACT_DIR") or DEFAULT_HOST_ARTIFACT_DIR))
     root.mkdir(parents=True, exist_ok=True)
-    name = f"{time.strftime('%Y%m%dT%H%M%S')}-{slug(hint)}-{digest[:12]}{ext}"
+    name = f"{time.strftime('%Y%m%dT%H%M%S')}-{slug(hint)}-{digest[:_DIGEST_PREFIX_LEN]}{ext}"
     path = root / name
     path.write_bytes(raw)
     return {"path": str(path), "bytes": len(raw), "sha256": digest, "mime": detected_mime}

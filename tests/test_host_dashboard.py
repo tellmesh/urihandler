@@ -2009,6 +2009,26 @@ def test_free_port_from_old_chat_refuses_unrelated_process(monkeypatch):
     assert result["skipped"][0]["pid"] == 44
 
 
+def test_free_port_from_old_android_node_only_kills_android_service(monkeypatch):
+    live = {55}
+    killed = []
+    monkeypatch.setattr(host_dashboard, "_port_holder_pids", lambda port: sorted(live))
+    monkeypatch.setattr(host_dashboard, "_process_cmdline", lambda pid: "python -m urirun_service_android_node.core serve")
+
+    def fake_kill(pid, sig):
+        killed.append((pid, sig))
+        live.discard(pid)
+
+    monkeypatch.setattr(host_dashboard.os, "kill", fake_kill)
+
+    result = host_dashboard._free_port_from_old_android_node(8195)
+
+    assert result["ok"] is True
+    assert result["targets"] == [55]
+    assert result["killed"] == [55]
+    assert killed
+
+
 def test_sync_documents_to_node_copies_pdfs_and_logs_chat(monkeypatch, tmp_path):
     fake_db = FakeHostDb()
     document_root = tmp_path / "documents"

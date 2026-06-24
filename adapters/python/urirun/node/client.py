@@ -18,6 +18,8 @@ from urirun.node import keyauth
 from urirun.node.transport import _annotate_deploy_allow_compat
 
 _DEFAULT_TIMEOUT = 120.0
+_RECENT_LOG_DEFAULT_LIMIT = 12
+_PUSH_FOLDER_MAX_FILES = 200
 
 
 def _get(url: str, timeout: float = 6.0, headers: dict | None = None) -> dict:
@@ -99,7 +101,7 @@ class NodeClient:
         headers = self._auth({"Prefer": "respond-async"}, raw=raw, purpose=purpose)
         if run_id:
             headers["X-Urirun-Run-Id"] = run_id
-        return _post(self.base + "/run", body, headers=headers, timeout=10.0, raw=raw)
+        return _post(f"{self.base}/run", body, headers=headers, timeout=10.0, raw=raw)
 
     def cancel(self, run_id: str) -> dict:
         return self.run(f"run://{run_id}/command/cancel")
@@ -131,7 +133,7 @@ class NodeClient:
                 before = None
         raw = json.dumps(body).encode("utf-8")
         result = _post(
-            self.base + "/deploy",
+            f"{self.base}/deploy",
             body,
             headers=self._auth(raw=raw, purpose=keyauth.PURPOSE_DEPLOY),
             timeout=timeout,
@@ -407,7 +409,7 @@ class NodeClient:
                 break
         return code
 
-    def push_folder(self, name_or_path: str, roots=None, max_files: int = 200) -> dict:
+    def push_folder(self, name_or_path: str, roots=None, max_files: int = _PUSH_FOLDER_MAX_FILES) -> dict:
         """Host-side: find a folder (abs path, or a dir named `name_or_path` under roots /
         ~/github) and push its text files to the node's deploy dir (flat, by basename)."""
         import glob  # noqa: PLC0415
@@ -463,7 +465,7 @@ class NodeClient:
                 return cur if cur is not None else payload
         return payload
 
-    def recent_log(self, limit: int = 12) -> list:
+    def recent_log(self, limit: int = _RECENT_LOG_DEFAULT_LIMIT) -> list:
         """Read the node's own log back (accepts both the `logs` and `lines` keys)."""
         try:
             env = self.run(f"log://{self.name}/session/query/recent", {"limit": limit})
@@ -493,7 +495,7 @@ class NodeClient:
         """Yield the node's SSE events live, each tagged with its `_id`. `scheme`/`run`
         filter server-side; `last_event_id` replays what was missed (resume after a drop)."""
         query = urlencode(self._watch_query_params(scheme, run, last_event_id))
-        url = f"{self.base}/events" + (f"?{query}" if query else "")
+        url = f"{self.base}/events{'?' + query if query else ''}"
         headers = self._auth({"Accept": "text/event-stream"}, raw=b"", purpose=keyauth.PURPOSE_RUN)
         if last_event_id is not None:
             headers["Last-Event-ID"] = str(last_event_id)

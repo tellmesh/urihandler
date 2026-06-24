@@ -170,11 +170,12 @@ def _cmd_show(args: argparse.Namespace) -> int:
         return _emit_json(document)
     connector = document.get("connector") if isinstance(document.get("connector"), dict) else document
     install = connector.get("install") if isinstance(connector.get("install"), dict) else {}
+    pip_spec_suffix = f" -> {install['pipSpec']}" if install.get("pipSpec") else ""
     print(f"{connector.get('name', args.id)} ({connector.get('id', args.id)})")
     print(f"  status:   {connector.get('status', '?')}")
     print(f"  category: {connector.get('category', '')}")
     print(f"  summary:  {connector.get('summary', '')}")
-    print(f"  install:  {install.get('mode', 'planned')}" + (f" -> {install['pipSpec']}" if install.get("pipSpec") else ""))
+    print(f"  install:  {install.get('mode', 'planned')}{pip_spec_suffix}")
     routes = connector.get("routes") or []
     if routes:
         print("  routes:")
@@ -209,7 +210,7 @@ def _cmd_install(args: argparse.Namespace) -> int:
 
     if not args.execute:
         print("dry-run (pass --execute to install):")
-        print("  " + shlex.join(command))
+        print(f"  {shlex.join(command)}")
         return 0
 
     for item in plan["pipSpecs"]:

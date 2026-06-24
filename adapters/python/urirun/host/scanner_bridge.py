@@ -17,6 +17,7 @@ PAGE_ACTION_LOCK = threading.Lock()
 PAGE_ACTION_QUEUES: dict[str, list[dict]] = {}
 _PAGE_ACTION_QUEUE_MAX = 50
 _POLL_ITEMS_MAX = 20
+_OCR_PREVIEW_CHARS = 180
 
 
 @dataclass(frozen=True)
@@ -101,7 +102,7 @@ def scanner_result_content(content_prefix: str, crop: dict, document: dict, ocr:
     else:
         content += " (no document PDF)"
     if ocr.get("ok") and ocr.get("text"):
-        content += f": {str(ocr.get('text'))[:180]}"
+        content += f": {str(ocr.get('text'))[:_OCR_PREVIEW_CHARS]}"
     elif ocr.get("error"):
         content += f" (OCR: {ocr.get('error')})"
     return content
