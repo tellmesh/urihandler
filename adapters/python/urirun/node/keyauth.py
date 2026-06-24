@@ -72,7 +72,7 @@ def fingerprint(openssh: str) -> str:
     if len(parts) < 2:
         raise ValueError("not an OpenSSH public key")
     raw = base64.b64decode(parts[1])
-    return "SHA256:" + base64.b64encode(hashlib.sha256(raw).digest()).decode().rstrip("=")
+    return f"SHA256:{base64.b64encode(hashlib.sha256(raw).digest()).decode().rstrip('=')}"
 
 
 def load_authorized() -> list[str]:
@@ -94,7 +94,7 @@ def add_authorized(openssh: str) -> dict:
     if not is_authorized(openssh):
         path = authorized_keys_path()
         with path.open("a", encoding="utf-8") as f:
-            f.write(openssh + "\n")
+            f.write(f"{openssh}\n")
         try:
             os.chmod(path, 0o600)
         except OSError:

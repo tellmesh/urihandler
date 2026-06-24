@@ -1,14 +1,14 @@
-# code2llm | 159f 36099L | python:99,json:13,shell:10,yaml:4,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-24
-# generated in 0.21s
-# CC̅=4.6 | critical:1/1579 | dups:0 | cycles:0
+# code2llm | 161f 36696L | python:101,json:13,shell:10,yaml:4,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-24
+# generated in 0.10s
+# CC̅=4.6 | critical:1/1598 | dups:0 | cycles:0
 
 HEALTH[1]:
-  🟡 CC    deploy_command CC=15 (limit:15)
+  🟡 CC    route_owner_route CC=15 (limit:15)
 
 REFACTOR[1]:
   1. split 1 high-CC methods  (CC>15)
 
-PIPELINES[501]:
+PIPELINES[507]:
   [1] Src [http]: http
       PURITY: 100% pure
   [2] Src [_attacker_key]: _attacker_key
@@ -118,30 +118,31 @@ LAYERS:
   │ sync-versions.sh            25L  0C    0m  CC=0.0    ←0
   │
   adapters/                       CC̄=4.6    ←in:9  →out:0
-  │ !! host_dashboard            9921L  0C  314m  CC=14     ←0
+  │ !! host_dashboard            9688L  0C  289m  CC=14     ←0
   │ !! v2                        2024L  1C  125m  CC=14     ←4
-  │ !! mesh                      1888L  3C   97m  CC=15     ←1
+  │ !! mesh                      1893L  3C   98m  CC=14     ←1
   │ !! __init__                   737L  1C   51m  CC=14     ←12
   │ !! _registry                  718L  0C   43m  CC=14     ←1
-  │ !! cli                        686L  0C    7m  CC=1      ←1
+  │ !! cli                        687L  0C    7m  CC=1      ←1
+  │ !! scanner_bridge             668L  1C   25m  CC=12     ←0
   │ !! _scan                      666L  0C   35m  CC=14     ←0
   │ !! flow                       606L  0C   30m  CC=14     ←2
-  │ !! scanner_bridge             605L  1C   20m  CC=12     ←0
-  │ !! connector_lint             600L  0C   34m  CC=14     ←1
+  │ !! connector_lint             601L  0C   34m  CC=14     ←1
   │ !! _runtime                   584L  1C   29m  CC=13     ←2
   │ !! errors                     563L  0C   31m  CC=13     ←1
   │ !! host_db                    540L  0C   32m  CC=11     ←0
-  │ !! client                     534L  1C   35m  CC=13     ←0
+  │ !! client                     536L  1C   35m  CC=13     ←0
+  │ !! document_metadata          518L  0C   22m  CC=14     ←1
   │ domain_monitor             485L  1C   25m  CC=11     ←1
   │ v1                         471L  0C   25m  CC=14     ←0
   │ codegen                    438L  0C   19m  CC=14     ←0
-  │ transport                  435L  0C   20m  CC=14     ←3
+  │ transport                  431L  0C   20m  CC=14     ←3
   │ connector_scaffold         412L  0C   11m  CC=3      ←0
-  │ document_sync              399L  2C   11m  CC=13     ←0
+  │ document_sync              401L  2C   11m  CC=13     ←0
   │ task_planner               371L  2C   17m  CC=12     ←3
-  │ manage                     369L  0C   23m  CC=12     ←0
+  │ manage                     371L  0C   23m  CC=12     ←0
   │ service_control            364L  0C   17m  CC=11     ←0
-  │ discovery                  360L  0C   28m  CC=14     ←0
+  │ discovery                  362L  0C   28m  CC=14     ←0
   │ host_integrations          355L  0C   15m  CC=8      ←0
   │ task_cli                   343L  0C   25m  CC=11     ←1
   │ planfile_adapter           279L  1C   26m  CC=9      ←0
@@ -151,26 +152,27 @@ LAYERS:
   │ adopt_pack                 245L  0C   12m  CC=13     ←0
   │ recovery                   232L  0C   13m  CC=12     ←2
   │ v2_mcp                     209L  0C   11m  CC=9      ←0
-  │ fs_transfer                206L  0C    7m  CC=14     ←0
+  │ fs_transfer                208L  0C    7m  CC=14     ←0
   │ v2_grpc                    204L  0C   11m  CC=9      ←0
+  │ !! object_registry            204L  0C   11m  CC=15     ←0
   │ discovery                  202L  0C    9m  CC=9      ←0
   │ compat                     199L  0C    6m  CC=10     ←0
+  │ config                     194L  0C   16m  CC=9      ←2
   │ v2_adopt                   193L  0C    8m  CC=7      ←0
-  │ config                     193L  0C   16m  CC=9      ←2
   │ testing                    189L  0C    9m  CC=9      ←0
   │ dispatch_protocol          183L  0C    8m  CC=10     ←0
   │ keyauth                    173L  0C   15m  CC=6      ←0
+  │ resolver                   169L  0C   10m  CC=13     ←0
   │ new-connector.sh           168L  0C    1m  CC=0.0    ←0
-  │ resolver                   168L  0C   10m  CC=13     ←0
   │ conformance                167L  0C    7m  CC=7      ←0
   │ agent                      151L  0C    6m  CC=10     ←0
   │ routing                    143L  0C   10m  CC=14     ←6
+  │ scanner_net                137L  0C   10m  CC=8      ←1
   │ scheduler                  133L  0C    6m  CC=4      ←0
   │ daemon                     116L  0C    3m  CC=14     ←0
   │ v2_service                 115L  0C    3m  CC=9      ←1
   │ introspect                 112L  0C    4m  CC=9      ←1
   │ _artifacts                 110L  0C    5m  CC=9      ←2
-  │ object_registry            107L  0C    5m  CC=12     ←0
   │ declarative                 95L  0C    3m  CC=14     ←0
   │ openapi_import              94L  0C    6m  CC=12     ←0
   │ tree                        91L  0C    4m  CC=11     ←0
@@ -297,8 +299,8 @@ COUPLING:
   examples.matrix                1                                                                                   ──                 
           scripts                1                                                                                                    ──
   CYCLES: none
-  HUB: adapters/ (fan-in=9)
   HUB: v1.js/ (fan-in=6)
+  HUB: adapters/ (fan-in=9)
   SMELL: adapters.python/ fan-out=17 → split needed
 
 EXTERNAL:

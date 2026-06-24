@@ -265,7 +265,7 @@ def _watch_node_url(url: str, scheme: list | str | None = None, run: str | None 
     if last_event_id is not None:
         params.append(("last_event_id", str(last_event_id)))
     query = urlencode(params)
-    return url.rstrip("/") + "/events" + (f"?{query}" if query else "")
+    return f"{url.rstrip('/')}/events" + (f"?{query}" if query else "")
 
 
 def _watch_node_headers(last_event_id: int | None = None, token: str | None = None,

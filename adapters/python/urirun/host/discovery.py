@@ -8,6 +8,8 @@ from typing import Any, Callable
 
 
 NODE_ALIAS_KEYS = ("alias", "aliases", "host", "hostname", "label", "labels", "tags")
+_ROUTE_DETAIL_MAX = 200
+_ROUTE_VALUE_MAX = 120
 
 
 def iter_node_alias_values(value: Any) -> list[str]:
@@ -281,13 +283,13 @@ def classify_route_run(envelope: Any, value: Any) -> tuple[str, str]:
         return not_found
     if isinstance(value, dict):
         if value.get("ok") is False:
-            return "handler-error", str(value.get("error") or "")[:200]
+            return "handler-error", str(value.get("error") or "")[:_ROUTE_DETAIL_MAX]
         return "ok", ""
     if isinstance(value, str):
-        return "ok", value.strip()[:120]
+        return "ok", value.strip()[:_ROUTE_VALUE_MAX]
     if isinstance(envelope, dict) and not envelope.get("ok"):
         detail = (err.get("message") if isinstance(err, dict) else None) or envelope.get("error") or "no result"
-        return "unreachable", str(detail)[:200]
+        return "unreachable", str(detail)[:_ROUTE_DETAIL_MAX]
     return "ok", ""
 
 
@@ -303,7 +305,7 @@ def _probe_route(client: Any, uri: str, route: dict, missing_sel: set[str]) -> d
         env = client.run(uri, route_inputs_example(route))
         status, detail = classify_route_run(env, client.value(env))
     except Exception as exc:  # noqa: BLE001
-        status, detail = "unreachable", f"{type(exc).__name__}: {exc}"[:200]
+        status, detail = "unreachable", f"{type(exc).__name__}: {exc}"[:_ROUTE_DETAIL_MAX]
     return {
         "uri": uri,
         "ok": status == "ok",

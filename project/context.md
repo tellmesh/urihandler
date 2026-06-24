@@ -1,21 +1,21 @@
 # System Architecture Analysis
-<!-- generated in 0.02s -->
+<!-- generated in 0.01s -->
 
 ## Overview
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 99, json: 13, shell: 10, yaml: 4, csharp: 4
+- **Languages**: python: 101, json: 13, shell: 10, yaml: 4, csharp: 4
 - **Analysis Mode**: static
-- **Total Functions**: 1579
+- **Total Functions**: 1598
 - **Total Classes**: 30
-- **Modules**: 158
-- **Entry Points**: 541
+- **Modules**: 160
+- **Entry Points**: 547
 
 ## Architecture by Module
 
 ### adapters.python.urirun.host.host_dashboard
-- **Functions**: 314
+- **Functions**: 289
 - **File**: `host_dashboard.py`
 
 ### adapters.python.urirun.runtime.v2
@@ -24,7 +24,7 @@
 - **File**: `v2.py`
 
 ### adapters.python.urirun.node.mesh
-- **Functions**: 97
+- **Functions**: 98
 - **Classes**: 3
 - **File**: `mesh.py`
 
@@ -80,11 +80,6 @@
 - **Classes**: 1
 - **File**: `planfile_adapter.py`
 
-### adapters.python.urirun.host.domain_monitor
-- **Functions**: 25
-- **Classes**: 1
-- **File**: `domain_monitor.py`
-
 ### adapters.python.urirun.runtime.v1
 - **Functions**: 25
 - **File**: `v1.py`
@@ -93,14 +88,19 @@
 - **Functions**: 25
 - **File**: `task_cli.py`
 
+### adapters.python.urirun.host.domain_monitor
+- **Functions**: 25
+- **Classes**: 1
+- **File**: `domain_monitor.py`
+
+### adapters.python.urirun.host.scanner_bridge
+- **Functions**: 25
+- **Classes**: 1
+- **File**: `scanner_bridge.py`
+
 ### adapters.python.urirun.node.manage
 - **Functions**: 23
 - **File**: `manage.py`
-
-### adapters.python.urirun.runtime.worker
-- **Functions**: 20
-- **Classes**: 3
-- **File**: `worker.py`
 
 ## Key Entry Points
 
@@ -166,6 +166,13 @@ code,
 refresh. The token bundle lives in the keyring under ``oauth:<provider>`` 
 - **Calls**: location.partition, keyring.get_password, json.loads, urllib.request.Request, refreshed.get, keyring.set_password, str, KeyError
 
+### adapters.python.urirun.host.document_metadata._local_image_ocr
+> OCR a scanned image for the phone-scanner pipeline.
+
+Prefers the urirun-connector-ocr ``auto`` cascade, whose first backend is PaddleOCR
+(PP-OCRv5/v6 
+- **Calls**: None.lower, adapters.python.urirun.host.document_metadata._ocr_connector_envelope, adapters.python.urirun.host.document_metadata._ocr_text_ok, adapters.python.urirun.host.document_metadata._local_image_ocr_tesseract, adapters.python.urirun.host.document_metadata._ocr_text_ok, adapters.python.urirun.host.document_metadata._local_image_ocr_llm, adapters.python.urirun.host.document_metadata._ocr_text_ok, adapters.python.urirun.host.document_metadata._local_image_ocr_tesseract
+
 ### adapters.python.urirun.host.document_sync.sync_documents_to_node
 - **Calls**: adapters.python.urirun.host.document_sync._parse_sync_params, deps.archive_pdfs, adapters.python.urirun.host.document_sync._check_preflight, deps.verification, adapters.python.urirun.host.document_sync._log_and_chat_report, adapters.python.urirun.host.document_sync._log_and_chat_report, adapters.python.urirun.host.document_sync._upload_file, item.get
 
@@ -182,6 +189,12 @@ refresh. The token bundle lives in the keyring under ``oauth:<provider>``
 ### adapters.python.urirun.host.domain_monitor._route_flow
 - **Calls**: str, adapters.python.urirun.host.domain_monitor.check_domain, adapters.python.urirun.host.domain_monitor.run_daily, rc.payload.get, rc.payload.get, adapters.python.urirun.host.domain_monitor.expected_records, adapters.python.urirun.host.domain_monitor._db, adapters.python.urirun.host.domain_monitor._project
 
+### adapters.python.urirun.host.scanner_bridge.scanner_live_state_from_streams
+- **Calls**: sorted, adapters.python.urirun.host.scanner_bridge.scanner_public_candidate_for_live, document.get, public_streams.append, utc_now, max, stream.get, isinstance
+
+### adapters.python.urirun.host.scanner_bridge.register_scanner_result
+- **Calls**: None.is_file, str, adapters.python.urirun.host.scanner_bridge.scanner_result_content, deps.chat_message, deps.add_chat_message, None.is_file, attachments.append, document.get
+
 ### adapters.python.urirun.runtime.codegen.gen_command
 - **Calls**: v2.load_registry_arg, getattr, print, adapters.python.urirun.runtime.codegen.proto_from_registry, getattr, None.write_text, None.write_text, print
 
@@ -194,11 +207,11 @@ refresh. The token bundle lives in the keyring under ``oauth:<provider>``
 - a l
 - **Calls**: None.strip, adapters.python.urirun.node.manage._classify_source, adapters.python.urirun.node.manage._install_policy, adapters.python.urirun.node.manage._policy_allows, res.get, payload.get, payload.get, payload.get
 
-### adapters.python.urirun.host.scanner_bridge.scanner_live_state_from_streams
-- **Calls**: sorted, adapters.python.urirun.host.scanner_bridge.scanner_public_candidate_for_live, document.get, public_streams.append, utc_now, max, stream.get, isinstance
+### adapters.python.urirun.runtime.discovery.registry_for_uri
+> Compile a registry for just the connector owning ``uri``'s scheme (+ builtins).
 
-### adapters.python.urirun.host.scanner_bridge.register_scanner_result
-- **Calls**: None.is_file, str, adapters.python.urirun.host.scanner_bridge.scanner_result_content, deps.chat_message, deps.add_chat_message, None.is_file, attachments.append, document.get
+Falls back to full discovery (and refreshes the index) when the schem
+- **Calls**: adapters.python.urirun.runtime.discovery._scheme_of, adapters.python.urirun.runtime.discovery.load_index, list, adapters.python.urirun.runtime.discovery.build_index, v2.entry_point_bindings, bindings.extend, v2.compile_registry, None.get
 
 ### adapters.python.urirun.host.fs_transfer.ensure_node_uri_routes
 > Preflight exact URI routes needed by a node-side workflow.
@@ -207,17 +220,8 @@ Scheme-level checks are insufficient for split connectors such as fs://:
 a node may expose
 - **Calls**: node_client, client.routes, set, adapters.python.urirun.host.fs_transfer.route_key, attempted_route_keys.add, ensured.append, client.routes, all
 
-### adapters.python.urirun.runtime.discovery.registry_for_uri
-> Compile a registry for just the connector owning ``uri``'s scheme (+ builtins).
-
-Falls back to full discovery (and refreshes the index) when the schem
-- **Calls**: adapters.python.urirun.runtime.discovery._scheme_of, adapters.python.urirun.runtime.discovery.load_index, list, adapters.python.urirun.runtime.discovery.build_index, v2.entry_point_bindings, bindings.extend, v2.compile_registry, None.get
-
 ### adapters.python.urirun.node.mesh.NodeHandler._get
 - **Calls**: self.path.partition, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json, self.path.startswith, self._stream_events, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json
-
-### examples.node-file-transfer.fs_transfer.write_b64
-- **Calls**: examples.node-file-transfer.fs_transfer._expand_path, final.with_name, tmp.write_bytes, tmp.replace, target.parent.mkdir, examples.node-file-transfer.fs_transfer._unique_path, base64.b64decode, str
 
 ## Process Flows
 
@@ -361,16 +365,16 @@ child processes t
 - **Methods**: 1
 - **Key Methods**: adapters.java.example.HashConnector.HashConnector.main
 
-### adapters.python.urirun.host.domain_monitor._RouteCtx
-> Resolved routing context shared across the per-package route handlers.
-- **Methods**: 1
-- **Key Methods**: adapters.python.urirun.host.domain_monitor._RouteCtx.key
-
 ### adapters.python.urirun.runtime.v2._RunAbort
 > Carries a finished (error) envelope to the single exit point in run().
 - **Methods**: 1
 - **Key Methods**: adapters.python.urirun.runtime.v2._RunAbort.__init__
 - **Inherits**: Exception
+
+### adapters.python.urirun.host.domain_monitor._RouteCtx
+> Resolved routing context shared across the per-package route handlers.
+- **Methods**: 1
+- **Key Methods**: adapters.python.urirun.host.domain_monitor._RouteCtx.key
 
 ### adapters.python.urirun.node.mesh.NodeContext
 > Everything a NodeHandler needs to serve one node — the mutable `state` (name /
@@ -413,9 +417,6 @@ Key functions that process and transform data:
 > Build the connector argparse parser (one subcommand per route).
 - **Output to**: argparse.ArgumentParser, parser.add_subparsers, sub.add_parser, sub.add_parser, sub.add_parser
 
-### adapters.python.urirun.host.host_db._validate_record
-- **Output to**: None.validate, dataset.get, Draft202012Validator
-
 ### adapters.python.urirun.host.service_control.process_cmdline
 - **Output to**: open, None.decode, None.replace, fh.read
 
@@ -431,9 +432,6 @@ Key functions that process and transform data:
 
 ### adapters.python.urirun.host.service_control.free_port_from_matching_processes
 - **Output to**: getpid_fn, holders, targets, adapters.python.urirun.host.service_control._signal_pids, holders
-
-### adapters.python.urirun.host.document_sync._parse_sync_params
-- **Output to**: None.resolve, adapters.python.urirun.host.document_sync._resolve_node_params, adapters.python.urirun.host.document_sync._build_sync_params, None.strip, None.expanduser
 
 ### adapters.python.urirun.runtime.v1._run_process
 - **Output to**: config.get, config.get, subprocess.run, policy.get, progress.active
@@ -473,6 +471,13 @@ Supported forms:
 ### adapters.python.urirun.runtime.v2._cmd_validate
 - **Output to**: adapters.python.urirun.runtime.v2.validate_binding_document, adapters.python.urirun.runtime.v2._load_json_arg, Path, reglib._emit_json, print
 
+### adapters.python.urirun.runtime._runtime.format_route_table
+- **Output to**: out.extend, None.join, max, None.rstrip, line
+
+### adapters.python.urirun.runtime.v2_grpc._validate
+> Return an error envelope if the URI/payload is invalid, else None.
+- **Output to**: reglib.parse_uri, reglib.translate, reglib.resolve_route, v2.validate_input
+
 ## Behavioral Patterns
 
 ### recursion_command
@@ -489,16 +494,6 @@ Supported forms:
 - **Type**: recursion
 - **Confidence**: 0.90
 - **Functions**: adapters.python.urirun.Connector.handler
-
-### recursion__short_value
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun.host.fs_transfer._short_value
-
-### recursion__field_type
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun.runtime.codegen._field_type
 
 ### recursion__apply_defaults
 - **Type**: recursion
@@ -540,6 +535,16 @@ Supported forms:
 - **Confidence**: 0.90
 - **Functions**: adapters.python.urirun.host.host_dashboard._uri_action_lookup
 
+### recursion__short_value
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun.host.fs_transfer._short_value
+
+### recursion__field_type
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun.runtime.codegen._field_type
+
 ### state_machine_Urirun
 - **Type**: state_machine
 - **Confidence**: 0.70
@@ -554,7 +559,7 @@ Supported forms:
 
 Functions exposed as public API (no underscore prefix):
 
-- `adapters.python.urirun.host.host_dashboard.create_handler` - 91 calls
+- `adapters.python.urirun.host.host_dashboard.create_handler` - 94 calls
 - `adapters.python.urirun.runtime._scan.main` - 59 calls
 - `adapters.python.urirun.runtime._registry.main` - 56 calls
 - `adapters.python.urirun.host.host_dashboard.scanner_best_finish` - 48 calls
@@ -563,8 +568,8 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.host.host_dashboard.scanner_capture` - 40 calls
 - `adapters.python.urirun.runtime._runtime.main` - 33 calls
 - `adapters.python.urirun.host.host_dashboard.restart_phone_scanner_service` - 33 calls
+- `adapters.python.urirun.host.host_dashboard.summary` - 32 calls
 - `adapters.python.urirun.runtime.v2_adopt.main` - 31 calls
-- `adapters.python.urirun.host.host_dashboard.summary` - 31 calls
 - `adapters.python.urirun.node.recovery.normalize_error` - 30 calls
 - `adapters.python.urirun.node.mesh.copy_id_command` - 30 calls
 - `adapters.python.urirun.host.host_dashboard.chat_ask` - 29 calls
@@ -572,28 +577,28 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.runtime.adopt_pack.adopt` - 28 calls
 - `adapters.python.urirun.runtime.errors.info` - 27 calls
 - `adapters.python.urirun.connectors.connector_lint.verify_connector` - 27 calls
-- `adapters.python.urirun.host.discovery.node_alias_map_from_env` - 26 calls
 - `adapters.python.urirun.host.host_dashboard.phone_node_qr` - 26 calls
-- `adapters.python.urirun.runtime.codegen.proto_from_registry` - 25 calls
+- `adapters.python.urirun.host.discovery.node_alias_map_from_env` - 26 calls
 - `adapters.python.urirun.runtime._runtime.run` - 25 calls
 - `adapters.python.urirun.runtime.v2_grpc.main` - 25 calls
+- `adapters.python.urirun.runtime.codegen.proto_from_registry` - 25 calls
 - `adapters.python.urirun.node.mesh.apply_deploy` - 25 calls
 - `adapters.python.urirun.runtime.v2.run_local_function_subprocess` - 24 calls
 - `adapters.python.urirun.runtime.v2.validate_binding_document` - 24 calls
+- `adapters.python.urirun.host.host_dashboard.startup_phone_qr` - 24 calls
 - `adapters.python.urirun.connectors.connector_lint.lint_connector` - 24 calls
 - `adapters.python.urirun.connectors.resolver.resolve` - 24 calls
-- `adapters.python.urirun.host.host_dashboard.startup_phone_qr` - 24 calls
 - `adapters.python.urirun.node.mesh.watch_command` - 24 calls
 - `adapters.python.urirun.testing.smoke` - 23 calls
-- `adapters.python.urirun.host.document_sync.sync_documents_to_node` - 23 calls
 - `adapters.python.urirun.runtime.v1.run` - 23 calls
+- `adapters.python.urirun.host.document_sync.sync_documents_to_node` - 23 calls
 - `adapters.python.urirun.host.host_dashboard.node_add` - 23 calls
 - `adapters.python.urirun.runtime.errors.problem` - 22 calls
-- `adapters.python.urirun.connectors.resolver.index_local` - 22 calls
 - `adapters.python.urirun.host.host_dashboard.uri_invoke` - 22 calls
-- `adapters.python.urirun.node.mesh.deploy_command` - 22 calls
+- `adapters.python.urirun.connectors.resolver.index_local` - 22 calls
 - `adapters.python.urirun.host.host_db.search_records` - 21 calls
 - `adapters.python.urirun.host.host_dashboard.chat_history` - 21 calls
+- `adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service` - 21 calls
 
 ## System Interactions
 

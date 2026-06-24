@@ -36,6 +36,42 @@ Najważniejszy podział:
 | Widget | żywy widok lub panel kontroli | podgląd kamery, status usługi |
 | Artifact | gotowy plik lub wynik | PDF faktury, JSON OCR, screenshot |
 
+## URI Object
+
+`URI object` to kontrolowalna powierzchnia runtime, która grupuje URI routes,
+transport i stan życia. W dashboardzie jest dostępna przez:
+
+```text
+GET /api/summary   -> pole objects
+GET /api/objects   -> lista obiektów
+```
+
+Aktualnie kanoniczne URI object są wdrożone dla:
+
+- `host`
+- `node:*`
+- `service:*`
+
+Minimalny kształt:
+
+```json
+{
+  "id": "service:phone-scanner",
+  "kind": "service",
+  "label": "urirun service: photo scanner",
+  "status": "running",
+  "reachable": true,
+  "url": "https://host:8196/scanner",
+  "transport": "http",
+  "runtime": "phone-scanner",
+  "routes": []
+}
+```
+
+Widget i artifact nie są pełnym runtime object. Widget jest żywym widokiem
+należącym do obiektu, a artifact jest zakończonym wynikiem w rejestrze
+artifactów.
+
 ## Host
 
 Host to centrum sterowania systemu. Zwykle działa na komputerze operatora.

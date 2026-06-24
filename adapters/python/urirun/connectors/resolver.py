@@ -15,6 +15,7 @@ from typing import Any
 
 
 DEFAULT_ROOTS = ("~/github",)
+_SCHEME_ID_MATCH_SCORE = 50
 
 
 def _schemes_from_manifest(manifest: dict[str, Any]) -> list[str]:
@@ -125,7 +126,7 @@ def resolve(capability: str, index: list[dict[str, Any]] | None = None,
         if scheme in connector.get("schemes", []):
             score += 100
         if scheme and (scheme in str(connector.get("id", "")) or str(connector.get("id", "")) in cap):
-            score += 50
+            score += _SCHEME_ID_MATCH_SCORE
         for term in _terms(cap):
             if term in haystack:
                 score += 5

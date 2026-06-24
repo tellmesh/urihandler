@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+_DEFAULT_TRANSFER_TIMEOUT = 120.0
+
 
 def route_key(uri: str) -> tuple[str, str]:
     try:
@@ -164,7 +166,7 @@ def ensure_node_uri_routes(
     node_client: Callable[..., Any],
     token: str | None = None,
     identity: str | None = None,
-    timeout: float = 120.0,
+    timeout: float = _DEFAULT_TRANSFER_TIMEOUT,
     roots: Any = None,
 ) -> dict:
     """Preflight exact URI routes needed by a node-side workflow.

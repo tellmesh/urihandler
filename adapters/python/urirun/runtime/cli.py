@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 
+from urirun.node.config import DEFAULT_NODE_PORT
 from urirun.runtime.v2 import ENTRY_POINT_GROUP, _package_version
 
 
@@ -119,7 +120,7 @@ def _add_node_subparser(subparsers) -> None:
     node_init.add_argument("--name")
     node_init.add_argument("--registry", default=".urirun/registry.merged.json")
     node_init.add_argument("--host", default="0.0.0.0")
-    node_init.add_argument("--port", type=int, default=8765)
+    node_init.add_argument("--port", type=int, default=DEFAULT_NODE_PORT)
     node_init.add_argument("--execute", action="store_true")
 
     node_sub.add_parser("config", parents=[node_common], help="Print node config")

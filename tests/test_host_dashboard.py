@@ -430,6 +430,36 @@ def test_summary_shows_known_nodes_file_nodes(monkeypatch, tmp_path):
     host_uris = {route["uri"] for route in result["host"]["routes"]}
     assert "document://host/archive/command/sync-to-node" in host_uris
     assert "urifix://host/chain/command/repair" in host_uris
+    assert [item["id"] for item in result["objects"]] == ["host", "node:lenovo", "service:phone-scanner"]
+    node_object = next(item for item in result["objects"] if item["id"] == "node:lenovo")
+    assert node_object["kind"] == "node"
+    assert node_object["url"] == "http://laptop.local:8766"
+    assert node_object["status"] == "down"
+
+
+def test_api_objects_returns_uri_objects(monkeypatch, tmp_path):
+    class SummaryMesh(FakeMesh):
+        def host_config_path(self, config):
+            return Path("/tmp/mesh.json")
+
+    fake_db = FakeHostDb()
+    monkeypatch.setattr(host_dashboard, "_mesh", lambda: SummaryMesh())
+    monkeypatch.setattr(host_dashboard, "_host_db", lambda: fake_db)
+
+    status, payload = host_dashboard._dashboard_api_response(
+        "/api/objects",
+        ".",
+        ":memory:",
+        None,
+        {},
+    )
+
+    assert status == 200
+    assert payload["ok"] is True
+    assert [item["id"] for item in payload["objects"]] == ["host", "node:laptop", "service:phone-scanner"]
+    laptop = next(item for item in payload["objects"] if item["id"] == "node:laptop")
+    assert laptop["routes"][0]["uri"] == "env://laptop/runtime/query/health"
+    assert laptop["routes"][0]["ownerId"] == "node:laptop"
 
 
 def test_chat_ask_executes_document_sync_without_llm(monkeypatch):

@@ -8,6 +8,8 @@ from typing import Any, Callable
 
 from .contracts import file_transfer_verification
 
+_DEFAULT_SYNC_TIMEOUT = 120.0
+
 
 @dataclass(frozen=True)
 class DocumentSyncDeps:
@@ -150,7 +152,7 @@ def _build_sync_params(payload: dict, deps: DocumentSyncDeps, *, source_root: Pa
         dest_root=str(payload.get("dest_root") or payload.get("destRoot") or deps.default_dest_root()).rstrip("/"),
         overwrite=bool(payload.get("overwrite", True)),
         make_dirs=bool(payload.get("make_dirs", payload.get("makeDirs", True))),
-        timeout=float(payload.get("timeout", 120.0) or 120.0),
+        timeout=float(payload.get("timeout", _DEFAULT_SYNC_TIMEOUT) or _DEFAULT_SYNC_TIMEOUT),
         fs_uri=f"fs://{fs_target}/file/command/write-b64",
         fs_read_uri=f"fs://{fs_target}/file/query/read-b64",
         read_back=boolish(payload.get("verify_read_back", payload.get("verifyReadBack", payload.get("verify"))), True),

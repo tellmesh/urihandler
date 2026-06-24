@@ -29,8 +29,9 @@ Priority improvements:
    and usually `fs://host/file/query/read-b64`.
 3. **URI object registry.** Dashboard discovery should present registries per
    object: `host`, `node:*`, `service:*`. A selected object must have a visible
-   route list and health/lifecycle metadata. The UI now starts doing this; the
-   backend should eventually expose the same object model as a formal URI.
+   route list and health/lifecycle metadata. The backend now exposes this model
+   as `summary.objects` and `/api/objects`; the UI uses it when present and keeps
+   the old host/nodes/services fallback for compatibility.
 4. **Service lifecycle as a first-class URI surface.** `urirun-service-chat` and
    `urirun-service-scanner` should have consistent `query/status`,
    `command/start`, `command/restart`, `command/stop` routes, with a clear owner:
@@ -66,7 +67,8 @@ Near-term extraction targets:
   and node route probing moved out of `host_dashboard.py`.
 - `host/object_registry.py` for canonical host/service/node object shapes.
   First split landed: host route rows, host object, service contacts and node
-  token annotations moved behind dashboard wrappers.
+  token annotations moved behind dashboard wrappers. URI object assembly for
+  `host`, `node:*` and `service:*` now feeds `summary.objects` and `/api/objects`.
 - `host/scanner_bridge.py` for dashboard-to-scanner API glue. First split
   landed: scanner result registration, document-pdf/camera-scan artifact
   selection, chat attachments, scanner session logging, page-action queues,

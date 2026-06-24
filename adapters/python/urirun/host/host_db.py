@@ -443,7 +443,7 @@ def read_only_sql(path: str | None, query: str, params: list[Any] | None = None,
     if ";" in stripped:
         raise ValueError("multiple SQL statements are not allowed")
     with connection(path) as conn:
-        rows = conn.execute(stripped + f" LIMIT {int(limit)}", params or []).fetchall()
+        rows = conn.execute(f"{stripped} LIMIT {int(limit)}", params or []).fetchall()
         return rows_dict(rows)
 
 

@@ -87,3 +87,34 @@ def test_annotate_node_tokens_never_raises() -> None:
         {"name": "broken", "hasToken": False},
         {"url": "missing-name"},
     ]
+
+
+def test_uri_objects_builds_host_node_and_service_registries() -> None:
+    objects = object_registry.uri_objects(
+        project="/tmp/project",
+        host_routes=[{"uri": "document://host/archive/command/sync-to-node", "kind": "command"}],
+        nodes=[{"name": "lenovo", "url": "http://node:8765", "reachable": True}],
+        services=[{
+            "id": "service:phone-scanner",
+            "name": "phone-scanner",
+            "url": "https://host:8196/scanner",
+            "status": "running",
+            "reachable": True,
+            "routes": ["scanner://page/camera/command/scan"],
+        }],
+        routes=[{
+            "uri": "env://lenovo/runtime/query/health",
+            "node": "lenovo",
+            "kind": "query",
+            "adapter": "remote-node",
+        }],
+    )
+
+    assert [item["id"] for item in objects] == ["host", "node:lenovo", "service:phone-scanner"]
+    assert objects[0]["routes"][0]["ownerId"] == "host"
+    assert objects[1]["transport"] == "http"
+    assert objects[1]["runtime"] == "urirun-node"
+    assert objects[1]["routes"][0]["uri"] == "env://lenovo/runtime/query/health"
+    assert objects[1]["routes"][0]["ownerId"] == "node:lenovo"
+    assert objects[2]["runtime"] == "phone-scanner"
+    assert objects[2]["routes"][0]["ownerId"] == "service:phone-scanner"

@@ -8,6 +8,46 @@ For a Polish operator/developer overview of the same component model, see
 
 ## Object Types
 
+## Runtime URI Object Envelope
+
+Runtime objects are the controllable surfaces that own a group of URI routes.
+The host dashboard currently emits them in `summary.objects` and through
+`GET /api/objects` for:
+
+- `host`
+- `node:*`
+- `service:*`
+
+Shape:
+
+```json
+{
+  "id": "node:lenovo",
+  "kind": "node",
+  "label": "urirun node: lenovo",
+  "status": "up",
+  "reachable": true,
+  "url": "http://192.168.188.201:8765",
+  "transport": "http",
+  "runtime": "urirun-node",
+  "routes": [
+    {
+      "uri": "env://lenovo/runtime/query/health",
+      "kind": "query",
+      "adapter": "remote-node",
+      "target": "lenovo",
+      "ownerId": "node:lenovo",
+      "ownerKind": "node"
+    }
+  ]
+}
+```
+
+Artifacts and widgets are related but not the same thing. A widget is a live
+view owned by a host/service/node object. An artifact is a finished result owned
+by the artifact registry. They may be shown under an object, but they should not
+replace the object model.
+
 ### Connector
 
 A connector is a URI capability provider. It declares routes, input schemas and

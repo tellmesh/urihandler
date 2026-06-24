@@ -12,6 +12,7 @@ import io
 import json
 import mimetypes
 import os
+import urllib.request
 import re
 import socket
 import ssl
@@ -71,6 +72,7 @@ from .object_registry import (
     host_object as _host_object_impl,
     host_registry_routes as _host_registry_routes_impl,
     service_contacts as _service_contacts_impl,
+    uri_objects as _uri_objects_impl,
 )
 from .scanner_bridge import (
     PAGE_ACTION_LOCK as _SCANNER_PAGE_ACTION_LOCK,
@@ -576,7 +578,22 @@ INDEX_HTML = r"""<!doctype html>
     .nodes-layout.hidden { display: none; }
     .node-row { cursor: pointer; }
     .node-row.node-row-active { border-color: var(--accent); background: var(--surface-3); }
+    .node-kind-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+    .node-kind-tab { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 10px; border: 1px solid var(--border, #334155); border-radius: 8px; background: var(--surface-2, #1e293b); cursor: pointer; font-size: .85rem; }
+    .node-kind-tab .subtle { font-size: .68rem; }
+    .node-kind-tab.active { border-color: var(--accent); background: var(--surface-3); }
+    .node-kind-form { border: 1px solid var(--border, #334155); border-radius: 8px; padding: 10px; margin-top: 6px; }
+    .phone-node-qr { text-align: center; margin: 8px 0; }
+    .phone-node-qr img { width: 200px; height: 200px; background: #fff; padding: 6px; border-radius: 8px; }
+    .pill.kind { background: rgba(56,189,248,.16); color: var(--accent, #38bdf8); text-transform: uppercase; font-size: .62rem; letter-spacing: .04em; }
     @media (max-width: 920px) { .nodes-layout { grid-template-columns: 1fr; } }
+    .ticket-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .ticket-form-grid .ticket-form-full { grid-column: 1 / -1; }
+    .ticket-form-grid textarea { width: 100%; resize: vertical; }
     .artifact-file-grid {
       display: grid;
       gap: 8px;
@@ -933,6 +950,56 @@ INDEX_HTML = r"""<!doctype html>
           <div class="panel-body"><div class="list" id="hostRoutesList"></div></div>
         </article>
       </section>
+      <section class="artifact-layout view-block" data-section="tasks">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Tickety</h2>
+              <p class="subtle">Tickety infrastruktury — dodawaj ręcznie lub z czatu, uruchamiaj i zamykaj.</p>
+            </div>
+            <div class="toolbar">
+              <select id="sprintFilter">
+                <option value="current">current</option>
+                <option value="all">all</option>
+              </select>
+              <select id="queueFilter">
+                <option value="">all queues</option>
+                <option value="implementation">implementation</option>
+                <option value="daily">daily</option>
+                <option value="review">review</option>
+                <option value="infra">infra</option>
+                <option value="default">default</option>
+              </select>
+              <button type="button" id="taskRefreshBtn" onclick="reloadTasks()">Odśwież</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <details class="add-ticket-form" id="addTicketDetails" style="margin-bottom:12px">
+              <summary>➕ Nowy ticket (ręcznie lub z bieżącego promptu czatu)</summary>
+              <div class="ticket-form-grid" style="margin-top:10px">
+                <label class="stack"><span class="subtle">Tytuł</span><input id="newTicketName" placeholder="np. Wdróż node lenovo do mesh"></label>
+                <label class="stack"><span class="subtle">Priorytet</span>
+                  <select id="newTicketPriority"><option value="normal">normal</option><option value="high">high</option><option value="low">low</option></select></label>
+                <label class="stack"><span class="subtle">Kolejka</span>
+                  <select id="newTicketQueue"><option value="default">default</option><option value="infra">infra</option><option value="implementation">implementation</option><option value="daily">daily</option><option value="review">review</option></select></label>
+                <label class="stack"><span class="subtle">Etykiety (po przecinku)</span><input id="newTicketLabels" placeholder="infra, deploy"></label>
+                <label class="stack ticket-form-full"><span class="subtle">Opis</span><textarea id="newTicketDesc" rows="3" placeholder="Szczegóły zadania infrastrukturalnego…"></textarea></label>
+              </div>
+              <div class="artifact-actions" style="margin-top:8px">
+                <button type="button" class="primary" onclick="createTicket()">💾 Utwórz ticket</button>
+                <button type="button" onclick="createTicketFromChat()" title="Użyj tekstu z pola czatu jako nowy ticket">💬 Z promptu czatu</button>
+                <span id="newTicketStatus" class="subtle"></span>
+              </div>
+            </details>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Queue</th><th>Priority</th><th>Actions</th></tr></thead>
+                <tbody id="tasksBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </section>
       <div class="stack">
         <article class="panel view-block chat-panel" data-section="chat">
           <div class="panel-head">
@@ -982,78 +1049,145 @@ INDEX_HTML = r"""<!doctype html>
             </div>
           </div>
         </article>
-        <article class="panel view-block" data-section="tasks">
-          <div class="panel-head">
-            <h2>Tasks</h2>
-            <div class="toolbar">
-              <select id="sprintFilter">
-                <option value="current">current</option>
-                <option value="all">all</option>
-              </select>
-              <select id="queueFilter">
-                <option value="">all queues</option>
-                <option value="implementation">implementation</option>
-                <option value="daily">daily</option>
-                <option value="review">review</option>
-                <option value="default">default</option>
-              </select>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Queue</th><th>Priority</th><th>Actions</th></tr></thead>
-              <tbody id="tasksBody"></tbody>
-            </table>
-          </div>
-        </article>
         <section class="nodes-layout view-block" data-section="nodes">
         <article class="panel">
           <div class="panel-head"><h2>Nodes</h2><span class="subtle" id="nodeCount"></span></div>
           <div class="panel-body">
             <div class="list" id="nodesList"></div>
             <details class="add-node-help" style="margin-top:10px">
-              <summary>➕ Jak dodać node (gdy nie ma go na liście)</summary>
+              <summary>➕ Dodaj node (wybierz typ połączenia)</summary>
               <div class="stack" style="margin-top:8px">
-                <div class="artifact-actions">
-                  <button type="button" id="scanNodesBtn" onclick="scanNodes()">🔎 Skanuj sieć (LAN)</button>
-                  <span id="scanNodesStatus" class="subtle"></span>
+                <p class="subtle">Każdy typ node ma inny poziom integracji i wymaga innej wiedzy. Wybierz typ, wypełnij formularz i otwórz pełną instrukcję. <a href="/docs/nodes" target="_blank" rel="noreferrer">📖 Dokumentacja typów node</a></p>
+                <div class="node-kind-tabs" id="nodeKindTabs">
+                  <button type="button" class="node-kind-tab" data-kind="server" onclick="selectNodeKind('server')">🖥️ Server <span class="subtle">shell/SSH</span></button>
+                  <button type="button" class="node-kind-tab" data-kind="pc" onclick="selectNodeKind('pc')">💻 PC <span class="subtle">app + shell</span></button>
+                  <button type="button" class="node-kind-tab" data-kind="rdp" onclick="selectNodeKind('rdp')">🪟 RDP <span class="subtle">pulpit zdalny</span></button>
+                  <button type="button" class="node-kind-tab" data-kind="smartphone" onclick="selectNodeKind('smartphone')">📱 Smartphone <span class="subtle">web → APK</span></button>
+                  <button type="button" class="node-kind-tab" data-kind="browser" onclick="selectNodeKind('browser')">🌐 Browser <span class="subtle">cała przeglądarka</span></button>
+                  <button type="button" class="node-kind-tab" data-kind="web" onclick="selectNodeKind('web')">📄 Web <span class="subtle">jedna strona JS</span></button>
                 </div>
-                <div id="scanNodesResults" class="list"></div>
-                <p class="subtle">Mesh nie wykrywa węzłów automatycznie (świadomie — węzły są jawne i enrolled). Skan to jednorazowe, read-only sondowanie /health po lokalnej podsieci na porcie węzła; znalezione węzły dodajesz przyciskiem „dodaj".</p>
-                <p class="subtle">Albo wpisz ręcznie: node to nazwa + URL usługi urirun (port węzła) — poniżej dostaniesz gotowy wpis do wklejenia (host i urifix rozwiążą ten node).</p>
-                <label class="stack"><span class="subtle">Nazwa node'a</span><input id="addNodeName" oninput="nodeAddSnippet()" placeholder="office-node"></label>
-                <label class="stack"><span class="subtle">URL node'a</span><input id="addNodeUrl" oninput="nodeAddSnippet()" placeholder="http://host-or-ip:8765"></label>
-                <div class="artifact-actions">
-                  <button type="button" onclick="saveNodeFromForm()">💾 Zapisz node</button>
-                  <a id="addNodeHealth" href="#" target="_blank" rel="noreferrer">otwórz /health (sprawdź osiągalność)</a>
-                  <span id="addNodeStatus" class="subtle"></span>
-                </div>
-                <label class="stack"><span class="subtle">Token zarządzania węzłem (X-Urirun-Token) — potrzebny do provisioningu tras na zdalnym węźle</span>
-                  <input id="addNodeToken" type="password" autocomplete="off" placeholder="wklej token węzła (zapisywany w keyring, nie w plaintext)"></label>
-                <div class="artifact-actions">
-                  <button type="button" onclick="saveNodeToken()">🔑 Zapisz token (keyring)</button>
-                  <span id="addNodeTokenStatus" class="subtle"></span>
-                </div>
-                <p class="subtle">„Zapisz" trwale dodaje node do host config (host go rozwiąże) i do ~/.urirun/nodes.json (urifix auto-naprawa). Albo wklej ręcznie jeden z poniższych:</p>
-                <pre id="addNodeSnippet" class="mono">— wpisz nazwę i URL powyżej —</pre>
-                <hr style="border:none;border-top:1px solid var(--border,#334155);margin:12px 0">
-                <div class="artifact-actions">
-                  <button type="button" id="addPhoneNodeBtn" onclick="showAddPhoneNodeQR()">📱 Dodaj smartfon (QR + APK)</button>
-                  <span id="addPhoneNodeStatus" class="subtle"></span>
-                </div>
-                <p class="subtle">Zeskanuj telefonem QR poniżej, aby otworzyć stronę instalacji (serwis android-node, domyślnie port 8195). Telefon pobierze aplikację APK / skrypt Termux i dołączy jako node — tak jak laptop Lenovo. Wymaga uruchomionego serwisu: <code>urirun-android-node serve</code>.</p>
-                <div id="phoneNodeQrContainer" style="display:none;margin-top:8px">
-                  <div id="phoneNodeQr" class="phone-node-qr"></div>
-                  <p class="subtle">URL instalacji: <code id="phoneNodeUrl"></code></p>
-                  <p class="subtle" id="phoneNodeReach"></p>
-                  <label class="stack"><span class="subtle">Po instalacji — zarejestruj node (nazwa + URL telefonu, port 8765)</span></label>
+
+                <!-- SERVER -->
+                <div class="node-kind-form" id="nodeForm-server" style="display:none">
+                  <p class="subtle">🖥️ <strong>Server</strong> — sterowanie przez <strong>shell/SSH</strong>. Headless maszyna; instalujesz węzeł urirun zdalnie przez SSH. Wymaga: dostęp SSH (user@host), uprawnienia do instalacji. <a href="/docs/nodes#server" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="srvName" placeholder="server-01"></label>
+                  <label class="stack"><span class="subtle">Host / IP</span><input id="srvHost" oninput="srvSnippet()" placeholder="192.168.1.50"></label>
                   <div class="artifact-actions">
-                    <input id="phoneNodeName" placeholder="nexus7">
-                    <input id="phoneNodeNodeUrl" placeholder="http://192.168.x.x:8765">
-                    <button type="button" onclick="savePhoneNode()">💾 Zapisz node telefonu</button>
-                    <span id="phoneNodeSaveStatus" class="subtle"></span>
+                    <label class="stack" style="flex:1"><span class="subtle">SSH user</span><input id="srvUser" oninput="srvSnippet()" placeholder="ubuntu"></label>
+                    <label class="stack"><span class="subtle">Port node'a</span><input id="srvPort" oninput="srvSnippet()" value="8765" style="width:90px"></label>
+                  </div>
+                  <p class="subtle">Uruchom zdalnie (instaluje węzeł i serwuje go w tle):</p>
+                  <pre id="srvSnippet" class="mono">— podaj host i usera —</pre>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('server','srvName',srvUrl())">💾 Zapisz node (po instalacji)</button>
+                    <span id="srvStatus" class="subtle"></span>
                   </div>
                 </div>
+
+                <!-- PC -->
+                <div class="node-kind-form" id="nodeForm-pc" style="display:none">
+                  <p class="subtle">💻 <strong>PC</strong> — sterowanie przez <strong>aplikację desktop + shell</strong>. Maszyna z GUI; uruchamiasz węzeł lokalnie (lub przez aplikację ifURI). Wymaga: dostęp do pulpitu, terminal. <a href="/docs/nodes#pc" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="pcName" placeholder="lenovo"></label>
+                  <label class="stack"><span class="subtle">URL węzła (po uruchomieniu)</span><input id="pcUrl" placeholder="http://192.168.1.20:8765"></label>
+                  <p class="subtle">Na PC uruchom węzeł:</p>
+                  <pre class="mono">curl -fsSL https://get.ifuri.com/node.sh | bash -s -- --name pc --port 8765 --background</pre>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('pc','pcName',document.getElementById('pcUrl').value)">💾 Zapisz node</button>
+                    <span id="pcStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- RDP -->
+                <div class="node-kind-form" id="nodeForm-rdp" style="display:none">
+                  <p class="subtle">🪟 <strong>RDP</strong> — <strong>pulpit zdalny</strong> (Windows/xrdp). Sterujesz klawiaturą/myszą/ekranem zdalnego pulpitu. Wymaga: host RDP, login, port 3389, węzeł urirun z connectorem KVM po stronie pulpitu. <a href="/docs/nodes#rdp" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="rdpName" placeholder="win-desktop"></label>
+                  <div class="artifact-actions">
+                    <label class="stack" style="flex:1"><span class="subtle">Host RDP</span><input id="rdpHost" oninput="rdpSnippet()" placeholder="192.168.1.30"></label>
+                    <label class="stack"><span class="subtle">Port RDP</span><input id="rdpPort" oninput="rdpSnippet()" value="3389" style="width:90px"></label>
+                  </div>
+                  <label class="stack"><span class="subtle">URL węzła urirun na pulpicie</span><input id="rdpUrl" placeholder="http://192.168.1.30:8765"></label>
+                  <p class="subtle">Połącz pulpit (przykład xfreerdp):</p>
+                  <pre id="rdpSnippet" class="mono">— podaj host RDP —</pre>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('rdp','rdpName',document.getElementById('rdpUrl').value)">💾 Zapisz node</button>
+                    <span id="rdpStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- SMARTPHONE (two-stage: web node now then mobile node after APK) -->
+                <div class="node-kind-form" id="nodeForm-smartphone" style="display:none">
+                  <p class="subtle">📱 <strong>Smartphone</strong> — dwa etapy: <strong>(1) web node</strong> od razu po otwarciu strony w przeglądarce telefonu (sterowanie przez JS na stronie), <strong>(2) mobile node</strong> po instalacji APK/Termux (pełny węzeł: pliki, system). Wymaga: serwis android-node (port 8195) + telefon w tej samej sieci. <a href="/docs/nodes#smartphone" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <div class="artifact-actions">
+                    <button type="button" id="phoneSvcBtn" onclick="startPhoneService()">▶ Uruchom serwis android-node</button>
+                    <button type="button" id="addPhoneNodeBtn" onclick="showAddPhoneNodeQR()">📱 Pokaż QR</button>
+                    <span id="addPhoneNodeStatus" class="subtle"></span>
+                  </div>
+                  <div id="phoneNodeQrContainer" style="display:none;margin-top:8px">
+                    <div id="phoneNodeQr" class="phone-node-qr"></div>
+                    <p class="subtle">URL instalacji: <code id="phoneNodeUrl"></code></p>
+                    <p class="subtle" id="phoneNodeReach"></p>
+                    <div id="phoneWebNodes" class="subtle">Brak podłączonych telefonów (web node) — otwórz URL na telefonie.</div>
+                    <label class="stack" style="margin-top:6px"><span class="subtle">Po instalacji APK — zarejestruj jako mobile node (nazwa + URL telefonu, port 8765)</span></label>
+                    <div class="artifact-actions">
+                      <input id="phoneNodeName" placeholder="nexus7">
+                      <input id="phoneNodeNodeUrl" placeholder="http://192.168.x.x:8765">
+                      <button type="button" onclick="savePhoneNode()">💾 Zapisz mobile node</button>
+                      <span id="phoneNodeSaveStatus" class="subtle"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- BROWSER -->
+                <div class="node-kind-form" id="nodeForm-browser" style="display:none">
+                  <p class="subtle">🌐 <strong>Browser</strong> — sterowanie <strong>całą przeglądarką</strong> przez DevTools (CDP). Wszystkie karty: otwieraj/zamykaj/nawiguj. Wymaga: przeglądarka z <code>--remote-debugging-port=9222</code> + connector webnode. <a href="/docs/nodes#browser" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="brName" placeholder="chrome"></label>
+                  <label class="stack"><span class="subtle">Endpoint debugowania (CDP)</span><input id="brUrl" placeholder="http://127.0.0.1:9222"></label>
+                  <p class="subtle">Uruchom przeglądarkę z debugowaniem:</p>
+                  <pre class="mono">google-chrome --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1</pre>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('browser','brName',document.getElementById('brUrl').value)">💾 Zapisz node</button>
+                    <span id="brStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- WEB -->
+                <div class="node-kind-form" id="nodeForm-web" style="display:none">
+                  <p class="subtle">📄 <strong>Web</strong> — sterowanie <strong>konkretną stroną</strong> przez HTML/JS (webnode page scope). Jedna karta: nawigacja, eval JS, klik, wpisywanie, screenshot. Wymaga: CDP jak Browser + <code>WEBNODE_TARGET</code> = id karty. <a href="/docs/nodes#web" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="webName" placeholder="page-checkout"></label>
+                  <label class="stack"><span class="subtle">Endpoint debugowania (CDP)</span><input id="webUrl" placeholder="http://127.0.0.1:9222"></label>
+                  <label class="stack"><span class="subtle">Target / id karty (opcjonalnie — pinuje jedną stronę)</span><input id="webTarget" placeholder="puste = aktywna karta"></label>
+                  <p class="subtle">Listę kart i ich id pobierzesz z route'a <code>webnode://browser/tabs/query/list</code>.</p>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('web','webName',document.getElementById('webUrl').value)">💾 Zapisz node</button>
+                    <span id="webStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <hr style="border:none;border-top:1px solid var(--border,#334155);margin:12px 0">
+                <details>
+                  <summary class="subtle">🔎 Skan LAN / wpis ręczny / token (zaawansowane)</summary>
+                  <div class="stack" style="margin-top:8px">
+                    <div class="artifact-actions">
+                      <button type="button" id="scanNodesBtn" onclick="scanNodes()">🔎 Skanuj sieć (LAN)</button>
+                      <span id="scanNodesStatus" class="subtle"></span>
+                    </div>
+                    <div id="scanNodesResults" class="list"></div>
+                    <label class="stack"><span class="subtle">Nazwa node'a</span><input id="addNodeName" oninput="nodeAddSnippet()" placeholder="office-node"></label>
+                    <label class="stack"><span class="subtle">URL node'a</span><input id="addNodeUrl" oninput="nodeAddSnippet()" placeholder="http://host-or-ip:8765"></label>
+                    <div class="artifact-actions">
+                      <button type="button" onclick="saveNodeFromForm()">💾 Zapisz node</button>
+                      <a id="addNodeHealth" href="#" target="_blank" rel="noreferrer">otwórz /health</a>
+                      <span id="addNodeStatus" class="subtle"></span>
+                    </div>
+                    <label class="stack"><span class="subtle">Token zarządzania węzłem (X-Urirun-Token)</span>
+                      <input id="addNodeToken" type="password" autocomplete="off" placeholder="wklej token (keyring, nie plaintext)"></label>
+                    <div class="artifact-actions">
+                      <button type="button" onclick="saveNodeToken()">🔑 Zapisz token (keyring)</button>
+                      <span id="addNodeTokenStatus" class="subtle"></span>
+                    </div>
+                    <pre id="addNodeSnippet" class="mono">— wpisz nazwę i URL powyżej —</pre>
+                  </div>
+                </details>
               </div>
             </details>
           </div>
@@ -1259,6 +1393,56 @@ INDEX_HTML = r"""<!doctype html>
           </div></td>
         </tr>`;
       }).join('') || `<tr><td colspan="6">${empty('No tasks')}</td></tr>`;
+    }
+
+    // Reload only the tickets table (sprint/queue filters applied) without a full dashboard reload.
+    async function reloadTasks() {
+      const sprint = $('sprintFilter') ? $('sprintFilter').value : 'current';
+      const queue = $('queueFilter') ? $('queueFilter').value : '';
+      try {
+        const data = await api(`/api/tasks?sprint=${encodeURIComponent(sprint)}&queue=${encodeURIComponent(queue)}`);
+        state.tasks = data.tickets || [];
+        renderTasks(state.tasks);
+        renderMetrics(state.summary || {});
+      } catch (error) { /* surfaced on next full load */ }
+    }
+
+    // Create a planfile ticket from the manual form. POSTs to /api/tasks/create (planfile_adapter),
+    // so it is the same ticket store the CLI and agents use.
+    async function createTicket(extra = {}) {
+      const status = $('newTicketStatus');
+      const body = {
+        name: ($('newTicketName') || {}).value || '',
+        description: ($('newTicketDesc') || {}).value || '',
+        priority: ($('newTicketPriority') || {}).value || 'normal',
+        queue: ($('newTicketQueue') || {}).value || 'default',
+        labels: ($('newTicketLabels') || {}).value || '',
+        ...extra,
+      };
+      if (!String(body.name).trim() && !String(body.prompt || '').trim()) {
+        if (status) status.textContent = 'podaj tytuł (lub użyj \u201eZ promptu czatu\u201d)';
+        return;
+      }
+      if (status) status.textContent = 'tworz\u0119 ticket\u2026';
+      try {
+        const res = await api('/api/tasks/create', { method: 'POST', body: JSON.stringify(body) });
+        const t = res.ticket || {};
+        if (status) status.textContent = `utworzono: ${t.id || ''} ${t.name || ''}`;
+        if ($('newTicketName')) $('newTicketName').value = '';
+        if ($('newTicketDesc')) $('newTicketDesc').value = '';
+        if ($('newTicketLabels')) $('newTicketLabels').value = '';
+        await reloadTasks();
+      } catch (error) {
+        if (status) status.textContent = 'b\u0142\u0105d: ' + error.message;
+      }
+    }
+
+    // "Add from chat": turn whatever is currently typed in the chat composer into a ticket.
+    function createTicketFromChat() {
+      const prompt = ($('chatPrompt') ? $('chatPrompt').value : '').trim();
+      const status = $('newTicketStatus');
+      if (!prompt) { if (status) status.textContent = 'pole czatu jest puste'; return; }
+      createTicket({ prompt, source_tool: 'urirun-host-chat' });
     }
 
     function renderNodes(nodes) {
@@ -1477,10 +1661,26 @@ INDEX_HTML = r"""<!doctype html>
       try {
         const res = await api('/api/nodes/token', { method: 'POST', body: JSON.stringify({ name, token }) });
         if (input) input.value = '';  // never keep the secret in the DOM
-        if (status) status.textContent = '✓ zapisano w keyring (' + (res.tokenRef || 'secret://keyring/urirun-node-token/' + name) + ')';
+        if (status) status.innerHTML = renderTokenVerdict(res, name);
       } catch (error) {
         if (status) status.textContent = 'błąd: ' + error.message;
       }
+    }
+
+    // Green/red verdict after saving a node token: did it actually authorize the node?
+    function renderTokenVerdict(res, name) {
+      const chk = (res && res.check) || {};
+      if (res && res.valid === true) {
+        return '<span style="color:#16a34a;font-weight:600">🟢 token poprawny</span> — zapisany w keyring, autoryzuje node ' + esc(name);
+      }
+      if (res && res.valid === false) {
+        let msg = '<span style="color:#dc2626;font-weight:600">🔴 token niepoprawny</span> — node odrzucił: ' + esc(chk.tokenReason || 'unauthorized');
+        if (chk.keyValid) msg += '<br><span style="color:#16a34a">✓ ale autoryzacja kluczem (uri-copy-id) działa — token jest zbędny</span>';
+        else if (chk.keyAuth) msg += '<br><span class="subtle">ten node używa key-auth — enrolluj klucz: uri-copy-id</span>';
+        return msg;
+      }
+      // valid === null/undefined: stored, but could not verify (node unreachable, no URL)
+      return '<span style="color:#a16207">🟡 zapisano w keyring, nie zweryfikowano</span> — ' + esc((chk && chk.reason) || 'węzeł niedostępny');
     }
 
 	    function contactCard(contact) {
@@ -1592,6 +1792,12 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function discoveryObjects(summary) {
+      if (Array.isArray(summary.objects) && summary.objects.length) {
+        return summary.objects.map((item) => ({
+          ...item,
+          routes: dedupeRoutes((item.routes || []).map((route) => normalizeRoute(route, item))),
+        }));
+      }
       const host = summary.host || {};
       const hostOwner = {
         id: 'host',
@@ -4322,6 +4528,7 @@ def chat_delete_messages(db: str | None, payload: dict) -> dict:
     return {"ok": True, "deleted": deleted, "ids": ids}
 
 
+from . import document_metadata as _document_metadata
 from .document_metadata import (  # noqa: F401 - re-exported for backward compat
     _LLM_DOC_TYPES,
     _LLM_FIELDS_SPEC,
@@ -4349,6 +4556,37 @@ from .document_metadata import (  # noqa: F401 - re-exported for backward compat
     shutil_which,
 )
 
+
+def _sync_document_metadata_hooks() -> None:
+    for name in (
+        "_llm_extract_metadata",
+        "_llm_model",
+        "_llm_api_key_ref",
+        "_llm_complete_metadata",
+        "_local_image_ocr_tesseract",
+        "_local_image_ocr_llm",
+        "_ocr_connector_envelope",
+        "_ocr_text_ok",
+        "_truthy_env",
+        "shutil_which",
+    ):
+        setattr(_document_metadata, name, globals()[name])
+
+
+def _extract_document_metadata(ocr_text: str, *, captured_at: str | None = None,
+                               image_path: str | None = None, use_llm: bool = True) -> dict:
+    _sync_document_metadata_hooks()
+    return _document_metadata._extract_document_metadata(
+        ocr_text,
+        captured_at=captured_at,
+        image_path=image_path,
+        use_llm=use_llm,
+    )
+
+
+def _local_image_ocr(path: str, backend: str | None = None) -> dict:
+    _sync_document_metadata_hooks()
+    return _document_metadata._local_image_ocr(path, backend=backend)
 
 
 
@@ -5865,78 +6103,28 @@ def _archive_scanned_document(
 
 
 
-def _lan_host() -> str:
-    configured = os.environ.get("URIRUN_DASHBOARD_PUBLIC_HOST")
-    if configured:
-        return configured
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-            sock.connect(("8.8.8.8", 80))
-            host = sock.getsockname()[0]
-            if host and not host.startswith("127."):
-                return host
-    except OSError:
-        pass
-    try:
-        host = socket.gethostbyname(socket.gethostname())
-        if host and not host.startswith("127."):
-            return host
-    except OSError:
-        pass
-    return "127.0.0.1"
+from .scanner_net import (  # noqa: F401 - re-exported for backward compat
+    _ensure_tls_cert,
+    _lan_host,
+    _phone_scanner_external_status,
+    _phone_scanner_url,
+    _probe_scanner_url,
+    _public_base_url,
+    _scanner_autonomy_params,
+    _scanner_page_url,
+    _url_host,
+    _write_qr_png,
+)
 
 
-def _url_host(host: str) -> str:
-    if ":" in host and not host.startswith("["):
-        return f"[{host}]"
-    return host
 
 
-def _public_base_url(scheme: str, host: str, port: int) -> str:
-    explicit = os.environ.get("URIRUN_DASHBOARD_PUBLIC_URL")
-    if explicit:
-        return explicit.rstrip("/")
-    bind_host = (host or "127.0.0.1").strip("[]")
-    if bind_host in {"", "0.0.0.0", "::"}:
-        public_host = _lan_host()
-    else:
-        public_host = bind_host
-    return f"{scheme}://{_url_host(public_host)}:{port}"
 
 
-def _scanner_autonomy_params() -> dict[str, str]:
-    return {
-        "autostart": os.environ.get("URIRUN_PHONE_SCANNER_AUTOSTART", "1"),
-        "auto": os.environ.get("URIRUN_PHONE_SCANNER_AUTO", "1"),
-        "best": os.environ.get("URIRUN_PHONE_SCANNER_BEST", "1"),
-        "count": os.environ.get("URIRUN_PHONE_SCANNER_BEST_COUNT", "6"),
-        "minScore": os.environ.get("URIRUN_PHONE_SCANNER_MIN_SCORE", "45"),
-        "interval": os.environ.get("URIRUN_PHONE_SCANNER_INTERVAL", "3"),
-    }
 
 
-def _scanner_page_url(base_url: str) -> str:
-    parts = urlsplit(base_url)
-    query = dict(parse_qsl(parts.query, keep_blank_values=True))
-    for key, value in _scanner_autonomy_params().items():
-        query.setdefault(key, value)
-    return urlunsplit((parts.scheme, parts.netloc, parts.path or "/scanner", urlencode(query), parts.fragment))
 
 
-def _write_qr_png(url: str, path: Path) -> None:
-    import qrcode
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    qr = qrcode.QRCode(
-        version=None,
-        error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=12,
-        border=4,
-    )
-    qr.add_data(url)
-    qr.make(fit=True)
-    image = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-    image.save(path)
 
 
 def startup_phone_qr(project: str, db: str | None, *, scheme: str, host: str, port: int,
@@ -5989,60 +6177,12 @@ def startup_phone_qr(project: str, db: str | None, *, scheme: str, host: str, po
     return {"ok": True, "uri": uri, "url": scanner_url, "artifact": artifact, "message": message}
 
 
-def _ensure_tls_cert(cert: str, key: str) -> tuple[str, str]:
-    cert_path = Path(cert).expanduser()
-    key_path = Path(key).expanduser()
-    if cert_path.is_file() and key_path.is_file():
-        return str(cert_path), str(key_path)
-    cert_path.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        [
-            "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
-            "-keyout", str(key_path),
-            "-out", str(cert_path),
-            "-days", "365",
-            "-subj", "/CN=urirun-dashboard.local",
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return str(cert_path), str(key_path)
 
 
-def _probe_scanner_url(url: str, timeout: float = 1.5) -> bool:
-    import urllib.request
-
-    try:
-        context = ssl._create_unverified_context() if url.startswith("https://") else None
-        with urllib.request.urlopen(url, timeout=timeout, context=context) as response:
-            return 200 <= int(response.status) < 500
-    except Exception:  # noqa: BLE001
-        return False
 
 
-def _phone_scanner_url(port: int, *, scheme: str | None = None) -> str:
-    scanner_scheme = (scheme or os.environ.get("URIRUN_PHONE_SCANNER_SCHEME", "https")).strip() or "https"
-    return _scanner_page_url(f"{scanner_scheme}://{_url_host(_lan_host())}:{int(port)}/scanner")
 
 
-def _phone_scanner_external_status(port: int, *, timeout: float = 0.35) -> dict:
-    primary_scheme = os.environ.get("URIRUN_PHONE_SCANNER_SCHEME", "https").strip().lower() or "https"
-    schemes = [primary_scheme]
-    if os.environ.get("URIRUN_PHONE_SCANNER_PROBE_BOTH", "1").lower() in {"1", "true", "yes", "on"}:
-        fallback = "http" if primary_scheme == "https" else "https"
-        schemes.append(fallback)
-
-    seen: set[str] = set()
-    primary_url = _phone_scanner_url(port, scheme=primary_scheme)
-    for scheme in schemes:
-        if scheme in seen:
-            continue
-        seen.add(scheme)
-        url = _phone_scanner_url(port, scheme=scheme)
-        if _probe_scanner_url(url, timeout=timeout):
-            return {"status": "external-running", "reachable": True, "url": url}
-    return {"status": "stopped", "reachable": False, "url": primary_url}
 
 
 def _nl_text(text: str) -> str:
@@ -7594,6 +7734,13 @@ def summary(project: str, db: str | None, config: str | None, node_urls: list[st
     services = _service_contacts()
     host_routes = _host_registry_routes()
     host = _host_object_impl(project, host_routes)
+    objects = _uri_objects_impl(
+        project=project,
+        host_routes=host_routes,
+        nodes=nodes,
+        services=services,
+        routes=routes,
+    )
     return {
         "ok": True,
         "project": str(Path(project).expanduser().resolve()),
@@ -7608,6 +7755,7 @@ def summary(project: str, db: str | None, config: str | None, node_urls: list[st
         "serviceCount": len(services),
         "host": host,
         "hostRoutes": host_routes,
+        "objects": objects,
         "nodes": nodes,
         "services": services,
         "routes": routes,
@@ -7724,7 +7872,59 @@ def phone_node_qr(project: str, db: str | None, payload: dict) -> dict:
     }
 
 
-def node_set_token(config: str | None, payload: dict) -> dict:
+def _node_envelope_error(envelope: dict) -> str:
+    env = envelope.get("envelope") if isinstance(envelope, dict) else None
+    err = (env or {}).get("error") if isinstance(env, dict) else None
+    if isinstance(err, dict):
+        return str(err.get("message") or "odrzucone")
+    if isinstance(err, str):
+        return err
+    value = envelope.get("value") if isinstance(envelope, dict) else None
+    if isinstance(value, dict) and value.get("error"):
+        return str(value["error"])
+    return "odrzucone"
+
+
+def _probe_node_token(name: str, config: str | None, *, token: str | None = None,
+                      identity: str | None = None, node_urls: list[str] | None = None,
+                      timeout: float = 8.0) -> dict:
+    """Check whether a token (and/or the host's enrolled key) authorizes management on node
+    ``name`` — by calling the read-only ``node://<self>/registry/query/installed`` route, which is
+    admin-gated. Returns ``{reachable, tokenValid, tokenReason, keyValid, keyAuth}``; no side
+    effects beyond a query, the token value is never logged."""
+    url = _node_url_from_config(config, node_urls, name) or (_known_nodes_file_urls() or {}).get(name, "")
+    if not url:
+        return {"reachable": False, "reason": "nieznany URL węzła — najpierw dodaj node"}
+    self_name, key_auth = name, False
+    try:
+        request = urllib.request.Request(url.rstrip("/") + "/health", method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as resp:
+            health = json.loads(resp.read().decode("utf-8") or "{}")
+        self_name = str(health.get("name") or name)
+        key_auth = bool(health.get("keyAuth") or (health.get("policy") or {}).get("keyAuth"))
+    except Exception as exc:  # noqa: BLE001
+        return {"reachable": False, "reason": f"węzeł nieosiągalny: {exc}"}
+    probe = f"node://{self_name}/registry/query/installed"
+    out: dict = {"reachable": True, "keyAuth": key_auth}
+    if token:
+        try:
+            res = _run_node_uri(url, probe, {}, token=token, timeout=timeout)
+            out["tokenValid"] = bool(res.get("ok"))
+            if not res.get("ok"):
+                out["tokenReason"] = _node_envelope_error(res)
+        except Exception as exc:  # noqa: BLE001
+            out["tokenValid"] = False
+            out["tokenReason"] = str(exc)
+    if identity:
+        try:
+            out["keyValid"] = bool(_run_node_uri(url, probe, {}, identity=identity, timeout=timeout).get("ok"))
+        except Exception:  # noqa: BLE001
+            out["keyValid"] = False
+    return out
+
+
+def node_set_token(config: str | None, payload: dict, *, identity: str | None = None,
+                   node_urls: list[str] | None = None) -> dict:
     """Store a node's management token (X-Urirun-Token) the user typed in the Nodes view — into the
     OS keyring (the system's secret store), never plaintext. Records only a non-secret reference
     (`secret://keyring/urirun-node-token/<name>`) on the node config so the run path knows a token
@@ -7752,7 +7952,16 @@ def node_set_token(config: str | None, payload: dict) -> dict:
                 break
     except Exception:  # noqa: BLE001 - the marker is best-effort; the keyring store is authoritative
         pass
-    return {"ok": True, "name": name, "stored": "keyring", "tokenRef": token_ref}
+    result = {"ok": True, "name": name, "stored": "keyring", "tokenRef": token_ref}
+    # Validate the just-saved token against the node so the UI can show a green/red indicator.
+    try:
+        check = _probe_node_token(name, config, token=secret, identity=identity, node_urls=node_urls)
+        result["check"] = check
+        result["valid"] = check.get("tokenValid") if check.get("reachable") else None
+    except Exception as exc:  # noqa: BLE001 - validation is best-effort; the store already succeeded
+        result["check"] = {"reachable": False, "reason": str(exc)}
+        result["valid"] = None
+    return result
 
 
 def _try_urifix_repair(prompt: str, request: dict, result: dict, *, node_urls: list[str] | None = None,
@@ -8771,6 +8980,33 @@ def task_action(project: str, ticket_id: str, action: str, payload: dict) -> dic
     return {"ok": True, "ticket": ticket}
 
 
+def task_create(project: str, payload: dict) -> dict:
+    """Create a planfile ticket from the dashboard — the manual "new ticket" form or a chat
+    prompt. Reuses planfile_adapter.create_ticket (same path as `urirun host` ticket creation),
+    so infrastructure tickets entered here behave exactly like CLI/agent-created ones."""
+    planfile_adapter = _planfile_adapter()
+    payload = payload if isinstance(payload, dict) else {}
+    name = str(payload.get("name") or payload.get("title") or "").strip()
+    prompt = str(payload.get("prompt") or "").strip()
+    description = str(payload.get("description") or "").strip()
+    # "Add from chat": when only a prompt is given, its first line becomes the title and the
+    # full prompt the description, so a natural-language request turns into a real ticket.
+    if not name and prompt:
+        name = prompt.splitlines()[0].strip()[:120]
+        description = description or prompt
+    if not name:
+        return {"ok": False, "error": "ticket name (or chat prompt) is required"}
+    data: dict[str, Any] = {"name": name, "source_tool": payload.get("source_tool") or "urirun-host-dashboard"}
+    if description:
+        data["description"] = description
+    for key in ("priority", "queue", "labels", "prompt"):
+        value = payload.get(key)
+        if value not in (None, ""):
+            data[key] = value
+    ticket = planfile_adapter.create_ticket(project, data)
+    return {"ok": True, "ticket": ticket}
+
+
 def _artifact_delete_roots(project: str) -> list[Path]:
     roots = [
         Path(os.environ.get("URIRUN_ARTIFACT_DIR", "~/.urirun/artifacts")).expanduser(),
@@ -9060,6 +9296,11 @@ def _api_summary(project: str, db: str | None, config: str | None, query: dict, 
     return 200, summary(project, db, config, node_urls=node_urls)
 
 
+def _api_objects(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
+    data = summary(project, db, config, node_urls=node_urls)
+    return 200, {"ok": True, "objects": data.get("objects") or []}
+
+
 def _api_tasks(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
     tickets, error = _safe_tickets(
         project,
@@ -9117,6 +9358,7 @@ def _api_nodes_or_routes(path: str, config: str | None, node_urls: list[str] | N
 
 _API_ROUTES = {
     "/api/summary": _api_summary,
+    "/api/objects": _api_objects,
     "/api/tasks": _api_tasks,
     "/api/checks": _api_checks,
     "/api/logs": _api_logs,
@@ -9208,6 +9450,10 @@ def create_handler(
             parsed = urlparse(self.path)
             parts = [part for part in parsed.path.split("/") if part]
             try:
+                if parsed.path == "/api/tasks/create":
+                    payload = _read_json(self)
+                    _json_response(self, 200, task_create(project, payload))
+                    return
                 if len(parts) == 4 and parts[0] == "api" and parts[1] == "tasks":
                     payload = _read_json(self)
                     _json_response(self, 200, task_action(project, parts[2], parts[3], payload))
@@ -9252,7 +9498,7 @@ def create_handler(
                     return
                 if parsed.path == "/api/nodes/token":
                     payload = _read_json(self)
-                    _json_response(self, 200, node_set_token(config, payload))
+                    _json_response(self, 200, node_set_token(config, payload, identity=identity, node_urls=node_urls))
                     return
                 if parsed.path == "/api/uri/invoke":
                     payload = _read_json(self)

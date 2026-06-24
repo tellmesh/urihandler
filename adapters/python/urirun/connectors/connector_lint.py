@@ -27,6 +27,7 @@ import re
 from pathlib import Path
 
 DECORATOR_KINDS = ("command", "shell", "handler")
+_ERROR_SNIPPET_MAX = 200
 MACHINE_FIELDS = ("routes", "uriSchemes", "adapterKinds")
 
 # Env-var names whose *value* is a credential rather than an identifier/host/path. Matched
@@ -575,7 +576,7 @@ def verify_connector(pkg_dir: str | Path) -> dict:
     add(f"import/{modname}", True)
 
     valid = urirun.validate_binding_document(doc)
-    add("bindings/valid", valid.get("ok"), str(valid.get("errors"))[:200] if not valid.get("ok") else "")
+    add("bindings/valid", valid.get("ok"), str(valid.get("errors"))[:_ERROR_SNIPPET_MAX] if not valid.get("ok") else "")
     try:
         urirun.compile_registry(doc)
         add("registry/compiles", True)

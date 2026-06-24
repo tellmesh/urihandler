@@ -124,8 +124,8 @@ def _short_name(prompt: str, domains: list[str], daily: bool) -> str:
         return f"Check domain: {', '.join(domains[:2])}"
     cleaned = re.sub(r"\s+", " ", prompt.strip(" .")).strip()
     if len(cleaned) > 72:
-        cleaned = cleaned[:69].rstrip() + "..."
-    return cleaned[:1].upper() + cleaned[1:] if cleaned else "Chat task"
+        cleaned = f"{cleaned[:69].rstrip()}..."
+    return f"{cleaned[:1].upper()}{cleaned[1:]}" if cleaned else "Chat task"
 
 
 def _ambiguous_plan(prompt: str, default_sprint: str, labels: list[str]) -> TaskPlanningResult:

@@ -18,6 +18,7 @@ from urirun.node._util import json_load, json_write, slug
 CONFIG_VERSION = "urirun.mesh.v1"
 DEFAULT_CONFIG = ".urirun/mesh.json"
 DEFAULT_NODE_CONFIG = ".urirun/node.json"
+DEFAULT_NODE_PORT = 8765
 
 
 def host_config_path(path: str | None = None) -> Path:
@@ -88,7 +89,7 @@ def _coerce_node_url(raw: str) -> str:
     if not value:
         raise ValueError("node URL must not be empty")
     if "://" not in value:
-        value = f"http://{value if ':' in value else value + ':8765'}"
+        value = f"http://{value if ':' in value else f'{value}:8765'}"
     return value.rstrip("/")
 
 
@@ -142,7 +143,7 @@ def default_node_config(name: str | None = None, registry: str = ".urirun/regist
             "kind": "node",
             "registry": registry,
             "host": "0.0.0.0",
-            "port": 8765,
+            "port": DEFAULT_NODE_PORT,
             "execute": False,
             "runtime": {"type": "bare"},
             "services": [],
@@ -170,7 +171,7 @@ def init_node(
     name: str | None = None,
     registry: str = ".urirun/registry.merged.json",
     host: str = "0.0.0.0",
-    port: int = 8765,
+    port: int = DEFAULT_NODE_PORT,
     execute: bool = False,
 ) -> dict:
     config = default_node_config(name, registry)

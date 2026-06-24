@@ -17,6 +17,8 @@ from urllib.parse import unquote, urlencode
 from urirun.node import keyauth
 from urirun.node.transport import _annotate_deploy_allow_compat
 
+_DEFAULT_TIMEOUT = 120.0
+
 
 def _get(url: str, timeout: float = 6.0, headers: dict | None = None) -> dict:
     req = urllib.request.Request(url, headers=headers or {}, method="GET")
@@ -24,7 +26,7 @@ def _get(url: str, timeout: float = 6.0, headers: dict | None = None) -> dict:
         return json.loads(r.read().decode("utf-8") or "{}")
 
 
-def _post(url: str, body: dict, headers: dict | None = None, timeout: float = 120.0, raw: bytes | None = None) -> dict:
+def _post(url: str, body: dict, headers: dict | None = None, timeout: float = _DEFAULT_TIMEOUT, raw: bytes | None = None) -> dict:
     data = raw if raw is not None else json.dumps(body).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST",
                                  headers={"Content-Type": "application/json", **(headers or {})})
@@ -43,7 +45,7 @@ class NodeClient:
         self.base = url.rstrip("/")
         self.token = token  # sent as X-Urirun-Token on every request when set
         self.identity = identity  # SSH ed25519 key; signs POST /run and /deploy when set
-        h = _get(self.base + "/health", headers=self._auth())
+        h = _get(f"{self.base}/health", headers=self._auth())
         self.name = h.get("name", "node")
         self.version = h.get("version")
         self.has_events = "events" in h
@@ -76,7 +78,7 @@ class NodeClient:
 
     # --- dispatch ---
     def run(self, uri: str, payload: dict | None = None, run_id: str | None = None,
-            mode: str | None = None, expect_etag: str | None = None, timeout: float = 120.0) -> dict:
+            mode: str | None = None, expect_etag: str | None = None, timeout: float = _DEFAULT_TIMEOUT) -> dict:
         body: dict = {"uri": uri, "payload": payload or {}}
         if mode:
             body["mode"] = mode
@@ -107,7 +109,7 @@ class NodeClient:
 
     # --- self-management: deploy + acquire a capability on demand ---
     def deploy(self, bindings: dict | None = None, code: dict | None = None, allow: list | None = None,
-               env: dict | None = None, merge: bool = False, timeout: float = 120.0) -> dict:
+               env: dict | None = None, merge: bool = False, timeout: float = _DEFAULT_TIMEOUT) -> dict:
         """Push a registry (+ optional handler code/env) onto the node; merge adds routes
         to the existing surface instead of replacing it. Needs the node's admin token."""
         body: dict = {}
@@ -242,7 +244,7 @@ class NodeClient:
         source, err = NodeClient._load_module_source(module)
         if err:
             return err
-        flat = "_ensured_" + _re.sub(r"[^a-z0-9_]", "_", scheme.lower())
+        flat = f"_ensured_{_re.sub(r'[^a-z0-9_]', '_', scheme.lower())}"
         bindings = {
             uri: {
                 "uri": uri, "kind": "local-function", "adapter": "local-function",
@@ -491,7 +493,7 @@ class NodeClient:
         """Yield the node's SSE events live, each tagged with its `_id`. `scheme`/`run`
         filter server-side; `last_event_id` replays what was missed (resume after a drop)."""
         query = urlencode(self._watch_query_params(scheme, run, last_event_id))
-        url = self.base + "/events" + (f"?{query}" if query else "")
+        url = f"{self.base}/events" + (f"?{query}" if query else "")
         headers = self._auth({"Accept": "text/event-stream"}, raw=b"", purpose=keyauth.PURPOSE_RUN)
         if last_event_id is not None:
             headers["Last-Event-ID"] = str(last_event_id)
@@ -515,7 +517,7 @@ class NodeClient:
                     yield ev
 
     def stream_run(self, run_id: str, stop: threading.Event | None = None,
-                   timeout: float = 120.0) -> Iterator[dict]:
+                   timeout: float = _DEFAULT_TIMEOUT) -> Iterator[dict]:
         """Resilient run stream: yield a run's progress/result, reconnecting from the last
         seen event id after a drop so nothing is missed until the terminal `result`."""
         last = 0

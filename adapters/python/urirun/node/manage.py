@@ -25,6 +25,8 @@ import subprocess
 import sys
 from typing import Any
 
+_PIP_LIST_TIMEOUT = 120
+
 
 def _pip(args: list[str], timeout: float = 900) -> dict:
     cmd = [sys.executable, "-m", "pip", *args]
@@ -151,7 +153,7 @@ def connector_install(**payload: Any) -> dict:
     if not ok:
         return {"ok": False, "error": f"install blocked by policy: {reason}", "source": s, "sourceKind": kind, "policy": policy}
     if kind == "git":
-        spec = s if s.startswith(("git+", "git@", "ssh://")) else "git+" + s
+        spec = s if s.startswith(("git+", "git@", "ssh://")) else f"git+{s}"
         res = _pip(["install", "--upgrade", spec])
     elif kind == "local":
         path = _project_root(os.path.expanduser(s))
@@ -316,7 +318,7 @@ def registry_adopt(**payload: Any) -> dict:
 
 
 def package_list(**payload: Any) -> dict:
-    res = _pip(["list", "--format=freeze"], timeout=120)
+    res = _pip(["list", "--format=freeze"], timeout=_PIP_LIST_TIMEOUT)
     if not res.get("ok"):
         return res
     lines = (res.get("stdout") or "").splitlines()

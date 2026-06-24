@@ -15,6 +15,7 @@ from .widgets import query_value
 
 PAGE_ACTION_LOCK = threading.Lock()
 PAGE_ACTION_QUEUES: dict[str, list[dict]] = {}
+_PAGE_ACTION_QUEUE_MAX = 50
 
 
 @dataclass(frozen=True)
@@ -356,7 +357,7 @@ def page_action_enqueue(
     with PAGE_ACTION_LOCK:
         queue = PAGE_ACTION_QUEUES.setdefault(target, [])
         queue.append(item)
-        PAGE_ACTION_QUEUES[target] = queue[-50:]
+        PAGE_ACTION_QUEUES[target] = queue[-_PAGE_ACTION_QUEUE_MAX:]
     _add_log(deps, db, "page-action", "queued", item)
     return {"ok": True, "queued": True, "target": target, "action": item}
 

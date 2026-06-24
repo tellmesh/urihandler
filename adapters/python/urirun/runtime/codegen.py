@@ -304,7 +304,7 @@ def proto_from_registry(registry: dict, package: str = "urirun") -> tuple[str, l
 
 
 def to_proto(registry: dict, package: str = "urirun") -> str:
-    return proto_from_registry(registry, package=package)[0] + "\n"
+    return f"{proto_from_registry(registry, package=package)[0]}\n"
 
 
 def to_openapi(registry: dict, title: str = "urirun routes") -> dict:
