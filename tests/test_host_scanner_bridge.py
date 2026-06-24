@@ -100,6 +100,60 @@ def test_register_scanner_result_registers_camera_scan_without_document(tmp_path
     assert recorder.messages[-1]["attachments"] == []
 
 
+def test_scanner_public_candidate_for_live_adds_preview_urls_and_hides_ocr_text() -> None:
+    public = scanner_bridge.scanner_public_candidate_for_live(
+        {
+            "seriesId": "series-1",
+            "displayPath": "/tmp/crop.jpg",
+            "originalPath": "/tmp/raw.jpg",
+            "overlayPath": "/tmp/overlay.jpg",
+            "quality": {"score": 90},
+            "crop": {"ok": True},
+            "ocr": {"ok": True, "chars": 44, "text": "hidden"},
+        },
+        "/project",
+        preview_url=lambda path, project: f"/api/file?project={project}&path={path}",
+    )
+
+    assert public["previewUrl"] == "/api/file?project=/project&path=/tmp/crop.jpg"
+    assert public["originalPreviewUrl"] == "/api/file?project=/project&path=/tmp/raw.jpg"
+    assert public["overlayPreviewUrl"] == "/api/file?project=/project&path=/tmp/overlay.jpg"
+    assert public["ocr"] == {"ok": True, "chars": 44}
+
+
+def test_scanner_live_state_from_streams_sorts_limits_and_projects_documents() -> None:
+    result = scanner_bridge.scanner_live_state_from_streams(
+        [
+            {
+                "seriesId": "old",
+                "updatedAt": "2026-06-23T00:00:00Z",
+                "best": {"displayPath": "/tmp/old.jpg"},
+                "candidates": [{"displayPath": "/tmp/old.jpg"}],
+                "document": {"path": "/tmp/old.pdf"},
+            },
+            {
+                "seriesId": "new",
+                "updatedAt": "2026-06-24T00:00:00Z",
+                "best": {"displayPath": "/tmp/new.jpg"},
+                "candidates": [{"displayPath": "/tmp/new.jpg"}],
+                "document": {"path": "/tmp/new.pdf"},
+            },
+        ],
+        "/project",
+        limit=1,
+        preview_url=lambda path, project: f"/preview?path={path}",
+        utc_now=lambda: "now",
+    )
+
+    assert result["updatedAt"] == "now"
+    assert len(result["streams"]) == 1
+    stream = result["streams"][0]
+    assert stream["seriesId"] == "new"
+    assert stream["best"]["previewUrl"] == "/preview?path=/tmp/new.jpg"
+    assert stream["candidates"][0]["previewUrl"] == "/preview?path=/tmp/new.jpg"
+    assert stream["document"]["previewUrl"] == "/preview?path=/tmp/new.pdf"
+
+
 def test_scanner_session_logs_and_adds_chat_message() -> None:
     recorder = BridgeRecorder()
 

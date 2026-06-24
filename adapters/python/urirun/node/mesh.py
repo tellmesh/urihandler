@@ -772,11 +772,18 @@ def deploy_command(args: argparse.Namespace) -> int:
     if identity and not token:
         identity = os.path.expanduser(identity)
 
+    merge = bool(getattr(args, "merge", False))
     result = deploy_to_node(url, bindings=bindings, registry=registry,
                             allow=args.allow or None, code=code or None, env=env or None,
                             name=args.name, token=token, identity=identity,
-                            merge=bool(getattr(args, "merge", False)),
+                            merge=merge,
                             persist=bool(getattr(args, "persist", False)))
+    if result.get("droppedRoutes") and not merge:
+        import sys as _sys
+        print(f"[deploy] warning: {len(result['droppedRoutes'])} route(s) dropped by replace-deploy:",
+              file=_sys.stderr, flush=True)
+        for uri in result["droppedRoutes"]:
+            print(f"  - {uri}", file=_sys.stderr, flush=True)
     reglib._emit_json(result, "-")
     return 0 if result.get("ok") else 1
 
@@ -1072,15 +1079,22 @@ def _reimport_pushed_code(pushed_mods: list[str], summary: dict) -> None:
             summary.setdefault("codeWarnings", []).append(f"{mod}: {type(exc).__name__}: {exc}")
 
 
-def _apply_deploy_surface(state: dict, body: dict) -> dict:
-    """Hot-swap the served registry+routes when the payload carries a surface; return the
-    effective registry either way."""
+def _apply_deploy_surface(state: dict, body: dict) -> tuple[dict, list[str]]:
+    """Hot-swap the served registry+routes when the payload carries a surface.
+
+    Returns (effective_registry, dropped_uris). ``dropped_uris`` is non-empty only on
+    a replace-deploy (not merge) when the new surface omits routes the node was serving."""
     if body.get("registry") or body.get("bindings"):
         registry = _deploy_registry(body, state.get("registry"))
+        if not body.get("merge"):
+            new_uris = {r["uri"] for r in routes_from_registry(registry, source="deploy")}
+            dropped = [r["uri"] for r in state.get("routes") or [] if r.get("uri") not in new_uris]
+        else:
+            dropped = []
         state["registry"] = registry
-        state["routes"] = routes_from_registry(registry, source="deploy")  # host-pushed surface
-        return registry
-    return state.get("registry") or {"version": v2.VERSION, "bindings": {}}
+        state["routes"] = routes_from_registry(registry, source="deploy")
+        return registry, dropped
+    return state.get("registry") or {"version": v2.VERSION, "bindings": {}}, []
 
 
 def _apply_deploy_allow(state: dict, body: dict, summary: dict) -> None:
@@ -1112,7 +1126,9 @@ def apply_deploy(state: dict, body: dict) -> dict:
     if not has_surface and not has_mutation:
         raise ValueError("deploy needs 'bindings' or 'registry'")
 
-    registry = _apply_deploy_surface(state, body)
+    registry, dropped = _apply_deploy_surface(state, body)
+    if dropped:
+        summary["droppedRoutes"] = dropped
     state["generation"] = state.get("generation", 1) + 1                # surface/code/policy changed
     if body.get("name"):
         state["name"] = str(body["name"])

@@ -533,3 +533,73 @@ def scanner_service_live_views(
             "supportedViews": ["scanner-status", "scanner-stream", "image-list", "iframe", "json"],
         })
     return {"ok": True, "updatedAt": utc_now(), "views": views}
+
+
+def scanner_flow_result(
+    service: dict,
+    autonomous_scan: bool,
+    camera_action_uri: str,
+    camera_payload: dict,
+    torch_click_uri: str,
+    torch_enabled: bool | None,
+    queued_camera: dict | None,
+    queued_torch: dict | None,
+    prompt: str,
+    selected_nodes: list[str],
+    selected_targets: list[str],
+) -> dict:
+    """Build the response dict for the phone-scanner chat path."""
+    return {
+        "ok": bool(service.get("ok")),
+        "prompt": prompt,
+        "execute": True,
+        "selectedNodes": selected_nodes,
+        "selectedTargets": selected_targets,
+        "generator": {"provider": "host-dashboard", "intent": "phone-scanner-service"},
+        "flow": {
+            "task": {"id": "phone-scanner-service", "title": "Start phone scanner service"},
+            "steps": [
+                {"id": "start-phone-scanner", "uri": "dashboard://host/phone-scanner/command/start", "payload": {}},
+                *([{
+                    "id": "queue-camera-autonomous" if autonomous_scan else "queue-camera-start",
+                    "uri": camera_action_uri,
+                    "payload": camera_payload,
+                }] if queued_camera else []),
+                *([{
+                    "id": "queue-camera-light",
+                    "uri": torch_click_uri,
+                    "payload": {"target": "scanner", "enabled": bool(torch_enabled)},
+                }] if queued_torch else []),
+            ],
+        },
+        "timeline": [
+            {
+                "id": "start-phone-scanner",
+                "uri": "dashboard://host/phone-scanner/command/start",
+                "target": "host",
+                "ok": bool(service.get("ok")),
+                "status": service.get("status"),
+            },
+            *([{
+                "id": "queue-camera-autonomous" if autonomous_scan else "queue-camera-start",
+                "uri": camera_action_uri,
+                "target": "scanner-page",
+                "ok": bool(queued_camera.get("ok")),
+                "status": "queued",
+                "autonomous": bool(autonomous_scan),
+            }] if queued_camera else []),
+            *([{
+                "id": "queue-camera-light",
+                "uri": torch_click_uri,
+                "target": "scanner-page",
+                "ok": bool(queued_torch.get("ok")),
+                "status": "queued",
+            }] if queued_torch else []),
+        ],
+        "results": {
+            "phone-scanner-service": service,
+            **({"camera-start": queued_camera} if queued_camera else {}),
+            **({"camera-torch": queued_torch} if queued_torch else {}),
+        },
+        "attachments": ((service.get("message") or {}).get("attachments") or []),
+    }

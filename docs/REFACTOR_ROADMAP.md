@@ -71,7 +71,8 @@ Near-term extraction targets:
   landed: scanner result registration, document-pdf/camera-scan artifact
   selection, chat attachments, scanner session logging, page-action queues,
   camera page-status parsing, scanner artifact metadata/item helpers and phone
-  scanner live/status view assembly moved behind dashboard wrappers.
+  scanner live/status view assembly plus live-stream public projection moved
+  behind dashboard wrappers.
 - `host/widgets.py` for service widget selection and summaries. First split
   landed: query selection, fallback view construction and scanner stream
   summaries moved out of `host_dashboard.py`; HTML/SVG rendering still lives in

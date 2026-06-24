@@ -80,12 +80,15 @@ from .scanner_bridge import (
     page_action_enqueue as _page_action_enqueue_impl,
     page_action_poll as _page_action_poll_impl,
     page_action_result as _page_action_result_impl,
+    public_scanner_candidate as _public_scanner_candidate_impl,
     is_scanner_artifact as _is_scanner_artifact_impl,
     latest_scanner_page_status as _latest_scanner_page_status_impl,
     register_document_artifact as _register_document_artifact_impl,
     register_scanner_result as _register_scanner_result_impl,
     scanner_artifact_item as _scanner_artifact_item_impl,
     scanner_artifact_doc_meta as _scanner_artifact_doc_meta_impl,
+    scanner_live_state_from_streams as _scanner_live_state_from_streams_impl,
+    scanner_public_candidate_for_live as _scanner_public_candidate_for_live_impl,
     scanner_status_from_log as _scanner_status_from_log_impl,
     scanner_session as _scanner_session_impl,
     scanner_result_content as _scanner_result_content_impl,
@@ -1027,6 +1030,24 @@ INDEX_HTML = r"""<!doctype html>
                 </div>
                 <p class="subtle">„Zapisz" trwale dodaje node do host config (host go rozwiąże) i do ~/.urirun/nodes.json (urifix auto-naprawa). Albo wklej ręcznie jeden z poniższych:</p>
                 <pre id="addNodeSnippet" class="mono">— wpisz nazwę i URL powyżej —</pre>
+                <hr style="border:none;border-top:1px solid var(--border,#334155);margin:12px 0">
+                <div class="artifact-actions">
+                  <button type="button" id="addPhoneNodeBtn" onclick="showAddPhoneNodeQR()">📱 Dodaj smartfon (QR + APK)</button>
+                  <span id="addPhoneNodeStatus" class="subtle"></span>
+                </div>
+                <p class="subtle">Zeskanuj telefonem QR poniżej, aby otworzyć stronę instalacji (serwis android-node, domyślnie port 8195). Telefon pobierze aplikację APK / skrypt Termux i dołączy jako node — tak jak laptop Lenovo. Wymaga uruchomionego serwisu: <code>urirun-android-node serve</code>.</p>
+                <div id="phoneNodeQrContainer" style="display:none;margin-top:8px">
+                  <div id="phoneNodeQr" class="phone-node-qr"></div>
+                  <p class="subtle">URL instalacji: <code id="phoneNodeUrl"></code></p>
+                  <p class="subtle" id="phoneNodeReach"></p>
+                  <label class="stack"><span class="subtle">Po instalacji — zarejestruj node (nazwa + URL telefonu, port 8765)</span></label>
+                  <div class="artifact-actions">
+                    <input id="phoneNodeName" placeholder="nexus7">
+                    <input id="phoneNodeNodeUrl" placeholder="http://192.168.x.x:8765">
+                    <button type="button" onclick="savePhoneNode()">💾 Zapisz node telefonu</button>
+                    <span id="phoneNodeSaveStatus" class="subtle"></span>
+                  </div>
+                </div>
               </div>
             </details>
           </div>
@@ -1374,6 +1395,47 @@ INDEX_HTML = r"""<!doctype html>
     }
     function saveNodeFromForm() {
       saveNode(($('addNodeName') || {}).value || '', ($('addNodeUrl') || {}).value || '');
+    }
+
+    // Smartphone node enrollment: ask the host for a QR pointing at the android-node setup
+    // service (port 8195). The phone scans it, downloads the APK / Termux bootstrap, and joins
+    // the mesh as a node — same model as the Lenovo laptop.
+    async function showAddPhoneNodeQR() {
+      const status = $('addPhoneNodeStatus');
+      if (status) status.textContent = 'generuję QR…';
+      try {
+        const res = await api('/api/nodes/phone-qr', { method: 'POST', body: JSON.stringify({}) });
+        if (!res.ok) throw new Error(res.error || 'nie udało się wygenerować QR');
+        const box = $('phoneNodeQrContainer');
+        const img = $('phoneNodeQr');
+        if (img) img.innerHTML = res.previewUrl
+          ? '<img src="' + esc(res.previewUrl) + '" alt="QR instalacji smartfona">'
+          : '<span class="subtle">QR zapisany: ' + esc(res.uri || '') + '</span>';
+        if ($('phoneNodeUrl')) $('phoneNodeUrl').textContent = res.url || '';
+        if ($('phoneNodeReach')) $('phoneNodeReach').textContent = res.serviceReachable
+          ? '✅ Serwis android-node odpowiada — zeskanuj QR telefonem.'
+          : '⚠️ Serwis android-node nie odpowiada pod ' + (res.url || '') + ' — uruchom „urirun-android-node serve" na hoście.';
+        if (box) box.style.display = '';
+        if (status) status.textContent = '';
+      } catch (error) {
+        if (status) status.textContent = 'błąd: ' + error.message;
+      }
+    }
+
+    // After the phone has installed and is serving on :8765, persist it as a node (reuses /api/nodes/add).
+    async function savePhoneNode() {
+      const name = (($('phoneNodeName') || {}).value || '').trim();
+      const url = (($('phoneNodeNodeUrl') || {}).value || '').trim();
+      const status = $('phoneNodeSaveStatus');
+      if (!name || !url) { if (status) status.textContent = 'podaj nazwę i URL telefonu'; return; }
+      if (status) status.textContent = 'zapisuję…';
+      try {
+        const res = await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url }) });
+        if (status) status.textContent = 'zapisano: ' + (res.node ? res.node.name + ' → ' + res.node.url : name);
+        if (typeof load === 'function') load().catch(() => {});
+      } catch (error) {
+        if (status) status.textContent = 'błąd zapisu: ' + error.message;
+      }
     }
 
     // Store the node's management token in the OS keyring (server-side). The value is sent once,
@@ -6700,21 +6762,7 @@ def _document_frame_quality(crop: dict, ocr: dict, metadata: dict, display_path:
 
 
 def _public_scanner_candidate(candidate: dict) -> dict:
-    ocr = candidate.get("ocr") if isinstance(candidate.get("ocr"), dict) else {}
-    return {
-        "seriesId": candidate.get("seriesId"),
-        "frameIndex": candidate.get("frameIndex"),
-        "uri": candidate.get("uri"),
-        "path": candidate.get("displayPath"),
-        "originalPath": candidate.get("originalPath"),
-        "overlayPath": candidate.get("overlayPath"),
-        "overlay": candidate.get("overlay"),
-        "sha256": candidate.get("sha256"),
-        "quality": candidate.get("quality"),
-        "detectedDocument": candidate.get("detectedDocument"),
-        "crop": candidate.get("crop"),
-        "ocr": {key: value for key, value in ocr.items() if key != "text"},
-    }
+    return _public_scanner_candidate_impl(candidate)
 
 
 def _scanner_live_store_locked(
@@ -6747,45 +6795,19 @@ def _scanner_live_store_locked(
 
 
 def _scanner_public_candidate_for_live(candidate: dict | None, project: str) -> dict | None:
-    if not isinstance(candidate, dict):
-        return None
-    public = _public_scanner_candidate(candidate)
-    path = public.get("path")
-    if path:
-        public["previewUrl"] = _preview_url(str(path), project)
-    original = public.get("originalPath")
-    if original:
-        public["originalPreviewUrl"] = _preview_url(str(original), project)
-    overlay = public.get("overlayPath")
-    if overlay:
-        public["overlayPreviewUrl"] = _preview_url(str(overlay), project)
-    return public
+    return _scanner_public_candidate_for_live_impl(candidate, project, preview_url=_preview_url)
 
 
 def scanner_live_state(project: str, limit: int = 8) -> dict:
     with _SCANNER_BEST_LOCK:
-        streams = sorted(
-            [dict(item) for item in _SCANNER_LIVE_STREAMS.values()],
-            key=lambda item: str(item.get("updatedAt") or ""),
-            reverse=True,
-        )[: max(1, min(20, int(limit or 8)))]
-    public_streams = []
-    for stream in streams:
-        candidates = [
-            item for item in (_scanner_public_candidate_for_live(candidate, project) for candidate in stream.get("candidates", []))
-            if item
-        ]
-        best = _scanner_public_candidate_for_live(stream.get("best"), project)
-        document = stream.get("document") if isinstance(stream.get("document"), dict) else {}
-        if document.get("path"):
-            document = {**document, "previewUrl": _preview_url(str(document["path"]), project)}
-        public_streams.append({
-            **{key: value for key, value in stream.items() if key not in {"best", "candidates", "document"}},
-            "best": best,
-            "candidates": candidates,
-            "document": document,
-        })
-    return {"ok": True, "updatedAt": _utc_now(), "streams": public_streams}
+        streams = [dict(item) for item in _SCANNER_LIVE_STREAMS.values()]
+    return _scanner_live_state_from_streams_impl(
+        streams,
+        project,
+        limit=limit,
+        preview_url=_preview_url,
+        utc_now=_utc_now,
+    )
 
 
 def _scanner_status_from_log(item: dict) -> tuple[dict, str, dict] | None:
@@ -8118,6 +8140,58 @@ def node_add(config: str | None, payload: dict) -> dict:
     except Exception:  # noqa: BLE001 - the urifix mirror is optional
         pass
     return {"ok": True, "node": {"name": name, "url": url}, "nodes": updated.get("nodes", [])}
+
+
+def phone_node_qr(project: str, db: str | None, payload: dict) -> dict:
+    """Generate a QR code that points a smartphone at the android-node setup service (default
+    port 8195). The phone scans it, opens the setup page, downloads the APK / Termux bootstrap,
+    and enrolls as a urirun node — the same model as the Lenovo laptop. Reuses _write_qr_png and
+    the host artifact store; no new QR infrastructure. The android-node service must be running
+    (`urirun-android-node serve`)."""
+    payload = payload if isinstance(payload, dict) else {}
+    try:
+        port = int(payload.get("port") or os.environ.get("URIRUN_ANDROID_NODE_PORT") or 8195)
+    except (TypeError, ValueError):
+        port = 8195
+    host = _lan_host()
+    setup_url = str(payload.get("url") or f"http://{host}:{port}/").strip()
+    digest = hashlib.sha256(setup_url.encode("utf-8")).hexdigest()
+    root = Path(os.environ.get("URIRUN_DASHBOARD_QR_DIR", "~/.urirun/host-dashboard/qr")).expanduser()
+    path = root / f"smartphone-node-{digest[:12]}.png"
+    reachable_from_phone = not host.startswith("127.")
+    service_reachable = _probe_scanner_url(setup_url, timeout=1.5)
+    meta = {
+        "url": setup_url,
+        "port": port,
+        "host": host,
+        "kind": "smartphone-node",
+        "reachableFromPhone": reachable_from_phone,
+        "serviceReachable": service_reachable,
+    }
+    uri = f"dashboard://host/qr/smartphone-node/{digest[:16]}"
+    preview_url = None
+    try:
+        _write_qr_png(setup_url, path)
+        artifact = _host_db().register_artifact(db, "dashboard-qr", uri, str(path), meta)
+        preview_url = _preview_url(str(path), project)
+        attachment = {"kind": "qr-code", "path": str(path), "uri": uri, "previewUrl": preview_url, "meta": meta}
+    except Exception as exc:  # noqa: BLE001 - QR is helpful, not required
+        artifact = {"kind": "dashboard-qr", "uri": uri, "path": None, "meta": {**meta, "error": str(exc)}}
+        attachment = None
+    content = f"Smartphone node QR ready: {setup_url}"
+    if not service_reachable:
+        content += " (start the android-node service: urirun-android-node serve)"
+    message = _chat_message(
+        "system", content,
+        detail={"uri": uri, "url": setup_url, "selectedTargets": ["service:android-node"], "artifact": artifact, "metadata": meta},
+        attachments=[attachment] if attachment else [],
+    )
+    _add_chat_message(db, message)
+    return {
+        "ok": True, "uri": uri, "url": setup_url, "previewUrl": preview_url,
+        "port": port, "reachableFromPhone": reachable_from_phone,
+        "serviceReachable": service_reachable, "artifact": artifact,
+    }
 
 
 def node_set_token(config: str | None, payload: dict) -> dict:
@@ -9683,6 +9757,10 @@ def create_handler(
                 if parsed.path == "/api/nodes/add":
                     payload = _read_json(self)
                     _json_response(self, 200, node_add(config, payload))
+                    return
+                if parsed.path == "/api/nodes/phone-qr":
+                    payload = _read_json(self)
+                    _json_response(self, 200, phone_node_qr(project, db, payload))
                     return
                 if parsed.path == "/api/nodes/token":
                     payload = _read_json(self)

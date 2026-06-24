@@ -505,9 +505,14 @@ def _add_host_subparser(subparsers) -> None:
                              help="handler .py file to push so the node can import it (repeatable)")
     host_deploy.add_argument("--env", action="append", default=[], metavar="K=V",
                              help="env var the node's handlers should read (repeatable)")
-    host_deploy.add_argument("--merge", action="store_true",
-                             help="ADD the deployed routes to the node's existing surface instead of "
-                                  "replacing it (existing routes are kept; same-URI routes are overridden)")
+    _deploy_mode = host_deploy.add_mutually_exclusive_group()
+    _deploy_mode.add_argument("--merge", action="store_true",
+                              help="ADD the deployed routes to the node's existing surface instead of "
+                                   "replacing it (existing routes are kept; same-URI routes are overridden)")
+    _deploy_mode.add_argument("--replace", action="store_true",
+                              help="REPLACE the node's entire surface with the deployed routes "
+                                   "(default behaviour; drops all routes not in the new payload; "
+                                   "dropped routes are reported in the response 'droppedRoutes' field)")
     host_deploy.add_argument("--persist", action="store_true",
                              help="write the merged surface back to the node's startup registry file so "
                                   "the deployed routes survive a node restart (not just live in memory)")
