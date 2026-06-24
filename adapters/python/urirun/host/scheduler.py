@@ -10,13 +10,15 @@ from pathlib import Path
 
 from urirun import errors
 
+_DEFAULT_MAX_TICKETS = 20
+
 
 def build_loop_command(
     *,
     project: str = ".",
     config: str | None = None,
     queue: str = "daily",
-    max_tickets: int = 20,
+    max_tickets: int = _DEFAULT_MAX_TICKETS,
     execute: bool = False,
     no_llm: bool = False,
 ) -> list[str]:
@@ -85,7 +87,7 @@ def preview(
     project: str = ".",
     config: str | None = None,
     queue: str = "daily",
-    max_tickets: int = 20,
+    max_tickets: int = _DEFAULT_MAX_TICKETS,
     time_of_day: str = "09:00",
     execute: bool = False,
     no_llm: bool = False,

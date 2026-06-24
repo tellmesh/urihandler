@@ -51,3 +51,21 @@ def test_inherited_and_typed_args_survive_extraction():
     # node serve's repeatable --allow
     ns = parser.parse_args(["node", "serve", "--allow", "a://**", "--allow", "b://**"])
     assert ns.allow == ["a://**", "b://**"]
+
+
+def test_host_add_node_accepts_api_device_flags():
+    parser = cli._build_parser("urirun")
+    ns = parser.parse_args([
+        "host", "add-node", "crm-api", "https://api.example.test/v1",
+        "--kind", "api",
+        "--api-id", "main",
+        "--api-kind", "rest",
+        "--auth-type", "bearer",
+        "--capability", "api",
+    ])
+    assert ns.host_command == "add-node"
+    assert ns.kind == "api"
+    assert ns.api_id == "main"
+    assert ns.api_kind == "rest"
+    assert ns.auth_type == "bearer"
+    assert ns.capability == ["api"]

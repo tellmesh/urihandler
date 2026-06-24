@@ -5,6 +5,9 @@ odpowiedzialności. Jest przeznaczony dla operatora i developera, który chce
 zrozumieć, z czego składa się urirun: host, node, service, connector, widget i
 artifact.
 
+Praktyczne komendy podłączania klasycznych node'ów, API node, device node,
+browser/web/smartphone node oraz services są w `docs/NODE_CONNECTIONS.md`.
+
 ## Model w skrócie
 
 urirun traktuje działania jako adresowalne operacje URI. Każda komenda,
@@ -135,6 +138,144 @@ proc://host/process/query/list
 
 Node nie powinien sam zgadywać intencji użytkownika. Dostaje konkretny URI,
 payload i tryb wykonania. Intencję i wybór targetu rozwiązuje host.
+
+### Typy node
+
+Typ node nie zastępuje `kind=node`. To metadana operacyjna mówiąca, jakiego
+transportu i runtime'u host powinien oczekiwać. Kanoniczna lista jest w
+`urirun.host.node_types`, w `GET /api/summary -> nodeTypes` oraz
+`GET /api/node-types`.
+
+| Typ | Kiedy używać | Naturalny transport/runtime |
+| --- | --- | --- |
+| `server` | headless Linux/VM z dostępem SSH | `ssh+http`, `urirun-node` |
+| `pc` | fizyczny komputer z GUI, np. Lenovo | `http+kvm`, `urirun-node` |
+| `rdp` | pulpit zdalny Windows/xrdp | `rdp+http+kvm`, `remote-desktop-node` |
+| `smartphone` | telefon, najpierw web node, potem APK/Termux | `https+js`, `mobile-web-or-node` |
+| `browser-debug` | cała przeglądarka przez CDP/debug port | `cdp`, `browser-cdp` |
+| `browser-chrome-plugin` | aktywna karta przez rozszerzenie Chrome | `extension+http`, `chrome-extension` |
+| `browser-firefox-plugin` | aktywna karta przez rozszerzenie Firefox | `extension+http`, `firefox-extension` |
+| `webpage` | pojedyncza karta/strona przez JS/page bridge | `cdp+js`, `browser-page-js` |
+| `api` | zewnętrzne HTTP/REST/OpenAPI, SaaS lub lokalna usługa | `http+auth`, `external-api` |
+| `device` | kamera IP, RPi, NAS, IoT z wieloma protokołami | `multi-api`, `external-device` |
+
+W konfiguracji hosta typ zapisujemy jako tag, np. `kind:webpage` albo `kind:pc`.
+Dzięki temu registry, discovery i dashboard nie muszą zgadywać po nazwie typu
+`lenovo` czy `laptop`.
+
+Kompatybilność: stare `kind:browser` jest aliasem do `browser-debug`, a stare
+`kind:web` jest aliasem do `webpage`. Nowe konfiguracje powinny używać nazw
+kanonicznych.
+
+### API node i device node
+
+`api` i `device` są node'ami konfiguracyjnymi. Nie muszą wystawiać natywnego
+urirun `/health` i `/routes`. Host przechowuje ich interfejsy w polu `apis[]` i
+na tej podstawie pokazuje syntetyczne route'y typu:
+
+```text
+api://crm-api/main/command/request
+device://rpi-camera/panel/query/status
+media://rpi-camera/stream/query/stream
+camera://rpi-camera/stream/query/snapshot
+ssh://rpi-camera/ssh/command/run
+fs://nas/share/query/list
+```
+
+Przykład konfiguracji API node:
+
+```json
+{
+  "name": "crm-api",
+  "url": "https://api.example.test/v1",
+  "tags": ["kind:api"],
+  "apis": [
+    {
+      "id": "main",
+      "kind": "rest",
+      "url": "https://api.example.test/v1",
+      "auth": {
+        "type": "bearer",
+        "secretRef": "secret://keyring/urirun-node-api/crm-api/main#credential"
+      }
+    }
+  ]
+}
+```
+
+Ten sam wpis można utworzyć z CLI:
+
+```bash
+urirun host add-node crm-api https://api.example.test/v1 \
+  --kind api \
+  --api-id main \
+  --api-kind rest \
+  --auth-type bearer \
+  --auth-token 'PASTE_ONCE'
+```
+
+Przykład `device` dla RPi/kamery/NAS:
+
+```json
+{
+  "name": "rpi-camera",
+  "url": "http://rpi.local",
+  "tags": ["kind:device"],
+  "capabilities": ["api", "camera", "files", "shell"],
+  "apis": [
+    {"id": "panel", "kind": "web", "url": "http://rpi.local"},
+    {"id": "stream", "kind": "rtsp", "role": "camera", "url": "rtsp://rpi.local/live"},
+    {"id": "share", "kind": "smb", "url": "smb://rpi.local/share"},
+    {"id": "ssh", "kind": "ssh", "url": "ssh://pi@rpi.local"}
+  ]
+}
+```
+
+Wariant CLI dla device node:
+
+```bash
+urirun host add-node rpi-camera http://rpi.local \
+  --kind device \
+  --api '{"id":"panel","kind":"web","url":"http://rpi.local"}' \
+  --api '{"id":"stream","kind":"rtsp","role":"camera","url":"rtsp://rpi.local/live"}' \
+  --api '{"id":"share","kind":"smb","url":"smb://rpi.local/share"}' \
+  --api '{"id":"ssh","kind":"ssh","url":"ssh://pi@rpi.local"}'
+```
+
+Sekrety autoryzacyjne nie powinny być zapisywane jako plaintext. Dashboard może
+przyjąć token w payloadzie, ale zapisuje go do keyring i w konfiguracji zostawia
+tylko `secretRef`.
+
+Host umie bezpośrednio wykonać skonfigurowane interfejsy HTTP/REST/OpenAPI przez
+route:
+
+```text
+configured://host/node-api/command/request
+configured://host/node-api/query/status
+```
+
+Dla wygody discovery może też pokazać bezpośredni wariant:
+
+```text
+api://crm-api/main/command/request
+```
+
+Payload powinien wskazać metodę, ścieżkę i opcjonalne query/body, np.
+
+```json
+{
+  "node": "crm-api",
+  "apiId": "main",
+  "method": "GET",
+  "path": "/accounts",
+  "query": {"limit": 10}
+}
+```
+
+Interfejsy nie-HTTP, takie jak `rtsp`, `smb`, `nfs` czy `ssh`, pozostają
+metadanymi device node'a dopóki nie ma dedykowanego connectora. Host nie udaje
+ich wykonania; powinien zwrócić `connector_required`, żeby planner mógł
+zainstalować albo wybrać właściwy connector.
 
 ## Service
 

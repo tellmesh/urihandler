@@ -7,6 +7,8 @@ import time
 import unittest
 import base64
 import argparse
+import contextlib
+import io
 from pathlib import Path
 
 from urirun import mesh
@@ -78,6 +80,37 @@ class MeshTests(unittest.TestCase):
             updated = mesh.add_node(path, "node-a", "http://127.0.0.1:8765/", ["lab"])
             self.assertEqual(updated["nodes"], [{"name": "node-a", "url": "http://127.0.0.1:8765", "tags": ["lab"]}])
             self.assertEqual(mesh.load_host_config(path)["nodes"][0]["name"], "node-a")
+
+    def test_host_add_node_cli_persists_configured_api_node(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "mesh.json")
+            args = argparse.Namespace(
+                host_command="add-node",
+                config=path,
+                name="crm-api",
+                url="https://api.example.test/v1",
+                tag=[],
+                kind="api",
+                api=[],
+                api_id="main",
+                api_kind="rest",
+                api_url=None,
+                auth_type=None,
+                auth_token=None,
+                auth_header=None,
+                auth_username=None,
+                capability=[],
+            )
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = mesh._host_delegated_command(args)
+
+            self.assertEqual(code, 0)
+            node = mesh.load_host_config(path)["nodes"][0]
+            self.assertEqual(node["name"], "crm-api")
+            self.assertEqual(node["tags"], ["kind:api"])
+            self.assertEqual(node["apis"], [{"id": "main", "kind": "rest", "url": "https://api.example.test/v1"}])
+            self.assertEqual(node["capabilities"], ["api"])
 
     def test_apply_deploy_hot_swaps_registry_code_and_allow(self):
         # a live node's mutable state, as serve_node builds it

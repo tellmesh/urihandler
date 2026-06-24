@@ -62,11 +62,11 @@ class NodeClient:
 
     # --- discovery ---
     def routes(self) -> list[dict]:
-        return _get(self.base + "/routes", headers=self._auth()).get("routes", [])
+        return _get(f"{self.base}/routes", headers=self._auth()).get("routes", [])
 
     def get(self, path: str) -> dict:
         """Generic authenticated GET against the node (e.g. '/device', '/processes')."""
-        return _get(self.base + "/" + path.lstrip("/"), headers=self._auth())
+        return _get(f"{self.base}/{path.lstrip('/')}", headers=self._auth())
 
     def concretize(self, uri: str, placeholders: dict | None = None) -> str:
         """Resolve a /routes URI for dispatch: undo percent-encoded braces and fill
@@ -89,7 +89,7 @@ class NodeClient:
             headers["X-Urirun-Run-Id"] = run_id
         if expect_etag:
             headers["If-Registry-Match"] = expect_etag
-        return _post(self.base + "/run", body, headers=headers, timeout=timeout, raw=raw)
+        return _post(f"{self.base}/run", body, headers=headers, timeout=timeout, raw=raw)
 
     def run_async(self, uri: str, payload: dict | None = None, run_id: str | None = None) -> dict:
         """Start a run without blocking: returns 202 envelope with runId; stream via watch(run=)."""

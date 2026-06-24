@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
 
+from .node_types import annotate_node_type
+
 
 PHONE_SCANNER_ROUTES = [
     "dashboard://host/phone-scanner/command/start",
@@ -81,25 +83,38 @@ def dedupe_routes(routes: list[dict]) -> list[dict]:
     return out
 
 
-def node_object(node: dict, all_routes: list[dict]) -> dict:
-    name = str(node.get("name") or "")
-    owner = {
+def _node_owner_dict(node: dict, name: str, typed_node: dict) -> dict:
+    return {
         "id": f"node:{name}",
         "kind": "node",
         "label": f"urirun node: {name}",
         "status": "up" if node.get("reachable") else "down",
         "reachable": bool(node.get("reachable")),
         "url": node.get("url") or "",
-        "transport": node.get("transport") or "http",
-        "runtime": node.get("runtime") or "urirun-node",
+        "type": typed_node.get("type") or "",
+        "nodeType": typed_node.get("nodeType") or "",
+        "typeLabel": typed_node.get("typeLabel") or "",
+        "integrationLevel": typed_node.get("integrationLevel") or "",
+        "transport": typed_node.get("transport") or "http",
+        "runtime": typed_node.get("runtime") or "urirun-node",
+        "apis": node.get("apis") if isinstance(node.get("apis"), list) else [],
+        "capabilities": node.get("capabilities") if isinstance(node.get("capabilities"), list) else [],
         "error": node.get("error") or "",
     }
-    own_routes = node.get("routes") if isinstance(node.get("routes"), list) else []
-    if not own_routes:
-        own_routes = [
-            route for route in all_routes
-            if route.get("node") == name or _uri_target(str(route.get("uri") or "")) == name
-        ]
+
+
+def _node_own_routes(node: dict, all_routes: list[dict], name: str) -> list[dict]:
+    own = node.get("routes") if isinstance(node.get("routes"), list) else []
+    if not own:
+        own = [r for r in all_routes if r.get("node") == name or _uri_target(str(r.get("uri") or "")) == name]
+    return own
+
+
+def node_object(node: dict, all_routes: list[dict]) -> dict:
+    typed_node = annotate_node_type(node)
+    name = str(node.get("name") or "")
+    owner = _node_owner_dict(node, name, typed_node)
+    own_routes = _node_own_routes(node, all_routes, name)
     return {
         **owner,
         "routes": dedupe_routes([route_owner_route(route, owner) for route in own_routes]),

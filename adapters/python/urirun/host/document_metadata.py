@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import subprocess
 import time
 import unicodedata
 from datetime import date
@@ -407,17 +406,17 @@ def _llm_complete_metadata(model: str, key_ref: str | None, text: str, *,
     except Exception:  # noqa: BLE001
         return None
     if use_vision:
-        prompt = "Przeanalizuj zdjęcie polskiego paragonu lub faktury i wyciągnij dane. " + _LLM_FIELDS_SPEC
+        prompt = f"Przeanalizuj zdjęcie polskiego paragonu lub faktury i wyciągnij dane. {_LLM_FIELDS_SPEC}"
         if text:
-            prompt += "\nPomocniczy tekst z OCR (może zawierać błędy, zweryfikuj ze zdjęciem):\n" + text[:3000]
+            prompt += f"\nPomocniczy tekst z OCR (może zawierać błędy, zweryfikuj ze zdjęciem):\n{text[:3000]}"
         try:
             return complete(prompt, model=model, image=str(image_path), api_key=key_ref, secret_allow=key_ref)
         except Exception:  # noqa: BLE001
             return None
     prompt = (
         "Jesteś ekstraktorem danych z polskich paragonów i faktur. Poniżej tekst z OCR "
-        "(zachowana kolejność linii). " + _LLM_FIELDS_SPEC
-        + "\nTEKST OCR:\n" + text[:6000]
+        f"(zachowana kolejność linii). {_LLM_FIELDS_SPEC}"
+        f"\nTEKST OCR:\n{text[:6000]}"
     )
     try:
         return complete(prompt, model=model, api_key=key_ref, secret_allow=key_ref)

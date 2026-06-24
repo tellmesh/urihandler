@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import socket
 import subprocess
 import time
 import urllib.error
@@ -375,8 +374,8 @@ def copy_id(url: str, identity: str, *, token: str | None = None, timeout: float
         return {"ok": False, "error": f"node '{health.get('name', base)}' has key-auth disabled "
                                       f"— restart it with: urirun node serve … --key-auth"}
 
-    pub = (Path(identity + ".pub").read_text(encoding="utf-8").strip()
-           if Path(identity + ".pub").exists() else keyauth.public_openssh(identity))
+    pub = (Path(f"{identity}.pub").read_text(encoding="utf-8").strip()
+           if Path(f"{identity}.pub").exists() else keyauth.public_openssh(identity))
     raw = json.dumps({"publicKey": pub}).encode("utf-8")
     headers: dict = {}
     if keyauth.available():  # sign so add-after-first works; ignored by a fresh node
@@ -397,9 +396,111 @@ from urirun.node.routing import (  # noqa: E402
 )
 
 
+def _configured_node_kind(node: dict) -> str:
+    for key in ("nodeType", "type", "kind"):
+        value = str(node.get(key) or "").strip().casefold()
+        if value:
+            return value
+    for tag in node.get("tags") or []:
+        text = str(tag or "").strip().casefold()
+        if text.startswith(("kind:", "type:", "node-type:", "node_type:")):
+            return text.split(":", 1)[1]
+    return ""
+
+
+def _configured_api_id(api: dict, index: int) -> str:
+    raw = str(api.get("id") or api.get("name") or api.get("role") or f"api-{index}").strip().lower()
+    return "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in raw).strip("-") or f"api-{index}"
+
+
+def _configured_api_kind(api: dict) -> str:
+    return str(api.get("kind") or api.get("protocol") or api.get("transport") or "http").strip().lower()
+
+
+def _configured_api_routes(name: str, node: dict) -> list[dict]:
+    routes: list[dict] = []
+    node_kind = _configured_node_kind(node)
+    scheme = "device" if node_kind == "device" else "api"
+    for index, api in enumerate(node.get("apis") or [], 1):
+        if not isinstance(api, dict):
+            continue
+        api_id = _configured_api_id(api, index)
+        api_kind = _configured_api_kind(api)
+        title = str(api.get("label") or api.get("name") or api_id)
+        routes.append({
+            "uri": f"{scheme}://{name}/{api_id}/query/status",
+            "kind": "query",
+            "adapter": "configured-api",
+            "title": f"{title} status",
+            "apiId": api_id,
+            "apiKind": api_kind,
+        })
+        if api_kind in {"http", "https", "rest", "openapi", "web", "panel"}:
+            routes.append({
+                "uri": f"api://{name}/{api_id}/command/request",
+                "kind": "command",
+                "adapter": "configured-api",
+                "title": f"{title} request",
+                "apiId": api_id,
+                "apiKind": api_kind,
+            })
+        if api_kind in {"rtsp", "rtmp", "rtmps", "hls"}:
+            routes.append({
+                "uri": f"media://{name}/{api_id}/query/stream",
+                "kind": "query",
+                "adapter": "configured-media",
+                "title": f"{title} stream",
+                "apiId": api_id,
+                "apiKind": api_kind,
+            })
+        if api_kind in {"rtsp", "camera", "onvif"} or str(api.get("role") or "").strip().lower() == "camera":
+            routes.append({
+                "uri": f"camera://{name}/{api_id}/query/snapshot",
+                "kind": "query",
+                "adapter": "configured-camera",
+                "title": f"{title} snapshot",
+                "apiId": api_id,
+                "apiKind": api_kind,
+            })
+        if api_kind in {"ssh", "sftp"}:
+            routes.append({
+                "uri": f"ssh://{name}/{api_id}/command/run",
+                "kind": "command",
+                "adapter": "configured-ssh",
+                "title": f"{title} shell",
+                "apiId": api_id,
+                "apiKind": api_kind,
+            })
+        if api_kind in {"smb", "nfs", "nas", "sftp"}:
+            routes.append({
+                "uri": f"fs://{name}/{api_id}/query/list",
+                "kind": "query",
+                "adapter": "configured-files",
+                "title": f"{title} files",
+                "apiId": api_id,
+                "apiKind": api_kind,
+            })
+    return routes
+
+
 def discover_node(node: dict) -> dict:
     base = str(node["url"]).rstrip("/")
     info = {"name": node["name"], "url": base, "reachable": False, "routes": [], "mcp": None, "a2a": None, "error": None}
+    for key in ("tags", "kind", "type", "nodeType", "transport", "runtime", "meta", "apis", "capabilities"):
+        if key in node:
+            info[key] = node[key]
+    node_kind = _configured_node_kind(node)
+    if node_kind in {"api", "device"} or node.get("apis"):
+        routes = _configured_api_routes(str(node["name"]), node)
+        info.update({
+            "reachable": bool(node.get("apis") or base),
+            "health": {"ok": True, "external": True, "kind": node_kind or "api", "configured": True},
+            "routes": routes,
+            "mcp": None,
+            "a2a": None,
+            "error": None,
+        })
+        return info
     try:
         health = http_json("GET", f"{base}/health")
         routes = http_json("GET", f"{base}/routes").get("routes", [])

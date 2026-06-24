@@ -92,6 +92,8 @@ def append_if_available(steps: list[dict], route_uris: set[str], uri: str, paylo
     return step_id
 
 
+_DEFAULT_LOG_LIMIT = 20
+
 _FLOW_INTENT_WORDS = {
     "browser": ("browser", "przeglad", "stron", "url", "otworz", "open"),
     "screen": ("screen", "ekran", "monitor", "zrzut", "screenshot", "widz", "widac", "linkedin"),
@@ -194,7 +196,7 @@ def _append_target_steps(steps: list[dict], route_uris: set, target: str, intent
         previous = append_if_available(steps, route_uris, f"shell://{target}/command/uname", {}, previous)
     if intents["logs"]:
         previous = ensure_health(previous)
-        previous = append_if_available(steps, route_uris, f"log://{target}/session/query/recent", {"limit": 20}, previous)
+        previous = append_if_available(steps, route_uris, f"log://{target}/session/query/recent", {"limit": _DEFAULT_LOG_LIMIT}, previous)
     return previous
 
 

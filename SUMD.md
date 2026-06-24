@@ -303,13 +303,13 @@ Language-agnostic URI to handler adapter
 ### `project/map.toon.yaml`
 
 ```toon markpact:analysis path=project/map.toon.yaml
-# urirun | 177f 44168L | python:155,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-24
-# stats: 1693 func | 63 cls | 177 mod | CC̄=4.8 | critical:196 | cycles:0
-# alerts[5]: CC test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen=125; CC test_archive_scanned_document_writes_pdf_json_index_and_detects_duplicate=26; CC test_sync_documents_to_node_copies_pdfs_and_logs_chat=23; CC test_chat_ask_plans_document_sync_without_llm=22; CC test_chat_ask_generates_and_dry_runs_uri_flow=15
-# hotspots[5]: _archive_scanned_document fan=39; create_handler fan=39; _write_document_pdf fan=28; serve fan=28; scanner_capture fan=23
+# urirun | 183f 47511L | python:161,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-24
+# stats: 1806 func | 63 cls | 183 mod | CC̄=4.9 | critical:222 | cycles:0
+# alerts[5]: CC test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen=125; CC test_archive_scanned_document_writes_pdf_json_index_and_detects_duplicate=26; CC test_sync_documents_to_node_copies_pdfs_and_logs_chat=23; CC test_chat_ask_plans_document_sync_without_llm=22; CC uri_invoke=15
+# hotspots[5]: create_handler fan=47; _archive_scanned_document fan=39; _write_document_pdf fan=28; serve fan=28; summary fan=26
 # evolution: baseline
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
-M[177]:
+M[183]:
   adapters/bash/example/hash-connector.sh,10
   adapters/bash/urirun.sh,18
   adapters/conformance.py,168
@@ -322,7 +322,7 @@ M[177]:
   adapters/python/tests/test_adopt_pack.py,103
   adapters/python/tests/test_adopt_tree.py,39
   adapters/python/tests/test_agent_command.py,78
-  adapters/python/tests/test_cli_parser.py,54
+  adapters/python/tests/test_cli_parser.py,72
   adapters/python/tests/test_codegen.py,164
   adapters/python/tests/test_compat.py,104
   adapters/python/tests/test_connect_catalog.py,166
@@ -344,7 +344,7 @@ M[177]:
   adapters/python/tests/test_host_db.py,113
   adapters/python/tests/test_install_upgrade.py,109
   adapters/python/tests/test_introspect.py,76
-  adapters/python/tests/test_mesh.py,1666
+  adapters/python/tests/test_mesh.py,1699
   adapters/python/tests/test_minimal_imports.py,91
   adapters/python/tests/test_no_urirun_shadow.py,15
   adapters/python/tests/test_node_client.py,321
@@ -374,31 +374,35 @@ M[177]:
   adapters/python/urirun/connector_smoke.py,6
   adapters/python/urirun/connectors/__init__.py,2
   adapters/python/urirun/connectors/connect_catalog.py,255
-  adapters/python/urirun/connectors/connector_lint.py,601
+  adapters/python/urirun/connectors/connector_lint.py,603
   adapters/python/urirun/connectors/connector_scaffold.py,413
   adapters/python/urirun/connectors/connector_sdk.py,88
   adapters/python/urirun/connectors/connector_smoke.py,82
   adapters/python/urirun/connectors/declarative.py,96
-  adapters/python/urirun/connectors/openapi_import.py,95
-  adapters/python/urirun/connectors/resolver.py,169
+  adapters/python/urirun/connectors/openapi_import.py,96
+  adapters/python/urirun/connectors/resolver.py,170
   adapters/python/urirun/domain_monitor.py,6
   adapters/python/urirun/errors.py,9
   adapters/python/urirun/exec.py,62
   adapters/python/urirun/host/__init__.py,2
   adapters/python/urirun/host/contracts.py,63
-  adapters/python/urirun/host/discovery.py,361
-  adapters/python/urirun/host/document_sync.py,400
+  adapters/python/urirun/host/discovery.py,363
+  adapters/python/urirun/host/document_metadata.py,518
+  adapters/python/urirun/host/document_sync.py,402
   adapters/python/urirun/host/domain_monitor.py,486
-  adapters/python/urirun/host/fs_transfer.py,207
-  adapters/python/urirun/host/host_dashboard.py,9943
-  adapters/python/urirun/host/host_db.py,541
-  adapters/python/urirun/host/host_integrations.py,356
-  adapters/python/urirun/host/object_registry.py,108
+  adapters/python/urirun/host/fs_transfer.py,210
+  adapters/python/urirun/host/host_dashboard.py,10934
+  adapters/python/urirun/host/host_db.py,528
+  adapters/python/urirun/host/host_integrations.py,357
+  adapters/python/urirun/host/node_types.py,266
+  adapters/python/urirun/host/object_registry.py,220
   adapters/python/urirun/host/planfile_adapter.py,280
-  adapters/python/urirun/host/scanner_bridge.py,376
-  adapters/python/urirun/host/scheduler.py,134
+  adapters/python/urirun/host/scanner_bridge.py,670
+  adapters/python/urirun/host/scanner_net.py,138
+  adapters/python/urirun/host/scheduler.py,136
   adapters/python/urirun/host/service_control.py,365
   adapters/python/urirun/host/task_planner.py,372
+  adapters/python/urirun/host/widgets.py,65
   adapters/python/urirun/host_dashboard.py,6
   adapters/python/urirun/host_db.py,6
   adapters/python/urirun/host_integrations.py,6
@@ -407,26 +411,26 @@ M[177]:
   adapters/python/urirun/node/_artifacts.py,111
   adapters/python/urirun/node/_util.py,38
   adapters/python/urirun/node/_version.py,75
-  adapters/python/urirun/node/client.py,535
-  adapters/python/urirun/node/config.py,194
-  adapters/python/urirun/node/flow.py,607
+  adapters/python/urirun/node/client.py,537
+  adapters/python/urirun/node/config.py,210
+  adapters/python/urirun/node/flow.py,609
   adapters/python/urirun/node/formatting.py,79
   adapters/python/urirun/node/keyauth.py,174
-  adapters/python/urirun/node/manage.py,370
-  adapters/python/urirun/node/mesh.py,1865
+  adapters/python/urirun/node/manage.py,372
+  adapters/python/urirun/node/mesh.py,1977
   adapters/python/urirun/node/paths.py,39
   adapters/python/urirun/node/recovery.py,233
   adapters/python/urirun/node/routing.py,144
-  adapters/python/urirun/node/task_cli.py,344
-  adapters/python/urirun/node/transport.py,436
+  adapters/python/urirun/node/task_cli.py,343
+  adapters/python/urirun/node/transport.py,533
   adapters/python/urirun/planfile_adapter.py,6
   adapters/python/urirun/runtime/__init__.py,2
   adapters/python/urirun/runtime/_registry.py,719
   adapters/python/urirun/runtime/_runtime.py,585
-  adapters/python/urirun/runtime/_scan.py,667
+  adapters/python/urirun/runtime/_scan.py,660
   adapters/python/urirun/runtime/adopt_pack.py,246
   adapters/python/urirun/runtime/agent.py,152
-  adapters/python/urirun/runtime/cli.py,682
+  adapters/python/urirun/runtime/cli.py,706
   adapters/python/urirun/runtime/codegen.py,439
   adapters/python/urirun/runtime/compat.py,200
   adapters/python/urirun/runtime/daemon.py,117
@@ -438,7 +442,7 @@ M[177]:
   adapters/python/urirun/runtime/secrets.py,264
   adapters/python/urirun/runtime/tree.py,92
   adapters/python/urirun/runtime/v1.py,472
-  adapters/python/urirun/runtime/v2.py,2025
+  adapters/python/urirun/runtime/v2.py,2004
   adapters/python/urirun/runtime/v2_adopt.py,194
   adapters/python/urirun/runtime/v2_grpc.py,205
   adapters/python/urirun/runtime/v2_mcp.py,210
@@ -475,13 +479,15 @@ M[177]:
   test/urirun.test.js,11
   tests/conftest.py,30
   tests/test_host_contracts.py,49
-  tests/test_host_dashboard.py,3214
+  tests/test_host_dashboard.py,3531
   tests/test_host_db.py,39
   tests/test_host_discovery.py,82
   tests/test_host_fs_transfer.py,33
-  tests/test_host_object_registry.py,90
-  tests/test_host_scanner_bridge.py,250
+  tests/test_host_node_types.py,63
+  tests/test_host_object_registry.py,153
+  tests/test_host_scanner_bridge.py,403
   tests/test_host_service_control.py,145
+  tests/test_host_widgets.py,85
   tests/test_node_flow_recovery.py,90
   tests/test_urirun.py,12
   tests/test_v2_service_auth.py,47
@@ -517,12 +523,13 @@ D:
     test_run_plan_allows_command_with_permission()
     test_load_planner_resolves_module_function()
   adapters/python/tests/test_cli_parser.py:
-    e: test_cli_imports_without_cycle_and_builds,_commands,test_all_top_level_commands_present,test_representative_subcommands_parse_to_right_dest,test_inherited_and_typed_args_survive_extraction
+    e: test_cli_imports_without_cycle_and_builds,_commands,test_all_top_level_commands_present,test_representative_subcommands_parse_to_right_dest,test_inherited_and_typed_args_survive_extraction,test_host_add_node_accepts_api_device_flags
     test_cli_imports_without_cycle_and_builds()
     _commands(parser)
     test_all_top_level_commands_present()
     test_representative_subcommands_parse_to_right_dest()
     test_inherited_and_typed_args_survive_extraction()
+    test_host_add_node_accepts_api_device_flags()
   adapters/python/tests/test_codegen.py:
     e: _registry,test_proto_has_carrier_and_one_typed_rpc_per_route,test_to_proto_wrapper_matches_projection,test_nuance_classes_are_surfaced,test_cqrs_collision_is_disambiguated_symmetrically,test_snake_case_rename_reaches_the_proto,test_dispatch_invariant_holds_for_compiled_registry,test_invariant_checker_catches_a_real_clash,test_route_named_run_does_not_collide_with_carrier,test_openapi_and_client_still_generate
     _registry()
@@ -700,7 +707,7 @@ D:
     test_zero_config_registry_carries_builtin_routes()
   adapters/python/tests/test_mesh.py:
     e: _wait_healthy,_wait_subscribers,_post_run,test_deploy_dir_adds_to_sys_path_and_pythonpath,test_deploy_registry_merge_adds_and_preserves_argv,test_quiet_completion_keeps_banner_off_stdout,test_deploy_registry_merge_handles_sibling_ops,test_registry_fingerprint_stable_and_changes,test_apply_deploy_bumps_generation_and_reports_etag,test_config_with_transient_node_urls,test_deploy_command_uses_transient_node_url,test_deploy_allow_compat_warning_when_merge_narrows_policy,test_deploy_allow_compat_warning_when_merge_clears_policy,test_deploy_to_node_warns_on_remote_allow_merge_mismatch,test_apply_deploy_merge_preserves_existing_allowlist,test_materialize_base64_artifacts,test_make_flow_empty_has_actionable_error,test_node_client_identity_signs_run_and_node_management,test_maybe_load_dotenv,MeshTests
-    MeshTests: test_package_install_source_classification_handles_remote_wheels(0),test_host_config_add_node(0),test_apply_deploy_hot_swaps_registry_code_and_allow(0),test_apply_deploy_requires_a_surface(0),test_apply_deploy_accepts_code_only_hot_swap(0),test_watch_node_url_encodes_filters_and_replay_cursor(0),test_parse_sse_line_tracks_event_id_and_ignores_bad_payloads(0),test_emit_streams_progress_to_events_by_run_id(0),test_argv_template_streams_stdout_to_events_by_run_id(0),test_async_run_202_and_cancel_stops_a_streaming_process(0),test_node_client_drives_a_live_node(0),test_node_client_token_auth(0),test_watch_resume_replays_missed_progress_by_event_id(0),test_host_run_stream_command(0),test_route_source_provenance(0),test_apply_deploy_reloads_pushed_code_without_restart(0),test_resolve_admin_token_generate_reuse_and_precedence(0),test_enroll_token_shape_and_match(0),test_copy_id_requires_console_enroll_token_for_first_key(0),test_verify_request_rejects_replay(0),test_apply_deploy_ignores_dangerous_env(0),test_oversized_body_rejected_with_413(0),test_run_rejects_malformed_body_with_400(0),test_parse_ports(0),test_node_list_running_discovers_a_live_node(0),test_require_run_auth_gates_run(0),test_keyauth_sign_verify_and_enrollment(0),test_stop_node_port_when_nothing_listening(0),test_copy_id_gives_actionable_error_not_bare_404(0),test_node_config_defaults(0),test_manage_bindings_and_install(0),test_node_requests_and_host_supplies_connector_and_folder(0),test_node_side_adopt_makes_installed_routes_live(0),test_run_ensuring_self_heals_then_runs(0),test_ensure_scheme_acquires_capability_and_makes_it_live(0),test_fulfill_need_dispatches_scheme_and_folder_requests(0),test_install_source_policy(0),test_connector_install_from_any_source(0),test_connector_discover_scans_local_projects(0),test_discover_derives_routes_from_uninstalled_local_connector(0),test_node_management_routes_admin_gated(0),test_run_with_broken_handler_returns_json_not_dropped_connection(0),test_event_topic_mapping(0),test_fanout_to_mqtt_publishes_each_event(0),test_event_hub_ids_and_replay(0),test_events_endpoint_auth_gating(0),test_heuristic_flow_uses_all_reachable_nodes(0),test_heuristic_flow_maps_config_node_name_to_route_target(0),test_heuristic_flow_maps_linkedin_screen_prompt_to_capture(0),test_heuristic_flow_filters_selected_node_when_route_targets_overlap(0),test_heuristic_flow_maps_browser_linkedin_prompt_to_cdp(0),test_heuristic_flow_maps_downloads_invoice_prompt_to_filesystem(0),test_heuristic_flow_does_not_fake_invoice_prompt_with_processes(0),test_registry_from_remote_routes(0),test_service_map_prefers_exact_uri_over_shared_target(0),test_resolve_step_payload_chains_prior_results(0),test_dig_path_indexes_lists(0),test_resolve_step_payload_passthrough_without_from(0),test_flow_document_round_trips_yaml(0),test_verify_flow_execution_checks_read_back_fragment(0),test_verify_flow_execution_can_fail_result(0),test_run_flow_document_dry_run(0)
+    MeshTests: test_package_install_source_classification_handles_remote_wheels(0),test_host_config_add_node(0),test_host_add_node_cli_persists_configured_api_node(0),test_apply_deploy_hot_swaps_registry_code_and_allow(0),test_apply_deploy_requires_a_surface(0),test_apply_deploy_accepts_code_only_hot_swap(0),test_watch_node_url_encodes_filters_and_replay_cursor(0),test_parse_sse_line_tracks_event_id_and_ignores_bad_payloads(0),test_emit_streams_progress_to_events_by_run_id(0),test_argv_template_streams_stdout_to_events_by_run_id(0),test_async_run_202_and_cancel_stops_a_streaming_process(0),test_node_client_drives_a_live_node(0),test_node_client_token_auth(0),test_watch_resume_replays_missed_progress_by_event_id(0),test_host_run_stream_command(0),test_route_source_provenance(0),test_apply_deploy_reloads_pushed_code_without_restart(0),test_resolve_admin_token_generate_reuse_and_precedence(0),test_enroll_token_shape_and_match(0),test_copy_id_requires_console_enroll_token_for_first_key(0),test_verify_request_rejects_replay(0),test_apply_deploy_ignores_dangerous_env(0),test_oversized_body_rejected_with_413(0),test_run_rejects_malformed_body_with_400(0),test_parse_ports(0),test_node_list_running_discovers_a_live_node(0),test_require_run_auth_gates_run(0),test_keyauth_sign_verify_and_enrollment(0),test_stop_node_port_when_nothing_listening(0),test_copy_id_gives_actionable_error_not_bare_404(0),test_node_config_defaults(0),test_manage_bindings_and_install(0),test_node_requests_and_host_supplies_connector_and_folder(0),test_node_side_adopt_makes_installed_routes_live(0),test_run_ensuring_self_heals_then_runs(0),test_ensure_scheme_acquires_capability_and_makes_it_live(0),test_fulfill_need_dispatches_scheme_and_folder_requests(0),test_install_source_policy(0),test_connector_install_from_any_source(0),test_connector_discover_scans_local_projects(0),test_discover_derives_routes_from_uninstalled_local_connector(0),test_node_management_routes_admin_gated(0),test_run_with_broken_handler_returns_json_not_dropped_connection(0),test_event_topic_mapping(0),test_fanout_to_mqtt_publishes_each_event(0),test_event_hub_ids_and_replay(0),test_events_endpoint_auth_gating(0),test_heuristic_flow_uses_all_reachable_nodes(0),test_heuristic_flow_maps_config_node_name_to_route_target(0),test_heuristic_flow_maps_linkedin_screen_prompt_to_capture(0),test_heuristic_flow_filters_selected_node_when_route_targets_overlap(0),test_heuristic_flow_maps_browser_linkedin_prompt_to_cdp(0),test_heuristic_flow_maps_downloads_invoice_prompt_to_filesystem(0),test_heuristic_flow_does_not_fake_invoice_prompt_with_processes(0),test_registry_from_remote_routes(0),test_service_map_prefers_exact_uri_over_shared_target(0),test_resolve_step_payload_chains_prior_results(0),test_dig_path_indexes_lists(0),test_resolve_step_payload_passthrough_without_from(0),test_flow_document_round_trips_yaml(0),test_verify_flow_execution_checks_read_back_fragment(0),test_verify_flow_execution_can_fail_result(0),test_run_flow_document_dry_run(0)
     _wait_healthy(base;tries;delay)
     _wait_subscribers(base;want;tries;delay)
     _post_run(base;body;headers)
@@ -989,12 +996,13 @@ D:
     verification_check(name)
     file_transfer_verification()
   adapters/python/urirun/host/discovery.py:
-    e: iter_node_alias_values,add_node_aliases,node_spec_aliases,alias_map_from_dict,alias_map_from_list,node_alias_map_from_value,normalize_known_node_url,url_map_from_dict,url_map_from_list,node_url_map_from_value,node_dicts_from_url_map,node_alias_map_from_config_doc,node_alias_map_from_env,node_alias_map_from_node_urls,known_nodes_file_data,node_alias_map_from_known_nodes_file,known_nodes_file_urls,merge_known_nodes_into_config,host_config,node_alias_map_from_context,prompt_node_match,route_inputs_example,_classify_not_found,classify_route_run,_route_targets,_probe_route,_node_test_summary,node_test_routes
+    e: iter_node_alias_values,add_node_aliases,node_spec_aliases,alias_map_from_dict,alias_map_from_list,_node_map_from_value,node_alias_map_from_value,normalize_known_node_url,url_map_from_dict,url_map_from_list,node_url_map_from_value,node_dicts_from_url_map,node_alias_map_from_config_doc,node_alias_map_from_env,node_alias_map_from_node_urls,known_nodes_file_data,node_alias_map_from_known_nodes_file,known_nodes_file_urls,merge_known_nodes_into_config,host_config,node_alias_map_from_context,prompt_node_match,route_inputs_example,_classify_not_found,classify_route_run,_route_targets,_probe_route,_node_test_summary,node_test_routes
     iter_node_alias_values(value)
     add_node_aliases(out;name;aliases)
     node_spec_aliases(spec;fallback_name)
     alias_map_from_dict(value)
     alias_map_from_list(value)
+    _node_map_from_value(value;dict_fn;list_fn)
     node_alias_map_from_value(value)
     normalize_known_node_url(raw)
     url_map_from_dict(value)
@@ -1018,6 +1026,30 @@ D:
     _probe_route(client;uri;route;missing_sel)
     _node_test_summary(node;node_url;mode;results)
     node_test_routes(payload)
+  adapters/python/urirun/host/document_metadata.py:
+    e: _truthy_env,_local_image_ocr_tesseract,_ocr_text_ok,_ocr_connector_envelope,_local_image_ocr,_local_image_ocr_llm,_normalized_document_text,_parse_document_date,_parse_amount,_document_type,_parse_contractor,_load_env_file,_llm_env_file,_llm_model,_llm_api_key_ref,_coerce_amount,_llm_extract_metadata,_llm_complete_metadata,_parse_llm_json_object,_normalize_llm_doc_fields,_extract_document_metadata,shutil_which
+    _truthy_env(name;default)
+    _local_image_ocr_tesseract(path)
+    _ocr_text_ok(result)
+    _ocr_connector_envelope(path;backend)
+    _local_image_ocr(path;backend)
+    _local_image_ocr_llm(path)
+    _normalized_document_text(text)
+    _parse_document_date(text;fallback)
+    _parse_amount(text)
+    _document_type(text)
+    _parse_contractor(text)
+    _load_env_file(path)
+    _llm_env_file()
+    _llm_model()
+    _llm_api_key_ref()
+    _coerce_amount(value)
+    _llm_extract_metadata(ocr_text)
+    _llm_complete_metadata(model;key_ref;text)
+    _parse_llm_json_object(res)
+    _normalize_llm_doc_fields(data)
+    _extract_document_metadata(ocr_text)
+    shutil_which(binary)
   adapters/python/urirun/host/document_sync.py:
     e: boolish,document_archive_pdfs,document_sync_verification,_log_and_chat_report,_resolve_node_params,_parse_sync_params,_build_sync_params,_check_preflight,_upload_file,_read_back_file,sync_documents_to_node,DocumentSyncDeps,_SyncParams
     DocumentSyncDeps:
@@ -1071,9 +1103,10 @@ D:
     deploy_fs_file_transfer_fallback(client;required_uris)
     ensure_node_uri_routes(node_url;required_uris)
   adapters/python/urirun/host/host_dashboard.py:
-    e: _json_response,_html_response,_asset_response,_service_view_from_query,_scanner_stream_summary,_service_widget_summary,_service_widget_html,_service_widget_svg,_js_sdk_response,_read_json,_file_response,_preview_url,_is_image_path,_artifact_visual_path,_artifact_file_exists,_public_artifact,_public_artifacts,_attachment_visual_path,_apply_attachment_file_fields,_apply_attachment_visual_fields,_public_chat_attachment,_public_chat_attachments,_artifact_dedupe_key,_artifact_dedupe_rank,_merge_artifact_group,_dedupe_public_artifacts,_visible_public_artifacts,_collect_attachments,_chat_message,_add_chat_message,chat_history,chat_delete_messages,_truthy_env,_local_image_ocr_tesseract,_ocr_text_ok,_ocr_connector_envelope,_local_image_ocr,_local_image_ocr_llm,_document_archive_root,_document_index_path,_document_sync_default_dest_root,_document_sync_default_node,_iter_node_alias_values,_add_node_aliases,_node_spec_aliases,_alias_map_from_dict,_alias_map_from_list,_node_alias_map_from_value,_normalize_known_node_url,_url_map_from_dict,_url_map_from_list,_node_url_map_from_value,_node_dicts_from_url_map,_node_alias_map_from_config_doc,_node_alias_map_from_env,_node_alias_map_from_node_urls,_known_nodes_file_data,_node_alias_map_from_known_nodes_file,_known_nodes_file_urls,_merge_known_nodes_into_config,_node_alias_map_from_context,_prompt_node_match,_scanned_id_log_path,_utc_now,_file_sha256,_node_url_from_config,_node_client,_node_token_for,_run_node_uri,_route_inputs_example,_classify_route_run,node_test_routes,_route_key,_node_has_route,_fs_file_transfer_binding,_fs_file_transfer_fallback_bindings,_deploy_fs_file_transfer_fallback,_ensure_node_uri_routes,_short_value,_compact_remote_run,_route_not_found_remedy,_envelope_error_message,_remote_write_error,_remote_read_error,_document_sync_verification,_document_archive_pdfs,_document_sync_deps,sync_documents_to_node,_normalized_document_text,_load_document_index,_save_document_index,_document_files_exist,_prune_orphaned_documents,reconcile_document_index,_iter_scanned_id_log,_append_scanned_id_log,_existing_scanned_id,_scanned_log_entry,_scanned_entry_seen,_scanned_seen_buckets,_backfill_scanned_id_log,_docid_for_file,_parse_document_date,_parse_amount,_document_type,_parse_contractor,_load_env_file,_llm_env_file,_llm_model,_llm_api_key_ref,_coerce_amount,_llm_extract_metadata,_llm_complete_metadata,_parse_llm_json_object,_normalize_llm_doc_fields,_extract_document_metadata,_filename_part,_canonical_document_filename,_document_filename_with_id,_pdf_text,_pdf_stream,_write_document_pdf,_unique_document_path,_existing_document,_scanner_staging_dir,_cleanup_duplicate_scan_files,_draw_crop_box,_draw_overlay_label,_scanner_crop_overlay,_staging_keep_paths,_prune_scanner_staging,_is_blank_metadata,_merge_metadata_fields,_enrich_archived_record,_sidecar_text,_find_duplicate_document,_artifact_schema_known,_document_schema_fields,_archive_redundant_duplicate,_supersede_archived_document,_archive_month,_existing_document_meta,_archive_scanned_document,shutil_which,_lan_host,_url_host,_public_base_url,_scanner_autonomy_params,_scanner_page_url,_write_qr_png,startup_phone_qr,_ensure_tls_cert,_probe_scanner_url,_phone_scanner_url,_phone_scanner_external_status,_nl_text,_is_phone_scanner_prompt,_is_autonomous_scanner_prompt,_is_camera_start_prompt,_torch_enabled_from_prompt,ensure_phone_scanner_service,_auto_crop_receipt,_bounded,_frame_visual_metrics,_crop_dimensions,_crop_geometry_score,_crop_quality_score,_doctype_quality_score,_metadata_quality_score,_ocr_quality_score,_visual_quality_score,_document_frame_quality,_public_scanner_candidate,_scanner_live_store_locked,_scanner_public_candidate_for_live,scanner_live_state,_scanner_status_from_log,_latest_scanner_page_status,_scanner_artifact_doc_meta,_is_scanner_artifact,_scanner_artifact_item,_recent_scanner_artifacts,service_live_views,_scanner_best_update,_scanner_best_take,_scanner_bridge_deps,_crop_overlay_attachment,_register_document_artifact,_scanner_result_content,_register_scanner_result,_orientation_summary,_decode_capture_image,_capture_quality_ok,_capture_reject_result,_capture_candidate_result,_capture_display_path,_capture_ocr_and_detect,scanner_capture,_best_series_not_found,_resolve_best_candidate,_best_quality_rejected,_best_candidate_paths,_best_finish_store_failure,_refresh_best_ocr,_ensure_best_overlay,_store_best_finish,_best_crop_and_ocr,scanner_best_finish,scanner_session,uri_event,page_action_enqueue,page_action_poll,page_action_result,_uri_action_catalog,_uri_action_lookup,_uri_mode,_service_restart_argv,_schedule_restart_command,_chat_service_restart_argv,restart_chat_service,_phone_scanner_service_id,restart_phone_scanner_service,_uri_simulated_result,_result_artifact_class,register_tagged_artifact,_run_inprocess_connector_uri,_uri_invoke_route,_uri_invoke_page_action,_finalize_uri_result,uri_invoke,_first,_host_db,_mesh,_planfile_adapter,_host_config,_safe_tickets,_task_counts,_service_contacts,_host_registry_routes,summary,_compact_chat_result,node_add,node_set_token,_try_urifix_repair,_boolish,_document_sync_auto_retry_enabled,_urifix_auto_retry,_validated_sync_retry_payload,_document_sync_retry_payload_from_urifix,_needs_screen_document_capture,_is_document_sync_prompt,_document_sync_node_from_prompt,_document_sync_dest_from_prompt,_route_in_selected_targets,_has_screen_capture_route,_screen_document_capability_gap,_selected_nodes_from_targets,_decision_loop_status,_decision_loop_next_intent,_decision_loop_observation,_decision_loop_for_document_sync,_scanner_flow_result,_chat_ask_phone_scanner,_sync_execute_initial,_sync_ok_and_status,_apply_urifix_recovery,_chat_ask_document_sync,_chat_ask_general_planner_failure,_general_path_complete,_chat_ask_general,_chat_phone_scanner_response,_chat_document_sync_response,_chat_generic_response,_add_chat_user_message,chat_ask,task_action,_artifact_delete_roots,_artifact_file_delete_allowed,_payload_bool,_global_document_metadata_paths,_safe_artifact_sidecar_path,_artifact_delete_candidate_paths,_delete_one_artifact_file,_delete_artifact_files,artifacts_delete,artifacts_dedupe_rows,_iter_orphan_candidates,_cleanup_one_sidecar,artifacts_cleanup_orphan_sidecars,documents_reconcile,_api_summary,_api_tasks,_api_checks,_api_logs,_api_artifacts,_api_chat_history,_api_services_live,_api_scanner_live,_api_nodes_or_routes,_dashboard_api_response,create_handler,_port_holder_pids,_process_cmdline,_is_dashboard_process,_is_scanner_process,_is_chat_process,_free_port_from_matching_processes,_free_port_from_old_scanner,_free_port_from_old_chat,_free_port_from_old_dashboard,serve,command,default_host
+    e: _json_response,_html_response,_docs_nodes_html,_asset_response,_service_view_from_query,_scanner_stream_summary,_service_widget_summary,_service_widget_html,_service_widget_svg,_js_sdk_response,_read_json,_file_response,_preview_url,_is_image_path,_artifact_visual_path,_artifact_file_exists,_public_artifact,_public_artifacts,_attachment_visual_path,_apply_attachment_file_fields,_apply_attachment_visual_fields,_public_chat_attachment,_public_chat_attachments,_artifact_dedupe_key,_artifact_dedupe_rank,_merge_artifact_group,_dedupe_public_artifacts,_visible_public_artifacts,_collect_attachments,_chat_message,_add_chat_message,chat_history,chat_delete_messages,_sync_document_metadata_hooks,_extract_document_metadata,_local_image_ocr,_document_archive_root,_document_index_path,_document_sync_default_dest_root,_document_sync_default_node,_iter_node_alias_values,_add_node_aliases,_node_spec_aliases,_alias_map_from_dict,_alias_map_from_list,_node_alias_map_from_value,_normalize_known_node_url,_url_map_from_dict,_url_map_from_list,_node_url_map_from_value,_node_dicts_from_url_map,_node_alias_map_from_config_doc,_node_alias_map_from_env,_node_alias_map_from_node_urls,_known_nodes_file_data,_node_alias_map_from_known_nodes_file,_known_nodes_file_urls,_merge_known_nodes_into_config,_node_alias_map_from_context,_prompt_node_match,_scanned_id_log_path,_utc_now,_file_sha256,_node_url_from_config,_node_client,_node_token_for,_run_node_uri,_route_inputs_example,_classify_route_run,node_test_routes,_route_key,_node_has_route,_fs_file_transfer_binding,_fs_file_transfer_fallback_bindings,_deploy_fs_file_transfer_fallback,_ensure_node_uri_routes,_short_value,_compact_remote_run,_route_not_found_remedy,_envelope_error_message,_remote_write_error,_remote_read_error,_document_sync_verification,_document_archive_pdfs,_document_sync_deps,sync_documents_to_node,_load_document_index,_save_document_index,_document_files_exist,_prune_orphaned_documents,reconcile_document_index,_iter_scanned_id_log,_append_scanned_id_log,_existing_scanned_id,_scanned_log_entry,_scanned_entry_seen,_scanned_seen_buckets,_backfill_scanned_id_log,_docid_for_file,_filename_part,_canonical_document_filename,_document_filename_with_id,_pdf_text,_pdf_stream,_write_document_pdf,_unique_document_path,_existing_document,_scanner_staging_dir,_cleanup_duplicate_scan_files,_draw_crop_box,_draw_overlay_label,_scanner_crop_overlay,_staging_keep_paths,_prune_scanner_staging,_is_blank_metadata,_merge_metadata_fields,_enrich_archived_record,_sidecar_text,_find_duplicate_document,_artifact_schema_known,_document_schema_fields,_archive_redundant_duplicate,_supersede_archived_document,_archive_month,_existing_document_meta,_archive_scanned_document,startup_phone_qr,_nl_text,_is_phone_scanner_prompt,_is_autonomous_scanner_prompt,_is_camera_start_prompt,_torch_enabled_from_prompt,ensure_phone_scanner_service,_auto_crop_receipt,_bounded,_frame_visual_metrics,_crop_dimensions,_crop_geometry_score,_crop_quality_score,_doctype_quality_score,_metadata_quality_score,_ocr_quality_score,_visual_quality_score,_document_frame_quality,_public_scanner_candidate,_scanner_live_store_locked,_scanner_public_candidate_for_live,scanner_live_state,_scanner_status_from_log,_latest_scanner_page_status,_scanner_artifact_doc_meta,_is_scanner_artifact,_scanner_artifact_item,_recent_scanner_artifacts,service_live_views,_scanner_best_update,_scanner_best_take,_scanner_bridge_deps,_crop_overlay_attachment,_register_document_artifact,_scanner_result_content,_register_scanner_result,_orientation_summary,_decode_capture_image,_capture_quality_ok,_capture_reject_result,_capture_candidate_result,_capture_display_path,_capture_ocr_and_detect,scanner_capture,_best_series_not_found,_resolve_best_candidate,_best_quality_rejected,_best_candidate_paths,_best_finish_store_failure,_refresh_best_ocr,_ensure_best_overlay,_store_best_finish,_best_crop_and_ocr,scanner_best_finish,scanner_session,uri_event,page_action_enqueue,page_action_poll,page_action_result,_uri_action_catalog,_uri_action_lookup,_uri_mode,_service_restart_argv,_schedule_restart_command,_chat_service_restart_argv,restart_chat_service,_phone_scanner_service_id,restart_phone_scanner_service,_uri_simulated_result,_result_artifact_class,register_tagged_artifact,_run_inprocess_connector_uri,_uri_invoke_route,_uri_invoke_page_action,_finalize_uri_result,uri_invoke,_first,_host_db,_mesh,_planfile_adapter,_host_config,_safe_tickets,_task_counts,_service_contacts,_host_registry_routes,summary,_compact_chat_result,_mirror_node_to_nodes_file,_node_api_slug,_node_api_secret_ref,_store_node_api_secret,_extract_raw_secret,_extract_secret_ref,_build_auth_extra_fields,_normalize_node_api_auth,_default_api_items,_normalize_api_item,_normalize_node_apis,_derive_node_capabilities,_build_node_entry,_persist_node_to_config,node_add,_configured_node_api_parts,_configured_node_api_lookup,_configured_api_secret,_apply_auth_header,_configured_api_headers,_join_api_url,_configured_api_response_body,_build_request_body,_execute_http_request,_resolve_http_method_and_url,_configured_api_call,_apply_uri_overrides,_resolve_node_api_identifiers,_connector_required_response,configured_node_api_request,_node_kinds_path,_node_kinds,_set_node_kind,_annotate_node_kinds,_android_node_service_url,start_android_node_service,phone_web_nodes,phone_node_qr,_node_envelope_error,_probe_node_token,node_set_token,_try_urifix_repair,_document_sync_auto_retry_enabled,_urifix_auto_retry,_validated_sync_retry_payload,_document_sync_retry_payload_from_urifix,_needs_screen_document_capture,_is_document_sync_prompt,_document_sync_node_from_prompt,_document_sync_dest_from_prompt,_route_in_selected_targets,_has_screen_capture_route,_screen_document_capability_gap,_selected_nodes_from_targets,_decision_loop_status,_decision_loop_next_intent,_decision_loop_observation,_decision_loop_for_document_sync,_scanner_flow_result,_chat_ask_phone_scanner,_sync_execute_initial,_sync_ok_and_status,_apply_urifix_recovery,_chat_ask_document_sync,_chat_ask_general_planner_failure,_general_path_complete,_chat_ask_general,_chat_phone_scanner_response,_chat_document_sync_response,_chat_generic_response,_add_chat_user_message,chat_ask,task_action,task_create,_connector_pip_tail,connector_install,connector_test,_artifact_delete_roots,_artifact_file_delete_allowed,_payload_bool,_global_document_metadata_paths,_safe_artifact_sidecar_path,_artifact_delete_candidate_paths,_delete_one_artifact_file,_delete_artifact_files,artifacts_delete,artifacts_dedupe_rows,_iter_orphan_candidates,_cleanup_one_sidecar,artifacts_cleanup_orphan_sidecars,documents_reconcile,_api_summary,_api_objects,_api_node_types,_api_tasks,_api_checks,_api_logs,_api_artifacts,_api_chat_history,_api_services_live,_api_scanner_live,_api_nodes_or_routes,_dashboard_api_response,create_handler,_port_holder_pids,_process_cmdline,_is_dashboard_process,_is_scanner_process,_is_chat_process,_free_port_from_matching_processes,_free_port_from_old_scanner,_free_port_from_old_chat,_free_port_from_old_dashboard,serve,command,default_host
     _json_response(handler;status;payload)
     _html_response(handler;html)
+    _docs_nodes_html()
     _asset_response(handler;body;content_type)
     _service_view_from_query(project;query)
     _scanner_stream_summary(title;status;stream)
@@ -1104,12 +1137,9 @@ D:
     _add_chat_message(db;message)
     chat_history(db;project;limit)
     chat_delete_messages(db;payload)
-    _truthy_env(name;default)
-    _local_image_ocr_tesseract(path)
-    _ocr_text_ok(result)
-    _ocr_connector_envelope(path;backend)
+    _sync_document_metadata_hooks()
+    _extract_document_metadata(ocr_text)
     _local_image_ocr(path;backend)
-    _local_image_ocr_llm(path)
     _document_archive_root()
     _document_index_path()
     _document_sync_default_dest_root()
@@ -1160,7 +1190,6 @@ D:
     _document_archive_pdfs(root)
     _document_sync_deps()
     sync_documents_to_node(project;db;config;payload)
-    _normalized_document_text(text)
     _load_document_index()
     _save_document_index(index)
     _document_files_exist(item)
@@ -1174,20 +1203,6 @@ D:
     _scanned_seen_buckets(existing)
     _backfill_scanned_id_log(index)
     _docid_for_file(path;ocr_text)
-    _parse_document_date(text;fallback)
-    _parse_amount(text)
-    _document_type(text)
-    _parse_contractor(text)
-    _load_env_file(path)
-    _llm_env_file()
-    _llm_model()
-    _llm_api_key_ref()
-    _coerce_amount(value)
-    _llm_extract_metadata(ocr_text)
-    _llm_complete_metadata(model;key_ref;text)
-    _parse_llm_json_object(res)
-    _normalize_llm_doc_fields(data)
-    _extract_document_metadata(ocr_text)
     _filename_part(value)
     _canonical_document_filename(meta)
     _document_filename_with_id(filename;doc_id)
@@ -1215,18 +1230,7 @@ D:
     _archive_month(extracted)
     _existing_document_meta(duplicate)
     _archive_scanned_document()
-    shutil_which(binary)
-    _lan_host()
-    _url_host(host)
-    _public_base_url(scheme;host;port)
-    _scanner_autonomy_params()
-    _scanner_page_url(base_url)
-    _write_qr_png(url;path)
     startup_phone_qr(project;db)
-    _ensure_tls_cert(cert;key)
-    _probe_scanner_url(url;timeout)
-    _phone_scanner_url(port)
-    _phone_scanner_external_status(port)
     _nl_text(text)
     _is_phone_scanner_prompt(prompt)
     _is_autonomous_scanner_prompt(prompt)
@@ -1313,10 +1317,48 @@ D:
     _host_registry_routes()
     summary(project;db;config;node_urls)
     _compact_chat_result(result;payload)
+    _mirror_node_to_nodes_file(name;url)
+    _node_api_slug(value;fallback)
+    _node_api_secret_ref(name;api_id)
+    _store_node_api_secret(name;api_id;secret)
+    _extract_raw_secret(auth_data;api)
+    _extract_secret_ref(auth_data;api)
+    _build_auth_extra_fields(auth_data;api)
+    _normalize_node_api_auth(name;api_id;api;auth)
+    _default_api_items(url;kind;payload)
+    _normalize_api_item(name;url;index;item;fallback_auth)
+    _normalize_node_apis(name;url;kind;payload)
+    _derive_node_capabilities(payload;apis)
+    _build_node_entry(name;url;kind;apis;capabilities)
+    _persist_node_to_config(node_config;config;name;url)
     node_add(config;payload)
+    _configured_node_api_parts(uri)
+    _configured_node_api_lookup(config;node_urls)
+    _configured_api_secret(auth)
+    _apply_auth_header(headers;auth;auth_type;secret)
+    _configured_api_headers(api;payload)
+    _join_api_url(base;extra_path;query)
+    _configured_api_response_body(raw;content_type)
+    _build_request_body(payload;headers)
+    _execute_http_request(node;api;method;url;raw_body;headers;timeout)
+    _resolve_http_method_and_url(node;api;payload)
+    _configured_api_call(node;api;payload)
+    _apply_uri_overrides(payload;uri;node_name;api_id)
+    _resolve_node_api_identifiers(payload;uri)
+    _connector_required_response(scheme;node_name;safe_api)
+    configured_node_api_request(config;node_urls;payload)
+    _node_kinds_path()
+    _node_kinds()
+    _set_node_kind(name;kind)
+    _annotate_node_kinds(nodes)
+    _android_node_service_url()
+    start_android_node_service(payload)
+    phone_web_nodes(payload)
+    phone_node_qr(project;db;payload)
+    _node_envelope_error(envelope)
+    _probe_node_token(name;config)
     node_set_token(config;payload)
     _try_urifix_repair(prompt;request;result)
-    _boolish(value;default)
     _document_sync_auto_retry_enabled(payload)
     _urifix_auto_retry(urifix)
     _validated_sync_retry_payload(retry;sync_node)
@@ -1348,6 +1390,10 @@ D:
     _add_chat_user_message(db;prompt;config;node_urls)
     chat_ask(project;db;config;payload;node_urls;token;identity)
     task_action(project;ticket_id;action;payload)
+    task_create(project;payload)
+    _connector_pip_tail(source;spec)
+    connector_install(project;payload)
+    connector_test(project;db;config;payload)
     _artifact_delete_roots(project)
     _artifact_file_delete_allowed(path;project)
     _payload_bool(payload;name;default)
@@ -1363,6 +1409,8 @@ D:
     artifacts_cleanup_orphan_sidecars(project;db;payload)
     documents_reconcile(project;db;payload)
     _api_summary(project;db;config;query;node_urls)
+    _api_objects(project;db;config;query;node_urls)
+    _api_node_types(project;db;config;query;node_urls)
     _api_tasks(project;db;config;query;node_urls)
     _api_checks(project;db;config;query;node_urls)
     _api_logs(project;db;config;query;node_urls)
@@ -1386,7 +1434,7 @@ D:
     command(args)
     default_host()
   adapters/python/urirun/host/host_db.py:
-    e: db_path,now_iso,new_id,connect,connection,row_dict,rows_dict,init_db,_schema_json,create_dataset,list_datasets,get_dataset,_validate_record,upsert_record,_sync_record_fts,search_records,register_artifact,list_artifacts,artifacts_by_ids,delete_artifacts,add_check,recent_checks,add_log,recent_logs,delete_logs,create_llm_session,add_llm_message,read_only_sql,route_db_path,_run_query_route,_run_command_route,run_uri_route
+    e: db_path,now_iso,new_id,connect,connection,row_dict,rows_dict,init_db,_schema_json,create_dataset,list_datasets,get_dataset,_validate_record,upsert_record,_sync_record_fts,search_records,register_artifact,_query_table,list_artifacts,artifacts_by_ids,delete_artifacts,add_check,recent_checks,add_log,recent_logs,delete_logs,create_llm_session,add_llm_message,read_only_sql,route_db_path,_run_query_route,_run_command_route,run_uri_route
     db_path(path)
     now_iso()
     new_id(prefix)
@@ -1404,6 +1452,7 @@ D:
     _sync_record_fts(conn;record;dataset_id)
     search_records(path;query;dataset;limit)
     register_artifact(path;kind;uri;artifact_path;meta)
+    _query_table(path;table;filter_col;filter_val;limit)
     list_artifacts(path;kind;limit)
     artifacts_by_ids(path;ids)
     delete_artifacts(path;ids)
@@ -1436,10 +1485,28 @@ D:
     run_host_data(ctx;policy;execute)
     domain_monitor_bindings(target;db;project;screenshot_dir)
     run_domain_monitor(ctx;policy;execute)
+  adapters/python/urirun/host/node_types.py:
+    e: node_type_profiles,normalize_node_type,node_type_profile,node_type_from_tags,node_type_from_node,node_type_tags,annotate_node_type,annotate_node_types
+    node_type_profiles()
+    normalize_node_type(value)
+    node_type_profile(value)
+    node_type_from_tags(tags)
+    node_type_from_node(node)
+    node_type_tags(node_type;existing)
+    annotate_node_type(node)
+    annotate_node_types(nodes)
   adapters/python/urirun/host/object_registry.py:
-    e: host_registry_routes,host_object,phone_scanner_contact,service_contacts,annotate_node_tokens
+    e: host_registry_routes,host_object,_uri_target,route_owner_route,dedupe_routes,_node_owner_dict,_node_own_routes,node_object,service_object,uri_objects,phone_scanner_contact,service_contacts,annotate_node_tokens
     host_registry_routes(actions)
     host_object(project;routes)
+    _uri_target(uri)
+    route_owner_route(route;owner)
+    dedupe_routes(routes)
+    _node_owner_dict(node;name;typed_node)
+    _node_own_routes(node;all_routes;name)
+    node_object(node;all_routes)
+    service_object(service)
+    uri_objects()
     phone_scanner_contact(scanner_state)
     service_contacts()
     annotate_node_tokens(nodes;node_token_for)
@@ -1473,15 +1540,17 @@ D:
     run_dsl(project;command)
     loads_json(value;default)
   adapters/python/urirun/host/scanner_bridge.py:
-    e: crop_overlay_attachment,register_document_artifact,scanner_result_content,register_scanner_result,_add_log,scanner_session,_first,uri_event,page_action_enqueue,page_action_poll,page_action_result,scanner_status_from_log,latest_scanner_page_status,scanner_artifact_doc_meta,is_scanner_artifact,ScannerBridgeDeps
+    e: crop_overlay_attachment,register_document_artifact,scanner_result_content,public_scanner_candidate,scanner_public_candidate_for_live,scanner_live_state_from_streams,register_scanner_result,_add_log,scanner_session,uri_event,page_action_enqueue,page_action_poll,page_action_result,scanner_status_from_log,latest_scanner_page_status,scanner_artifact_doc_meta,is_scanner_artifact,scanner_artifact_item,scanner_service_live_views,scanner_flow_result,nl_text,is_phone_scanner_prompt,is_autonomous_scanner_prompt,is_camera_start_prompt,torch_enabled_from_prompt,ScannerBridgeDeps
     ScannerBridgeDeps:
     crop_overlay_attachment(deps)
     register_document_artifact(deps;db;project)
     scanner_result_content(content_prefix;crop;document;ocr)
+    public_scanner_candidate(candidate)
+    scanner_public_candidate_for_live(candidate;project)
+    scanner_live_state_from_streams(streams;project)
     register_scanner_result(deps;project;db)
     _add_log(deps;db;stream;event;detail)
     scanner_session(deps;db;payload)
-    _first(query;name;default)
     uri_event(deps;db;query)
     page_action_enqueue(deps;db)
     page_action_poll(target;limit)
@@ -1490,6 +1559,26 @@ D:
     latest_scanner_page_status(logs)
     scanner_artifact_doc_meta(artifact)
     is_scanner_artifact(kind;uri;meta)
+    scanner_artifact_item(artifact;kind;uri;path;display_path;doc;project)
+    scanner_service_live_views(scanner;service;recent_artifacts;camera_status)
+    scanner_flow_result(service;autonomous_scan;camera_action_uri;camera_payload;torch_click_uri;torch_enabled;queued_camera;queued_torch;prompt;selected_nodes;selected_targets)
+    nl_text(text)
+    is_phone_scanner_prompt(prompt)
+    is_autonomous_scanner_prompt(prompt)
+    is_camera_start_prompt(prompt)
+    torch_enabled_from_prompt(prompt)
+  adapters/python/urirun/host/scanner_net.py:
+    e: _lan_host,_url_host,_public_base_url,_scanner_autonomy_params,_scanner_page_url,_write_qr_png,_ensure_tls_cert,_probe_scanner_url,_phone_scanner_url,_phone_scanner_external_status
+    _lan_host()
+    _url_host(host)
+    _public_base_url(scheme;host;port)
+    _scanner_autonomy_params()
+    _scanner_page_url(base_url)
+    _write_qr_png(url;path)
+    _ensure_tls_cert(cert;key)
+    _probe_scanner_url(url;timeout)
+    _phone_scanner_url(port)
+    _phone_scanner_external_status(port)
   adapters/python/urirun/host/scheduler.py:
     e: build_loop_command,shell_join,systemd_units,cron_line,preview,install_systemd_user
     build_loop_command()
@@ -1538,6 +1627,12 @@ D:
     plan_chat_request(prompt)
     ticket_payload(ticket;plan)
     create_tickets_from_plan(project;plan)
+  adapters/python/urirun/host/widgets.py:
+    e: query_value,select_service_view,scanner_stream_summary,service_widget_summary
+    query_value(query;name;default)
+    select_service_view(data)
+    scanner_stream_summary(title;status;stream)
+    service_widget_summary(view)
   adapters/python/urirun/host_dashboard.py:
   adapters/python/urirun/host_db.py:
   adapters/python/urirun/host_integrations.py:
@@ -1668,7 +1763,7 @@ D:
     runtime_info()
     bindings(name)
   adapters/python/urirun/node/mesh.py:
-    e: _data_bindings,_data_init,_data_dataset_create,_data_datasets,_data_record_upsert,_data_records,_data_artifact_register,_data_artifacts,_data_check_add,_data_checks,_data_sql,data_command,monitor_command,_host_delegated_command,fulfill_need,supply_command,ensure_command,_maybe_ensure_scheme,_run_streamed,run_command,_print_event,watch_command,_watch_loop,_host_cmd_config,_host_cmd_nodes,_host_cmd_routes,_host_cmd_agents,_host_cmd_ask,_host_mesh_command,copy_id_command,copy_id_cli,_split_deploy_doc,deploy_command,_maybe_load_dotenv,host_command,send_json,read_raw,read_json,_pool_executors,_probe_one_route,_render_probe_report,probe_command,resolve_admin_token,_write_pushed_code,_apply_deploy_env,_registry_to_bindings,_deploy_registry,_reimport_pushed_code,_apply_deploy_surface,_apply_deploy_allow,apply_deploy,_parse_sse_query,_sse_initial_cursor,_sse_event_matches,_sse_frame,_warn_unauthenticated_node,_start_enroll_token_rotation,_announce_node_started,serve_node,_serve_opts_merged,_resolve_serve_opts,_node_serve,node_list_command,node_stop_command,node_command,EventHub,NodeContext,NodeHandler
+    e: _data_bindings,_data_init,_data_dataset_create,_data_datasets,_data_record_upsert,_data_records,_data_artifact_register,_data_artifacts,_data_check_add,_data_checks,_data_sql,data_command,monitor_command,_parse_api_json_args,_build_implicit_api,_handle_add_node_advanced,_handle_add_node,_host_delegated_command,fulfill_need,supply_command,ensure_command,_maybe_ensure_scheme,_run_streamed,run_command,_print_event,watch_command,_watch_loop,_host_cmd_config,_host_cmd_nodes,_host_cmd_routes,_host_cmd_agents,_host_cmd_ask,_host_mesh_command,copy_id_command,copy_id_cli,_split_deploy_doc,_warn_dropped_routes,deploy_command,_maybe_load_dotenv,host_command,send_json,read_raw,read_json,_pool_executors,_probe_one_route,_render_probe_report,probe_command,resolve_admin_token,_write_pushed_code,_apply_deploy_env,_registry_to_bindings,_deploy_registry,_reimport_pushed_code,_apply_deploy_surface,_apply_deploy_allow,apply_deploy,_parse_sse_query,_sse_initial_cursor,_sse_event_matches,_sse_frame,_warn_unauthenticated_node,_start_enroll_token_rotation,_announce_node_started,serve_node,_serve_opts_merged,_resolve_serve_opts,_node_serve,node_list_command,node_stop_command,node_command,EventHub,NodeContext,NodeHandler
     EventHub: __init__(1),publish(1),subscribe(0),unsubscribe(1),replay_since(1),current_id(0),count(0)  # In-memory pub/sub for a node's live event stream (SSE). Each
     NodeContext: __init__(0)  # Everything a NodeHandler needs to serve one node — the mutab
     NodeHandler: ctx(0),do_OPTIONS(0),_guarded(1),do_GET(0),do_POST(0),_health_payload(0),_routes_payload(0),_get(0),_get_errors(2),_post(0),_run_target(2),_publish_run(2),_validate_run_request(1),_dispatch_control_uri(3),_respond_async(4),_handle_run(0),_handle_adopt(2),_handle_need(2),_handle_run_control(1),_stream_events(0),_admin_ok(1),_run_ok(1),_handle_deploy(0),_handle_enroll(0),log_message(1)  # The node's HTTP surface. State/config live on `self.server.c
@@ -1685,6 +1780,10 @@ D:
     _data_sql(args;host_db)
     data_command(args)
     monitor_command(args)
+    _parse_api_json_args(args)
+    _build_implicit_api(args)
+    _handle_add_node_advanced(args)
+    _handle_add_node(args)
     _host_delegated_command(args)
     fulfill_need(client;need;roots)
     supply_command(args)
@@ -1704,6 +1803,7 @@ D:
     copy_id_command(args)
     copy_id_cli(argv)
     _split_deploy_doc(path)
+    _warn_dropped_routes(result)
     deploy_command(args)
     _maybe_load_dotenv(path)
     host_command(args)
@@ -1797,7 +1897,7 @@ D:
     _task_loop(args;pa)
     task_command(args)
   adapters/python/urirun/node/transport.py:
-    e: http_json,_probe_health,_listening_ports_local,node_list_running,_pids_on_port,stop_node_port,parse_ports,_deploy_allow_list,_annotate_deploy_allow_compat,deploy_to_node,_watch_node_url,_watch_node_headers,_parse_sse_line,watch_node,event_topic,_mqtt_publish_fn,fanout_to_mqtt,copy_id,discover_node,discover_mesh
+    e: http_json,_probe_health,_listening_ports_local,node_list_running,_pids_on_port,stop_node_port,parse_ports,_deploy_allow_list,_annotate_deploy_allow_compat,deploy_to_node,_watch_node_url,_watch_node_headers,_parse_sse_line,watch_node,event_topic,_mqtt_publish_fn,fanout_to_mqtt,copy_id,_configured_node_kind,_configured_api_id,_configured_api_kind,_configured_api_routes,discover_node,discover_mesh
     http_json(method;url;body;timeout;headers;raw)
     _probe_health(host;port;timeout)
     _listening_ports_local()
@@ -1816,6 +1916,10 @@ D:
     _mqtt_publish_fn(broker)
     fanout_to_mqtt(events;broker;topic_prefix;publish_fn;on_publish)
     copy_id(url;identity)
+    _configured_node_kind(node)
+    _configured_api_id(api;index)
+    _configured_api_kind(api)
+    _configured_api_routes(name;node)
     discover_node(node)
     discover_mesh(config)
   adapters/python/urirun/planfile_adapter.py:
@@ -1898,11 +2002,10 @@ D:
     format_route_table(items;show_decision)
     main(argv)
   adapters/python/urirun/runtime/_scan.py:
-    e: slugify,relpath,now_iso,emit_json,infer_kind,normalize_binding,binding_to_route_source,route_source_to_binding,load_bindings_from_manifest,build_binding_document,compile_registry_document,iter_project_files,scan_manifest_files,npm_command_for_script,github_dependency_binding,scan_package_json,_read_toml,scan_pyproject,scan_makefile,scan_shell_script,module_ref_for_python,scan_python_code,scan_js_code,parse_compose_label_line,scan_docker_compose,scan_openapi,_scan_one_file,scan_path,scan_github,load_binding_source,load_binding_sources,load_registry_arg,list_bindings,format_binding_table,main
+    e: slugify,relpath,now_iso,infer_kind,normalize_binding,binding_to_route_source,route_source_to_binding,load_bindings_from_manifest,build_binding_document,compile_registry_document,iter_project_files,scan_manifest_files,npm_command_for_script,github_dependency_binding,scan_package_json,_read_toml,scan_pyproject,scan_makefile,scan_shell_script,module_ref_for_python,scan_python_code,scan_js_code,parse_compose_label_line,scan_docker_compose,scan_openapi,_scan_one_file,scan_path,scan_github,load_binding_source,load_binding_sources,load_registry_arg,list_bindings,format_binding_table,main
     slugify(value;fallback)
     relpath(path;root)
     now_iso()
-    emit_json(value;out)
     infer_kind(binding)
     normalize_binding(binding;default_source)
     binding_to_route_source(binding)
@@ -2119,7 +2222,7 @@ D:
     load_registry_arg(arg;openapi_base_url)
     main(argv)
   adapters/python/urirun/runtime/v2.py:
-    e: model_from_function,_placeholder_kwargs,uri_command,uri_shell,_handler_kwargs,uri_handler,decorated_bindings,_document_binding_from_expanded,connector_bindings,_select_entry_points,_load_entry_point_bindings,entry_point_bindings,_entry_point_script_issues,connector_health,_collision_index,connector_collisions,entry_point_binding_document,entry_point_registry,_schema_for,_apply_defaults,_input_values,validate_input,render_value,render_sequence,render_argv,run_argv_template,run_shell_template,_first_payload_value,_resolve_error_action,_error_recent,_error_search,_error_info,_error_ticket,run_error_store,_host_integrations,planfile_task_bindings,run_planfile_task,host_data_bindings,run_host_data,domain_monitor_bindings,run_domain_monitor,run_local_function_subprocess,_last_json_object,_builtin_error_route_entry,_builtin_registry_route_entry,_record_error,_run_parse,_run_resolve_route,_run_validate,_run_executor,_run_dry,_run_execute,run,check,list_routes,_strip_runtime_only,_binding_config,_binding_adapter_kind,expand_binding,_binding_pairs,expand_bindings,compile_registry,build_binding_document,_bindings_as_map,merge_binding_document,write_or_emit_binding,_coerce_default,parse_param_declaration,input_schema_from_params,command_binding_from_cli,pypi_binding,load_registry_arg,_placeholders_in,validate_binding_document,_iter_files,_rel,_empty_input_schema,_load_manifest,_scan_package_json,_read_toml,_scan_pyproject,_scan_shell_script,_scan_makefile,_parse_dockerfile_labels,_manifest_candidates,_scan_dockerfile,scan_artifacts,_load_json_arg,_load_many,_package_version,_is_pipx_env,_cmd_scan,_cmd_compile,_cmd_discover,_cmd_adopt_pack,_cmd_tree,_cmd_validate,_cmd_add_command,_cmd_add_pypi,_cmd_add_openapi,_cmd_gen,_cmd_doctor,_pip_command,_resolve_pip_targets,_pip_install_args,_cmd_install,_cmd_upgrade,_pipspec_version,_outdated_rows,_cmd_outdated,_cmd_agent,_print_doctor_report,_cmd_connectors_doctor,_cmd_connectors,_cmd_errors,_cmd_compat,_cmd_host,_cmd_node,_builtin_binding_items,_registry_from_module,_resolve_list_registry,_cmd_run_or_list,_cmd_version,main,_RunAbort
+    e: model_from_function,_placeholder_kwargs,uri_command,uri_shell,_handler_kwargs,uri_handler,decorated_bindings,_document_binding_from_expanded,connector_bindings,_select_entry_points,_load_entry_point_bindings,entry_point_bindings,_entry_point_script_issues,connector_health,_collision_index,connector_collisions,entry_point_binding_document,entry_point_registry,_schema_for,_apply_defaults,_input_values,validate_input,render_value,render_sequence,render_argv,run_argv_template,run_shell_template,_first_payload_value,_resolve_error_action,_error_recent,_error_search,_error_info,_error_ticket,run_error_store,_host_integrations,planfile_task_bindings,run_planfile_task,host_data_bindings,run_host_data,domain_monitor_bindings,run_domain_monitor,run_local_function_subprocess,_last_json_object,_builtin_error_route_entry,_builtin_registry_route_entry,_record_error,_run_parse,_run_resolve_route,_run_validate,_run_executor,_run_dry,_run_execute,run,check,list_routes,_strip_runtime_only,_binding_config,_binding_adapter_kind,expand_binding,expand_bindings,compile_registry,build_binding_document,_bindings_as_map,merge_binding_document,write_or_emit_binding,_coerce_default,parse_param_declaration,input_schema_from_params,command_binding_from_cli,pypi_binding,load_registry_arg,_placeholders_in,validate_binding_document,_empty_input_schema,_load_manifest,_scan_package_json,_read_toml,_scan_pyproject,_scan_shell_script,_scan_makefile,_parse_dockerfile_labels,_manifest_candidates,_scan_dockerfile,scan_artifacts,_load_json_arg,_load_many,_package_version,_is_pipx_env,_cmd_scan,_cmd_compile,_cmd_discover,_cmd_adopt_pack,_cmd_tree,_cmd_validate,_cmd_add_command,_cmd_add_pypi,_cmd_add_openapi,_cmd_gen,_cmd_doctor,_pip_command,_resolve_pip_targets,_pip_install_args,_cmd_install,_cmd_upgrade,_pipspec_version,_outdated_rows,_cmd_outdated,_cmd_agent,_print_doctor_report,_cmd_connectors_doctor,_cmd_connectors,_cmd_errors,_cmd_compat,_cmd_host,_cmd_node,_builtin_binding_items,_registry_from_module,_resolve_list_registry,_cmd_run_or_list,_cmd_version,main,_RunAbort
     _RunAbort: __init__(1)  # Carries a finished (error) envelope to the single exit point
     model_from_function(fn)
     _placeholder_kwargs(fn)
@@ -2180,7 +2283,6 @@ D:
     _binding_config(expanded)
     _binding_adapter_kind(expanded;config)
     expand_binding(uri;binding)
-    _binding_pairs(doc)
     expand_bindings(doc)
     compile_registry(doc;generated_at;on_conflict)
     build_binding_document(bindings;generated_at)
@@ -2195,8 +2297,6 @@ D:
     load_registry_arg(arg;openapi_base_url)
     _placeholders_in(value)
     validate_binding_document(doc)
-    _iter_files(root)
-    _rel(path;root)
     _empty_input_schema()
     _load_manifest(path)
     _scan_package_json(path;root)
@@ -2359,7 +2459,7 @@ D:
     test_file_transfer_verification_reports_missing_files()
     test_file_transfer_verification_accepts_complete_transfer()
   tests/test_host_dashboard.py:
-    e: test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen,test_dashboard_chat_messages_can_copy_markdown,test_chat_ask_generates_and_dry_runs_uri_flow,test_chat_ask_derives_nodes_from_node_targets,test_chat_ask_plans_document_sync_without_llm,test_chat_ask_document_sync_resolves_node_from_known_nodes_file,test_summary_shows_known_nodes_file_nodes,test_chat_ask_executes_document_sync_without_llm,test_chat_ask_document_sync_blocks_when_contract_fails,test_chat_ask_document_sync_error_includes_urifix_recovery,test_chat_ask_document_sync_auto_retries_urifix_node_url,test_document_sync_urifix_retry_guard_rejects_unsafe_contracts,test_chat_ask_document_sync_retry_failure_does_not_loop,test_chat_ask_document_sync_decision_loop_blocks_without_node_url,test_chat_ask_returns_recovery_when_planner_fails,test_chat_ask_execute_and_transient_node_urls,test_chat_ask_requires_prompt,test_chat_delete_messages_removes_only_chat_messages,test_artifacts_delete_removes_db_rows_and_allowed_files,test_artifacts_delete_removes_document_json_sidecar_but_keeps_global_indexes,test_artifacts_delete_respects_delete_files_false_string,test_artifacts_dedupe_rows_keeps_document_pdf_without_deleting_file,test_artifacts_cleanup_orphan_sidecars_removes_json_without_document,test_public_artifact_uses_existing_preview_and_marks_missing_files,test_scanner_crop_overlay_draws_diagnostic_image,test_public_scanner_candidate_exposes_overlay_preview,test_artifacts_api_hides_missing_files_by_default,test_artifacts_api_dedupes_same_file_path_by_default,test_chat_ask_reports_missing_screen_capture_capability,test_phone_scanner_prompt_intent_is_specific,test_chat_ask_starts_phone_scanner_service_from_nl,test_chat_history_reads_message_logs,test_chat_history_marks_missing_attachment_files,test_chat_history_limit_ignores_technical_ask_logs,test_scanner_live_state_groups_best_candidates,test_service_live_views_wraps_scanner_stream,test_service_live_views_includes_scanner_status_without_stream,test_service_contacts_marks_external_phone_scanner_running,test_service_contacts_marks_phone_scanner_stopped_when_probe_fails,test_service_widget_html_and_svg_render_live_view,test_startup_phone_qr_adds_chat_message,test_scanner_session_adds_chat_message,test_uri_event_logs_js_event,test_uri_invoke_dispatches_scanner_session,test_uri_invoke_lists_supported_host_actions,test_uri_invoke_dry_run_does_not_execute_side_effects,test_uri_invoke_execute_session_logs,test_uri_invoke_chat_restart_schedules_port_replace_without_supervisor,test_uri_invoke_chat_restart_schedules_systemd,test_uri_invoke_phone_scanner_restart_requires_configuration_for_external,test_uri_invoke_phone_scanner_restart_replaces_old_scanner_port,test_uri_invoke_phone_scanner_restart_schedules_systemd,test_free_port_from_old_scanner_only_kills_scanner_process,test_free_port_from_old_scanner_refuses_unrelated_process,test_free_port_from_old_chat_only_kills_chat_process,test_free_port_from_old_chat_refuses_unrelated_process,test_sync_documents_to_node_copies_pdfs_and_logs_chat,test_sync_documents_to_node_reports_remote_run_error,test_sync_documents_to_node_preflights_required_fs_routes,test_ensure_node_uri_routes_deploys_host_fs_file_transfer_fallback,test_remote_write_error_recognizes_node_error_value_without_error_key,test_sync_documents_to_node_reports_sha256_mismatch,test_sync_documents_to_node_requires_read_back_verification,test_uri_invoke_page_action_queues_for_scanner,test_uri_invoke_rejects_scanner_page_requeue_loop,test_chat_camera_prompt_starts_service_and_queues_page_action,test_chat_autonomous_receipt_prompt_queues_autonomous_scanner,test_chat_torch_prompt_starts_camera_and_queues_light,test_scanner_capture_rejects_low_quality_without_chat_attachment,test_scanner_capture_uses_receipt_crop_for_preview_and_ocr,test_orientation_summary_compacts_each_signal,test_scanner_capture_surfaces_orientation,test_scanner_capture_ocrs_full_frame_by_default,test_scanner_capture_candidate_scores_without_archiving,test_scanner_best_finish_archives_best_candidate,test_duplicate_scanner_result_registers_only_canonical_document_artifact,test_archive_scanned_document_writes_pdf_json_index_and_detects_duplicate,test_write_document_pdf_orients_image_before_embedding,test_archive_scanned_document_duplicate_removes_staged_scan_and_crop,test_cleanup_duplicate_scan_files_ignores_paths_outside_staging_dir,test_transaction_fingerprint_is_stable_across_ocr_noise,_archive_with_distinct_docids,test_archive_supersedes_incomplete_duplicate_when_better_scan_arrives,test_merge_metadata_fields_backfills_gaps_best_of_both,test_enrich_archived_record_updates_entry_and_sidecar,_doc_like_image,test_archive_visual_strong_dedups_tokenless_rescan,test_archive_skips_lower_quality_fingerprint_duplicate,test_archive_scanned_document_duplicate_survives_moved_pdf,test_scanned_id_log_backfills_existing_document_index,test_document_metadata_does_not_parse_date_as_amount,test_parse_document_date_handles_glued_and_labeled_dates,test_extract_metadata_handles_adjacent_date_time_and_amount,test_extract_metadata_llm_overrides_regex_and_keeps_blanks,test_local_image_ocr_falls_back_to_llm_vision,test_llm_extract_vision_mode_sends_image,test_extract_metadata_llm_generic_type_does_not_override_specific,test_port_holder_pids_parses_ss_output,test_free_port_only_kills_dashboard_processes,test_free_port_noop_when_nothing_to_replace,test_lan_host_falls_back_when_socket_is_unavailable,_data_image_payload,test_scanner_capture_rejects_low_quality_scan,test_scanner_capture_archives_when_quality_passes,test_prune_scanner_staging_keeps_recent_referenced_and_active,test_prune_scanner_staging_throttles,FakeMesh,FakeHostDb
+    e: test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen,test_dashboard_chat_messages_can_copy_markdown,test_chat_ask_generates_and_dry_runs_uri_flow,test_chat_ask_derives_nodes_from_node_targets,test_chat_ask_plans_document_sync_without_llm,test_chat_ask_document_sync_resolves_node_from_known_nodes_file,test_summary_shows_known_nodes_file_nodes,test_api_objects_returns_uri_objects,test_api_node_types_returns_profiles,test_node_add_persists_node_type_tags,test_node_add_persists_api_node_interfaces_and_keyring_auth,test_configured_api_request_uses_keyring_secret_and_redacts_config,test_uri_invoke_direct_api_route_calls_configured_api,test_uri_invoke_direct_device_status_does_not_call_network,test_uri_invoke_configured_non_http_route_reports_connector_required,test_node_add_persists_device_node_multiple_interfaces,test_chat_ask_executes_document_sync_without_llm,test_chat_ask_document_sync_blocks_when_contract_fails,test_chat_ask_document_sync_error_includes_urifix_recovery,test_chat_ask_document_sync_auto_retries_urifix_node_url,test_document_sync_urifix_retry_guard_rejects_unsafe_contracts,test_chat_ask_document_sync_retry_failure_does_not_loop,test_chat_ask_document_sync_decision_loop_blocks_without_node_url,test_chat_ask_returns_recovery_when_planner_fails,test_chat_ask_execute_and_transient_node_urls,test_chat_ask_requires_prompt,test_chat_delete_messages_removes_only_chat_messages,test_artifacts_delete_removes_db_rows_and_allowed_files,test_artifacts_delete_removes_document_json_sidecar_but_keeps_global_indexes,test_artifacts_delete_respects_delete_files_false_string,test_artifacts_dedupe_rows_keeps_document_pdf_without_deleting_file,test_artifacts_cleanup_orphan_sidecars_removes_json_without_document,test_public_artifact_uses_existing_preview_and_marks_missing_files,test_scanner_crop_overlay_draws_diagnostic_image,test_public_scanner_candidate_exposes_overlay_preview,test_artifacts_api_hides_missing_files_by_default,test_artifacts_api_dedupes_same_file_path_by_default,test_chat_ask_reports_missing_screen_capture_capability,test_phone_scanner_prompt_intent_is_specific,test_chat_ask_starts_phone_scanner_service_from_nl,test_chat_history_reads_message_logs,test_chat_history_marks_missing_attachment_files,test_chat_history_limit_ignores_technical_ask_logs,test_scanner_live_state_groups_best_candidates,test_service_live_views_wraps_scanner_stream,test_service_live_views_includes_scanner_status_without_stream,test_service_contacts_marks_external_phone_scanner_running,test_service_contacts_marks_phone_scanner_stopped_when_probe_fails,test_service_widget_html_and_svg_render_live_view,test_startup_phone_qr_adds_chat_message,test_scanner_session_adds_chat_message,test_uri_event_logs_js_event,test_uri_invoke_dispatches_scanner_session,test_uri_invoke_lists_supported_host_actions,test_uri_invoke_dry_run_does_not_execute_side_effects,test_uri_invoke_execute_session_logs,test_uri_invoke_chat_restart_schedules_port_replace_without_supervisor,test_uri_invoke_chat_restart_schedules_systemd,test_uri_invoke_phone_scanner_restart_requires_configuration_for_external,test_uri_invoke_phone_scanner_restart_replaces_old_scanner_port,test_uri_invoke_phone_scanner_restart_schedules_systemd,test_free_port_from_old_scanner_only_kills_scanner_process,test_free_port_from_old_scanner_refuses_unrelated_process,test_free_port_from_old_chat_only_kills_chat_process,test_free_port_from_old_chat_refuses_unrelated_process,test_sync_documents_to_node_copies_pdfs_and_logs_chat,test_sync_documents_to_node_reports_remote_run_error,test_sync_documents_to_node_preflights_required_fs_routes,test_ensure_node_uri_routes_deploys_host_fs_file_transfer_fallback,test_remote_write_error_recognizes_node_error_value_without_error_key,test_sync_documents_to_node_reports_sha256_mismatch,test_sync_documents_to_node_requires_read_back_verification,test_uri_invoke_page_action_queues_for_scanner,test_uri_invoke_rejects_scanner_page_requeue_loop,test_chat_camera_prompt_starts_service_and_queues_page_action,test_chat_autonomous_receipt_prompt_queues_autonomous_scanner,test_chat_torch_prompt_starts_camera_and_queues_light,test_scanner_capture_rejects_low_quality_without_chat_attachment,test_scanner_capture_uses_receipt_crop_for_preview_and_ocr,test_orientation_summary_compacts_each_signal,test_scanner_capture_surfaces_orientation,test_scanner_capture_ocrs_full_frame_by_default,test_scanner_capture_candidate_scores_without_archiving,test_scanner_best_finish_archives_best_candidate,test_duplicate_scanner_result_registers_only_canonical_document_artifact,test_archive_scanned_document_writes_pdf_json_index_and_detects_duplicate,test_write_document_pdf_orients_image_before_embedding,test_archive_scanned_document_duplicate_removes_staged_scan_and_crop,test_cleanup_duplicate_scan_files_ignores_paths_outside_staging_dir,test_transaction_fingerprint_is_stable_across_ocr_noise,_archive_with_distinct_docids,test_archive_supersedes_incomplete_duplicate_when_better_scan_arrives,test_merge_metadata_fields_backfills_gaps_best_of_both,test_enrich_archived_record_updates_entry_and_sidecar,_doc_like_image,test_archive_visual_strong_dedups_tokenless_rescan,test_archive_skips_lower_quality_fingerprint_duplicate,test_archive_scanned_document_duplicate_survives_moved_pdf,test_scanned_id_log_backfills_existing_document_index,test_document_metadata_does_not_parse_date_as_amount,test_parse_document_date_handles_glued_and_labeled_dates,test_extract_metadata_handles_adjacent_date_time_and_amount,test_extract_metadata_llm_overrides_regex_and_keeps_blanks,test_local_image_ocr_falls_back_to_llm_vision,test_llm_extract_vision_mode_sends_image,test_extract_metadata_llm_generic_type_does_not_override_specific,test_port_holder_pids_parses_ss_output,test_free_port_only_kills_dashboard_processes,test_free_port_noop_when_nothing_to_replace,test_lan_host_falls_back_when_socket_is_unavailable,_data_image_payload,test_scanner_capture_rejects_low_quality_scan,test_scanner_capture_archives_when_quality_passes,test_prune_scanner_staging_keeps_recent_referenced_and_active,test_prune_scanner_staging_throttles,FakeMesh,FakeHostDb
     FakeMesh: __init__(0),load_host_config(1),config_with_transient_node_urls(2),discover_mesh(1),make_flow(4),registry_from_routes(1),execute_flow(4)
     FakeHostDb: __init__(0),add_log(4),recent_logs(3),recent_checks(2),db_path(1),delete_logs(4),register_artifact(5),list_artifacts(3),artifacts_by_ids(2),delete_artifacts(2)
     test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen()
@@ -2369,6 +2469,15 @@ D:
     test_chat_ask_plans_document_sync_without_llm(monkeypatch)
     test_chat_ask_document_sync_resolves_node_from_known_nodes_file(monkeypatch;tmp_path)
     test_summary_shows_known_nodes_file_nodes(monkeypatch;tmp_path)
+    test_api_objects_returns_uri_objects(monkeypatch;tmp_path)
+    test_api_node_types_returns_profiles()
+    test_node_add_persists_node_type_tags(monkeypatch;tmp_path)
+    test_node_add_persists_api_node_interfaces_and_keyring_auth(monkeypatch;tmp_path)
+    test_configured_api_request_uses_keyring_secret_and_redacts_config(monkeypatch;tmp_path)
+    test_uri_invoke_direct_api_route_calls_configured_api(monkeypatch;tmp_path)
+    test_uri_invoke_direct_device_status_does_not_call_network(monkeypatch;tmp_path)
+    test_uri_invoke_configured_non_http_route_reports_connector_required(monkeypatch;tmp_path)
+    test_node_add_persists_device_node_multiple_interfaces(monkeypatch;tmp_path)
     test_chat_ask_executes_document_sync_without_llm(monkeypatch)
     test_chat_ask_document_sync_blocks_when_contract_fails(monkeypatch)
     test_chat_ask_document_sync_error_includes_urifix_recovery(monkeypatch)
@@ -2483,17 +2592,29 @@ D:
     test_route_key_ignores_uri_target_for_route_matching()
     test_node_has_route_matches_same_route_under_different_target()
     test_fs_file_transfer_fallback_bindings_include_only_transfer_routes()
+  tests/test_host_node_types.py:
+    e: test_normalize_node_type_aliases,test_annotate_node_type_from_tags,test_annotate_node_type_does_not_guess_unknown_nodes,test_node_type_tags_replaces_existing_type_tags,test_configured_device_node_exposes_api_routes_without_urirun_health
+    test_normalize_node_type_aliases()
+    test_annotate_node_type_from_tags()
+    test_annotate_node_type_does_not_guess_unknown_nodes()
+    test_node_type_tags_replaces_existing_type_tags()
+    test_configured_device_node_exposes_api_routes_without_urirun_health()
   tests/test_host_object_registry.py:
-    e: test_host_registry_routes_keeps_only_host_dashboard_connector_layers,test_service_contacts_marks_external_scanner_state,test_service_contacts_replaces_default_with_in_process_scanner,test_annotate_node_tokens_never_raises
+    e: test_host_registry_routes_keeps_only_host_dashboard_connector_layers,test_service_contacts_marks_external_scanner_state,test_service_contacts_replaces_default_with_in_process_scanner,test_annotate_node_tokens_never_raises,test_uri_objects_builds_host_node_and_service_registries,test_node_object_uses_node_type_tags,test_node_object_keeps_api_interfaces
     test_host_registry_routes_keeps_only_host_dashboard_connector_layers()
     test_service_contacts_marks_external_scanner_state()
     test_service_contacts_replaces_default_with_in_process_scanner()
     test_annotate_node_tokens_never_raises()
+    test_uri_objects_builds_host_node_and_service_registries()
+    test_node_object_uses_node_type_tags()
+    test_node_object_keeps_api_interfaces()
   tests/test_host_scanner_bridge.py:
-    e: test_register_scanner_result_uses_document_pdf_as_canonical_artifact,test_register_scanner_result_registers_camera_scan_without_document,test_scanner_session_logs_and_adds_chat_message,test_uri_event_logs_js_event,test_page_action_queue_round_trip,test_latest_scanner_page_status_returns_public_status,test_latest_scanner_page_status_ignores_non_scanner_logs,test_scanner_artifact_helpers_merge_document_metadata,test_is_scanner_artifact_accepts_scanner_sources_only,BridgeRecorder
+    e: test_register_scanner_result_uses_document_pdf_as_canonical_artifact,test_register_scanner_result_registers_camera_scan_without_document,test_scanner_public_candidate_for_live_adds_preview_urls_and_hides_ocr_text,test_scanner_live_state_from_streams_sorts_limits_and_projects_documents,test_scanner_session_logs_and_adds_chat_message,test_uri_event_logs_js_event,test_page_action_queue_round_trip,test_latest_scanner_page_status_returns_public_status,test_latest_scanner_page_status_ignores_non_scanner_logs,test_scanner_artifact_helpers_merge_document_metadata,test_is_scanner_artifact_accepts_scanner_sources_only,test_scanner_artifact_item_formats_public_view_data,test_scanner_service_live_views_builds_stream_and_status_views,test_scanner_flow_result_includes_service_actions_timeline_and_attachments,test_scanner_prompt_helpers_classify_camera_autonomous_and_torch_intents,BridgeRecorder
     BridgeRecorder: __init__(0),deps(0),register_artifact(5),chat_message(2),add_chat_message(2),add_log(4)
     test_register_scanner_result_uses_document_pdf_as_canonical_artifact(tmp_path)
     test_register_scanner_result_registers_camera_scan_without_document(tmp_path)
+    test_scanner_public_candidate_for_live_adds_preview_urls_and_hides_ocr_text()
+    test_scanner_live_state_from_streams_sorts_limits_and_projects_documents()
     test_scanner_session_logs_and_adds_chat_message()
     test_uri_event_logs_js_event()
     test_page_action_queue_round_trip()
@@ -2501,6 +2622,10 @@ D:
     test_latest_scanner_page_status_ignores_non_scanner_logs()
     test_scanner_artifact_helpers_merge_document_metadata()
     test_is_scanner_artifact_accepts_scanner_sources_only()
+    test_scanner_artifact_item_formats_public_view_data()
+    test_scanner_service_live_views_builds_stream_and_status_views()
+    test_scanner_flow_result_includes_service_actions_timeline_and_attachments()
+    test_scanner_prompt_helpers_classify_camera_autonomous_and_torch_intents()
   tests/test_host_service_control.py:
     e: test_service_restart_argv_systemd_payload_unit,test_service_restart_argv_env_command,test_chat_service_restart_argv_builds_port_replace_command,test_schedule_restart_command_spawns_detached_process,test_port_holder_pids_parses_ss_output,test_free_port_from_matching_processes_refuses_unrelated_holder,test_free_port_from_old_dashboard_kills_only_matching_process
     test_service_restart_argv_systemd_payload_unit()
@@ -2510,6 +2635,12 @@ D:
     test_port_holder_pids_parses_ss_output(monkeypatch)
     test_free_port_from_matching_processes_refuses_unrelated_holder()
     test_free_port_from_old_dashboard_kills_only_matching_process()
+  tests/test_host_widgets.py:
+    e: test_query_value_returns_first_or_default,test_select_service_view_prefers_id_then_target_then_fallback,test_service_widget_summary_uses_scanner_stream_document,test_service_widget_summary_falls_back_to_target_and_updated_at
+    test_query_value_returns_first_or_default()
+    test_select_service_view_prefers_id_then_target_then_fallback()
+    test_service_widget_summary_uses_scanner_stream_document()
+    test_service_widget_summary_falls_back_to_target_and_updated_at()
   tests/test_node_flow_recovery.py:
     e: _mesh,_one_step,test_execute_flow_retries_transient_query_failure,test_execute_flow_does_not_retry_transient_command_failure,test_execute_flow_reports_missing_dependency_as_recovery_failure
     _mesh(kind)
@@ -2531,7 +2662,7 @@ D:
 
 ```prolog markpact:analysis path=project/logic.pl
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.124', 'javascript').
+project_metadata('urirun', '0.4.128', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -2546,7 +2677,7 @@ project_file('adapters/python/conftest.py', 24, 'python').
 project_file('adapters/python/tests/test_adopt_pack.py', 103, 'python').
 project_file('adapters/python/tests/test_adopt_tree.py', 39, 'python').
 project_file('adapters/python/tests/test_agent_command.py', 78, 'python').
-project_file('adapters/python/tests/test_cli_parser.py', 54, 'python').
+project_file('adapters/python/tests/test_cli_parser.py', 72, 'python').
 project_file('adapters/python/tests/test_codegen.py', 164, 'python').
 project_file('adapters/python/tests/test_compat.py', 104, 'python').
 project_file('adapters/python/tests/test_connect_catalog.py', 166, 'python').
@@ -2568,7 +2699,7 @@ project_file('adapters/python/tests/test_host_dashboard.py', 479, 'python').
 project_file('adapters/python/tests/test_host_db.py', 113, 'python').
 project_file('adapters/python/tests/test_install_upgrade.py', 109, 'python').
 project_file('adapters/python/tests/test_introspect.py', 76, 'python').
-project_file('adapters/python/tests/test_mesh.py', 1666, 'python').
+project_file('adapters/python/tests/test_mesh.py', 1699, 'python').
 project_file('adapters/python/tests/test_minimal_imports.py', 91, 'python').
 project_file('adapters/python/tests/test_no_urirun_shadow.py', 15, 'python').
 project_file('adapters/python/tests/test_node_client.py', 321, 'python').
@@ -2578,6 +2709,7 @@ project_file('adapters/python/tests/test_openapi_import.py', 49, 'python').
 project_file('adapters/python/tests/test_param_routing.py', 59, 'python').
 project_file('adapters/python/tests/test_planfile_adapter.py', 344, 'python').
 project_file('adapters/python/tests/test_public_api.py', 191, 'python').
+project_file('adapters/python/tests/test_refactor_helpers.py', 151, 'python').
 project_file('adapters/python/tests/test_registry_portable.py', 47, 'python').
 project_file('adapters/python/tests/test_routing.py', 73, 'python').
 project_file('adapters/python/tests/test_scheduler.py', 62, 'python').
@@ -2598,31 +2730,35 @@ project_file('adapters/python/urirun/connector_sdk.py', 6, 'python').
 project_file('adapters/python/urirun/connector_smoke.py', 6, 'python').
 project_file('adapters/python/urirun/connectors/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/connectors/connect_catalog.py', 255, 'python').
-project_file('adapters/python/urirun/connectors/connector_lint.py', 601, 'python').
+project_file('adapters/python/urirun/connectors/connector_lint.py', 603, 'python').
 project_file('adapters/python/urirun/connectors/connector_scaffold.py', 413, 'python').
 project_file('adapters/python/urirun/connectors/connector_sdk.py', 88, 'python').
 project_file('adapters/python/urirun/connectors/connector_smoke.py', 82, 'python').
 project_file('adapters/python/urirun/connectors/declarative.py', 96, 'python').
-project_file('adapters/python/urirun/connectors/openapi_import.py', 95, 'python').
-project_file('adapters/python/urirun/connectors/resolver.py', 169, 'python').
+project_file('adapters/python/urirun/connectors/openapi_import.py', 96, 'python').
+project_file('adapters/python/urirun/connectors/resolver.py', 170, 'python').
 project_file('adapters/python/urirun/domain_monitor.py', 6, 'python').
 project_file('adapters/python/urirun/errors.py', 9, 'python').
 project_file('adapters/python/urirun/exec.py', 62, 'python').
 project_file('adapters/python/urirun/host/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/host/contracts.py', 63, 'python').
-project_file('adapters/python/urirun/host/discovery.py', 361, 'python').
-project_file('adapters/python/urirun/host/document_sync.py', 400, 'python').
+project_file('adapters/python/urirun/host/discovery.py', 363, 'python').
+project_file('adapters/python/urirun/host/document_metadata.py', 518, 'python').
+project_file('adapters/python/urirun/host/document_sync.py', 402, 'python').
 project_file('adapters/python/urirun/host/domain_monitor.py', 486, 'python').
-project_file('adapters/python/urirun/host/fs_transfer.py', 207, 'python').
-project_file('adapters/python/urirun/host/host_dashboard.py', 9943, 'python').
-project_file('adapters/python/urirun/host/host_db.py', 541, 'python').
-project_file('adapters/python/urirun/host/host_integrations.py', 356, 'python').
-project_file('adapters/python/urirun/host/object_registry.py', 108, 'python').
+project_file('adapters/python/urirun/host/fs_transfer.py', 210, 'python').
+project_file('adapters/python/urirun/host/host_dashboard.py', 10934, 'python').
+project_file('adapters/python/urirun/host/host_db.py', 528, 'python').
+project_file('adapters/python/urirun/host/host_integrations.py', 357, 'python').
+project_file('adapters/python/urirun/host/node_types.py', 266, 'python').
+project_file('adapters/python/urirun/host/object_registry.py', 220, 'python').
 project_file('adapters/python/urirun/host/planfile_adapter.py', 280, 'python').
-project_file('adapters/python/urirun/host/scanner_bridge.py', 376, 'python').
-project_file('adapters/python/urirun/host/scheduler.py', 134, 'python').
+project_file('adapters/python/urirun/host/scanner_bridge.py', 670, 'python').
+project_file('adapters/python/urirun/host/scanner_net.py', 138, 'python').
+project_file('adapters/python/urirun/host/scheduler.py', 136, 'python').
 project_file('adapters/python/urirun/host/service_control.py', 365, 'python').
 project_file('adapters/python/urirun/host/task_planner.py', 372, 'python').
+project_file('adapters/python/urirun/host/widgets.py', 65, 'python').
 project_file('adapters/python/urirun/host_dashboard.py', 6, 'python').
 project_file('adapters/python/urirun/host_db.py', 6, 'python').
 project_file('adapters/python/urirun/host_integrations.py', 6, 'python').
@@ -2631,26 +2767,26 @@ project_file('adapters/python/urirun/node/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/node/_artifacts.py', 111, 'python').
 project_file('adapters/python/urirun/node/_util.py', 38, 'python').
 project_file('adapters/python/urirun/node/_version.py', 75, 'python').
-project_file('adapters/python/urirun/node/client.py', 535, 'python').
-project_file('adapters/python/urirun/node/config.py', 194, 'python').
-project_file('adapters/python/urirun/node/flow.py', 607, 'python').
+project_file('adapters/python/urirun/node/client.py', 537, 'python').
+project_file('adapters/python/urirun/node/config.py', 210, 'python').
+project_file('adapters/python/urirun/node/flow.py', 609, 'python').
 project_file('adapters/python/urirun/node/formatting.py', 79, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 174, 'python').
-project_file('adapters/python/urirun/node/manage.py', 370, 'python').
-project_file('adapters/python/urirun/node/mesh.py', 1865, 'python').
+project_file('adapters/python/urirun/node/manage.py', 372, 'python').
+project_file('adapters/python/urirun/node/mesh.py', 1977, 'python').
 project_file('adapters/python/urirun/node/paths.py', 39, 'python').
 project_file('adapters/python/urirun/node/recovery.py', 233, 'python').
 project_file('adapters/python/urirun/node/routing.py', 144, 'python').
-project_file('adapters/python/urirun/node/task_cli.py', 344, 'python').
-project_file('adapters/python/urirun/node/transport.py', 436, 'python').
+project_file('adapters/python/urirun/node/task_cli.py', 343, 'python').
+project_file('adapters/python/urirun/node/transport.py', 533, 'python').
 project_file('adapters/python/urirun/planfile_adapter.py', 6, 'python').
 project_file('adapters/python/urirun/runtime/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/runtime/_registry.py', 719, 'python').
 project_file('adapters/python/urirun/runtime/_runtime.py', 585, 'python').
-project_file('adapters/python/urirun/runtime/_scan.py', 667, 'python').
+project_file('adapters/python/urirun/runtime/_scan.py', 660, 'python').
 project_file('adapters/python/urirun/runtime/adopt_pack.py', 246, 'python').
 project_file('adapters/python/urirun/runtime/agent.py', 152, 'python').
-project_file('adapters/python/urirun/runtime/cli.py', 682, 'python').
+project_file('adapters/python/urirun/runtime/cli.py', 706, 'python').
 project_file('adapters/python/urirun/runtime/codegen.py', 439, 'python').
 project_file('adapters/python/urirun/runtime/compat.py', 200, 'python').
 project_file('adapters/python/urirun/runtime/daemon.py', 117, 'python').
@@ -2662,7 +2798,7 @@ project_file('adapters/python/urirun/runtime/progress.py', 90, 'python').
 project_file('adapters/python/urirun/runtime/secrets.py', 264, 'python').
 project_file('adapters/python/urirun/runtime/tree.py', 92, 'python').
 project_file('adapters/python/urirun/runtime/v1.py', 472, 'python').
-project_file('adapters/python/urirun/runtime/v2.py', 2025, 'python').
+project_file('adapters/python/urirun/runtime/v2.py', 2004, 'python').
 project_file('adapters/python/urirun/runtime/v2_adopt.py', 194, 'python').
 project_file('adapters/python/urirun/runtime/v2_grpc.py', 205, 'python').
 project_file('adapters/python/urirun/runtime/v2_mcp.py', 210, 'python').
@@ -2699,13 +2835,15 @@ project_file('security/mesh-probe/probe.py', 115, 'python').
 project_file('test/urirun.test.js', 11, 'javascript').
 project_file('tests/conftest.py', 30, 'python').
 project_file('tests/test_host_contracts.py', 49, 'python').
-project_file('tests/test_host_dashboard.py', 3214, 'python').
+project_file('tests/test_host_dashboard.py', 3531, 'python').
 project_file('tests/test_host_db.py', 39, 'python').
 project_file('tests/test_host_discovery.py', 82, 'python').
 project_file('tests/test_host_fs_transfer.py', 33, 'python').
-project_file('tests/test_host_object_registry.py', 90, 'python').
-project_file('tests/test_host_scanner_bridge.py', 250, 'python').
+project_file('tests/test_host_node_types.py', 63, 'python').
+project_file('tests/test_host_object_registry.py', 153, 'python').
+project_file('tests/test_host_scanner_bridge.py', 403, 'python').
 project_file('tests/test_host_service_control.py', 145, 'python').
+project_file('tests/test_host_widgets.py', 85, 'python').
 project_file('tests/test_node_flow_recovery.py', 90, 'python').
 project_file('tests/test_urirun.py', 12, 'python').
 project_file('tests/test_v2_service_auth.py', 47, 'python').
@@ -2736,6 +2874,7 @@ python_function('adapters/python/tests/test_cli_parser.py', '_commands', 1, 3, 2
 python_function('adapters/python/tests/test_cli_parser.py', 'test_all_top_level_commands_present', 0, 3, 2).
 python_function('adapters/python/tests/test_cli_parser.py', 'test_representative_subcommands_parse_to_right_dest', 0, 3, 3).
 python_function('adapters/python/tests/test_cli_parser.py', 'test_inherited_and_typed_args_survive_extraction', 0, 3, 2).
+python_function('adapters/python/tests/test_cli_parser.py', 'test_host_add_node_accepts_api_device_flags', 0, 7, 2).
 python_function('adapters/python/tests/test_codegen.py', '_registry', 0, 1, 1).
 python_function('adapters/python/tests/test_codegen.py', 'test_proto_has_carrier_and_one_typed_rpc_per_route', 0, 8, 6).
 python_function('adapters/python/tests/test_codegen.py', 'test_to_proto_wrapper_matches_projection', 0, 2, 3).
@@ -3001,7 +3140,7 @@ python_function('adapters/python/urirun/connectors/connector_lint.py', '_format_
 python_function('adapters/python/urirun/connectors/connector_lint.py', '_format_drift', 1, 6, 1).
 python_function('adapters/python/urirun/connectors/connector_lint.py', '_format_duplication', 1, 3, 2).
 python_function('adapters/python/urirun/connectors/connector_lint.py', '_format_report', 1, 7, 8).
-python_function('adapters/python/urirun/connectors/connector_lint.py', 'sync_manifest_command', 1, 9, 7).
+python_function('adapters/python/urirun/connectors/connector_lint.py', 'sync_manifest_command', 1, 9, 6).
 python_function('adapters/python/urirun/connectors/connector_lint.py', 'lint_command', 1, 8, 6).
 python_function('adapters/python/urirun/connectors/connector_lint.py', '_import_first_bindings', 2, 6, 10).
 python_function('adapters/python/urirun/connectors/connector_lint.py', '_unresolved_handlers', 1, 8, 6).
@@ -3052,11 +3191,12 @@ python_function('adapters/python/urirun/host/discovery.py', 'add_node_aliases', 
 python_function('adapters/python/urirun/host/discovery.py', 'node_spec_aliases', 2, 3, 5).
 python_function('adapters/python/urirun/host/discovery.py', 'alias_map_from_dict', 1, 5, 7).
 python_function('adapters/python/urirun/host/discovery.py', 'alias_map_from_list', 1, 5, 6).
-python_function('adapters/python/urirun/host/discovery.py', 'node_alias_map_from_value', 1, 3, 3).
+python_function('adapters/python/urirun/host/discovery.py', '_node_map_from_value', 3, 3, 3).
+python_function('adapters/python/urirun/host/discovery.py', 'node_alias_map_from_value', 1, 1, 1).
 python_function('adapters/python/urirun/host/discovery.py', 'normalize_known_node_url', 1, 5, 3).
 python_function('adapters/python/urirun/host/discovery.py', 'url_map_from_dict', 1, 10, 7).
 python_function('adapters/python/urirun/host/discovery.py', 'url_map_from_list', 1, 11, 6).
-python_function('adapters/python/urirun/host/discovery.py', 'node_url_map_from_value', 1, 3, 3).
+python_function('adapters/python/urirun/host/discovery.py', 'node_url_map_from_value', 1, 1, 1).
 python_function('adapters/python/urirun/host/discovery.py', 'node_dicts_from_url_map', 1, 4, 2).
 python_function('adapters/python/urirun/host/discovery.py', 'node_alias_map_from_config_doc', 1, 3, 3).
 python_function('adapters/python/urirun/host/discovery.py', 'node_alias_map_from_env', 0, 14, 10).
@@ -3075,6 +3215,28 @@ python_function('adapters/python/urirun/host/discovery.py', '_route_targets', 2,
 python_function('adapters/python/urirun/host/discovery.py', '_probe_route', 4, 3, 5).
 python_function('adapters/python/urirun/host/discovery.py', '_node_test_summary', 4, 5, 2).
 python_function('adapters/python/urirun/host/discovery.py', 'node_test_routes', 1, 13, 10).
+python_function('adapters/python/urirun/host/document_metadata.py', '_truthy_env', 2, 1, 4).
+python_function('adapters/python/urirun/host/document_metadata.py', '_local_image_ocr_tesseract', 1, 5, 4).
+python_function('adapters/python/urirun/host/document_metadata.py', '_ocr_text_ok', 1, 4, 4).
+python_function('adapters/python/urirun/host/document_metadata.py', '_ocr_connector_envelope', 2, 3, 4).
+python_function('adapters/python/urirun/host/document_metadata.py', '_local_image_ocr', 2, 12, 10).
+python_function('adapters/python/urirun/host/document_metadata.py', '_local_image_ocr_llm', 1, 13, 12).
+python_function('adapters/python/urirun/host/document_metadata.py', '_normalized_document_text', 1, 3, 7).
+python_function('adapters/python/urirun/host/document_metadata.py', '_parse_document_date', 2, 8, 10).
+python_function('adapters/python/urirun/host/document_metadata.py', '_parse_amount', 1, 10, 11).
+python_function('adapters/python/urirun/host/document_metadata.py', '_document_type', 1, 12, 2).
+python_function('adapters/python/urirun/host/document_metadata.py', '_parse_contractor', 1, 13, 12).
+python_function('adapters/python/urirun/host/document_metadata.py', '_load_env_file', 1, 8, 6).
+python_function('adapters/python/urirun/host/document_metadata.py', '_llm_env_file', 0, 5, 6).
+python_function('adapters/python/urirun/host/document_metadata.py', '_llm_model', 0, 7, 5).
+python_function('adapters/python/urirun/host/document_metadata.py', '_llm_api_key_ref', 0, 5, 4).
+python_function('adapters/python/urirun/host/document_metadata.py', '_coerce_amount', 1, 7, 6).
+python_function('adapters/python/urirun/host/document_metadata.py', '_llm_extract_metadata', 1, 11, 13).
+python_function('adapters/python/urirun/host/document_metadata.py', '_llm_complete_metadata', 3, 6, 2).
+python_function('adapters/python/urirun/host/document_metadata.py', '_parse_llm_json_object', 1, 9, 7).
+python_function('adapters/python/urirun/host/document_metadata.py', '_normalize_llm_doc_fields', 1, 14, 10).
+python_function('adapters/python/urirun/host/document_metadata.py', '_extract_document_metadata', 1, 14, 9).
+python_function('adapters/python/urirun/host/document_metadata.py', 'shutil_which', 1, 1, 1).
 python_function('adapters/python/urirun/host/document_sync.py', 'boolish', 2, 3, 4).
 python_function('adapters/python/urirun/host/document_sync.py', 'document_archive_pdfs', 1, 5, 4).
 python_function('adapters/python/urirun/host/document_sync.py', 'document_sync_verification', 2, 7, 4).
@@ -3120,10 +3282,11 @@ python_function('adapters/python/urirun/host/fs_transfer.py', 'deploy_fs_file_tr
 python_function('adapters/python/urirun/host/fs_transfer.py', 'ensure_node_uri_routes', 2, 14, 14).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_json_response', 3, 1, 8).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_html_response', 2, 1, 7).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_docs_nodes_html', 0, 3, 5).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_asset_response', 3, 1, 6).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_service_view_from_query', 2, 14, 6).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_stream_summary', 3, 10, 4).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_service_widget_summary', 1, 12, 4).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_service_view_from_query', 2, 4, 5).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_stream_summary', 3, 1, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_service_widget_summary', 1, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_service_widget_html', 2, 6, 6).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_service_widget_svg', 2, 7, 9).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_js_sdk_response', 2, 5, 10).
@@ -3150,12 +3313,9 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_chat_message'
 python_function('adapters/python/urirun/host/host_dashboard.py', '_add_chat_message', 2, 2, 2).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'chat_history', 3, 6, 11).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'chat_delete_messages', 2, 6, 7).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_truthy_env', 2, 1, 4).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_local_image_ocr_tesseract', 1, 5, 4).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_ocr_text_ok', 1, 4, 4).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_ocr_connector_envelope', 2, 3, 4).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_local_image_ocr', 2, 12, 10).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_local_image_ocr_llm', 1, 13, 12).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_sync_document_metadata_hooks', 0, 2, 2).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_extract_document_metadata', 1, 1, 2).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_local_image_ocr', 2, 1, 2).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_document_archive_root', 0, 1, 4).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_document_index_path', 0, 2, 5).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_document_sync_default_dest_root', 0, 1, 1).
@@ -3206,7 +3366,6 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_document_sync
 python_function('adapters/python/urirun/host/host_dashboard.py', '_document_archive_pdfs', 1, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_document_sync_deps', 0, 1, 2).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'sync_documents_to_node', 4, 5, 6).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_normalized_document_text', 1, 3, 7).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_load_document_index', 0, 5, 7).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_save_document_index', 1, 1, 7).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_document_files_exist', 1, 4, 5).
@@ -3220,20 +3379,6 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_scanned_entry
 python_function('adapters/python/urirun/host/host_dashboard.py', '_scanned_seen_buckets', 1, 10, 2).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_backfill_scanned_id_log', 1, 8, 9).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_docid_for_file', 2, 9, 18).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_parse_document_date', 2, 8, 10).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_parse_amount', 1, 10, 11).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_document_type', 1, 12, 2).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_parse_contractor', 1, 13, 12).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_load_env_file', 1, 8, 6).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_llm_env_file', 0, 5, 6).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_llm_model', 0, 7, 5).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_llm_api_key_ref', 0, 5, 4).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_coerce_amount', 1, 7, 6).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_llm_extract_metadata', 1, 11, 13).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_llm_complete_metadata', 3, 6, 2).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_parse_llm_json_object', 1, 9, 7).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_normalize_llm_doc_fields', 1, 14, 10).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_extract_document_metadata', 1, 14, 9).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_filename_part', 1, 4, 6).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_canonical_document_filename', 1, 9, 7).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_document_filename_with_id', 2, 4, 2).
@@ -3261,23 +3406,12 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_supersede_arc
 python_function('adapters/python/urirun/host/host_dashboard.py', '_archive_month', 1, 2, 5).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_existing_document_meta', 1, 3, 2).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_archive_scanned_document', 0, 14, 39).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'shutil_which', 1, 1, 1).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_lan_host', 0, 8, 7).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_url_host', 1, 3, 1).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_public_base_url', 3, 4, 5).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_autonomy_params', 0, 1, 1).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_page_url', 1, 3, 8).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_write_qr_png', 2, 1, 7).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'startup_phone_qr', 2, 10, 17).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_ensure_tls_cert', 2, 3, 6).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_probe_scanner_url', 2, 3, 4).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_phone_scanner_url', 1, 3, 6).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_phone_scanner_external_status', 1, 7, 8).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_nl_text', 1, 3, 6).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_is_phone_scanner_prompt', 1, 11, 2).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_is_autonomous_scanner_prompt', 1, 6, 2).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_is_camera_start_prompt', 1, 4, 2).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_torch_enabled_from_prompt', 1, 7, 2).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_nl_text', 1, 1, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_is_phone_scanner_prompt', 1, 1, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_is_autonomous_scanner_prompt', 1, 1, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_is_camera_start_prompt', 1, 1, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_torch_enabled_from_prompt', 1, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'ensure_phone_scanner_service', 6, 10, 14).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_auto_crop_receipt', 1, 2, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_bounded', 3, 1, 2).
@@ -3290,17 +3424,17 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_metadata_qual
 python_function('adapters/python/urirun/host/host_dashboard.py', '_ocr_quality_score', 3, 3, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_visual_quality_score', 2, 5, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_document_frame_quality', 4, 7, 13).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_public_scanner_candidate', 1, 4, 3).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_public_scanner_candidate', 1, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_live_store_locked', 2, 10, 10).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_public_candidate_for_live', 2, 5, 5).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'scanner_live_state', 2, 12, 14).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_public_candidate_for_live', 2, 1, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'scanner_live_state', 2, 2, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_status_from_log', 1, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_latest_scanner_page_status', 1, 2, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_artifact_doc_meta', 1, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_is_scanner_artifact', 3, 1, 1).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_artifact_item', 7, 6, 4).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_artifact_item', 7, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_recent_scanner_artifacts', 3, 14, 13).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'service_live_views', 3, 12, 11).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'service_live_views', 3, 3, 7).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_best_update', 2, 3, 9).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_best_take', 1, 3, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_bridge_deps', 0, 1, 4).
@@ -3344,11 +3478,11 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_uri_simulated
 python_function('adapters/python/urirun/host/host_dashboard.py', '_result_artifact_class', 1, 4, 2).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'register_tagged_artifact', 1, 9, 8).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_run_inprocess_connector_uri', 3, 13, 10).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_uri_invoke_route', 1, 8, 7).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_uri_invoke_route', 1, 11, 9).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_uri_invoke_page_action', 5, 6, 6).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_finalize_uri_result', 2, 3, 3).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'uri_invoke', 4, 13, 13).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_first', 3, 2, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'uri_invoke', 4, 15, 15).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_first', 3, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_host_db', 0, 1, 0).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_mesh', 0, 1, 0).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_planfile_adapter', 0, 1, 0).
@@ -3357,12 +3491,50 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_safe_tickets'
 python_function('adapters/python/urirun/host/host_dashboard.py', '_task_counts', 1, 3, 2).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_service_contacts', 0, 3, 9).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_host_registry_routes', 0, 1, 2).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'summary', 4, 6, 22).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'summary', 4, 6, 26).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_compact_chat_result', 2, 5, 3).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_mirror_node_to_nodes_file', 2, 7, 9).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_node_api_slug', 2, 3, 4).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_node_api_secret_ref', 2, 1, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_store_node_api_secret', 3, 3, 3).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_extract_raw_secret', 2, 8, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_extract_secret_ref', 2, 5, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_build_auth_extra_fields', 2, 4, 2).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_normalize_node_api_auth', 4, 12, 10).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_default_api_items', 3, 5, 2).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_normalize_api_item', 5, 15, 6).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_normalize_node_apis', 4, 11, 6).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_derive_node_capabilities', 2, 13, 7).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_build_node_entry', 5, 9, 3).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_persist_node_to_config', 4, 4, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'node_add', 2, 14, 13).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'node_set_token', 2, 11, 8).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_configured_node_api_parts', 1, 8, 4).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_configured_node_api_lookup', 2, 11, 4).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_configured_api_secret', 1, 5, 3).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_apply_auth_header', 4, 10, 6).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_configured_api_headers', 2, 13, 9).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_join_api_url', 3, 8, 11).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_configured_api_response_body', 2, 4, 3).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_build_request_body', 2, 4, 6).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_execute_http_request', 7, 3, 6).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_resolve_http_method_and_url', 3, 10, 5).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_configured_api_call', 3, 9, 10).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_apply_uri_overrides', 4, 10, 4).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_resolve_node_api_identifiers', 2, 8, 3).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_connector_required_response', 3, 1, 0).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'configured_node_api_request', 3, 13, 8).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_node_kinds_path', 0, 2, 2).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_node_kinds', 0, 3, 4).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_set_node_kind', 2, 3, 6).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_annotate_node_kinds', 1, 9, 6).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_android_node_service_url', 0, 2, 3).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'start_android_node_service', 1, 8, 10).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'phone_web_nodes', 1, 5, 8).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'phone_node_qr', 3, 9, 19).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_node_envelope_error', 1, 10, 3).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_probe_node_token', 2, 14, 13).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'node_set_token', 2, 13, 9).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_try_urifix_repair', 3, 12, 4).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_boolish', 2, 3, 4).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_document_sync_auto_retry_enabled', 1, 3, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_urifix_auto_retry', 1, 7, 4).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_validated_sync_retry_payload', 2, 14, 6).
@@ -3379,7 +3551,7 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_decision_loop
 python_function('adapters/python/urirun/host/host_dashboard.py', '_decision_loop_next_intent', 0, 5, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_decision_loop_observation', 0, 7, 0).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_decision_loop_for_document_sync', 1, 11, 6).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_flow_result', 11, 11, 2).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_scanner_flow_result', 11, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_chat_ask_phone_scanner', 10, 10, 14).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_sync_execute_initial', 7, 6, 7).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_sync_ok_and_status', 3, 7, 2).
@@ -3394,6 +3566,10 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_chat_generic_
 python_function('adapters/python/urirun/host/host_dashboard.py', '_add_chat_user_message', 4, 4, 7).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'chat_ask', 7, 14, 14).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'task_action', 4, 8, 9).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'task_create', 2, 14, 7).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_connector_pip_tail', 2, 12, 7).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'connector_install', 2, 15, 13).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'connector_test', 4, 7, 5).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_artifact_delete_roots', 1, 3, 5).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_artifact_file_delete_allowed', 2, 5, 5).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_payload_bool', 3, 5, 6).
@@ -3409,6 +3585,8 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_cleanup_one_s
 python_function('adapters/python/urirun/host/host_dashboard.py', 'artifacts_cleanup_orphan_sidecars', 3, 7, 12).
 python_function('adapters/python/urirun/host/host_dashboard.py', 'documents_reconcile', 3, 2, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_api_summary', 5, 1, 1).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_api_objects', 5, 2, 2).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_api_node_types', 5, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_api_tasks', 5, 2, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_api_checks', 5, 2, 4).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_api_logs', 5, 2, 4).
@@ -3418,7 +3596,7 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_api_services_
 python_function('adapters/python/urirun/host/host_dashboard.py', '_api_scanner_live', 5, 2, 3).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_api_nodes_or_routes', 3, 3, 4).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_dashboard_api_response', 6, 3, 3).
-python_function('adapters/python/urirun/host/host_dashboard.py', 'create_handler', 6, 1, 39).
+python_function('adapters/python/urirun/host/host_dashboard.py', 'create_handler', 6, 1, 47).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_port_holder_pids', 1, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_process_cmdline', 1, 1, 1).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_is_dashboard_process', 1, 1, 1).
@@ -3448,13 +3626,14 @@ python_function('adapters/python/urirun/host/host_db.py', 'upsert_record', 4, 1,
 python_function('adapters/python/urirun/host/host_db.py', '_sync_record_fts', 3, 3, 3).
 python_function('adapters/python/urirun/host/host_db.py', 'search_records', 4, 6, 10).
 python_function('adapters/python/urirun/host/host_db.py', 'register_artifact', 5, 2, 8).
-python_function('adapters/python/urirun/host/host_db.py', 'list_artifacts', 3, 2, 6).
+python_function('adapters/python/urirun/host/host_db.py', '_query_table', 5, 2, 6).
+python_function('adapters/python/urirun/host/host_db.py', 'list_artifacts', 3, 1, 1).
 python_function('adapters/python/urirun/host/host_db.py', 'artifacts_by_ids', 2, 5, 8).
 python_function('adapters/python/urirun/host/host_db.py', 'delete_artifacts', 2, 6, 7).
 python_function('adapters/python/urirun/host/host_db.py', 'add_check', 5, 2, 8).
-python_function('adapters/python/urirun/host/host_db.py', 'recent_checks', 3, 2, 6).
+python_function('adapters/python/urirun/host/host_db.py', 'recent_checks', 3, 1, 1).
 python_function('adapters/python/urirun/host/host_db.py', 'add_log', 4, 2, 8).
-python_function('adapters/python/urirun/host/host_db.py', 'recent_logs', 3, 2, 6).
+python_function('adapters/python/urirun/host/host_db.py', 'recent_logs', 3, 1, 1).
 python_function('adapters/python/urirun/host/host_db.py', 'delete_logs', 4, 8, 8).
 python_function('adapters/python/urirun/host/host_db.py', 'create_llm_session', 2, 1, 7).
 python_function('adapters/python/urirun/host/host_db.py', 'add_llm_message', 5, 2, 8).
@@ -3478,8 +3657,24 @@ python_function('adapters/python/urirun/host/host_integrations.py', 'host_data_b
 python_function('adapters/python/urirun/host/host_integrations.py', 'run_host_data', 3, 1, 1).
 python_function('adapters/python/urirun/host/host_integrations.py', 'domain_monitor_bindings', 4, 5, 1).
 python_function('adapters/python/urirun/host/host_integrations.py', 'run_domain_monitor', 3, 3, 4).
+python_function('adapters/python/urirun/host/node_types.py', 'node_type_profiles', 0, 2, 1).
+python_function('adapters/python/urirun/host/node_types.py', 'normalize_node_type', 1, 5, 5).
+python_function('adapters/python/urirun/host/node_types.py', 'node_type_profile', 1, 4, 2).
+python_function('adapters/python/urirun/host/node_types.py', 'node_type_from_tags', 1, 7, 7).
+python_function('adapters/python/urirun/host/node_types.py', 'node_type_from_node', 1, 3, 3).
+python_function('adapters/python/urirun/host/node_types.py', 'node_type_tags', 2, 8, 7).
+python_function('adapters/python/urirun/host/node_types.py', 'annotate_node_type', 1, 4, 6).
+python_function('adapters/python/urirun/host/node_types.py', 'annotate_node_types', 1, 2, 2).
 python_function('adapters/python/urirun/host/object_registry.py', 'host_registry_routes', 1, 3, 3).
 python_function('adapters/python/urirun/host/object_registry.py', 'host_object', 2, 1, 4).
+python_function('adapters/python/urirun/host/object_registry.py', '_uri_target', 1, 2, 1).
+python_function('adapters/python/urirun/host/object_registry.py', 'route_owner_route', 2, 15, 3).
+python_function('adapters/python/urirun/host/object_registry.py', 'dedupe_routes', 1, 6, 6).
+python_function('adapters/python/urirun/host/object_registry.py', '_node_owner_dict', 3, 12, 3).
+python_function('adapters/python/urirun/host/object_registry.py', '_node_own_routes', 3, 7, 4).
+python_function('adapters/python/urirun/host/object_registry.py', 'node_object', 2, 3, 7).
+python_function('adapters/python/urirun/host/object_registry.py', 'service_object', 1, 13, 5).
+python_function('adapters/python/urirun/host/object_registry.py', 'uri_objects', 0, 5, 6).
 python_function('adapters/python/urirun/host/object_registry.py', 'phone_scanner_contact', 1, 1, 1).
 python_function('adapters/python/urirun/host/object_registry.py', 'service_contacts', 0, 12, 9).
 python_function('adapters/python/urirun/host/object_registry.py', 'annotate_node_tokens', 2, 4, 4).
@@ -3512,10 +3707,12 @@ python_function('adapters/python/urirun/host/planfile_adapter.py', 'loads_json',
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'crop_overlay_attachment', 1, 1, 3).
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'register_document_artifact', 3, 7, 6).
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'scanner_result_content', 4, 9, 2).
+python_function('adapters/python/urirun/host/scanner_bridge.py', 'public_scanner_candidate', 1, 4, 3).
+python_function('adapters/python/urirun/host/scanner_bridge.py', 'scanner_public_candidate_for_live', 2, 5, 5).
+python_function('adapters/python/urirun/host/scanner_bridge.py', 'scanner_live_state_from_streams', 2, 12, 13).
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'register_scanner_result', 3, 10, 12).
 python_function('adapters/python/urirun/host/scanner_bridge.py', '_add_log', 5, 3, 1).
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'scanner_session', 3, 5, 9).
-python_function('adapters/python/urirun/host/scanner_bridge.py', '_first', 3, 2, 1).
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'uri_event', 3, 4, 4).
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'page_action_enqueue', 2, 4, 10).
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'page_action_poll', 2, 4, 6).
@@ -3524,7 +3721,24 @@ python_function('adapters/python/urirun/host/scanner_bridge.py', 'scanner_status
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'latest_scanner_page_status', 1, 7, 4).
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'scanner_artifact_doc_meta', 1, 5, 2).
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'is_scanner_artifact', 3, 4, 3).
+python_function('adapters/python/urirun/host/scanner_bridge.py', 'scanner_artifact_item', 7, 6, 4).
 python_function('adapters/python/urirun/host/scanner_bridge.py', 'scanner_service_live_views', 4, 10, 6).
+python_function('adapters/python/urirun/host/scanner_bridge.py', 'scanner_flow_result', 11, 11, 2).
+python_function('adapters/python/urirun/host/scanner_bridge.py', 'nl_text', 1, 3, 6).
+python_function('adapters/python/urirun/host/scanner_bridge.py', 'is_phone_scanner_prompt', 1, 11, 2).
+python_function('adapters/python/urirun/host/scanner_bridge.py', 'is_autonomous_scanner_prompt', 1, 6, 2).
+python_function('adapters/python/urirun/host/scanner_bridge.py', 'is_camera_start_prompt', 1, 4, 2).
+python_function('adapters/python/urirun/host/scanner_bridge.py', 'torch_enabled_from_prompt', 1, 7, 2).
+python_function('adapters/python/urirun/host/scanner_net.py', '_lan_host', 0, 8, 7).
+python_function('adapters/python/urirun/host/scanner_net.py', '_url_host', 1, 3, 1).
+python_function('adapters/python/urirun/host/scanner_net.py', '_public_base_url', 3, 4, 5).
+python_function('adapters/python/urirun/host/scanner_net.py', '_scanner_autonomy_params', 0, 1, 1).
+python_function('adapters/python/urirun/host/scanner_net.py', '_scanner_page_url', 1, 3, 8).
+python_function('adapters/python/urirun/host/scanner_net.py', '_write_qr_png', 2, 1, 7).
+python_function('adapters/python/urirun/host/scanner_net.py', '_ensure_tls_cert', 2, 3, 6).
+python_function('adapters/python/urirun/host/scanner_net.py', '_probe_scanner_url', 2, 3, 4).
+python_function('adapters/python/urirun/host/scanner_net.py', '_phone_scanner_url', 1, 3, 6).
+python_function('adapters/python/urirun/host/scanner_net.py', '_phone_scanner_external_status', 1, 7, 8).
 python_function('adapters/python/urirun/host/scheduler.py', 'build_loop_command', 0, 4, 3).
 python_function('adapters/python/urirun/host/scheduler.py', 'shell_join', 1, 2, 2).
 python_function('adapters/python/urirun/host/scheduler.py', 'systemd_units', 0, 2, 1).
@@ -3565,6 +3779,10 @@ python_function('adapters/python/urirun/host/task_planner.py', 'llm_plan_chat_re
 python_function('adapters/python/urirun/host/task_planner.py', 'plan_chat_request', 1, 3, 3).
 python_function('adapters/python/urirun/host/task_planner.py', 'ticket_payload', 2, 3, 2).
 python_function('adapters/python/urirun/host/task_planner.py', 'create_tickets_from_plan', 2, 4, 4).
+python_function('adapters/python/urirun/host/widgets.py', 'query_value', 3, 2, 1).
+python_function('adapters/python/urirun/host/widgets.py', 'select_service_view', 1, 11, 3).
+python_function('adapters/python/urirun/host/widgets.py', 'scanner_stream_summary', 3, 10, 4).
+python_function('adapters/python/urirun/host/widgets.py', 'service_widget_summary', 1, 12, 4).
 python_function('adapters/python/urirun/node/_artifacts.py', '_artifact_extension', 2, 9, 3).
 python_function('adapters/python/urirun/node/_artifacts.py', '_decode_base64_artifact', 1, 6, 6).
 python_function('adapters/python/urirun/node/_artifacts.py', '_write_artifact', 1, 3, 12).
@@ -3588,7 +3806,7 @@ python_function('adapters/python/urirun/node/config.py', 'default_host_config', 
 python_function('adapters/python/urirun/node/config.py', 'load_host_config', 1, 2, 6).
 python_function('adapters/python/urirun/node/config.py', 'save_host_config', 2, 1, 2).
 python_function('adapters/python/urirun/node/config.py', 'init_host', 2, 1, 2).
-python_function('adapters/python/urirun/node/config.py', 'add_node', 4, 4, 6).
+python_function('adapters/python/urirun/node/config.py', 'add_node', 4, 7, 6).
 python_function('adapters/python/urirun/node/config.py', '_coerce_node_url', 1, 5, 4).
 python_function('adapters/python/urirun/node/config.py', '_node_name_from_url', 2, 4, 2).
 python_function('adapters/python/urirun/node/config.py', 'config_with_transient_node_urls', 2, 9, 11).
@@ -3683,6 +3901,10 @@ python_function('adapters/python/urirun/node/mesh.py', '_data_checks', 2, 1, 2).
 python_function('adapters/python/urirun/node/mesh.py', '_data_sql', 2, 1, 3).
 python_function('adapters/python/urirun/node/mesh.py', 'data_command', 1, 2, 2).
 python_function('adapters/python/urirun/node/mesh.py', 'monitor_command', 1, 14, 10).
+python_function('adapters/python/urirun/node/mesh.py', '_parse_api_json_args', 1, 5, 5).
+python_function('adapters/python/urirun/node/mesh.py', '_build_implicit_api', 1, 10, 0).
+python_function('adapters/python/urirun/node/mesh.py', '_handle_add_node_advanced', 1, 5, 7).
+python_function('adapters/python/urirun/node/mesh.py', '_handle_add_node', 1, 2, 5).
 python_function('adapters/python/urirun/node/mesh.py', '_host_delegated_command', 1, 14, 14).
 python_function('adapters/python/urirun/node/mesh.py', 'fulfill_need', 3, 4, 5).
 python_function('adapters/python/urirun/node/mesh.py', 'supply_command', 1, 8, 12).
@@ -3702,7 +3924,8 @@ python_function('adapters/python/urirun/node/mesh.py', '_host_mesh_command', 3, 
 python_function('adapters/python/urirun/node/mesh.py', 'copy_id_command', 1, 12, 12).
 python_function('adapters/python/urirun/node/mesh.py', 'copy_id_cli', 1, 7, 7).
 python_function('adapters/python/urirun/node/mesh.py', '_split_deploy_doc', 1, 4, 3).
-python_function('adapters/python/urirun/node/mesh.py', 'deploy_command', 1, 12, 14).
+python_function('adapters/python/urirun/node/mesh.py', '_warn_dropped_routes', 1, 2, 2).
+python_function('adapters/python/urirun/node/mesh.py', 'deploy_command', 1, 14, 15).
 python_function('adapters/python/urirun/node/mesh.py', '_maybe_load_dotenv', 1, 11, 9).
 python_function('adapters/python/urirun/node/mesh.py', 'host_command', 1, 3, 6).
 python_function('adapters/python/urirun/node/mesh.py', 'send_json', 3, 1, 8).
@@ -3713,14 +3936,14 @@ python_function('adapters/python/urirun/node/mesh.py', '_probe_one_route', 5, 13
 python_function('adapters/python/urirun/node/mesh.py', '_render_probe_report', 1, 10, 4).
 python_function('adapters/python/urirun/node/mesh.py', 'probe_command', 1, 14, 11).
 python_function('adapters/python/urirun/node/mesh.py', 'resolve_admin_token', 3, 11, 11).
-python_function('adapters/python/urirun/node/mesh.py', '_write_pushed_code', 2, 9, 13).
+python_function('adapters/python/urirun/node/mesh.py', '_write_pushed_code', 2, 10, 14).
 python_function('adapters/python/urirun/node/mesh.py', '_apply_deploy_env', 2, 4, 4).
 python_function('adapters/python/urirun/node/mesh.py', '_registry_to_bindings', 1, 5, 4).
 python_function('adapters/python/urirun/node/mesh.py', '_deploy_registry', 2, 8, 4).
 python_function('adapters/python/urirun/node/mesh.py', '_reimport_pushed_code', 2, 3, 4).
-python_function('adapters/python/urirun/node/mesh.py', '_apply_deploy_surface', 2, 4, 3).
+python_function('adapters/python/urirun/node/mesh.py', '_apply_deploy_surface', 2, 9, 3).
 python_function('adapters/python/urirun/node/mesh.py', '_apply_deploy_allow', 3, 6, 4).
-python_function('adapters/python/urirun/node/mesh.py', 'apply_deploy', 2, 11, 15).
+python_function('adapters/python/urirun/node/mesh.py', 'apply_deploy', 2, 12, 15).
 python_function('adapters/python/urirun/node/mesh.py', '_parse_sse_query', 1, 3, 3).
 python_function('adapters/python/urirun/node/mesh.py', '_sse_initial_cursor', 3, 4, 3).
 python_function('adapters/python/urirun/node/mesh.py', '_sse_event_matches', 3, 4, 3).
@@ -3804,7 +4027,11 @@ python_function('adapters/python/urirun/node/transport.py', 'event_topic', 2, 5,
 python_function('adapters/python/urirun/node/transport.py', '_mqtt_publish_fn', 1, 2, 3).
 python_function('adapters/python/urirun/node/transport.py', 'fanout_to_mqtt', 5, 4, 5).
 python_function('adapters/python/urirun/node/transport.py', 'copy_id', 2, 8, 14).
-python_function('adapters/python/urirun/node/transport.py', 'discover_node', 1, 2, 5).
+python_function('adapters/python/urirun/node/transport.py', '_configured_node_kind', 1, 8, 6).
+python_function('adapters/python/urirun/node/transport.py', '_configured_api_id', 2, 8, 6).
+python_function('adapters/python/urirun/node/transport.py', '_configured_api_kind', 1, 4, 4).
+python_function('adapters/python/urirun/node/transport.py', '_configured_api_routes', 2, 14, 10).
+python_function('adapters/python/urirun/node/transport.py', 'discover_node', 1, 8, 8).
 python_function('adapters/python/urirun/node/transport.py', 'discover_mesh', 1, 7, 6).
 python_function('adapters/python/urirun/runtime/_registry.py', 'parse_uri', 1, 8, 10).
 python_function('adapters/python/urirun/runtime/_registry.py', 'translate', 1, 2, 2).
@@ -3881,7 +4108,6 @@ python_function('adapters/python/urirun/runtime/_runtime.py', 'main', 1, 10, 18)
 python_function('adapters/python/urirun/runtime/_scan.py', 'slugify', 2, 2, 4).
 python_function('adapters/python/urirun/runtime/_scan.py', 'relpath', 2, 2, 3).
 python_function('adapters/python/urirun/runtime/_scan.py', 'now_iso', 0, 1, 2).
-python_function('adapters/python/urirun/runtime/_scan.py', 'emit_json', 2, 3, 3).
 python_function('adapters/python/urirun/runtime/_scan.py', 'infer_kind', 1, 12, 1).
 python_function('adapters/python/urirun/runtime/_scan.py', 'normalize_binding', 2, 11, 7).
 python_function('adapters/python/urirun/runtime/_scan.py', 'binding_to_route_source', 1, 3, 2).
@@ -3936,7 +4162,7 @@ python_function('adapters/python/urirun/runtime/cli.py', '_add_node_subparser', 
 python_function('adapters/python/urirun/runtime/cli.py', '_add_host_task_subparser', 1, 1, 4).
 python_function('adapters/python/urirun/runtime/cli.py', '_add_host_data_subparser', 1, 1, 4).
 python_function('adapters/python/urirun/runtime/cli.py', '_add_host_monitor_subparser', 1, 1, 4).
-python_function('adapters/python/urirun/runtime/cli.py', '_add_host_subparser', 1, 1, 7).
+python_function('adapters/python/urirun/runtime/cli.py', '_add_host_subparser', 1, 1, 8).
 python_function('adapters/python/urirun/runtime/cli.py', '_build_parser', 1, 1, 8).
 python_function('adapters/python/urirun/runtime/codegen.py', '_pascal', 1, 3, 3).
 python_function('adapters/python/urirun/runtime/codegen.py', '_snake', 1, 2, 3).
@@ -4126,7 +4352,6 @@ python_function('adapters/python/urirun/runtime/v2.py', '_strip_runtime_only', 1
 python_function('adapters/python/urirun/runtime/v2.py', '_binding_config', 1, 6, 3).
 python_function('adapters/python/urirun/runtime/v2.py', '_binding_adapter_kind', 2, 6, 1).
 python_function('adapters/python/urirun/runtime/v2.py', 'expand_binding', 2, 6, 6).
-python_function('adapters/python/urirun/runtime/v2.py', '_binding_pairs', 1, 8, 5).
 python_function('adapters/python/urirun/runtime/v2.py', 'expand_bindings', 1, 2, 2).
 python_function('adapters/python/urirun/runtime/v2.py', 'compile_registry', 3, 1, 2).
 python_function('adapters/python/urirun/runtime/v2.py', 'build_binding_document', 2, 3, 5).
@@ -4141,8 +4366,6 @@ python_function('adapters/python/urirun/runtime/v2.py', 'pypi_binding', 3, 3, 1)
 python_function('adapters/python/urirun/runtime/v2.py', 'load_registry_arg', 2, 7, 9).
 python_function('adapters/python/urirun/runtime/v2.py', '_placeholders_in', 1, 6, 6).
 python_function('adapters/python/urirun/runtime/v2.py', 'validate_binding_document', 1, 12, 15).
-python_function('adapters/python/urirun/runtime/v2.py', '_iter_files', 1, 5, 4).
-python_function('adapters/python/urirun/runtime/v2.py', '_rel', 2, 2, 3).
 python_function('adapters/python/urirun/runtime/v2.py', '_empty_input_schema', 0, 1, 0).
 python_function('adapters/python/urirun/runtime/v2.py', '_load_manifest', 1, 1, 2).
 python_function('adapters/python/urirun/runtime/v2.py', '_scan_package_json', 2, 4, 9).
@@ -4270,7 +4493,16 @@ python_function('tests/test_host_dashboard.py', 'test_chat_ask_generates_and_dry
 python_function('tests/test_host_dashboard.py', 'test_chat_ask_derives_nodes_from_node_targets', 1, 5, 4).
 python_function('tests/test_host_dashboard.py', 'test_chat_ask_plans_document_sync_without_llm', 1, 22, 4).
 python_function('tests/test_host_dashboard.py', 'test_chat_ask_document_sync_resolves_node_from_known_nodes_file', 2, 8, 8).
-python_function('tests/test_host_dashboard.py', 'test_summary_shows_known_nodes_file_nodes', 2, 9, 10).
+python_function('tests/test_host_dashboard.py', 'test_summary_shows_known_nodes_file_nodes', 2, 15, 11).
+python_function('tests/test_host_dashboard.py', 'test_api_objects_returns_uri_objects', 2, 8, 6).
+python_function('tests/test_host_dashboard.py', 'test_api_node_types_returns_profiles', 0, 5, 2).
+python_function('tests/test_host_dashboard.py', 'test_node_add_persists_node_type_tags', 2, 5, 5).
+python_function('tests/test_host_dashboard.py', 'test_node_add_persists_api_node_interfaces_and_keyring_auth', 2, 6, 7).
+python_function('tests/test_host_dashboard.py', 'test_configured_api_request_uses_keyring_secret_and_redacts_config', 2, 7, 11).
+python_function('tests/test_host_dashboard.py', 'test_uri_invoke_direct_api_route_calls_configured_api', 2, 6, 9).
+python_function('tests/test_host_dashboard.py', 'test_uri_invoke_direct_device_status_does_not_call_network', 2, 5, 6).
+python_function('tests/test_host_dashboard.py', 'test_uri_invoke_configured_non_http_route_reports_connector_required', 2, 6, 5).
+python_function('tests/test_host_dashboard.py', 'test_node_add_persists_device_node_multiple_interfaces', 2, 6, 5).
 python_function('tests/test_host_dashboard.py', 'test_chat_ask_executes_document_sync_without_llm', 1, 13, 4).
 python_function('tests/test_host_dashboard.py', 'test_chat_ask_document_sync_blocks_when_contract_fails', 1, 7, 3).
 python_function('tests/test_host_dashboard.py', 'test_chat_ask_document_sync_error_includes_urifix_recovery', 1, 12, 4).
@@ -4379,12 +4611,22 @@ python_function('tests/test_host_discovery.py', 'test_node_test_routes_query_mod
 python_function('tests/test_host_fs_transfer.py', 'test_route_key_ignores_uri_target_for_route_matching', 0, 3, 1).
 python_function('tests/test_host_fs_transfer.py', 'test_node_has_route_matches_same_route_under_different_target', 0, 3, 1).
 python_function('tests/test_host_fs_transfer.py', 'test_fs_file_transfer_fallback_bindings_include_only_transfer_routes', 0, 4, 2).
+python_function('tests/test_host_node_types.py', 'test_normalize_node_type_aliases', 0, 6, 1).
+python_function('tests/test_host_node_types.py', 'test_annotate_node_type_from_tags', 0, 5, 1).
+python_function('tests/test_host_node_types.py', 'test_annotate_node_type_does_not_guess_unknown_nodes', 0, 4, 1).
+python_function('tests/test_host_node_types.py', 'test_node_type_tags_replaces_existing_type_tags', 0, 2, 1).
+python_function('tests/test_host_node_types.py', 'test_configured_device_node_exposes_api_routes_without_urirun_health', 0, 10, 1).
 python_function('tests/test_host_object_registry.py', 'test_host_registry_routes_keeps_only_host_dashboard_connector_layers', 0, 2, 1).
 python_function('tests/test_host_object_registry.py', 'test_service_contacts_marks_external_scanner_state', 0, 5, 1).
 python_function('tests/test_host_object_registry.py', 'test_service_contacts_replaces_default_with_in_process_scanner', 0, 6, 2).
 python_function('tests/test_host_object_registry.py', 'test_annotate_node_tokens_never_raises', 0, 2, 2).
+python_function('tests/test_host_object_registry.py', 'test_uri_objects_builds_host_node_and_service_registries', 0, 9, 1).
+python_function('tests/test_host_object_registry.py', 'test_node_object_uses_node_type_tags', 0, 6, 1).
+python_function('tests/test_host_object_registry.py', 'test_node_object_keeps_api_interfaces', 0, 5, 1).
 python_function('tests/test_host_scanner_bridge.py', 'test_register_scanner_result_uses_document_pdf_as_canonical_artifact', 1, 6, 5).
 python_function('tests/test_host_scanner_bridge.py', 'test_register_scanner_result_registers_camera_scan_without_document', 1, 5, 5).
+python_function('tests/test_host_scanner_bridge.py', 'test_scanner_public_candidate_for_live_adds_preview_urls_and_hides_ocr_text', 0, 5, 1).
+python_function('tests/test_host_scanner_bridge.py', 'test_scanner_live_state_from_streams_sorts_limits_and_projects_documents', 0, 7, 2).
 python_function('tests/test_host_scanner_bridge.py', 'test_scanner_session_logs_and_adds_chat_message', 0, 7, 4).
 python_function('tests/test_host_scanner_bridge.py', 'test_uri_event_logs_js_event', 0, 5, 3).
 python_function('tests/test_host_scanner_bridge.py', 'test_page_action_queue_round_trip', 0, 5, 5).
@@ -4392,6 +4634,10 @@ python_function('tests/test_host_scanner_bridge.py', 'test_latest_scanner_page_s
 python_function('tests/test_host_scanner_bridge.py', 'test_latest_scanner_page_status_ignores_non_scanner_logs', 0, 2, 1).
 python_function('tests/test_host_scanner_bridge.py', 'test_scanner_artifact_helpers_merge_document_metadata', 0, 2, 1).
 python_function('tests/test_host_scanner_bridge.py', 'test_is_scanner_artifact_accepts_scanner_sources_only', 0, 5, 1).
+python_function('tests/test_host_scanner_bridge.py', 'test_scanner_artifact_item_formats_public_view_data', 0, 2, 1).
+python_function('tests/test_host_scanner_bridge.py', 'test_scanner_service_live_views_builds_stream_and_status_views', 0, 11, 1).
+python_function('tests/test_host_scanner_bridge.py', 'test_scanner_flow_result_includes_service_actions_timeline_and_attachments', 0, 9, 1).
+python_function('tests/test_host_scanner_bridge.py', 'test_scanner_prompt_helpers_classify_camera_autonomous_and_torch_intents', 0, 11, 5).
 python_function('tests/test_host_service_control.py', 'test_service_restart_argv_systemd_payload_unit', 0, 3, 1).
 python_function('tests/test_host_service_control.py', 'test_service_restart_argv_env_command', 1, 3, 2).
 python_function('tests/test_host_service_control.py', 'test_chat_service_restart_argv_builds_port_replace_command', 2, 6, 4).
@@ -4399,6 +4645,10 @@ python_function('tests/test_host_service_control.py', 'test_schedule_restart_com
 python_function('tests/test_host_service_control.py', 'test_port_holder_pids_parses_ss_output', 1, 4, 3).
 python_function('tests/test_host_service_control.py', 'test_free_port_from_matching_processes_refuses_unrelated_holder', 0, 5, 2).
 python_function('tests/test_host_service_control.py', 'test_free_port_from_old_dashboard_kills_only_matching_process', 0, 3, 4).
+python_function('tests/test_host_widgets.py', 'test_query_value_returns_first_or_default', 0, 3, 1).
+python_function('tests/test_host_widgets.py', 'test_select_service_view_prefers_id_then_target_then_fallback', 0, 6, 1).
+python_function('tests/test_host_widgets.py', 'test_service_widget_summary_uses_scanner_stream_document', 0, 2, 1).
+python_function('tests/test_host_widgets.py', 'test_service_widget_summary_falls_back_to_target_and_updated_at', 0, 2, 1).
 python_function('tests/test_node_flow_recovery.py', '_mesh', 1, 1, 0).
 python_function('tests/test_node_flow_recovery.py', '_one_step', 0, 1, 0).
 python_function('tests/test_node_flow_recovery.py', 'test_execute_flow_retries_transient_query_failure', 1, 8, 6).
@@ -4543,6 +4793,7 @@ python_method('HostDbTests', 'test_artifact_and_check_storage', 0, 1, 7).
 python_class('adapters/python/tests/test_mesh.py', 'MeshTests').
 python_method('MeshTests', 'test_package_install_source_classification_handles_remote_wheels', 0, 1, 2).
 python_method('MeshTests', 'test_host_config_add_node', 0, 1, 7).
+python_method('MeshTests', 'test_host_add_node_cli_persists_configured_api_node', 0, 1, 9).
 python_method('MeshTests', 'test_apply_deploy_hot_swaps_registry_code_and_allow', 0, 1, 7).
 python_method('MeshTests', 'test_apply_deploy_requires_a_surface', 0, 1, 2).
 python_method('MeshTests', 'test_apply_deploy_accepts_code_only_hot_swap', 0, 1, 4).
@@ -4679,6 +4930,30 @@ python_method('ToolBindingAndRunStepsTest', 'test_run_steps_stops_on_error', 0, 
 python_class('adapters/python/tests/test_public_api.py', 'ResultDegradedTest').
 python_method('ResultDegradedTest', 'test_flags_mock_driver_and_modes', 0, 1, 2).
 python_method('ResultDegradedTest', 'test_real_results_are_not_degraded', 0, 1, 2).
+python_class('adapters/python/tests/test_refactor_helpers.py', 'RecoveryActionsDispatchTests').
+python_method('RecoveryActionsDispatchTests', '_ids', 1, 2, 1).
+python_method('RecoveryActionsDispatchTests', 'test_transient_categories_retry_and_refresh', 0, 2, 2).
+python_method('RecoveryActionsDispatchTests', 'test_transient_with_target_adds_health_check', 0, 1, 2).
+python_method('RecoveryActionsDispatchTests', 'test_auth_categories', 0, 2, 2).
+python_method('RecoveryActionsDispatchTests', 'test_not_found_route_vs_resource', 0, 1, 3).
+python_method('RecoveryActionsDispatchTests', 'test_single_action_categories', 0, 1, 2).
+python_method('RecoveryActionsDispatchTests', 'test_llm_model_message_overrides_category', 0, 1, 2).
+python_method('RecoveryActionsDispatchTests', 'test_unknown_category_falls_back_to_inspect', 0, 1, 2).
+python_method('RecoveryActionsDispatchTests', 'test_actions_are_fresh_copies', 0, 1, 2).
+python_class('adapters/python/tests/test_refactor_helpers.py', 'DocumentFrameQualityTests').
+python_method('DocumentFrameQualityTests', 'test_strong_document_scores_and_reasons', 0, 2, 4).
+python_method('DocumentFrameQualityTests', 'test_rejected_crop_is_floored_at_zero', 0, 1, 3).
+python_method('DocumentFrameQualityTests', 'test_crop_scorer_isolated', 0, 1, 2).
+python_method('DocumentFrameQualityTests', 'test_doctype_scorer_tiers', 0, 1, 2).
+python_class('adapters/python/tests/test_refactor_helpers.py', 'DecisionLoopTests').
+python_method('DecisionLoopTests', '_loop', 0, 1, 3).
+python_method('DecisionLoopTests', 'test_dry_run', 0, 1, 2).
+python_method('DecisionLoopTests', 'test_completed', 0, 1, 3).
+python_method('DecisionLoopTests', 'test_failed_blocks_when_no_retry', 0, 1, 2).
+python_method('DecisionLoopTests', 'test_recovered_records_initial_error', 0, 1, 2).
+python_class('adapters/python/tests/test_refactor_helpers.py', 'DashboardApiRoutingTests').
+python_method('DashboardApiRoutingTests', 'test_unknown_path_is_404', 0, 1, 3).
+python_method('DashboardApiRoutingTests', 'test_route_table_covers_expected_endpoints', 0, 2, 1).
 python_class('adapters/python/tests/test_scheduler.py', 'SchedulerTests').
 python_method('SchedulerTests', 'test_systemd_preview_and_install', 0, 1, 9).
 python_method('SchedulerTests', 'test_cli_schedule_cron_preview', 0, 1, 9).
@@ -4954,68 +5229,68 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 
 ## Call Graph
 
-*418 nodes · 500 edges · 30 modules · CC̄=4.6*
+*425 nodes · 500 edges · 42 modules · CC̄=4.7*
 
 ### Hubs (by degree)
 
 | Function | CC | in | out | total |
 |----------|----|----|-----|-------|
-| `_archive_scanned_document` *(in adapters.python.urirun.host.host_dashboard)* | 14 ⚠ | 2 | 72 | **74** |
-| `scanner_best_finish` *(in adapters.python.urirun.host.host_dashboard)* | 14 ⚠ | 2 | 48 | **50** |
-| `scanner_capture` *(in adapters.python.urirun.host.host_dashboard)* | 12 ⚠ | 2 | 40 | **42** |
-| `_frame_visual_metrics` *(in adapters.python.urirun.host.host_dashboard)* | 7 | 1 | 40 | **41** |
+| `serve` *(in adapters.python.urirun.runtime.daemon)* | 14 ⚠ | 1 | 41 | **42** |
 | `_write_planfile_action` *(in adapters.python.urirun.host.host_integrations)* | 8 | 1 | 39 | **40** |
-| `_json_response` *(in adapters.python.urirun.host.host_dashboard)* | 1 | 26 | 13 | **39** |
-| `_collect_attachments` *(in adapters.python.urirun.host.host_dashboard)* | 1 | 1 | 34 | **35** |
-| `_scanner_crop_overlay` *(in adapters.python.urirun.host.host_dashboard)* | 8 | 2 | 33 | **35** |
+| `info` *(in adapters.python.urirun.runtime.errors)* | 13 ⚠ | 2 | 27 | **29** |
+| `_normalize_llm_doc_fields` *(in adapters.python.urirun.host.document_metadata)* | 14 ⚠ | 1 | 28 | **29** |
+| `_upload_file` *(in adapters.python.urirun.host.document_sync)* | 6 | 1 | 27 | **28** |
+| `_build_sync_params` *(in adapters.python.urirun.host.document_sync)* | 6 | 1 | 27 | **28** |
+| `node_alias_map_from_env` *(in adapters.python.urirun.host.discovery)* | 14 ⚠ | 1 | 26 | **27** |
+| `lint_connector` *(in adapters.python.urirun.connectors.connector_lint)* | 9 | 3 | 24 | **27** |
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.30s
-# nodes: 418 | edges: 500 | modules: 30
-# CC̄=4.6
+# generated in 0.34s
+# nodes: 425 | edges: 500 | modules: 42
+# CC̄=4.7
 
 HUBS[20]:
-  adapters.python.urirun.host.host_dashboard._archive_scanned_document
-    CC=14  in:2  out:72  total:74
-  adapters.python.urirun.host.host_dashboard.scanner_best_finish
-    CC=14  in:2  out:48  total:50
-  adapters.python.urirun.host.host_dashboard.scanner_capture
-    CC=12  in:2  out:40  total:42
-  adapters.python.urirun.host.host_dashboard._frame_visual_metrics
-    CC=7  in:1  out:40  total:41
+  adapters.python.urirun.runtime.daemon.serve
+    CC=14  in:1  out:41  total:42
   adapters.python.urirun.host.host_integrations._write_planfile_action
     CC=8  in:1  out:39  total:40
-  adapters.python.urirun.host.host_dashboard._json_response
-    CC=1  in:26  out:13  total:39
-  adapters.python.urirun.host.host_dashboard._collect_attachments
-    CC=1  in:1  out:34  total:35
-  adapters.python.urirun.host.host_dashboard._scanner_crop_overlay
-    CC=8  in:2  out:33  total:35
-  adapters.python.urirun.host.host_dashboard.restart_phone_scanner_service
-    CC=14  in:1  out:33  total:34
-  adapters.python.urirun.host.host_dashboard.summary
-    CC=6  in:1  out:31  total:32
-  adapters.python.urirun.host.host_dashboard._archive_redundant_duplicate
-    CC=10  in:1  out:31  total:32
-  adapters.python.urirun.host.host_dashboard._preview_url
-    CC=6  in:12  out:18  total:30
-  adapters.python.urirun.host.host_dashboard._supersede_archived_document
-    CC=10  in:1  out:28  total:29
-  adapters.python.urirun.host.host_dashboard._normalize_llm_doc_fields
+  adapters.python.urirun.runtime.errors.info
+    CC=13  in:2  out:27  total:29
+  adapters.python.urirun.host.document_metadata._normalize_llm_doc_fields
     CC=14  in:1  out:28  total:29
-  adapters.python.urirun.host.host_dashboard._scanned_log_entry
-    CC=8  in:1  out:28  total:29
-  adapters.python.urirun.host.host_dashboard._chat_ask_phone_scanner
-    CC=10  in:1  out:28  total:29
-  adapters.python.urirun.host.host_dashboard._chat_ask_document_sync
-    CC=12  in:1  out:27  total:28
-  adapters.python.urirun.host.document_sync._build_sync_params
-    CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._upload_file
     CC=6  in:1  out:27  total:28
+  adapters.python.urirun.host.document_sync._build_sync_params
+    CC=6  in:1  out:27  total:28
+  adapters.python.urirun.host.discovery.node_alias_map_from_env
+    CC=14  in:1  out:26  total:27
   adapters.python.urirun.connectors.connector_lint.lint_connector
     CC=9  in:3  out:24  total:27
+  adapters.python.urirun.host.host_db._run_query_route
+    CC=7  in:1  out:26  total:27
+  adapters.python.urirun.runtime.codegen.proto_from_registry
+    CC=13  in:2  out:25  total:27
+  adapters.python.urirun.host.document_sync._read_back_file
+    CC=11  in:1  out:26  total:27
+  adapters.python.urirun.runtime.v2.validate_binding_document
+    CC=12  in:2  out:24  total:26
+  adapters.python.urirun.testing.smoke
+    CC=9  in:1  out:23  total:24
+  adapters.python.urirun.runtime.v1.run
+    CC=14  in:1  out:23  total:24
+  adapters.python.urirun.host.document_metadata._local_image_ocr
+    CC=12  in:0  out:24  total:24
+  adapters.python.urirun.host.object_registry.route_owner_route
+    CC=15  in:3  out:20  total:23
+  adapters.python.urirun.host.document_sync.sync_documents_to_node
+    CC=13  in:0  out:23  total:23
+  adapters.python.urirun.runtime.errors.problem
+    CC=10  in:0  out:22  total:22
+  adapters.python.urirun.host.document_metadata._parse_contractor
+    CC=13  in:1  out:21  total:22
+  adapters.python.urirun.host.host_db.search_records
+    CC=6  in:1  out:21  total:22
 
 MODULES:
   adapters.c.urirun  [4 funcs]
@@ -5064,8 +5339,31 @@ MODULES:
   adapters.python.urirun.exec  [2 funcs]
     _resolve  CC=3  out:4
     main  CC=10  out:16
-  adapters.python.urirun.host.contracts  [1 funcs]
+  adapters.python.urirun.host.contracts  [2 funcs]
     file_transfer_verification  CC=4  out:20
+    verification_check  CC=3  out:5
+  adapters.python.urirun.host.discovery  [28 funcs]
+    _classify_not_found  CC=7  out:6
+    _node_map_from_value  CC=3  out:4
+    _node_test_summary  CC=5  out:4
+    _probe_route  CC=3  out:5
+    _route_targets  CC=12  out:7
+    add_node_aliases  CC=4  out:7
+    alias_map_from_dict  CC=5  out:9
+    alias_map_from_list  CC=5  out:8
+    classify_route_run  CC=13  out:15
+    host_config  CC=2  out:3
+  adapters.python.urirun.host.document_metadata  [21 funcs]
+    _coerce_amount  CC=7  out:12
+    _document_type  CC=12  out:2
+    _extract_document_metadata  CC=14  out:16
+    _llm_api_key_ref  CC=5  out:5
+    _llm_complete_metadata  CC=6  out:3
+    _llm_env_file  CC=5  out:11
+    _llm_extract_metadata  CC=11  out:14
+    _llm_model  CC=7  out:10
+    _load_env_file  CC=8  out:11
+    _local_image_ocr  CC=12  out:24
   adapters.python.urirun.host.document_sync  [10 funcs]
     _build_sync_params  CC=6  out:27
     _check_preflight  CC=10  out:16
@@ -5088,18 +5386,16 @@ MODULES:
     _route_browser  CC=4  out:8
     _route_dns  CC=9  out:8
     _route_flow  CC=4  out:20
-  adapters.python.urirun.host.host_dashboard  [219 funcs]
-    _add_chat_message  CC=2  out:2
-    _append_scanned_id_log  CC=1  out:5
-    _apply_attachment_file_fields  CC=3  out:1
-    _apply_attachment_visual_fields  CC=3  out:1
-    _apply_urifix_recovery  CC=14  out:16
-    _archive_month  CC=2  out:6
-    _archive_redundant_duplicate  CC=10  out:31
-    _archive_scanned_document  CC=14  out:72
-    _artifact_dedupe_key  CC=7  out:13
-    _artifact_file_exists  CC=3  out:4
-  adapters.python.urirun.host.host_db  [31 funcs]
+  adapters.python.urirun.host.fs_transfer  [7 funcs]
+    _short_value  CC=8  out:8
+    deploy_fs_file_transfer_fallback  CC=3  out:9
+    ensure_node_uri_routes  CC=14  out:19
+    fs_file_transfer_binding  CC=4  out:1
+    fs_file_transfer_fallback_bindings  CC=4  out:3
+    node_has_route  CC=4  out:6
+    route_key  CC=3  out:5
+  adapters.python.urirun.host.host_db  [32 funcs]
+    _query_table  CC=2  out:7
     _run_command_route  CC=11  out:17
     _run_query_route  CC=7  out:26
     _schema_json  CC=2  out:2
@@ -5109,7 +5405,6 @@ MODULES:
     add_log  CC=2  out:9
     artifacts_by_ids  CC=5  out:10
     connect  CC=1  out:5
-    connection  CC=1  out:3
   adapters.python.urirun.host.host_integrations  [10 funcs]
     _list_param  CC=6  out:6
     _planfile_action  CC=7  out:1
@@ -5121,9 +5416,56 @@ MODULES:
     _ticket_id  CC=5  out:5
     _write_planfile_action  CC=8  out:39
     run_planfile_task  CC=5  out:8
-  adapters.python.urirun.host.object_registry  [2 funcs]
+  adapters.python.urirun.host.node_types  [7 funcs]
+    annotate_node_type  CC=4  out:14
+    annotate_node_types  CC=2  out:2
+    node_type_from_node  CC=3  out:4
+    node_type_from_tags  CC=7  out:8
+    node_type_profile  CC=4  out:3
+    node_type_tags  CC=8  out:8
+    normalize_node_type  CC=5  out:5
+  adapters.python.urirun.host.object_registry  [11 funcs]
+    _node_own_routes  CC=7  out:7
+    _node_owner_dict  CC=12  out:17
+    _uri_target  CC=2  out:2
+    dedupe_routes  CC=6  out:7
+    host_object  CC=1  out:4
+    node_object  CC=3  out:7
     phone_scanner_contact  CC=1  out:1
+    route_owner_route  CC=15  out:20
     service_contacts  CC=12  out:14
+    service_object  CC=13  out:18
+  adapters.python.urirun.host.planfile_adapter  [21 funcs]
+    _imports  CC=2  out:1
+    _model_dict  CC=1  out:1
+    _normalize_labels  CC=6  out:7
+    build_ticket_payload  CC=8  out:16
+    claim_ticket  CC=2  out:3
+    complete_ticket  CC=2  out:3
+    create_ticket  CC=3  out:7
+    fail_or_retry  CC=4  out:11
+    fail_ticket  CC=2  out:3
+    get_ticket  CC=2  out:3
+  adapters.python.urirun.host.scanner_bridge  [18 funcs]
+    _add_log  CC=3  out:1
+    is_autonomous_scanner_prompt  CC=6  out:4
+    is_camera_start_prompt  CC=4  out:3
+    is_phone_scanner_prompt  CC=11  out:6
+    latest_scanner_page_status  CC=7  out:8
+    nl_text  CC=3  out:6
+    page_action_enqueue  CC=4  out:10
+    page_action_result  CC=3  out:9
+    public_scanner_candidate  CC=4  out:15
+    register_document_artifact  CC=7  out:15
+  adapters.python.urirun.host.scanner_net  [8 funcs]
+    _lan_host  CC=8  out:8
+    _phone_scanner_external_status  CC=7  out:11
+    _phone_scanner_url  CC=3  out:6
+    _probe_scanner_url  CC=3  out:4
+    _public_base_url  CC=4  out:5
+    _scanner_autonomy_params  CC=1  out:6
+    _scanner_page_url  CC=3  out:8
+    _url_host  CC=3  out:1
   adapters.python.urirun.host.scheduler  [5 funcs]
     build_loop_command  CC=4  out:4
     cron_line  CC=1  out:4
@@ -5152,18 +5494,69 @@ MODULES:
     heuristic_plan_chat_request  CC=12  out:16
     is_ambiguous  CC=2  out:3
     is_destructive  CC=4  out:4
-  adapters.python.urirun.node._artifacts  [1 funcs]
-    materialize_base64_artifacts  CC=1  out:16
+  adapters.python.urirun.host.widgets  [3 funcs]
+    query_value  CC=2  out:1
+    scanner_stream_summary  CC=10  out:17
+    service_widget_summary  CC=12  out:16
+  adapters.python.urirun.node.mesh  [1 funcs]
+    _pool_executors  CC=1  out:8
   adapters.python.urirun.runtime._runtime  [1 funcs]
     build_policy  CC=13  out:13
-  adapters.python.urirun.runtime.errors  [1 funcs]
+  adapters.python.urirun.runtime.codegen  [19 funcs]
+    _disambiguate_rpc_name  CC=8  out:9
+    _field_snake  CC=1  out:5
+    _field_type  CC=14  out:14
+    _handler_signature  CC=7  out:10
+    _message_fields  CC=9  out:15
+    _msg_pascal  CC=3  out:3
+    _pascal  CC=3  out:3
+    _routes  CC=7  out:9
+    _rpc_name  CC=5  out:2
+    _snake  CC=2  out:3
+  adapters.python.urirun.runtime.daemon  [2 funcs]
+    _main  CC=9  out:7
+    serve  CC=14  out:41
+  adapters.python.urirun.runtime.errors  [31 funcs]
+    _aggregate  CC=4  out:13
+    _append  CC=3  out:13
+    _cmd_bindings  CC=2  out:2
+    _cmd_categories  CC=2  out:2
+    _cmd_info  CC=2  out:3
+    _cmd_recent  CC=2  out:3
+    _cmd_search  CC=2  out:4
+    _cmd_ticket  CC=3  out:4
     _emit  CC=1  out:2
-  adapters.python.urirun.runtime.v2  [5 funcs]
+    _errno_category  CC=6  out:3
+  adapters.python.urirun.runtime.introspect  [3 funcs]
+    _introspect_binding  CC=7  out:11
+    _introspect_list  CC=9  out:10
+    run_registry_introspect  CC=7  out:11
+  adapters.python.urirun.runtime.v1  [20 funcs]
+    _binding_pairs  CC=8  out:11
+    _env_flags  CC=3  out:5
+    _has_placeholders  CC=2  out:3
+    _params_spec  CC=4  out:3
+    _proc_env  CC=3  out:6
+    _run_process  CC=3  out:10
+    _run_process_streaming  CC=7  out:20
+    compile_registry  CC=1  out:2
+    expand_binding  CC=7  out:6
+    expand_bindings  CC=2  out:2
+  adapters.python.urirun.runtime.v2  [30 funcs]
+    _apply_defaults  CC=14  out:12
+    _collision_index  CC=7  out:12
+    _document_binding_from_expanded  CC=4  out:5
+    _entry_point_script_issues  CC=5  out:7
+    _handler_kwargs  CC=7  out:5
+    _input_values  CC=4  out:8
+    _load_entry_point_bindings  CC=4  out:9
     _load_manifest  CC=1  out:2
-    decorated_bindings  CC=2  out:1
-    uri_command  CC=1  out:6
-    uri_handler  CC=1  out:8
-    uri_shell  CC=1  out:1
+    _placeholder_kwargs  CC=2  out:1
+    _schema_for  CC=3  out:3
+  adapters.python.urirun.runtime.v2_service  [3 funcs]
+    _post  CC=5  out:15
+    call  CC=9  out:10
+    service_base  CC=5  out:6
   adapters.python.urirun.testing  [6 funcs]
     _nonportable_routes  CC=5  out:8
     _resolve_bindings  CC=5  out:8

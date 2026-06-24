@@ -50,6 +50,77 @@ Priority improvements:
    monorepo root and from connector roots, because a local `urirun/` directory
    can shadow the installed package if subprocesses use the wrong cwd.
 
+## Landed (2026-06-24): node connection model
+
+The practical operator guide now lives in `docs/NODE_CONNECTIONS.md`. It
+documents all currently supported connection paths: classic urirun nodes,
+transient `--node-url`, desktop/PC nodes, server/container nodes, browser/web
+nodes, smartphone/web/mobile nodes, configured API nodes, multi-interface device
+nodes, URI services, connector adoption, dashboard chat, widgets and artifacts.
+
+Implemented in this pass:
+
+- `api` and `device` node types are part of the canonical node type list.
+- Dashboard/API node registration persists `apis[]`, `capabilities` and
+  `kind:*` tags.
+- API credentials are stored by reference through keyring-backed `secretRef`.
+- Discovery exposes configured API/device routes even when the external target
+  does not implement native urirun `/health` or `/routes`.
+- HTTP-like configured APIs execute through
+  `configured://host/node-api/command/request` and direct
+  `api://<node>/<api>/command/request`.
+- `device://<node>/<api>/query/status` returns configured interface metadata
+  without performing a network request.
+- Non-HTTP device routes such as `media://`, `camera://`, `ssh://` and `fs://`
+  return `connector_required` when no concrete connector owns the scheme.
+- `urirun host add-node` supports `--kind`, `--api`, `--api-id`,
+  `--api-kind`, `--auth-*` and `--capability`.
+- Example `48-api-device-node` shows CLI registration and URI flows.
+
+Verified local target set:
+
+```text
+166 passed, 1 warning
+```
+
+The remaining global suite noise is test-environment related: duplicate test
+module names cause import mismatch in default `pytest -q`, and socket-opening
+tests fail in the restricted sandbox with `PermissionError: Operation not
+permitted`.
+
+## Next tasks: connection/runtime reliability
+
+P0:
+
+- Add structured recovery for `connector_required`: connector candidates,
+  install command, retry payload and operator-visible reason.
+- Extend `urifix://` diagnoses for missing connector, missing API auth, missing
+  node URL, stopped service, busy port and failed verification contract.
+- Require side-effecting dashboard flows to return a `verification` block with
+  expected/actual counts and named checks.
+
+P1:
+
+- Mark discovered routes as `executable`, `metadata`, `connector_required` or
+  `external` in `urirun host routes` and dashboard discovery.
+- Add `capability doctor` for API/device nodes: auth, endpoint reachability,
+  protocol owner, connector requirement and known service owner.
+- Normalize service lifecycle routes across `urirun-service-chat` and
+  `urirun-service-scanner`: `query/status`, `command/start`,
+  `command/restart`, `command/stop`.
+- Implement concrete non-HTTP device connectors: RTSP/camera/media,
+  SSH-device and fileshare/NAS.
+
+P2:
+
+- Extract API node handling, URI invoke routing and node docs/forms from
+  `host_dashboard.py`.
+- Add a shared SDK/contract for service/widget/artifact descriptors.
+- Make connectors return artifact descriptors and leave registration to the
+  host/service artifact registry.
+- Fix duplicate test module names and mark socket-dependent tests so restricted
+  sandboxes can run a meaningful green suite.
+
 Near-term extraction targets:
 
 - `host/contracts.py` for verification contracts.

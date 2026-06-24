@@ -67,7 +67,7 @@ def _policy_allows(kind: str, source: str, policy: dict) -> tuple[bool, str]:
         return False, f"source kind '{kind}' not allowed (URIRUN_INSTALL_ALLOW={','.join(policy['kinds'])})"
     if kind == "local" and policy["roots"]:
         rp = os.path.realpath(os.path.expanduser(source))
-        if not any(rp == r or rp.startswith(r + os.sep) for r in policy["roots"]):
+        if not any(rp == r or rp.startswith(f"{r}{os.sep}") for r in policy["roots"]):
             return False, f"local path outside allowed roots {policy['roots']}"
     if kind == "git" and policy["gitHosts"] and not any(h in source for h in policy["gitHosts"]):
         return False, f"git host not in allow-list {policy['gitHosts']}"

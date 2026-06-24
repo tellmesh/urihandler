@@ -49,14 +49,7 @@ def now_iso() -> str:
 # (redup EXAC duplicate). Aliases keep every local `load_json(...)`/`write_json(...)` call.
 load_json = reglib.load_json
 write_json = reglib.write_json
-
-
-def emit_json(value, out: str | None) -> None:
-    if out and out != "-":
-        write_json(out, value)
-        return
-    json.dump(value, sys.stdout, indent=2, sort_keys=True)
-    sys.stdout.write("\n")
+emit_json = reglib._emit_json
 
 
 def infer_kind(binding: dict) -> str:

@@ -72,11 +72,26 @@ def init_host(path: str | None = None, name: str | None = None) -> dict:
     return save_host_config(config, path)
 
 
-def add_node(path: str | None, name: str, url: str, tags: list[str] | None = None) -> dict:
+def add_node(
+    path: str | None,
+    name: str,
+    url: str,
+    tags: list[str] | None = None,
+    *,
+    apis: list[dict] | None = None,
+    capabilities: list[str] | None = None,
+    meta: dict | None = None,
+) -> dict:
     config = load_host_config(path)
     node = {"name": name, "url": url.rstrip("/")}
     if tags:
         node["tags"] = tags
+    if apis:
+        node["apis"] = apis
+    if capabilities:
+        node["capabilities"] = capabilities
+    if meta:
+        node["meta"] = meta
     nodes = [item for item in config.get("nodes", []) if item.get("name") != name]
     nodes.append(node)
     config["nodes"] = sorted(nodes, key=lambda item: item["name"])

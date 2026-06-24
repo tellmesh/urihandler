@@ -3,11 +3,11 @@
 
 ## AI Cost Tracking
 
-![PyPI](https://img.shields.io/badge/pypi-costs-blue) ![Version](https://img.shields.io/badge/version-0.4.128-blue) ![Python](https://img.shields.io/badge/python-3.9+-blue) ![License](https://img.shields.io/badge/license-Apache--2.0-green)
-![AI Cost](https://img.shields.io/badge/AI%20Cost-$7.81-orange) ![Human Time](https://img.shields.io/badge/Human%20Time-74.3h-blue) ![Model](https://img.shields.io/badge/Model-openrouter%2Fqwen%2Fqwen3--coder--next-lightgrey)
+![PyPI](https://img.shields.io/badge/pypi-costs-blue) ![Version](https://img.shields.io/badge/version-0.4.129-blue) ![Python](https://img.shields.io/badge/python-3.9+-blue) ![License](https://img.shields.io/badge/license-Apache--2.0-green)
+![AI Cost](https://img.shields.io/badge/AI%20Cost-$8.43-orange) ![Human Time](https://img.shields.io/badge/Human%20Time-74.5h-blue) ![Model](https://img.shields.io/badge/Model-openrouter%2Fqwen%2Fqwen3--coder--next-lightgrey)
 
-- 🤖 **LLM usage:** $7.8108 (244 commits)
-- 👤 **Human dev:** ~$7434 (74.3h @ $100/h, 30min dedup)
+- 🤖 **LLM usage:** $8.4349 (245 commits)
+- 👤 **Human dev:** ~$7454 (74.5h @ $100/h, 30min dedup)
 
 Generated on 2026-06-24 using [openrouter/qwen/qwen3-coder-next](https://openrouter.ai/qwen/qwen3-coder-next)
 
@@ -76,6 +76,10 @@ Then adapt that descriptor to existing functions, methods, classes, MQTT topics,
 - `docs/REFACTOR_ROADMAP.md` - remaining refactor/security backlog and what landed
 - `docs/COMPONENTS.md` - Polish operator/developer guide to host, node,
   service, connector, widget and artifact boundaries
+- `docs/NODE_CONNECTIONS.md` - practical connection guide for classic nodes,
+  API nodes, device nodes, services, browser/web/smartphone nodes and next tasks
+- `docs/NODE_CONNECTIONS_TASK_PLAN.yaml` - machine-readable task plan for the
+  node/API/device/service connection work
 - `docs/URI_OBJECTS.md` - working contract for URI Nodes, URI Services,
   connectors, widgets and artifacts
 - `docs/HOST_DASHBOARD_CHAT.md` - operator chat lifecycle: NL prompt, URI
@@ -286,7 +290,9 @@ URI routes, MCP tools and A2A cards, and can turn a natural-language request
 into a URI flow.
 
 The host-node protocol and operator rules are documented in
-[docs/HOST_NODE_COMMUNICATION.md](docs/HOST_NODE_COMMUNICATION.md). In short:
+[docs/HOST_NODE_COMMUNICATION.md](docs/HOST_NODE_COMMUNICATION.md). Practical
+connection recipes for classic nodes, API/device nodes and services are in
+[docs/NODE_CONNECTIONS.md](docs/NODE_CONNECTIONS.md). In short:
 the node HTTP surface is
 `/health`, `/routes`, `/mcp/tools`, `/a2a/card`, `/run`, `/events`, `/deploy`,
 `/services` and `/enroll`; URI routes are the source of truth, while MCP/A2A are projections.

@@ -303,19 +303,6 @@ sprints:
     model_hints:
       planning: balanced
       implementation: balanced
-  - id: ticket-c8569fa8
-    name: Fix string-concat issues
-    description: Resolve 1 string-concat issues in adapters/python/urirun/host/domain_monitor.py
-    task_type: prefactor
-    priority: medium
-    estimate: 1d
-    files:
-    - adapters/python/urirun/host/domain_monitor.py
-    rule_id: string-concat
-    count: 1
-    model_hints:
-      planning: balanced
-      implementation: balanced
   - id: ticket-ee9c6e98
     name: Fix unused-imports issues
     description: Resolve 2 unused-imports issues in adapters/python/urirun/host/domain_monitor.py
@@ -378,19 +365,6 @@ sprints:
     - adapters/python/urirun/host/host_db.py
     rule_id: smart-return-type
     count: 1
-    model_hints:
-      planning: balanced
-      implementation: balanced
-  - id: ticket-47df6b8b
-    name: Fix string-concat issues
-    description: Resolve 3 string-concat issues in adapters/python/urirun/host/host_db.py
-    task_type: prefactor
-    priority: medium
-    estimate: 1d
-    files:
-    - adapters/python/urirun/host/host_db.py
-    rule_id: string-concat
-    count: 3
     model_hints:
       planning: balanced
       implementation: balanced
@@ -1096,19 +1070,6 @@ sprints:
     model_hints:
       planning: balanced
       implementation: balanced
-  - id: ticket-798a9185
-    name: Fix string-concat issues
-    description: Resolve 3 string-concat issues in adapters/python/urirun/connectors/openapi_import.py
-    task_type: prefactor
-    priority: medium
-    estimate: 1d
-    files:
-    - adapters/python/urirun/connectors/openapi_import.py
-    rule_id: string-concat
-    count: 3
-    model_hints:
-      planning: balanced
-      implementation: balanced
   - id: ticket-c411f8f7
     name: Fix unused-imports issues
     description: Resolve 2 unused-imports issues in adapters/python/urirun/connectors/openapi_import.py
@@ -1313,6 +1274,45 @@ sprints:
     files:
     - adapters/python/urirun/node/_artifacts.py
     rule_id: unused-imports
+    count: 2
+    model_hints:
+      planning: balanced
+      implementation: balanced
+  - id: ticket-371b1e22
+    name: Fix unused-imports issues
+    description: Resolve 2 unused-imports issues in adapters/python/urirun/host/contracts.py
+    task_type: prefactor
+    priority: medium
+    estimate: 1d
+    files:
+    - adapters/python/urirun/host/contracts.py
+    rule_id: unused-imports
+    count: 2
+    model_hints:
+      planning: balanced
+      implementation: balanced
+  - id: ticket-f831a40a
+    name: Fix magic-numbers issues
+    description: Resolve 1 magic-numbers issues in adapters/python/urirun/host/contracts.py
+    task_type: prefactor
+    priority: medium
+    estimate: 1d
+    files:
+    - adapters/python/urirun/host/contracts.py
+    rule_id: magic-numbers
+    count: 1
+    model_hints:
+      planning: balanced
+      implementation: balanced
+  - id: ticket-e1aed0ef
+    name: Fix string-concat issues
+    description: Resolve 2 string-concat issues in adapters/python/urirun/host/discovery.py
+    task_type: prefactor
+    priority: medium
+    estimate: 1d
+    files:
+    - adapters/python/urirun/host/discovery.py
+    rule_id: string-concat
     count: 2
     model_hints:
       planning: balanced

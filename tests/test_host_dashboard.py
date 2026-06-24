@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -460,6 +461,296 @@ def test_api_objects_returns_uri_objects(monkeypatch, tmp_path):
     laptop = next(item for item in payload["objects"] if item["id"] == "node:laptop")
     assert laptop["routes"][0]["uri"] == "env://laptop/runtime/query/health"
     assert laptop["routes"][0]["ownerId"] == "node:laptop"
+
+
+def test_api_node_types_returns_profiles():
+    status, payload = host_dashboard._dashboard_api_response(
+        "/api/node-types",
+        ".",
+        ":memory:",
+        None,
+        {},
+    )
+
+    assert status == 200
+    assert payload["ok"] is True
+    ids = {item["id"] for item in payload["nodeTypes"]}
+    assert {
+        "server", "pc", "rdp", "smartphone",
+        "browser-debug", "browser-chrome-plugin", "browser-firefox-plugin",
+        "webpage", "api", "device",
+    }.issubset(ids)
+
+
+def test_node_add_persists_node_type_tags(monkeypatch, tmp_path):
+    config = tmp_path / "mesh.json"
+    nodes_file = tmp_path / "nodes.json"
+    kinds_file = tmp_path / "node-kinds.json"
+    monkeypatch.setenv("URIRUN_NODES_FILE", str(nodes_file))
+    monkeypatch.setenv("URIRUN_NODE_KINDS_FILE", str(kinds_file))
+
+    result = host_dashboard.node_add(str(config), {
+        "name": "checkout-tab",
+        "url": "127.0.0.1:9222",
+        "kind": "webnode",
+    })
+
+    assert result["ok"] is True
+    assert result["node"]["nodeType"] == "webpage"
+    data = json.loads(config.read_text())
+    assert data["nodes"][0]["tags"] == ["kind:webpage"]
+    assert json.loads(kinds_file.read_text()) == {"checkout-tab": "webpage"}
+
+
+def test_node_add_persists_api_node_interfaces_and_keyring_auth(monkeypatch, tmp_path):
+    config = tmp_path / "mesh.json"
+    nodes_file = tmp_path / "nodes.json"
+    kinds_file = tmp_path / "node-kinds.json"
+    stored = {}
+
+    class FakeKeyring:
+        @staticmethod
+        def set_password(service, account, value):
+            stored[(service, account)] = value
+
+    monkeypatch.setenv("URIRUN_NODES_FILE", str(nodes_file))
+    monkeypatch.setenv("URIRUN_NODE_KINDS_FILE", str(kinds_file))
+    monkeypatch.setitem(sys.modules, "keyring", FakeKeyring)
+
+    result = host_dashboard.node_add(str(config), {
+        "name": "crm-api",
+        "url": "https://api.example.test/v1",
+        "kind": "api",
+        "apis": [{
+            "id": "main",
+            "kind": "rest",
+            "url": "https://api.example.test/v1",
+            "auth": {"type": "bearer", "token": "SECRET"},
+        }],
+    })
+
+    assert result["ok"] is True
+    assert result["node"]["nodeType"] == "api"
+    data = json.loads(config.read_text())
+    api = data["nodes"][0]["apis"][0]
+    assert api["auth"] == {
+        "type": "bearer",
+        "secretRef": "secret://keyring/urirun-node-api/crm-api/main#credential",
+    }
+    assert "token" not in json.dumps(data)
+    assert stored[("urirun-node-api", "crm-api/main")] == "SECRET"
+
+
+def test_configured_api_request_uses_keyring_secret_and_redacts_config(monkeypatch, tmp_path):
+    config = tmp_path / "mesh.json"
+    stored = {}
+    captured = {}
+
+    class FakeKeyring:
+        @staticmethod
+        def set_password(service, account, value):
+            stored[(service, account)] = value
+
+        @staticmethod
+        def get_password(service, account):
+            return stored.get((service, account))
+
+    class FakeResponse:
+        status = 200
+        headers = {"Content-Type": "application/json"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"ok":true}'
+
+    def fake_urlopen(request, timeout=0):
+        captured["url"] = request.full_url
+        captured["method"] = request.get_method()
+        captured["auth"] = request.get_header("Authorization")
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setenv("URIRUN_NODES_FILE", str(tmp_path / "nodes.json"))
+    monkeypatch.setenv("URIRUN_NODE_KINDS_FILE", str(tmp_path / "node-kinds.json"))
+    monkeypatch.setitem(sys.modules, "keyring", FakeKeyring)
+    monkeypatch.setattr(host_dashboard.urllib.request, "urlopen", fake_urlopen)
+
+    host_dashboard.node_add(str(config), {
+        "name": "crm-api",
+        "url": "https://api.example.test/v1",
+        "kind": "api",
+        "apis": [{
+            "id": "main",
+            "kind": "rest",
+            "url": "https://api.example.test/v1",
+            "auth": {"type": "bearer", "token": "SECRET"},
+        }],
+    })
+
+    result = host_dashboard.configured_node_api_request(str(config), None, {
+        "node": "crm-api",
+        "apiId": "main",
+        "method": "GET",
+        "path": "/accounts",
+        "query": {"limit": 2},
+    })
+
+    assert result["ok"] is True
+    assert captured["url"] == "https://api.example.test/v1/accounts?limit=2"
+    assert captured["method"] == "GET"
+    assert captured["auth"] == "Bearer SECRET"
+    config_text = config.read_text()
+    assert "SECRET" not in config_text
+    assert "secret://keyring/urirun-node-api/crm-api/main#credential" in config_text
+
+
+def test_uri_invoke_direct_api_route_calls_configured_api(monkeypatch, tmp_path):
+    config = tmp_path / "mesh.json"
+    stored = {("urirun-node-api", "crm-api/main"): "SECRET"}
+    captured = {}
+
+    class FakeKeyring:
+        @staticmethod
+        def get_password(service, account):
+            return stored.get((service, account))
+
+    class FakeResponse:
+        status = 200
+        headers = {"Content-Type": "application/json"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"pong":true}'
+
+    def fake_urlopen(request, timeout=0):
+        captured["url"] = request.full_url
+        captured["auth"] = request.get_header("Authorization")
+        return FakeResponse()
+
+    config.write_text(json.dumps({
+        "version": "urirun.mesh.v1",
+        "host": {"name": "test"},
+        "nodes": [{
+            "name": "crm-api",
+            "url": "https://api.example.test/v1",
+            "tags": ["kind:api"],
+            "apis": [{
+                "id": "main",
+                "kind": "rest",
+                "url": "https://api.example.test/v1",
+                "auth": {
+                    "type": "bearer",
+                    "secretRef": "secret://keyring/urirun-node-api/crm-api/main#credential",
+                },
+            }],
+        }],
+    }))
+    monkeypatch.setitem(sys.modules, "keyring", FakeKeyring)
+    monkeypatch.setattr(host_dashboard.urllib.request, "urlopen", fake_urlopen)
+
+    result = host_dashboard.uri_invoke(".", ":memory:", str(config), {
+        "uri": "api://crm-api/main/command/request",
+        "mode": "execute",
+        "payload": {"path": "ping"},
+    })
+
+    assert result["ok"] is True
+    assert result["data"] == {"pong": True}
+    assert result["invokedUri"] == "api://crm-api/main/command/request"
+    assert captured["url"] == "https://api.example.test/v1/ping"
+    assert captured["auth"] == "Bearer SECRET"
+
+
+def test_uri_invoke_direct_device_status_does_not_call_network(monkeypatch, tmp_path):
+    config = tmp_path / "mesh.json"
+    config.write_text(json.dumps({
+        "version": "urirun.mesh.v1",
+        "host": {"name": "test"},
+        "nodes": [{
+            "name": "rpi-camera",
+            "url": "http://rpi.local",
+            "tags": ["kind:device"],
+            "apis": [{"id": "panel", "kind": "web", "url": "http://rpi.local"}],
+        }],
+    }))
+
+    def fail_urlopen(*_args, **_kwargs):
+        raise AssertionError("status query should not perform an HTTP request")
+
+    monkeypatch.setattr(host_dashboard.urllib.request, "urlopen", fail_urlopen)
+
+    result = host_dashboard.uri_invoke(".", ":memory:", str(config), {
+        "uri": "device://rpi-camera/panel/query/status",
+        "mode": "execute",
+        "payload": {},
+    })
+
+    assert result["ok"] is True
+    assert result["node"] == "rpi-camera"
+    assert result["api"] == {"id": "panel", "kind": "web", "url": "http://rpi.local"}
+    assert result["invokedUri"] == "device://rpi-camera/panel/query/status"
+
+
+def test_uri_invoke_configured_non_http_route_reports_connector_required(monkeypatch, tmp_path):
+    config = tmp_path / "mesh.json"
+    config.write_text(json.dumps({
+        "version": "urirun.mesh.v1",
+        "host": {"name": "test"},
+        "nodes": [{
+            "name": "rpi-camera",
+            "url": "http://rpi.local",
+            "tags": ["kind:device"],
+            "apis": [{"id": "stream", "kind": "rtsp", "role": "camera", "url": "rtsp://rpi.local/live"}],
+        }],
+    }))
+    monkeypatch.setattr(host_dashboard, "_run_inprocess_connector_uri", lambda *_args, **_kwargs: None)
+
+    result = host_dashboard.uri_invoke(".", ":memory:", str(config), {
+        "uri": "media://rpi-camera/stream/query/stream",
+        "mode": "execute",
+        "payload": {},
+    })
+
+    assert result["ok"] is False
+    assert result["error"] == "connector_required"
+    assert result["node"] == "rpi-camera"
+    assert result["api"] == {"id": "stream", "kind": "rtsp", "role": "camera", "url": "rtsp://rpi.local/live"}
+    assert result["invokedUri"] == "media://rpi-camera/stream/query/stream"
+
+
+def test_node_add_persists_device_node_multiple_interfaces(monkeypatch, tmp_path):
+    config = tmp_path / "mesh.json"
+    monkeypatch.setenv("URIRUN_NODES_FILE", str(tmp_path / "nodes.json"))
+    monkeypatch.setenv("URIRUN_NODE_KINDS_FILE", str(tmp_path / "node-kinds.json"))
+
+    result = host_dashboard.node_add(str(config), {
+        "name": "rpi-camera",
+        "url": "http://rpi.local",
+        "kind": "device",
+        "apis": [
+            {"id": "panel", "kind": "web", "url": "http://rpi.local"},
+            {"id": "stream", "kind": "rtsp", "role": "camera", "url": "rtsp://rpi.local/live"},
+            {"id": "share", "kind": "smb", "url": "smb://rpi.local/share"},
+            {"id": "ssh", "kind": "ssh", "url": "ssh://pi@rpi.local"},
+        ],
+    })
+
+    assert result["ok"] is True
+    assert result["node"]["nodeType"] == "device"
+    assert result["node"]["capabilities"] == ["api", "camera", "files", "shell"]
+    data = json.loads(config.read_text())
+    assert data["nodes"][0]["tags"] == ["kind:device"]
+    assert [api["id"] for api in data["nodes"][0]["apis"]] == ["panel", "stream", "share", "ssh"]
 
 
 def test_chat_ask_executes_document_sync_without_llm(monkeypatch):

@@ -118,3 +118,35 @@ def test_uri_objects_builds_host_node_and_service_registries() -> None:
     assert objects[1]["routes"][0]["ownerId"] == "node:lenovo"
     assert objects[2]["runtime"] == "phone-scanner"
     assert objects[2]["routes"][0]["ownerId"] == "service:phone-scanner"
+
+
+def test_node_object_uses_node_type_tags() -> None:
+    item = object_registry.node_object(
+        {"name": "checkout-tab", "url": "http://127.0.0.1:9222", "reachable": True, "tags": ["kind:web"]},
+        [],
+    )
+
+    assert item["kind"] == "node"
+    assert item["type"] == "webpage"
+    assert item["nodeType"] == "webpage"
+    assert item["runtime"] == "browser-page-js"
+    assert item["transport"] == "cdp+js"
+
+
+def test_node_object_keeps_api_interfaces() -> None:
+    item = object_registry.node_object(
+        {
+            "name": "rpi",
+            "url": "http://rpi.local",
+            "reachable": True,
+            "tags": ["kind:device"],
+            "apis": [{"id": "stream", "kind": "rtsp", "url": "rtsp://rpi/live"}],
+            "capabilities": ["camera"],
+        },
+        [],
+    )
+
+    assert item["kind"] == "node"
+    assert item["type"] == "device"
+    assert item["apis"][0]["id"] == "stream"
+    assert item["capabilities"] == ["camera"]

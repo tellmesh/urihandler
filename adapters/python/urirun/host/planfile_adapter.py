@@ -269,7 +269,9 @@ def ready_ticket(project: str | None, ticket_id: str, note: str | None = None) -
 
 
 def run_dsl(project: str | None, command: str) -> dict:
-    result = _imports()["DSLExecutor"](project_root(project)).run(command)
+    root = project_root(project)
+    _imports()["Planfile"](root)  # ensures .planfile/ exists here before DSLExecutor.auto_discover()
+    result = _imports()["DSLExecutor"](root).run(command)
     return result.to_dict()
 
 

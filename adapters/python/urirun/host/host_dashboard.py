@@ -12,6 +12,7 @@ import io
 import json
 import mimetypes
 import os
+import urllib.error
 import urllib.request
 import re
 import socket
@@ -29,6 +30,7 @@ from urllib.parse import parse_qs, parse_qsl, quote, unquote, urlencode, urlpars
 
 from .document_sync import (
     DocumentSyncDeps,
+    boolish as _boolish,
     document_archive_pdfs as _document_archive_pdfs_impl,
     document_sync_verification as _document_sync_verification_impl,
     sync_documents_to_node as _sync_documents_to_node_impl,
@@ -66,6 +68,13 @@ from .fs_transfer import (
     fs_file_transfer_fallback_bindings as _fs_file_transfer_fallback_bindings_impl,
     node_has_route as _node_has_route_impl,
     route_key as _route_key_impl,
+)
+from .node_types import (
+    annotate_node_types as _annotate_node_types_impl,
+    node_type_profile as _node_type_profile_impl,
+    node_type_profiles as _node_type_profiles_impl,
+    node_type_tags as _node_type_tags_impl,
+    normalize_node_type as _normalize_node_type_impl,
 )
 from .object_registry import (
     annotate_node_tokens as _annotate_node_tokens_impl,
@@ -950,6 +959,52 @@ INDEX_HTML = r"""<!doctype html>
           <div class="panel-body"><div class="list" id="hostRoutesList"></div></div>
         </article>
       </section>
+      <section class="artifact-layout view-block" data-section="host">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Rozszerzenia URI (connectory)</h2>
+              <p class="subtle">Dodaj connector ze \u017ar\u00f3d\u0142a i przetestuj, czy dzia\u0142a na ho\u015bcie lub wybranym w\u0119\u017ale.</p>
+            </div>
+            <span class="subtle" id="connectorInstallStatus"></span>
+          </div>
+          <div class="panel-body">
+            <div class="ticket-form-grid">
+              <label class="stack"><span class="subtle">\u0179r\u00f3d\u0142o</span>
+                <select id="connectorSource" onchange="connectorSourceHint()">
+                  <option value="pip">pip (PyPI)</option>
+                  <option value="github">github repo</option>
+                  <option value="local">lokalny folder</option>
+                  <option value="npm">npm</option>
+                  <option value="docker">docker image</option>
+                  <option value="http">gotowe API (http)</option>
+                </select></label>
+              <label class="stack ticket-form-full"><span class="subtle" id="connectorSpecLabel">Pakiet / spec</span>
+                <input id="connectorSpec" placeholder="urirun-connector-hash"></label>
+            </div>
+            <div class="artifact-actions" style="margin-top:8px">
+              <button type="button" class="primary" onclick="installConnector()">\u2b07\ufe0f Zainstaluj connector</button>
+              <span class="subtle">instaluje na ho\u015bcie (pip/github/lokalny); npm/docker/http \u2192 komenda do ich \u015brodowiska</span>
+            </div>
+            <pre id="connectorInstallResult" class="mono" style="margin-top:8px;white-space:pre-wrap"></pre>
+            <hr style="border-color:var(--line-soft);margin:12px 0">
+            <h3 style="margin:0 0 6px">Test connectora</h3>
+            <div class="ticket-form-grid">
+              <label class="stack ticket-form-full"><span class="subtle">URI testowy (najlepiej read-only query)</span>
+                <input id="connectorTestUri" placeholder="uuid://host/id/query/v4"></label>
+              <label class="stack ticket-form-full"><span class="subtle">Payload (JSON)</span>
+                <input id="connectorTestPayload" placeholder="{}"></label>
+              <label class="stack"><span class="subtle">\u015arodowisko</span>
+                <select id="connectorTestEnv"><option value="host">host (lokalnie)</option></select></label>
+            </div>
+            <div class="artifact-actions" style="margin-top:8px">
+              <button type="button" onclick="testConnector()">\u25b6\ufe0f Testuj</button>
+              <span id="connectorTestStatus" class="subtle"></span>
+            </div>
+            <pre id="connectorTestResult" class="mono" style="margin-top:8px;white-space:pre-wrap"></pre>
+          </div>
+        </article>
+      </section>
       <section class="artifact-layout view-block" data-section="tasks">
         <article class="panel">
           <div class="panel-head">
@@ -1062,9 +1117,13 @@ INDEX_HTML = r"""<!doctype html>
                   <button type="button" class="node-kind-tab" data-kind="server" onclick="selectNodeKind('server')">🖥️ Server <span class="subtle">shell/SSH</span></button>
                   <button type="button" class="node-kind-tab" data-kind="pc" onclick="selectNodeKind('pc')">💻 PC <span class="subtle">app + shell</span></button>
                   <button type="button" class="node-kind-tab" data-kind="rdp" onclick="selectNodeKind('rdp')">🪟 RDP <span class="subtle">pulpit zdalny</span></button>
-                  <button type="button" class="node-kind-tab" data-kind="smartphone" onclick="selectNodeKind('smartphone')">📱 Smartphone <span class="subtle">web → APK</span></button>
-                  <button type="button" class="node-kind-tab" data-kind="browser" onclick="selectNodeKind('browser')">🌐 Browser <span class="subtle">cała przeglądarka</span></button>
-                  <button type="button" class="node-kind-tab" data-kind="web" onclick="selectNodeKind('web')">📄 Web <span class="subtle">jedna strona JS</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="smartphone" onclick="selectNodeKind('smartphone')">📱 Smartphone <span class="subtle">web → APK</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="browser-debug" onclick="selectNodeKind('browser-debug')">🌐 Browser Debug <span class="subtle">CDP</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="browser-chrome-plugin" onclick="selectNodeKind('browser-chrome-plugin')">🧩 Chrome Plugin <span class="subtle">extension</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="browser-firefox-plugin" onclick="selectNodeKind('browser-firefox-plugin')">🧩 Firefox Plugin <span class="subtle">extension</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="webpage" onclick="selectNodeKind('webpage')">📄 Webpage <span class="subtle">jedna strona JS</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="api" onclick="selectNodeKind('api')">🔌 API <span class="subtle">HTTP/auth</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="device" onclick="selectNodeKind('device')">🧩 Device <span class="subtle">multi-API</span></button>
                 </div>
 
                 <!-- SERVER -->
@@ -1137,33 +1196,97 @@ INDEX_HTML = r"""<!doctype html>
                   </div>
                 </div>
 
-                <!-- BROWSER -->
-                <div class="node-kind-form" id="nodeForm-browser" style="display:none">
-                  <p class="subtle">🌐 <strong>Browser</strong> — sterowanie <strong>całą przeglądarką</strong> przez DevTools (CDP). Wszystkie karty: otwieraj/zamykaj/nawiguj. Wymaga: przeglądarka z <code>--remote-debugging-port=9222</code> + connector webnode. <a href="/docs/nodes#browser" target="_blank" rel="noreferrer">instrukcja</a></p>
+                <!-- BROWSER DEBUG -->
+                <div class="node-kind-form" id="nodeForm-browser-debug" style="display:none">
+                  <p class="subtle">🌐 <strong>Browser Debug</strong> — sterowanie <strong>całą przeglądarką</strong> przez DevTools/CDP. Wszystkie karty: otwieraj/zamykaj/nawiguj. Wymaga: przeglądarka z <code>--remote-debugging-port=9222</code> + connector webnode. <a href="/docs/nodes#browser-debug" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <div class="phone-node-qr" id="connectQr-browser-debug"></div>
+                  <p class="subtle">QR powyżej = ścieżka <strong>relay</strong> (otwórz na urządzeniu, <code>http://HOST:8195/</code>, <strong>HTTP</strong>). Pola CDP poniżej = osobny tryb debugowania: lista kart i pełne sterowanie przez DevTools, ale wymaga uruchomienia przeglądarki z <code>--remote-debugging-port=9222</code>.</p>
                   <label class="stack"><span class="subtle">Nazwa node'a</span><input id="brName" placeholder="chrome"></label>
                   <label class="stack"><span class="subtle">Endpoint debugowania (CDP)</span><input id="brUrl" placeholder="http://127.0.0.1:9222"></label>
                   <p class="subtle">Uruchom przeglądarkę z debugowaniem:</p>
                   <pre class="mono">google-chrome --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1</pre>
                   <div class="artifact-actions">
-                    <button type="button" onclick="saveTypedNode('browser','brName',document.getElementById('brUrl').value)">💾 Zapisz node</button>
+                    <button type="button" onclick="saveTypedNode('browser-debug','brName',document.getElementById('brUrl').value)">💾 Zapisz node</button>
                     <span id="brStatus" class="subtle"></span>
                   </div>
                 </div>
 
-                <!-- WEB -->
-                <div class="node-kind-form" id="nodeForm-web" style="display:none">
-                  <p class="subtle">📄 <strong>Web</strong> — sterowanie <strong>konkretną stroną</strong> przez HTML/JS (webnode page scope). Jedna karta: nawigacja, eval JS, klik, wpisywanie, screenshot. Wymaga: CDP jak Browser + <code>WEBNODE_TARGET</code> = id karty. <a href="/docs/nodes#web" target="_blank" rel="noreferrer">instrukcja</a></p>
+                <!-- CHROME PLUGIN -->
+                <div class="node-kind-form" id="nodeForm-browser-chrome-plugin" style="display:none">
+                  <p class="subtle">🧩 <strong>Chrome Plugin</strong> — kontrola aktywnej karty przez rozszerzenie Chrome. Używa <code>browser-plugin://chrome/...</code> i może czytać DOM, listować urządzenia strony, uruchamiać kamerę oraz przekazywać inne URI do node <code>/run</code>. <a href="/docs/nodes#browser-chrome-plugin" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="chromePluginName" placeholder="chrome-plugin"></label>
+                  <label class="stack"><span class="subtle">Node URL dla popupu pluginu</span><input id="chromePluginUrl" placeholder="http://127.0.0.1:8765"></label>
+                  <p class="subtle">Załaduj folder <code>/home/tom/github/if-uri/chrome-plugin</code> w <code>chrome://extensions</code> jako unpacked extension.</p>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('browser-chrome-plugin','chromePluginName',document.getElementById('chromePluginUrl').value)">💾 Zapisz node</button>
+                    <span id="chromePluginStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- FIREFOX PLUGIN -->
+                <div class="node-kind-form" id="nodeForm-browser-firefox-plugin" style="display:none">
+                  <p class="subtle">🧩 <strong>Firefox Plugin</strong> — kontrola aktywnej karty przez rozszerzenie Firefox. Używa <code>browser-plugin://firefox/...</code> i zachowuje kompatybilność z <code>browser://</code>. <a href="/docs/nodes#browser-firefox-plugin" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="firefoxPluginName" placeholder="firefox-plugin"></label>
+                  <label class="stack"><span class="subtle">Node URL dla popupu pluginu</span><input id="firefoxPluginUrl" placeholder="http://127.0.0.1:8765"></label>
+                  <p class="subtle">Załaduj folder <code>/home/tom/github/if-uri/firefox-plugin</code> w <code>about:debugging#/runtime/this-firefox</code>.</p>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('browser-firefox-plugin','firefoxPluginName',document.getElementById('firefoxPluginUrl').value)">💾 Zapisz node</button>
+                    <span id="firefoxPluginStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- WEBPAGE -->
+                <div class="node-kind-form" id="nodeForm-webpage" style="display:none">
+                  <p class="subtle">📄 <strong>Webpage</strong> — sterowanie <strong>konkretną stroną</strong> przez HTML/JS. Dwie drogi: <strong>(A) relay</strong> — otwórz QR na urządzeniu, strona sama rejestruje się w serwisie android-node pod <code>http://HOST:8195/</code> (czysty <strong>HTTP</strong>, bez „s"); <strong>(B) CDP page scope</strong> — podaj endpoint DevTools <code>http://127.0.0.1:9222</code> + id karty (osobny mechanizm). <a href="/docs/nodes#webpage" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <div class="phone-node-qr" id="connectQr-webpage"></div>
+                  <p class="subtle">(A) QR kieruje na <code>http://HOST:8195/</code> — <strong>HTTP, nie HTTPS</strong>. Po wejściu strona rejestruje się jako web node i wystawia listę URI process, urządzenia strony (kamera/mikrofon), sensory oraz akcje navigate/eval/iframe. (B) Pola CDP poniżej dotyczą lokalnej przeglądarki z debug portem 9222 — to inna ścieżka, nie ten QR.</p>
                   <label class="stack"><span class="subtle">Nazwa node'a</span><input id="webName" placeholder="page-checkout"></label>
                   <label class="stack"><span class="subtle">Endpoint debugowania (CDP)</span><input id="webUrl" placeholder="http://127.0.0.1:9222"></label>
                   <label class="stack"><span class="subtle">Target / id karty (opcjonalnie — pinuje jedną stronę)</span><input id="webTarget" placeholder="puste = aktywna karta"></label>
                   <p class="subtle">Listę kart i ich id pobierzesz z route'a <code>webnode://browser/tabs/query/list</code>.</p>
                   <div class="artifact-actions">
-                    <button type="button" onclick="saveTypedNode('web','webName',document.getElementById('webUrl').value)">💾 Zapisz node</button>
+                    <button type="button" onclick="saveTypedNode('webpage','webName',document.getElementById('webUrl').value)">💾 Zapisz node</button>
                     <span id="webStatus" class="subtle"></span>
-                  </div>
-                </div>
+	                  </div>
+	                </div>
 
-                <hr style="border:none;border-top:1px solid var(--border,#334155);margin:12px 0">
+	                <!-- API NODE -->
+	                <div class="node-kind-form" id="nodeForm-api" style="display:none">
+	                  <p class="subtle">🔌 <strong>API Node</strong> — zewnętrzne API HTTP/REST/OpenAPI z autoryzacją. Sekret zostanie zapisany w keyring, a w configu zostanie tylko <code>secretRef</code>. <a href="/docs/nodes#api" target="_blank" rel="noreferrer">instrukcja</a></p>
+	                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="apiNodeName" placeholder="crm-api"></label>
+	                  <label class="stack"><span class="subtle">Base URL API</span><input id="apiNodeUrl" placeholder="https://api.example.test/v1"></label>
+	                  <div class="artifact-actions">
+	                    <label class="stack" style="flex:1"><span class="subtle">API id</span><input id="apiNodeApiId" value="main"></label>
+	                    <label class="stack" style="flex:1"><span class="subtle">Kind/protocol</span><input id="apiNodeApiKind" value="rest"></label>
+	                  </div>
+	                  <div class="artifact-actions">
+	                    <label class="stack" style="flex:1"><span class="subtle">Auth type</span><input id="apiNodeAuthType" placeholder="bearer / api-key / basic"></label>
+	                    <label class="stack" style="flex:2"><span class="subtle">Token/API key (keyring)</span><input id="apiNodeSecret" type="password" autocomplete="off" placeholder="nie zapisuje się w pliku"></label>
+	                  </div>
+	                  <div class="artifact-actions">
+	                    <button type="button" onclick="saveApiNode()">💾 Zapisz API node</button>
+	                    <span id="apiNodeStatus" class="subtle"></span>
+	                  </div>
+	                </div>
+
+	                <!-- DEVICE NODE -->
+	                <div class="node-kind-form" id="nodeForm-device" style="display:none">
+	                  <p class="subtle">🧩 <strong>Device Node</strong> — urządzenie z wieloma interfejsami, np. kamera IP/RPi/NAS: panel WWW, RTSP/RTMP, SSH, SMB/NFS. <a href="/docs/nodes#device" target="_blank" rel="noreferrer">instrukcja</a></p>
+	                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="deviceNodeName" placeholder="rpi-camera"></label>
+	                  <label class="stack"><span class="subtle">Główny URL/panel</span><input id="deviceNodeUrl" placeholder="http://rpi.local"></label>
+	                  <label class="stack"><span class="subtle">apis[] JSON</span><textarea id="deviceNodeApis" rows="7">[
+  {"id":"panel","kind":"web","url":"http://rpi.local"},
+  {"id":"stream","kind":"rtsp","role":"camera","url":"rtsp://rpi.local/live"},
+  {"id":"share","kind":"smb","url":"smb://rpi.local/share"},
+  {"id":"ssh","kind":"ssh","url":"ssh://pi@rpi.local"}
+]</textarea></label>
+	                  <div class="artifact-actions">
+	                    <button type="button" onclick="saveDeviceNode()">💾 Zapisz device node</button>
+	                    <span id="deviceNodeStatus" class="subtle"></span>
+	                  </div>
+	                </div>
+
+	                <hr style="border:none;border-top:1px solid var(--border,#334155);margin:12px 0">
                 <details>
                   <summary class="subtle">🔎 Skan LAN / wpis ręczny / token (zaawansowane)</summary>
                   <div class="stack" style="margin-top:8px">
@@ -1445,11 +1568,86 @@ INDEX_HTML = r"""<!doctype html>
       createTicket({ prompt, source_tool: 'urirun-host-chat' });
     }
 
+    // ---- Host menu: install + smoke-test URI connectors ----
+    function connectorSourceHint() {
+      const src = ($('connectorSource') || {}).value || 'pip';
+      const hints = {
+        pip: ['Pakiet PyPI', 'urirun-connector-hash'],
+        github: ['Repo GitHub (user/repo lub URL)', 'if-uri/urirun-connector-hash'],
+        local: ['Folder connectora', '/home/tom/github/if-uri/urirun-connector-hash'],
+        npm: ['Pakiet npm', '@urirun/connector-uuid'],
+        docker: ['Obraz docker', 'ghcr.io/if-uri/connector:latest'],
+        http: ['Bazowy URL API', 'https://api.example.com'],
+      };
+      const pair = hints[src] || hints.pip;
+      if ($('connectorSpecLabel')) $('connectorSpecLabel').textContent = pair[0];
+      if ($('connectorSpec')) $('connectorSpec').placeholder = pair[1];
+    }
+
+    async function installConnector() {
+      const source = ($('connectorSource') || {}).value || 'pip';
+      const spec = (($('connectorSpec') || {}).value || '').trim();
+      const status = $('connectorInstallStatus');
+      const out = $('connectorInstallResult');
+      if (!spec) { if (status) status.textContent = 'podaj pakiet/spec'; return; }
+      if (status) status.textContent = 'instaluje...';
+      if (out) out.textContent = 'pip install ... (' + source + ': ' + spec + ')';
+      try {
+        const res = await api('/api/connectors/install', { method: 'POST', body: JSON.stringify({ source, spec }) });
+        if (status) status.textContent = res.ok ? '\u2713 zainstalowano' : '\u2717 ' + (res.error || 'blad');
+        const lines = [];
+        if (res.command) lines.push('$ ' + res.command);
+        if (res.schemes && res.schemes.length) lines.push('schematy URI: ' + res.schemes.join(', '));
+        if (res.hint) lines.push('hint: ' + res.hint);
+        if (res.stdout) lines.push(res.stdout);
+        if (res.stderr) lines.push(res.stderr);
+        if (out) out.textContent = lines.join('\n') || JSON.stringify(res, null, 2);
+        if (res.ok && typeof load === 'function') load().catch(() => {});
+      } catch (error) {
+        if (status) status.textContent = '\u2717 ' + error.message;
+        if (out) out.textContent = error.message;
+      }
+    }
+
+    function parseConnectorTestPayload() {
+      const raw = (($('connectorTestPayload') || {}).value || '').trim();
+      if (!raw) return {};
+      try { return JSON.parse(raw); } catch (e) { throw new Error('payload nie jest poprawnym JSON: ' + e.message); }
+    }
+
+    async function testConnector() {
+      const uri = (($('connectorTestUri') || {}).value || '').trim();
+      const env = ($('connectorTestEnv') || {}).value || 'host';
+      const status = $('connectorTestStatus');
+      const out = $('connectorTestResult');
+      if (!uri) { if (status) status.textContent = 'podaj URI testowy'; return; }
+      let payload;
+      try { payload = parseConnectorTestPayload(); } catch (e) { if (status) status.textContent = e.message; return; }
+      if (status) status.textContent = 'testuje na ' + env + '...';
+      if (out) out.textContent = '';
+      try {
+        let res;
+        if (env === 'host') {
+          res = await api('/api/connectors/test', { method: 'POST', body: JSON.stringify({ uri, payload }) });
+        } else {
+          const node = env.replace(/^node:/, '');
+          res = await api('/api/nodes/test-routes', { method: 'POST', body: JSON.stringify({ node, uris: [uri] }) });
+        }
+        const broken = res.results && res.results.filter ? res.results.filter((r) => r.status && r.status !== 'ok').length : 0;
+        const ok = res.ok !== false && broken === 0;
+        if (status) status.textContent = ok ? '\u2713 dziala' : '\u2717 blad/niepelne';
+        if (out) out.textContent = JSON.stringify(res, null, 2).slice(0, 4000);
+      } catch (error) {
+        if (status) status.textContent = '\u2717 ' + error.message;
+        if (out) out.textContent = error.message;
+      }
+    }
+
     function renderNodes(nodes) {
       $('nodeCount').textContent = `${nodes.length} configured`;
       $('nodesList').innerHTML = nodes.map((node) => `<div class="item node-row${state.selectedRoutesNode === node.name ? ' node-row-active' : ''}" data-node="${esc(node.name)}" onclick="selectNodeRoutes(this.dataset.node)" title="Kliknij, aby pokazać procesy URI tego węzła">
         <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
-          <span><strong>${esc(node.name)}</strong> <span class="pill ${node.reachable ? 'up' : 'down'}">${node.reachable ? 'up' : 'down'}</span></span>
+          <span><strong>${esc(node.name)}</strong> <span class="pill ${node.reachable ? 'up' : 'down'}">${node.reachable ? 'up' : 'down'}</span>${node.kind ? ` <span class="pill kind">${esc(node.kind)}</span>` : ''}</span>
           <button type="button" data-node="${esc(node.name)}" onclick="event.stopPropagation(); testNodeFromList(this.dataset.node)" title="Przetestuj route'y query tego węzła">Test</button>
         </div>
         <div class="mono">${esc(node.url)}</div>
@@ -1516,6 +1714,15 @@ INDEX_HTML = r"""<!doctype html>
         ${route.title ? `<div>${esc(route.title)}</div>` : ''}
         <div class="subtle">${esc(text(route.kind, 'route'))} · ${esc(text(route.layer, 'host'))}${route.source ? ` · ${esc(route.source)}` : ''}</div>
       </div>`).join('') || empty('Host nie udostępnia żadnych procesów URI.');
+      const envSel = $('connectorTestEnv');
+      if (envSel) {
+        const cur = envSel.value;
+        const nodes = summary.nodes || [];
+        envSel.innerHTML = ['<option value="host">host (lokalnie)</option>',
+          ...nodes.map((n) => `<option value="node:${esc(n.name)}">node: ${esc(n.name)}${n.reachable ? '' : ' (offline)'}</option>`)].join('');
+        if (cur) envSel.value = cur;
+      }
+      if (typeof connectorSourceHint === 'function') connectorSourceHint();
     }
 
     // Build the ready-to-paste config for adding a node by name + URL (host + urifix resolve it).
@@ -1607,12 +1814,49 @@ INDEX_HTML = r"""<!doctype html>
           : '⚠️ Serwis android-node nie odpowiada pod ' + (res.url || '') + ' — uruchom „urirun-android-node serve" na hoście.';
         if (box) box.style.display = '';
         if (status) status.textContent = '';
+        startWebNodePolling();  // pages that open the URL auto-appear as webpage nodes
       } catch (error) {
         if (status) status.textContent = 'błąd: ' + error.message;
       }
     }
 
-    // After the phone has installed and is serving on :8765, persist it as a node (reuses /api/nodes/add).
+    // Poll the android/webpage-node service for browsers/phones that opened the page.
+    // auto-registered server-side; here we just surface them and offer one-click "save as node".
+    let _webNodeTimer = null;
+    function startWebNodePolling() {
+      if (_webNodeTimer) return;
+      const tick = async () => {
+        try {
+          const res = await api('/api/nodes/phone-web');
+          const box = $('phoneWebNodes');
+          if (!box) return;
+          const devs = (res && res.devices) || [];
+          if (!devs.length) {
+            box.innerHTML = 'Brak podłączonych przeglądarek/telefonów (webpage node) — otwórz URL.';
+            return;
+          }
+          box.innerHTML = '<strong>Podłączone przeglądarki/telefony (webpage node):</strong>' + devs.map((d) =>
+            '<div class="device" style="margin:4px 0">📱 <code>' + esc(d.name || d.id) + '</code> '
+            + '<span class="subtle">' + esc(d.platform || '') + ' · ' + (d.online ? 'online' : 'offline') + '</span> '
+            + '<button type="button" onclick="saveWebNode(' + JSON.stringify(d.id) + ',' + JSON.stringify(d.name || d.id) + ',' + JSON.stringify(d.nodeUrl || '') + ')">💾 zapisz jako node</button>'
+            + '</div>'
+          ).join('');
+        } catch (e) { /* service may be down; ignore */ }
+      };
+      tick();
+      _webNodeTimer = setInterval(tick, 4000);
+    }
+
+    // Persist a connected webpage-node phone/browser as a node (kind=webpage). Its URL is the service relay endpoint.
+    async function saveWebNode(id, name, nodeUrl) {
+      try {
+        const url = nodeUrl || (($('phoneNodeUrl') || {}).textContent || '');
+        const res = await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url, kind: 'webpage' }) });
+        if (typeof load === 'function') load().catch(() => {});
+      } catch (e) {}
+    }
+
+    // After the phone has installed the APK and is serving on :8765, persist it as a MOBILE node.
     async function savePhoneNode() {
       const name = (($('phoneNodeName') || {}).value || '').trim();
       const url = (($('phoneNodeNodeUrl') || {}).value || '').trim();
@@ -1620,11 +1864,143 @@ INDEX_HTML = r"""<!doctype html>
       if (!name || !url) { if (status) status.textContent = 'podaj nazwę i URL telefonu'; return; }
       if (status) status.textContent = 'zapisuję…';
       try {
-        const res = await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url }) });
+        const res = await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url, kind: 'smartphone' }) });
         if (status) status.textContent = 'zapisano: ' + (res.node ? res.node.name + ' → ' + res.node.url : name);
         if (typeof load === 'function') load().catch(() => {});
       } catch (error) {
         if (status) status.textContent = 'błąd zapisu: ' + error.message;
+      }
+    }
+
+    // === Node type selector + per-type config forms ===
+    function selectNodeKind(kind) {
+      document.querySelectorAll('.node-kind-tab').forEach((t) =>
+        t.classList.toggle('active', t.dataset.kind === kind));
+      document.querySelectorAll('.node-kind-form').forEach((f) =>
+        f.style.display = (f.id === 'nodeForm-' + kind) ? '' : 'none');
+      // browser-debug/webpage nodes can show a QR: opening it registers a webpage node.
+      if (kind === 'browser-debug' || kind === 'webpage') renderConnectQr(kind);
+    }
+
+    // Render a QR (default for browser-debug/webpage) that encodes the android/webpage service URL.
+    async function renderConnectQr(kind) {
+      const el = document.getElementById('connectQr-' + kind);
+      if (!el || el.dataset.loaded) return;
+      try {
+        const res = await api('/api/nodes/phone-qr', { method: 'POST', body: JSON.stringify({}) });
+        if (res && res.previewUrl) {
+          el.innerHTML = '<img src="' + esc(res.previewUrl) + '" alt="QR - otworz jako webpage node">'
+            + '<div class="subtle">' + esc(res.url || '') + '</div>';
+          el.dataset.loaded = '1';
+        }
+      } catch (e) { /* service may be down */ }
+    }
+
+    // Generic typed-node save: persists name + url + kind via /api/nodes/add.
+	    async function saveTypedNode(kind, nameId, url) {
+	      const name = ((document.getElementById(nameId) || {}).value || '').trim();
+	      const status = document.getElementById(kind === 'server' ? 'srvStatus'
+	        : kind === 'pc' ? 'pcStatus' : kind === 'rdp' ? 'rdpStatus'
+	        : kind === 'browser-debug' ? 'brStatus'
+	        : kind === 'browser-chrome-plugin' ? 'chromePluginStatus'
+	        : kind === 'browser-firefox-plugin' ? 'firefoxPluginStatus'
+	        : 'webStatus');
+      url = (url || '').trim();
+      if (!name || !url) { if (status) status.textContent = 'podaj nazwę i URL/endpoint'; return; }
+      if (status) status.textContent = 'zapisuję…';
+      try {
+        const res = await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url, kind }) });
+        if (status) status.textContent = 'zapisano (' + kind + '): ' + (res.node ? res.node.url : name);
+        if (typeof load === 'function') load().catch(() => {});
+      } catch (error) {
+	        if (status) status.textContent = 'błąd zapisu: ' + error.message;
+	      }
+	    }
+
+	    async function saveApiNode() {
+	      const status = $('apiNodeStatus');
+	      const name = (($('apiNodeName') || {}).value || '').trim();
+	      const url = (($('apiNodeUrl') || {}).value || '').trim();
+	      const apiId = (($('apiNodeApiId') || {}).value || 'main').trim();
+	      const apiKind = (($('apiNodeApiKind') || {}).value || 'rest').trim();
+	      const authType = (($('apiNodeAuthType') || {}).value || '').trim();
+	      const secret = (($('apiNodeSecret') || {}).value || '').trim();
+	      if (!name || !url) { if (status) status.textContent = 'podaj nazwę i URL API'; return; }
+	      const apiDef = {id: apiId, kind: apiKind, url};
+	      if (authType || secret) apiDef.auth = {type: authType || 'bearer', token: secret};
+	      if (status) status.textContent = 'zapisuję…';
+	      try {
+	        const res = await api('/api/nodes/api/add', {
+	          method: 'POST',
+	          body: JSON.stringify({name, url, kind: 'api', apis: [apiDef]}),
+	        });
+	        if (!res.ok) throw new Error(res.error || 'nie udało się zapisać API node');
+	        if ($('apiNodeSecret')) $('apiNodeSecret').value = '';
+	        if (status) status.textContent = 'zapisano API node: ' + (res.node ? res.node.url : name);
+	        if (typeof load === 'function') load().catch(() => {});
+	      } catch (error) {
+	        if (status) status.textContent = 'błąd zapisu: ' + error.message;
+	      }
+	    }
+
+	    async function saveDeviceNode() {
+	      const status = $('deviceNodeStatus');
+	      const name = (($('deviceNodeName') || {}).value || '').trim();
+	      const url = (($('deviceNodeUrl') || {}).value || '').trim();
+	      if (!name || !url) { if (status) status.textContent = 'podaj nazwę i główny URL urządzenia'; return; }
+	      let apis = [];
+	      try {
+	        apis = JSON.parse((($('deviceNodeApis') || {}).value || '[]').trim() || '[]');
+	        if (!Array.isArray(apis)) throw new Error('apis[] musi być tablicą JSON');
+	      } catch (error) {
+	        if (status) status.textContent = 'błąd JSON apis[]: ' + error.message;
+	        return;
+	      }
+	      if (status) status.textContent = 'zapisuję…';
+	      try {
+	        const res = await api('/api/nodes/api/add', {
+	          method: 'POST',
+	          body: JSON.stringify({name, url, kind: 'device', apis}),
+	        });
+	        if (!res.ok) throw new Error(res.error || 'nie udało się zapisać device node');
+	        if (status) status.textContent = 'zapisano device node: ' + (res.node ? res.node.url : name);
+	        if (typeof load === 'function') load().catch(() => {});
+	      } catch (error) {
+	        if (status) status.textContent = 'błąd zapisu: ' + error.message;
+	      }
+	    }
+
+	    function srvUrl() {
+      const host = (($('srvHost') || {}).value || '').trim();
+      const port = (($('srvPort') || {}).value || '8765').trim();
+      return host ? ('http://' + host + ':' + port) : '';
+    }
+    function srvSnippet() {
+      const host = (($('srvHost') || {}).value || 'HOST').trim() || 'HOST';
+      const user = (($('srvUser') || {}).value || 'user').trim() || 'user';
+      const port = (($('srvPort') || {}).value || '8765').trim() || '8765';
+      const el = $('srvSnippet');
+      if (el) el.textContent = 'ssh ' + user + '@' + host
+        + ' "curl -fsSL https://get.ifuri.com/node.sh | bash -s -- --name ' + host + ' --port ' + port + ' --background"';
+    }
+    function rdpSnippet() {
+      const host = (($('rdpHost') || {}).value || 'HOST').trim() || 'HOST';
+      const port = (($('rdpPort') || {}).value || '3389').trim() || '3389';
+      const el = $('rdpSnippet');
+      if (el) el.textContent = 'xfreerdp /v:' + host + ':' + port + ' /u:USER /p:PASS /cert:ignore';
+    }
+
+    // Start the android-node service (port 8195) from the host so the smartphone QR works.
+    async function startPhoneService() {
+      const status = $('addPhoneNodeStatus');
+      if (status) status.textContent = 'uruchamiam serwis android-node…';
+      try {
+        const res = await api('/api/nodes/phone-service/start', { method: 'POST', body: JSON.stringify({}) });
+        if (status) status.textContent = res.ok
+          ? (res.alreadyRunning ? 'serwis już działał ✅' : 'serwis uruchomiony ✅') + ' (' + (res.url || '') + ')'
+          : 'nie udało się: ' + (res.error || '');
+      } catch (error) {
+        if (status) status.textContent = 'błąd: ' + error.message;
       }
     }
 
@@ -3338,6 +3714,168 @@ INDEX_HTML = r"""<!doctype html>
 """
 
 
+NODE_TYPES_DOC_HTML = r"""<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>urirun — typy node i konfiguracja połączeń</title>
+<style>
+  body { max-width: 820px; margin: 0 auto; padding: 2rem 1rem; font-family: system-ui, sans-serif;
+         line-height: 1.6; color: #e2e8f0; background: #0f172a; }
+  h1 { color: #38bdf8; } h2 { color: #38bdf8; margin-top: 2rem; border-top: 1px solid #334155; padding-top: 1rem; }
+  code, pre { font-family: ui-monospace, monospace; background: #0d1117; border-radius: 4px; }
+  code { padding: 1px 5px; color: #4ade80; } pre { display: block; padding: .8rem; overflow-x: auto; color: #4ade80; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #334155; padding: 6px 10px; text-align: left; font-size: .9rem; }
+  th { background: #1e293b; color: #38bdf8; }
+  a { color: #38bdf8; } .lead { color: #94a3b8; }
+</style>
+</head>
+<body>
+<h1>Typy node i konfiguracja połączeń</h1>
+<p class="lead">Każdy node ma inny poziom integracji i wymaga innej wiedzy. Wybierz typ pasujący do
+maszyny/urządzenia i postępuj według sekcji poniżej. Wszystkie node wystawiają trasy <code>URI</code>,
+ale różnią się <strong>transportem</strong> i tym, <strong>co</strong> potrafią.</p>
+
+<table>
+  <tr><th>Typ</th><th>Transport</th><th>Wymagana wiedza</th><th>Connector</th></tr>
+  <tr><td>🖥️ server</td><td>shell / SSH</td><td>SSH, instalacja zdalna</td><td>get-node + shell</td></tr>
+  <tr><td>💻 pc</td><td>aplikacja + shell</td><td>pulpit, terminal</td><td>get-node + kvm</td></tr>
+  <tr><td>🪟 rdp</td><td>pulpit zdalny (RDP)</td><td>RDP, login Windows</td><td>kvm / rdp</td></tr>
+  <tr><td>📱 smartphone</td><td>web → APK/Termux</td><td>instalacja apki, sieć LAN</td><td>android-node + adb</td></tr>
+  <tr><td>🌐 browser-debug</td><td>DevTools (CDP)</td><td>uruchomienie z debug portem</td><td>webnode</td></tr>
+  <tr><td>🧩 browser-chrome-plugin</td><td>Chrome Extension</td><td>Load unpacked, permissions</td><td>chrome-plugin</td></tr>
+  <tr><td>🧩 browser-firefox-plugin</td><td>Firefox Extension</td><td>Temporary Add-on, permissions</td><td>firefox-plugin</td></tr>
+  <tr><td>📄 webpage</td><td>HTML/JS na stronie</td><td>CDP, plugin albo page bridge</td><td>webnode / js-urirun-com</td></tr>
+  <tr><td>🔌 api</td><td>HTTP/REST/OpenAPI</td><td>URL API + auth</td><td>http-api / fetch / oauth</td></tr>
+  <tr><td>🧩 device</td><td>wiele protokołów</td><td>panel, RTSP, SSH, SMB/NAS</td><td>camera / rtsp / ssh / smb</td></tr>
+</table>
+
+<h2 id="server">🖥️ Server — shell / SSH</h2>
+<p>Headless maszyna (VPS, serwer). Sterowanie przez shell; węzeł urirun instalujesz zdalnie po SSH.</p>
+<p><strong>Potrzebujesz:</strong> dostęp SSH (<code>user@host</code>), prawa do instalacji.</p>
+<pre>ssh user@HOST "curl -fsSL https://get.ifuri.com/node.sh | bash -s -- --name HOST --port 8765 --background"</pre>
+<p>Następnie w dashboardzie zapisz node z URL <code>http://HOST:8765</code>. Test: <code>http://HOST:8765/health</code>.</p>
+
+<h2 id="pc">💻 PC — aplikacja + shell</h2>
+<p>Maszyna z GUI (laptop, desktop). Uruchamiasz węzeł lokalnie lub przez aplikację ifURI; dochodzi
+sterowanie pulpitem (connector <code>kvm</code>: zrzut ekranu, klawiatura, mysz).</p>
+<pre>curl -fsSL https://get.ifuri.com/node.sh | bash -s -- --name pc --port 8765 --background</pre>
+<p>Zapisz node z URL <code>http://IP-PC:8765</code>.</p>
+
+<h2 id="rdp">🪟 RDP — pulpit zdalny</h2>
+<p>Windows/xrdp przez RDP (port 3389). Łączysz się z pulpitem i sterujesz nim; po stronie pulpitu
+działa węzeł urirun z connectorem KVM.</p>
+<p><strong>Potrzebujesz:</strong> host RDP, login, klient RDP (np. <code>xfreerdp</code>).</p>
+<pre>xfreerdp /v:HOST:3389 /u:USER /p:PASS /cert:ignore</pre>
+<p>Na pulpicie uruchom węzeł (jak PC) i zapisz node z URL <code>http://HOST:8765</code>.</p>
+
+<h2 id="smartphone">📱 Smartphone — web node → mobile node</h2>
+<p>Dwa etapy integracji telefonu:</p>
+<ol>
+  <li><strong>Webpage node (od razu):</strong> uruchom serwis android-node/webpage i otwórz jego URL w przeglądarce
+  telefonu. Przeglądarka rejestruje się jako <code>webpage</code> node — sterowanie przez
+  JS na otwartej stronie: nawigacja, eval, lista urządzeń, kamera i akcje strony. Nic nie instalujesz.</li>
+  <li><strong>Mobile node (pełny):</strong> ze strony pobierasz APK lub uruchamiasz skrypt Termux.
+  Telefon staje się pełnym węzłem (port 8765): pliki, system, wejście — przez connector <code>adb</code>.</li>
+</ol>
+<pre>urirun-android-node serve     # serwis dystrybucji (port 8195), QR + APK + bootstrap</pre>
+<p>W dashboardzie: <em>Smartphone → Uruchom serwis android-node → Pokaż QR</em>. Zeskanuj telefonem.
+Podłączone telefony pojawią się na liście „webpage node"; po instalacji APK zapisz je jako „mobile node".</p>
+
+<h2 id="browser-debug">🌐 Browser Debug — cała przeglądarka (CDP)</h2>
+<p>Sterowanie całą przeglądarką przez Chrome DevTools Protocol: wszystkie karty (otwórz/zamknij/nawiguj),
+status, zrzuty. Connector <code>webnode</code>, zakres <code>browser</code>. Stary typ <code>browser</code>
+jest aliasem do <code>browser-debug</code>.</p>
+<pre>google-chrome --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1</pre>
+<pre>urirun run "webnode://browser/tabs/query/list" --entry-points --execute --allow 'webnode://*'</pre>
+<p>Zapisz node z endpointem <code>http://127.0.0.1:9222</code> i typem <code>browser-debug</code>.</p>
+
+<h2 id="browser-chrome-plugin">🧩 Chrome Plugin — aktywna karta przez rozszerzenie</h2>
+<p>Tryb bez debug portu. Rozszerzenie działa w aktywnej karcie, obsługuje
+<code>browser-plugin://chrome/...</code> oraz kompatybilne <code>browser://...</code>,
+a inne URI przekazuje do skonfigurowanego node <code>/run</code>.</p>
+<pre>cd /home/tom/github/if-uri/chrome-plugin
+make test
+# chrome://extensions -> Developer mode -> Load unpacked -> ten folder</pre>
+
+<h2 id="browser-firefox-plugin">🧩 Firefox Plugin — aktywna karta przez rozszerzenie</h2>
+<p>Analogiczny tryb dla Firefox. Rozszerzenie obsługuje
+<code>browser-plugin://firefox/...</code> oraz kompatybilne <code>browser://...</code>.</p>
+<pre>cd /home/tom/github/if-uri/firefox-plugin
+make test
+# about:debugging#/runtime/this-firefox -> Load Temporary Add-on</pre>
+
+<h2 id="webpage">📄 Webpage — pojedyncza strona (HTML/JS)</h2>
+<p>Sterowanie <strong>konkretną stroną/kartą</strong>: nawigacja, eval JS, klik po selektorze,
+wpisywanie, zrzut, lista urządzeń strony, kamera, sensory, iframe/proxy. Może działać przez
+CDP page scope, plugin albo page bridge na porcie <code>8195</code>. Stary typ <code>web</code>
+jest aliasem do <code>webpage</code>.</p>
+<pre># lista kart i ich id:
+urirun run "webnode://browser/tabs/query/list" --entry-points --execute --allow 'webnode://*'
+# steruj jedną stroną:
+WEBNODE_TARGET=&lt;id&gt; urirun run "webnode://page/command/navigate" \
+  --entry-points --execute --allow 'webnode://*' --payload '{"url":"https://example.com"}'</pre>
+<p>Zapisz node z endpointem CDP i typem <code>webpage</code>, albo otwórz QR z serwisu
+<code>8195</code>, żeby strona zarejestrowała się jako webpage node.</p>
+
+<h2 id="api">🔌 API — zewnętrzny endpoint z autoryzacją</h2>
+<p>API node służy do podpinania SaaS, lokalnych usług HTTP, REST/OpenAPI albo paneli sterowania.
+Sekret przekazany w formularzu jest zapisywany w keyring jako <code>secretRef</code>, a nie w pliku config.</p>
+<pre>urirun host add-node crm-api https://api.example.test/v1 \
+  --kind api --api-id main --api-kind rest \
+  --auth-type bearer --auth-token PASTE_ONCE</pre>
+<pre>{
+  "name": "crm-api",
+  "url": "https://api.example.test/v1",
+  "kind": "api",
+  "apis": [
+    {"id": "main", "kind": "rest", "url": "https://api.example.test/v1",
+     "auth": {"type": "bearer", "token": "PASTE_ONCE"}}
+  ]
+}</pre>
+<p>Discovery pokazuje wtedy route'y konfiguracyjne, np. <code>api://crm-api/main/command/request</code>.</p>
+<p>HTTP/REST/OpenAPI może być wykonane bezpośrednio przez hosta. Przykład payloadu:</p>
+<pre>{
+  "uri": "api://crm-api/main/command/request",
+  "mode": "execute",
+  "payload": {"method": "GET", "path": "/accounts", "query": {"limit": 10}}
+}</pre>
+<p>Wariant neutralny dla plannerów to <code>configured://host/node-api/command/request</code>
+z payloadem zawierającym <code>node</code> i <code>apiId</code>.</p>
+
+<h2 id="device">🧩 Device — kamera, RPi, NAS, nietypowe urządzenie</h2>
+<p>Device node ma wiele interfejsów API. Przykład: RPi jako kamera i NAS ma panel WWW,
+RTSP stream, SMB share i SSH shell. Jeden obiekt node grupuje je jako <code>apis[]</code>.</p>
+<pre>urirun host add-node rpi-camera http://rpi.local \
+  --kind device \
+  --api '{"id":"panel","kind":"web","url":"http://rpi.local"}' \
+  --api '{"id":"stream","kind":"rtsp","role":"camera","url":"rtsp://rpi.local/live"}' \
+  --api '{"id":"share","kind":"smb","url":"smb://rpi.local/share"}' \
+  --api '{"id":"ssh","kind":"ssh","url":"ssh://pi@rpi.local"}'</pre>
+<pre>{
+  "name": "rpi-camera",
+  "url": "http://rpi.local",
+  "kind": "device",
+  "apis": [
+    {"id": "panel", "kind": "web", "url": "http://rpi.local"},
+    {"id": "stream", "kind": "rtsp", "role": "camera", "url": "rtsp://rpi.local/live"},
+    {"id": "share", "kind": "smb", "url": "smb://rpi.local/share"},
+    {"id": "ssh", "kind": "ssh", "url": "ssh://pi@rpi.local"}
+  ]
+}</pre>
+<p>Discovery tworzy syntetyczne route'y: <code>device://</code>, <code>media://</code>,
+<code>camera://</code>, <code>ssh://</code> i <code>fs://</code>. Wykonanie tych route'ów
+powinny przejąć odpowiednie connectory. Host wykona tylko interfejsy HTTP-like;
+dla RTSP/SMB/SSH zwróci <code>connector_required</code>, zamiast udawać wykonanie.</p>
+
+<p class="lead" style="margin-top:2rem">⬅ <a href="/?view=nodes">Powrót do dashboardu</a></p>
+</body>
+</html>
+"""
+
+
 SCANNER_HTML = r"""<!doctype html>
 <html lang="en">
 <head>
@@ -4089,6 +4627,50 @@ def _html_response(handler: BaseHTTPRequestHandler, html: str = INDEX_HTML) -> N
     handler.send_header("Content-Length", str(len(body)))
     handler.end_headers()
     handler.wfile.write(body)
+
+
+def _docs_nodes_html() -> str:
+    rows = []
+    for profile in _node_type_profiles_impl():
+        rows.append(
+            "<tr>"
+            f"<td id=\"{html.escape(profile['id'])}\"><strong>{html.escape(profile['label'])}</strong>"
+            f"<br><code>{html.escape(profile['id'])}</code></td>"
+            f"<td>{html.escape(profile['description'])}</td>"
+            f"<td><code>{html.escape(profile['transport'])}</code></td>"
+            f"<td><code>{html.escape(profile['runtime'])}</code></td>"
+            f"<td>{html.escape(', '.join(profile.get('routesHint') or []))}</td>"
+            "</tr>"
+        )
+    return """<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <title>urirun node types</title>
+  <style>
+    body { font: 15px/1.45 system-ui, sans-serif; margin: 32px; max-width: 1180px; color: #e5e7eb; background: #0f172a; }
+    a { color: #67e8f9; } code { color: #bae6fd; }
+    table { border-collapse: collapse; width: 100%; margin-top: 18px; }
+    th, td { border: 1px solid #334155; padding: 10px; vertical-align: top; }
+    th { text-align: left; background: #111827; }
+    .subtle { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <h1>Typy node w urirun</h1>
+  <p class="subtle">To jest backendowe źródło prawdy używane przez dashboard, discovery i URI object registry.</p>
+  <table>
+    <thead><tr><th>Typ</th><th>Kiedy używać</th><th>Transport</th><th>Runtime</th><th>Typowe URI</th></tr></thead>
+    <tbody>""" + "\n".join(rows) + """</tbody>
+  </table>
+  <h2>Zasada wyboru komponentu</h2>
+  <p>Jeśli komponent żyje jako proces i ma port/status, zrób z niego <strong>service</strong>.
+  Jeśli dostarcza ograniczoną zdolność URI, zrób <strong>connector</strong>.
+  Jeśli jest żywym widokiem, zrób <strong>widget</strong>.
+  Jeśli jest skończonym plikiem lub raportem, zrób <strong>artifact</strong>.</p>
+  <p><a href="/">Powrót do dashboardu</a></p>
+</body>
+</html>"""
 
 
 def _asset_response(handler: BaseHTTPRequestHandler, body: bytes, content_type: str) -> None:
@@ -7239,6 +7821,22 @@ def _uri_action_catalog() -> list[dict]:
             "where": "host dashboard /api/uri/invoke",
         },
         {
+            "uri": "configured://host/node-api/command/request",
+            "layer": "host",
+            "kind": "command",
+            "label": "Call a configured API/device HTTP interface with stored auth",
+            "sideEffects": ["network"],
+            "where": "host dashboard /api/uri/invoke",
+        },
+        {
+            "uri": "configured://host/node-api/query/status",
+            "layer": "host",
+            "kind": "query",
+            "label": "Inspect a configured API/device interface",
+            "sideEffects": [],
+            "where": "host dashboard /api/uri/invoke",
+        },
+        {
             "uri": "urifix://host/chain/command/repair",
             "layer": "connector",
             "kind": "command",
@@ -7269,6 +7867,8 @@ def _uri_action_lookup(uri: str) -> dict | None:
         "service://host/chat/command/restart": "dashboard://host/service/chat/command/restart",
         "service://chat/command/restart": "dashboard://host/service/chat/command/restart",
         "document://host/archive/sync": "document://host/archive/command/sync-to-node",
+        "api://host/node-api/command/request": "configured://host/node-api/command/request",
+        "api://host/node-api/query/status": "configured://host/node-api/query/status",
     }
     target = aliases.get(uri)
     if target:
@@ -7527,6 +8127,9 @@ def _run_inprocess_connector_uri(uri: str, action_payload: dict, db: str | None 
             "error": (env.get("error") or {}).get("message") if not env.get("ok") else None}
 
 
+_UNROUTED = object()  # sentinel: _uri_invoke_route matched no built-in route (distinct from a handler returning None)
+
+
 def _uri_invoke_route(effective_uri: str, *, project: str, db: str | None, config: str | None,
                       action_payload: dict, node_urls: list[str] | None, token: str | None,
                       identity: str | None):
@@ -7569,6 +8172,12 @@ def _uri_invoke_route(effective_uri: str, *, project: str, db: str | None, confi
             token=token,
             identity=identity,
         )
+    if effective_uri == "configured://host/node-api/command/request":
+        return configured_node_api_request(config, node_urls, action_payload, uri=effective_uri)
+    if effective_uri == "configured://host/node-api/query/status":
+        return configured_node_api_request(config, node_urls, action_payload, uri=effective_uri, status_only=True)
+    if effective_uri.startswith(("api://", "device://")):
+        return configured_node_api_request(config, node_urls, action_payload, uri=effective_uri)
     if effective_uri in {"document://host/archive/command/sync-to-node", "document://host/archive/sync"}:
         return sync_documents_to_node(
             project,
@@ -7579,7 +8188,7 @@ def _uri_invoke_route(effective_uri: str, *, project: str, db: str | None, confi
             token=token,
             identity=identity,
         )
-    return None
+    return _UNROUTED
 
 
 def _uri_invoke_page_action(uri: str, mode: str, payload: dict, action_payload: dict, db: str | None) -> dict:
@@ -7640,12 +8249,16 @@ def uri_invoke(
         effective_uri, project=project, db=db, config=config, action_payload=action_payload,
         node_urls=node_urls, token=token, identity=identity,
     )
-    if result is None:
+    if result is _UNROUTED:
         # Not a hardcoded dashboard/scanner action: try an installed in-process connector
         # (widget://, artifact://, …) over the urirun runtime before giving up.
         dispatched = _run_inprocess_connector_uri(effective_uri, action_payload, db=db)
         if dispatched is not None:
             return dispatched
+        if effective_uri.startswith(("media://", "camera://", "ssh://", "fs://")):
+            configured = configured_node_api_request(config, node_urls, action_payload, uri=effective_uri)
+            if configured.get("error") not in {"node is required", "configured API not found"}:
+                return _finalize_uri_result(configured, uri)
         raise ValueError(f"unsupported URI action: {uri}")
 
     return _finalize_uri_result(result, uri)
@@ -7730,6 +8343,8 @@ def summary(project: str, db: str | None, config: str | None, node_urls: list[st
     logs = host_db.recent_logs(db, limit=10)
     nodes = discovered.get("nodes") or []
     _annotate_node_tokens_impl(nodes, _node_token_for)
+    _annotate_node_kinds(nodes)
+    _annotate_node_types_impl(nodes)
     routes = discovered.get("routes") or []
     services = _service_contacts()
     host_routes = _host_registry_routes()
@@ -7755,6 +8370,7 @@ def summary(project: str, db: str | None, config: str | None, node_urls: list[st
         "serviceCount": len(services),
         "host": host,
         "hostRoutes": host_routes,
+        "nodeTypes": _node_type_profiles_impl(),
         "objects": objects,
         "nodes": nodes,
         "services": services,
@@ -7784,25 +8400,9 @@ def _compact_chat_result(result: dict, payload: dict) -> dict:
 _DOCUMENT_SYNC_URI = "document://host/archive/command/sync-to-node"
 
 
-def node_add(config: str | None, payload: dict) -> dict:
-    """Persist a node (name + URL) to the host config so the host resolves it for real runs, and
-    mirror it to ~/.urirun/nodes.json so urifix can auto-repair node_url. Reuses the canonical
-    node/config.add_node helper (same path as `urirun host add-node`) — no bespoke writer."""
-    from urirun.node import config as node_config
-    payload = payload if isinstance(payload, dict) else {}
-    name = str(payload.get("name") or "").strip()
-    raw_url = str(payload.get("url") or "").strip()
-    if not name or not raw_url:
-        return {"ok": False, "error": "name and url are required"}
+def _mirror_node_to_nodes_file(name: str, url: str) -> None:
+    """Best-effort mirror to ~/.urirun/nodes.json so urifix can auto-repair node_url."""
     try:
-        url = node_config._coerce_node_url(raw_url)  # accepts URL or host[:port], defaults :8765
-    except ValueError as exc:
-        return {"ok": False, "error": str(exc)}
-    try:
-        updated = node_config.add_node(config, name, url)
-    except Exception as exc:  # noqa: BLE001 - report a persist failure, don't 500 the dashboard
-        return {"ok": False, "error": f"could not persist node: {exc}"}
-    try:  # best-effort mirror for urifix's node-URL discovery
         nodes_path = os.environ.get("URIRUN_NODES_FILE") or os.path.expanduser("~/.urirun/nodes.json")
         known: dict = {}
         if os.path.exists(nodes_path):
@@ -7815,9 +8415,546 @@ def node_add(config: str | None, payload: dict) -> dict:
         os.makedirs(os.path.dirname(nodes_path) or ".", exist_ok=True)
         with open(nodes_path, "w", encoding="utf-8") as fh:
             json.dump(known, fh, indent=2)
-    except Exception:  # noqa: BLE001 - the urifix mirror is optional
+    except Exception:  # noqa: BLE001
         pass
-    return {"ok": True, "node": {"name": name, "url": url}, "nodes": updated.get("nodes", [])}
+
+
+def _node_api_slug(value: Any, fallback: str) -> str:
+    raw = str(value or "").strip().lower()
+    slug = re.sub(r"[^a-z0-9_-]+", "-", raw).strip("-")
+    return slug or fallback
+
+
+def _node_api_secret_ref(name: str, api_id: str) -> str:
+    account = f"{_node_api_slug(name, 'node')}/{_node_api_slug(api_id, 'api')}"
+    return f"secret://keyring/urirun-node-api/{account}#credential"
+
+
+def _store_node_api_secret(name: str, api_id: str, secret: str) -> tuple[str | None, str | None]:
+    if not secret:
+        return None, None
+    try:
+        import keyring
+        account = f"{_node_api_slug(name, 'node')}/{_node_api_slug(api_id, 'api')}"
+        keyring.set_password("urirun-node-api", account, secret)
+        return _node_api_secret_ref(name, api_id), None
+    except Exception as exc:  # noqa: BLE001
+        return None, f"could not store API credential securely (keyring): {exc}"
+
+
+def _extract_raw_secret(auth_data: dict, api: dict) -> str | None:
+    """Pull a plaintext credential from auth_data or the api dict (first non-empty value wins)."""
+    return (
+        auth_data.get("token")
+        or auth_data.get("apiKey")
+        or auth_data.get("password")
+        or auth_data.get("secret")
+        or api.get("token")
+        or api.get("apiKey")
+        or api.get("password")
+        or api.get("secret")
+    )
+
+
+def _extract_secret_ref(auth_data: dict, api: dict) -> str | None:
+    """Pull an existing secret reference from auth_data or the api dict."""
+    return (
+        auth_data.get("secretRef")
+        or auth_data.get("ref")
+        or auth_data.get("credentialRef")
+        or api.get("secretRef")
+        or api.get("credentialRef")
+    )
+
+
+def _build_auth_extra_fields(auth_data: dict, api: dict) -> dict:
+    """Collect optional auth metadata fields from auth_data (preferred) or api fallback."""
+    extra: dict = {}
+    for key in ("username", "header", "headerName", "queryParam", "scheme", "tokenUrl", "clientIdRef"):
+        value = auth_data.get(key) if key in auth_data else api.get(key)
+        if value not in (None, ""):
+            extra[key] = str(value)
+    return extra
+
+
+def _normalize_node_api_auth(name: str, api_id: str, api: dict, auth: Any) -> tuple[dict, str | None]:
+    auth_data = auth if isinstance(auth, dict) else {}
+    raw_secret = _extract_raw_secret(auth_data, api)
+    secret_ref = _extract_secret_ref(auth_data, api)
+    auth_type = str(
+        auth_data.get("type")
+        or api.get("authType")
+        or ("bearer" if raw_secret else ("ref" if secret_ref else "none"))
+    ).strip().lower()
+    if raw_secret:
+        secret_ref, error = _store_node_api_secret(name, api_id, str(raw_secret))
+        if error:
+            return {}, error
+    if auth_type in {"", "none", "no", "false"} and not secret_ref:
+        return {}, None
+    out: dict = {"type": auth_type or "ref"}
+    if secret_ref:
+        out["secretRef"] = str(secret_ref)
+    out.update(_build_auth_extra_fields(auth_data, api))
+    return out, None
+
+
+def _default_api_items(url: str, kind: str, payload: dict) -> list[dict]:
+    """Build a single synthetic default API entry for device/api nodes with no explicit apis."""
+    return [{
+        "id": "default",
+        "label": "default API",
+        "url": url,
+        "kind": payload.get("protocol") or payload.get("apiKind") or ("web" if kind == "device" else "http"),
+        "auth": payload.get("auth") if isinstance(payload.get("auth"), dict) else {},
+    }]
+
+
+def _normalize_api_item(name: str, url: str, index: int, item: dict,
+                        fallback_auth: Any) -> tuple[dict | None, str | None]:
+    """Normalise one raw API dict entry; returns (api_dict, error) — api_dict is None to skip."""
+    api_id = _node_api_slug(item.get("id") or item.get("name") or item.get("role"), f"api-{index}")
+    api_url = str(item.get("url") or item.get("endpoint") or item.get("baseUrl") or url).strip()
+    if not api_url:
+        return None, None
+    api_kind = str(item.get("kind") or item.get("protocol") or item.get("transport") or "http").strip().lower()
+    api: dict = {"id": api_id, "kind": api_kind, "url": api_url}
+    for key in ("label", "role", "openapi", "basePath", "mount", "description"):
+        if item.get(key) not in (None, ""):
+            api[key] = item[key]
+    auth, error = _normalize_node_api_auth(name, api_id, item, item.get("auth") or fallback_auth)
+    if error:
+        return None, error
+    if auth:
+        api["auth"] = auth
+    return api, None
+
+
+def _normalize_node_apis(name: str, url: str, kind: str | None, payload: dict) -> tuple[list[dict], str | None]:
+    raw = payload.get("apis") or payload.get("interfaces") or payload.get("api")
+    if isinstance(raw, dict):
+        raw_items: list = [raw]
+    elif isinstance(raw, list):
+        raw_items = raw
+    else:
+        raw_items = []
+    if not raw_items and kind in {"api", "device"}:
+        raw_items = _default_api_items(url, kind, payload)
+    apis: list[dict] = []
+    fallback_auth = payload.get("auth")
+    for index, item in enumerate(raw_items, 1):
+        if not isinstance(item, dict):
+            continue
+        api, error = _normalize_api_item(name, url, index, item, fallback_auth)
+        if error:
+            return [], error
+        if api is not None:
+            apis.append(api)
+    return apis, None
+
+
+def _derive_node_capabilities(payload: dict, apis: list[dict]) -> list[str]:
+    raw = payload.get("capabilities")
+    caps = [str(item).strip() for item in raw] if isinstance(raw, list) else []
+    for api in apis:
+        api_kind = str(api.get("kind") or "").lower()
+        role = str(api.get("role") or "").lower()
+        if api_kind in {"rtsp", "rtmp", "rtmps", "hls", "onvif"} or role == "camera":
+            caps.append("camera")
+        if api_kind in {"smb", "nfs", "nas", "sftp"}:
+            caps.append("files")
+        if api_kind in {"ssh", "sftp"}:
+            caps.append("shell")
+        if api_kind in {"http", "https", "rest", "openapi", "web", "panel"}:
+            caps.append("api")
+    return sorted({cap for cap in caps if cap})
+
+
+def _build_node_entry(name: str, url: str, kind: str | None,
+                      apis: list[dict] | None = None, capabilities: list[str] | None = None) -> dict:
+    node: dict = {"name": name, "url": url, "kind": kind or None}
+    if kind:
+        profile = _node_type_profile_impl(kind)
+        node.update({
+            "kind": kind,
+            "type": kind,
+            "nodeType": kind,
+            "typeLabel": profile.get("label") or kind,
+            "transport": profile.get("transport") or "",
+            "runtime": profile.get("runtime") or "",
+            "integrationLevel": profile.get("integrationLevel") or "",
+        })
+    if apis:
+        node["apis"] = apis
+    if capabilities:
+        node["capabilities"] = capabilities
+    return node
+
+
+def _persist_node_to_config(node_config: Any, config: str | None, name: str, url: str, *,
+                            tags: list | None, apis: list | None,
+                            capabilities: list | None, meta: dict | None) -> tuple[dict | None, str | None]:
+    """Call node_config.add_node and return (updated_dict, error_str)."""
+    try:
+        updated = node_config.add_node(
+            config,
+            name,
+            url,
+            tags=tags,
+            apis=apis or None,
+            capabilities=capabilities or None,
+            meta=meta,
+        )
+        return updated, None
+    except Exception as exc:  # noqa: BLE001 - report a persist failure, don't 500 the dashboard
+        return None, f"could not persist node: {exc}"
+
+
+def node_add(config: str | None, payload: dict) -> dict:
+    """Persist a node (name + URL) to the host config so the host resolves it for real runs, and
+    mirror it to ~/.urirun/nodes.json so urifix can auto-repair node_url. Reuses the canonical
+    node/config.add_node helper (same path as `urirun host add-node`) — no bespoke writer."""
+    from urirun.node import config as node_config
+    payload = payload if isinstance(payload, dict) else {}
+    name = str(payload.get("name") or "").strip()
+    raw_url = str(payload.get("url") or "").strip()
+    kind = _normalize_node_type_impl(payload.get("kind") or payload.get("type") or payload.get("nodeType"))
+    if not name or not raw_url:
+        return {"ok": False, "error": "name and url are required"}
+    try:
+        url = node_config._coerce_node_url(raw_url)  # accepts URL or host[:port], defaults :8765
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc)}
+    apis, api_error = _normalize_node_apis(name, url, kind, payload)
+    if api_error:
+        return {"ok": False, "error": api_error}
+    capabilities = _derive_node_capabilities(payload, apis)
+    meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else None
+    tags = _node_type_tags_impl(kind, payload.get("tags")) if kind else None
+    updated, persist_error = _persist_node_to_config(
+        node_config, config, name, url, tags=tags, apis=apis, capabilities=capabilities, meta=meta,
+    )
+    if persist_error:
+        return {"ok": False, "error": persist_error}
+    if kind:
+        _set_node_kind(name, kind)  # sidecar so the dashboard can badge the node type
+    _mirror_node_to_nodes_file(name, url)
+    return {"ok": True, "node": _build_node_entry(name, url, kind, apis, capabilities), "nodes": updated.get("nodes", [])}
+
+
+def _configured_node_api_parts(uri: str) -> tuple[str, str, str, str]:
+    scheme, rest = str(uri).split("://", 1)
+    parts = [part for part in rest.split("/") if part]
+    if scheme == "configured":
+        return scheme, str(parts[0] if len(parts) > 0 else ""), str(parts[1] if len(parts) > 1 else ""), "/".join(parts[2:])
+    return scheme, str(parts[0] if len(parts) > 0 else ""), str(parts[1] if len(parts) > 1 else ""), "/".join(parts[2:])
+
+
+def _configured_node_api_lookup(config: str | None, node_urls: list[str] | None, *,
+                                node_name: str, api_id: str) -> tuple[dict | None, dict | None, str | None]:
+    host_config = _host_config(config, node_urls)
+    for node in host_config.get("nodes") or []:
+        if not isinstance(node, dict) or str(node.get("name") or "") != node_name:
+            continue
+        apis = node.get("apis") if isinstance(node.get("apis"), list) else []
+        for api in apis:
+            if isinstance(api, dict) and str(api.get("id") or "") == api_id:
+                return node, api, None
+        return node, None, f"api interface {api_id!r} not found on node {node_name!r}"
+    return None, None, f"node {node_name!r} not found in host config"
+
+
+def _configured_api_secret(auth: dict, *, allow: list[str] | None = None) -> str:
+    secret_ref = str(auth.get("secretRef") or auth.get("credentialRef") or "")
+    if not secret_ref:
+        return ""
+    import urirun
+
+    return urirun.resolve_secret(secret_ref, secret_allow=allow or [secret_ref])
+
+
+def _apply_auth_header(headers: dict, auth: dict, auth_type: str, secret: str) -> str | None:
+    """Inject an Authorization (or equivalent) header for *auth_type* using *secret*.
+    Returns an error string on unsupported types, None on success."""
+    if auth_type in {"bearer", "oauth", "token"}:
+        headers.setdefault("Authorization", f"Bearer {secret}")
+    elif auth_type in {"api-key", "apikey", "key"}:
+        headers.setdefault(str(auth.get("headerName") or auth.get("header") or "X-API-Key"), secret)
+    elif auth_type in {"header", "custom-header"}:
+        headers.setdefault(str(auth.get("headerName") or auth.get("header") or "Authorization"), secret)
+    elif auth_type == "basic":
+        user = str(auth.get("username") or "")
+        token = base64.b64encode(f"{user}:{secret}".encode("utf-8")).decode("ascii")
+        headers.setdefault("Authorization", f"Basic {token}")
+    else:
+        return f"unsupported auth type {auth_type!r}"
+    return None
+
+
+def _configured_api_headers(api: dict, payload: dict) -> tuple[dict, str | None]:
+    headers = {str(k): str(v) for k, v in (api.get("headers") or {}).items()} if isinstance(api.get("headers"), dict) else {}
+    headers.update({str(k): str(v) for k, v in (payload.get("headers") or {}).items()} if isinstance(payload.get("headers"), dict) else {})
+    auth = api.get("auth") if isinstance(api.get("auth"), dict) else {}
+    auth_type = str(auth.get("type") or "").strip().lower()
+    if not auth_type or auth_type in {"none", "no", "false"}:
+        return headers, None
+    try:
+        secret = _configured_api_secret(auth)
+    except Exception as exc:  # noqa: BLE001
+        return headers, str(exc)
+    if not secret:
+        return headers, None
+    error = _apply_auth_header(headers, auth, auth_type, secret)
+    return headers, error
+
+
+def _join_api_url(base: str, extra_path: str = "", query: dict | None = None) -> str:
+    if extra_path.startswith(("http://", "https://")):
+        url = extra_path
+    else:
+        left = str(base or "").rstrip("/")
+        right = str(extra_path or "").lstrip("/")
+        url = f"{left}/{right}" if right else left
+    if query:
+        parts = urlsplit(url)
+        current = dict(parse_qsl(parts.query, keep_blank_values=True))
+        current.update({str(k): str(v) for k, v in query.items() if v is not None})
+        url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(current), parts.fragment))
+    return url
+
+
+def _configured_api_response_body(raw: bytes, content_type: str) -> Any:
+    text = raw.decode("utf-8", errors="replace")
+    if "json" in content_type.lower():
+        try:
+            return json.loads(text or "{}")
+        except json.JSONDecodeError:
+            return text
+    return text
+
+
+def _build_request_body(payload: dict, headers: dict) -> bytes | None:
+    """Encode the request body from payload['json'] or payload['body'], setting Content-Type if JSON."""
+    body_value = payload.get("json") if "json" in payload else payload.get("body")
+    if body_value is None:
+        return None
+    if isinstance(body_value, (dict, list)):
+        headers.setdefault("Content-Type", "application/json")
+        return json.dumps(body_value).encode("utf-8")
+    return str(body_value).encode("utf-8")
+
+
+def _execute_http_request(node: dict, api: dict, method: str, url: str,
+                          raw_body: bytes | None, headers: dict, timeout: float) -> dict:
+    """Fire the HTTP request and return a normalised result dict (handles HTTPError too)."""
+    request = urllib.request.Request(url, data=raw_body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = response.read()
+            content_type = response.headers.get("Content-Type", "")
+            return {
+                "ok": 200 <= int(response.status) < 400,
+                "node": node.get("name"),
+                "apiId": api.get("id"),
+                "method": method,
+                "url": url,
+                "status": int(response.status),
+                "contentType": content_type,
+                "data": _configured_api_response_body(raw, content_type),
+            }
+    except urllib.error.HTTPError as exc:
+        raw = exc.read()
+        content_type = exc.headers.get("Content-Type", "") if exc.headers else ""
+        return {
+            "ok": False,
+            "node": node.get("name"),
+            "apiId": api.get("id"),
+            "method": method,
+            "url": url,
+            "status": int(exc.code),
+            "contentType": content_type,
+            "data": _configured_api_response_body(raw, content_type),
+        }
+
+
+def _resolve_http_method_and_url(node: dict, api: dict, payload: dict) -> tuple[str | None, str, str | None]:
+    """Return (method, url, error).  method is None and error is set when the method is unsupported."""
+    method = str(payload.get("method") or ("POST" if "body" in payload or "json" in payload else "GET")).upper()
+    if method not in {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"}:
+        return None, "", f"unsupported HTTP method {method!r}"
+    query = payload.get("query") if isinstance(payload.get("query"), dict) else None
+    url = _join_api_url(str(api.get("url") or node.get("url") or ""), str(payload.get("path") or payload.get("url") or ""), query)
+    return method, url, None
+
+
+def _configured_api_call(node: dict, api: dict, payload: dict) -> dict:
+    api_kind = str(api.get("kind") or "").strip().lower()
+    if api_kind not in {"http", "https", "rest", "openapi", "web", "panel"}:
+        return {
+            "ok": False,
+            "error": "connector_required",
+            "message": f"{api_kind or 'unknown'} interfaces require a dedicated connector/service",
+            "api": {k: v for k, v in api.items() if k != "auth"},
+        }
+    method, url, method_error = _resolve_http_method_and_url(node, api, payload)
+    if method_error:
+        return {"ok": False, "error": method_error}
+    headers, auth_error = _configured_api_headers(api, payload)
+    if auth_error:
+        return {"ok": False, "error": auth_error}
+    raw_body = _build_request_body(payload, headers)
+    timeout = float(payload.get("timeout") or 20)
+    return _execute_http_request(node, api, method, url, raw_body, headers, timeout)
+
+
+def _apply_uri_overrides(payload: dict, uri: str,
+                         node_name: str, api_id: str) -> tuple[str, str, str, bool]:
+    """Parse *uri* and update node_name / api_id from its path components.
+    Returns (scheme, node_name, api_id, status_only)."""
+    scheme, uri_node, uri_api, operation = _configured_node_api_parts(uri)
+    if uri_node and uri_node != "host":
+        node_name = uri_node
+    if uri_api and uri_node != "host":
+        api_id = uri_api
+    status_only = operation.endswith("query/status")
+    if scheme == "configured":
+        node_name = str(payload.get("node") or payload.get("name") or node_name)
+        api_id = str(payload.get("apiId") or payload.get("api") or api_id)
+    return scheme, node_name, api_id, status_only
+
+
+def _resolve_node_api_identifiers(payload: dict, uri: str | None) -> tuple[str, str, str, bool]:
+    """Derive (scheme, node_name, api_id, status_only) from the URI and payload.
+    URI path components take precedence; payload overrides are applied for 'configured' scheme."""
+    node_name = str(payload.get("node") or payload.get("name") or "")
+    api_id = str(payload.get("apiId") or payload.get("api") or payload.get("interface") or "default")
+    if uri and "://" in uri:
+        return _apply_uri_overrides(payload, uri, node_name, api_id)
+    return "", node_name, api_id, False
+
+
+def _connector_required_response(scheme: str, node_name: str, safe_api: dict) -> dict:
+    """Build the standard 'connector_required' error for non-HTTP scheme execution."""
+    return {
+        "ok": False,
+        "error": "connector_required",
+        "message": f"{scheme}:// execution needs a dedicated connector; configured API metadata is available",
+        "node": node_name,
+        "api": safe_api,
+    }
+
+
+def configured_node_api_request(config: str | None, node_urls: list[str] | None, payload: dict,
+                                *, uri: str | None = None, status_only: bool = False) -> dict:
+    payload = payload if isinstance(payload, dict) else {}
+    scheme, node_name, api_id, uri_status_only = _resolve_node_api_identifiers(payload, uri)
+    status_only = status_only or uri_status_only
+    if not node_name:
+        return {"ok": False, "error": "node is required"}
+    node, api, error = _configured_node_api_lookup(config, node_urls, node_name=node_name, api_id=api_id)
+    if error or node is None or api is None:
+        return {"ok": False, "error": error or "configured API not found"}
+    safe_api = {k: v for k, v in api.items() if k != "auth"}
+    if status_only:
+        return {"ok": True, "node": node_name, "api": safe_api, "authConfigured": bool((api.get("auth") or {}).get("secretRef"))}
+    if scheme in {"media", "camera", "ssh", "fs"}:
+        return _connector_required_response(scheme, node_name, safe_api)
+    return _configured_api_call(node, api, payload)
+
+
+def _node_kinds_path() -> str:
+    return os.environ.get("URIRUN_NODE_KINDS_FILE") or os.path.expanduser("~/.urirun/node-kinds.json")
+
+
+def _node_kinds() -> dict:
+    """Read the name→kind sidecar (server/pc/rdp/smartphone/browser/web)."""
+    path = _node_kinds_path()
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _set_node_kind(name: str, kind: str) -> None:
+    """Persist a node's connection kind to the sidecar (best-effort)."""
+    path = _node_kinds_path()
+    kinds = _node_kinds()
+    kinds[name] = kind
+    try:
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(kinds, fh, indent=2)
+    except OSError:
+        pass
+
+
+def _annotate_node_kinds(nodes: list) -> None:
+    """Attach node['kind'] from the sidecar (and from a kind:* tag if present) so the UI badges it."""
+    kinds = _node_kinds()
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        name = node.get("name")
+        kind = _normalize_node_type_impl(kinds.get(name))
+        if not kind:
+            for tag in node.get("tags") or []:
+                if isinstance(tag, str) and tag.startswith("kind:"):
+                    kind = _normalize_node_type_impl(tag.split(":", 1)[1])
+                    break
+        if kind:
+            node["kind"] = kind
+
+
+def _android_node_service_url() -> str:
+    host = _lan_host()
+    port = int(os.environ.get("URIRUN_ANDROID_NODE_PORT") or 8195)
+    return f"http://{host}:{port}/"
+
+
+def start_android_node_service(payload: dict) -> dict:
+    """Start the android-node service (port 8195) as a detached process so the smartphone QR
+    leads to a live page. Idempotent: if the service already answers, report alreadyRunning."""
+    payload = payload if isinstance(payload, dict) else {}
+    import shutil
+    url = _android_node_service_url()
+    if _probe_scanner_url(url, timeout=1.0):
+        return {"ok": True, "alreadyRunning": True, "url": url}
+    exe = shutil.which("urirun-android-node") or shutil.which("urirun-service-android-node")
+    if not exe:
+        return {"ok": False, "error": "urirun-android-node not installed (pip install -e urirun-service-android-node)", "url": url}
+    try:
+        log_path = os.path.expanduser("~/.urirun/android-node/service.log")
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        log_fh = open(log_path, "ab")
+        subprocess.Popen([exe, "serve"], stdout=log_fh, stderr=log_fh,
+                         stdin=subprocess.DEVNULL, start_new_session=True)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": f"could not start service: {exc}", "url": url}
+    # give it a moment, then probe
+    for _ in range(10):
+        if _probe_scanner_url(url, timeout=0.5):
+            return {"ok": True, "alreadyRunning": False, "url": url}
+    return {"ok": True, "alreadyRunning": False, "url": url, "note": "started; still warming up"}
+
+
+def phone_web_nodes(payload: dict) -> dict:
+    """List browsers/phones that opened the android/webpage page.
+
+    Relays the service's /api/webpage-node/list so the dashboard can surface and
+    persist them as webpage nodes. /api/web-node/list remains supported by the service
+    as a compatibility alias.
+    """
+    url = _android_node_service_url().rstrip("/") + "/api/webpage-node/list"
+    import urllib.request
+    try:
+        with urllib.request.urlopen(url, timeout=2) as resp:
+            data = json.loads(resp.read() or "{}")
+        devices = data.get("devices") if isinstance(data, dict) else None
+        return {"ok": True, "devices": devices or [], "serviceUrl": _android_node_service_url()}
+    except Exception as exc:  # noqa: BLE001 - service may be down; empty is fine
+        return {"ok": True, "devices": [], "serviceReachable": False, "error": str(exc)}
 
 
 def phone_node_qr(project: str, db: str | None, payload: dict) -> dict:
@@ -7996,14 +9133,6 @@ def _try_urifix_repair(prompt: str, request: dict, result: dict, *, node_urls: l
     except Exception as exc:  # noqa: BLE001 - never mask the original URI failure.
         return {"ok": False, "error": str(exc)}
     return fixed if isinstance(fixed, dict) else None
-
-
-def _boolish(value: Any, default: bool = False) -> bool:
-    if value is None:
-        return default
-    if isinstance(value, bool):
-        return value
-    return str(value).strip().casefold() not in {"", "0", "false", "no", "off"}
 
 
 def _document_sync_auto_retry_enabled(payload: dict) -> bool:
@@ -9007,6 +10136,107 @@ def task_create(project: str, payload: dict) -> dict:
     return {"ok": True, "ticket": ticket}
 
 
+_CONNECTOR_BINDINGS_GROUP = "urirun.bindings"
+_CONNECTOR_INSTALL_TIMEOUT = 300
+
+
+def _connector_pip_tail(source: str, spec: str) -> list[str] | None:
+    """Translate a (source, spec) pair into the pip-install argv tail, or None when the source is
+    not host pip-installable (npm/docker/http live in their own runtimes). This is the native
+    urirun connector path: a pip package exposing a `urirun.bindings` entry point."""
+    spec = (spec or "").strip()
+    if not spec:
+        return None
+    if source == "pip":
+        return [spec]
+    if source == "github":
+        url = spec
+        if url.startswith("git+"):
+            pass
+        elif url.startswith("http://") or url.startswith("https://"):
+            url = "git+" + url
+        else:
+            url = "git+https://github.com/" + url.strip("/")
+        return [url]
+    if source in {"local", "folder", "path"}:
+        path = str(Path(spec).expanduser())
+        target = Path(path)
+        editable = target.is_dir() and ((target / "pyproject.toml").exists() or (target / "setup.py").exists())
+        return ["-e", path] if editable else [path]
+    return None
+
+
+def connector_install(project: str, payload: dict) -> dict:
+    """Install a URI connector on the host from a chosen source, then refresh discovery so its
+    scheme/routes go live immediately. Real host installs cover the native pip-based sources
+    (PyPI package, GitHub repo, local folder). npm/docker/http connectors are not host
+    pip-installable, so we return the canonical command for their own runtime instead."""
+    import sys
+    payload = payload if isinstance(payload, dict) else {}
+    source = str(payload.get("source") or "pip").strip().lower()
+    spec = str(payload.get("spec") or "").strip()
+    if not spec:
+        return {"ok": False, "error": "spec is required (package, repo, path or image)"}
+    pip_tail = _connector_pip_tail(source, spec)
+    if pip_tail is None:
+        hints = {
+            "npm": "npm install -g " + spec + "   # expose via a urirun node argv connector",
+            "docker": "docker pull " + spec + "   # run via a docker-exec / docker-run adapter route",
+            "http": "register " + spec + " as an http:// connector route (no host install needed)",
+        }
+        return {"ok": False, "source": source, "spec": spec,
+                "error": "source '" + source + "' is not host pip-installable",
+                "hint": hints.get(source, "unsupported source")}
+    cmd = [sys.executable, "-m", "pip", "install", *pip_tail]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=_CONNECTOR_INSTALL_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "source": source, "spec": spec, "command": " ".join(cmd),
+                "error": "pip install timed out after " + str(_CONNECTOR_INSTALL_TIMEOUT) + "s"}
+    except Exception as exc:  # noqa: BLE001 - report install launch failures to the UI
+        return {"ok": False, "source": source, "spec": spec, "command": " ".join(cmd), "error": str(exc)}
+    ok = proc.returncode == 0
+    schemes: list[str] = []
+    if ok:
+        try:
+            from urirun.runtime import discovery as _discovery
+            index = _discovery.build_index(_CONNECTOR_BINDINGS_GROUP)  # mtime-aware: busts the scheme cache
+            schemes = sorted(str(k) for k in ((index or {}).get("schemes") or {}).keys())
+        except Exception:  # noqa: BLE001 - install still succeeded if introspection fails
+            schemes = []
+
+    def _tail(text: str) -> str:
+        return "\n".join((text or "").strip().splitlines()[-12:])
+
+    return {"ok": ok, "source": source, "spec": spec, "command": " ".join(cmd),
+            "returncode": proc.returncode, "schemes": schemes,
+            "stdout": _tail(proc.stdout), "stderr": _tail(proc.stderr),
+            "error": None if ok else (_tail(proc.stderr) or "pip install failed")}
+
+
+def connector_test(project: str, db: str | None, config: str | None, payload: dict, *,
+                   node_urls: list[str] | None = None, token: str | None = None,
+                   identity: str | None = None) -> dict:
+    """Smoke-test a connector route on the host by really invoking it (mode=execute) through the
+    same uri_invoke dispatch a chat/URI run uses. Use a read-only query route for a safe probe.
+    Testing on a remote node/docker uses the dedicated /api/nodes/test-routes path instead."""
+    payload = payload if isinstance(payload, dict) else {}
+    uri = str(payload.get("uri") or "").strip()
+    if not uri:
+        return {"ok": False, "error": "test uri is required (e.g. uuid://host/id/query/v4)"}
+    invoke_payload = {
+        "uri": uri,
+        "mode": payload.get("mode") or "execute",
+        "payload": payload.get("payload") if isinstance(payload.get("payload"), dict) else {},
+        "source": "connector-test",
+    }
+    try:
+        return uri_invoke(project, db, config, invoke_payload,
+                          node_urls=node_urls, token=token, identity=identity)
+    except Exception as exc:  # noqa: BLE001 - surface route/handler errors to the UI as a failed test
+        return {"ok": False, "invokedUri": uri, "error": str(exc)}
+
+
 def _artifact_delete_roots(project: str) -> list[Path]:
     roots = [
         Path(os.environ.get("URIRUN_ARTIFACT_DIR", "~/.urirun/artifacts")).expanduser(),
@@ -9301,6 +10531,10 @@ def _api_objects(project: str, db: str | None, config: str | None, query: dict, 
     return 200, {"ok": True, "objects": data.get("objects") or []}
 
 
+def _api_node_types(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
+    return 200, {"ok": True, "nodeTypes": _node_type_profiles_impl()}
+
+
 def _api_tasks(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
     tickets, error = _safe_tickets(
         project,
@@ -9359,6 +10593,7 @@ def _api_nodes_or_routes(path: str, config: str | None, node_urls: list[str] | N
 _API_ROUTES = {
     "/api/summary": _api_summary,
     "/api/objects": _api_objects,
+    "/api/node-types": _api_node_types,
     "/api/tasks": _api_tasks,
     "/api/checks": _api_checks,
     "/api/logs": _api_logs,
@@ -9404,6 +10639,15 @@ def create_handler(
                     return
                 if parsed.path == "/scanner":
                     _html_response(self, SCANNER_HTML)
+                    return
+                if parsed.path in {"/docs/nodes", "/docs/nodes/"}:
+                    _html_response(self, NODE_TYPES_DOC_HTML)
+                    return
+                if parsed.path in {"/docs/node-types", "/docs/node-types/"}:
+                    _html_response(self, _docs_nodes_html())
+                    return
+                if parsed.path == "/api/nodes/phone-web":
+                    _json_response(self, 200, phone_web_nodes(parse_qs(parsed.query)))
                     return
                 if parsed.path == "/services/view":
                     _html_response(self, _service_widget_html(project, parse_qs(parsed.query)))
@@ -9454,6 +10698,15 @@ def create_handler(
                     payload = _read_json(self)
                     _json_response(self, 200, task_create(project, payload))
                     return
+                if parsed.path == "/api/connectors/install":
+                    payload = _read_json(self)
+                    _json_response(self, 200, connector_install(project, payload))
+                    return
+                if parsed.path == "/api/connectors/test":
+                    payload = _read_json(self)
+                    _json_response(self, 200, connector_test(project, db, config, payload,
+                                                             node_urls=node_urls, token=token, identity=identity))
+                    return
                 if len(parts) == 4 and parts[0] == "api" and parts[1] == "tasks":
                     payload = _read_json(self)
                     _json_response(self, 200, task_action(project, parts[2], parts[3], payload))
@@ -9488,13 +10741,21 @@ def create_handler(
                     _json_response(self, 200, node_test_routes(project, db, config, payload,
                                                                node_urls=node_urls, token=token, identity=identity))
                     return
-                if parsed.path == "/api/nodes/add":
+                if parsed.path in {"/api/nodes/add", "/api/nodes/api/add"}:
                     payload = _read_json(self)
                     _json_response(self, 200, node_add(config, payload))
+                    return
+                if parsed.path == "/api/nodes/api/request":
+                    payload = _read_json(self)
+                    _json_response(self, 200, configured_node_api_request(config, node_urls, payload))
                     return
                 if parsed.path == "/api/nodes/phone-qr":
                     payload = _read_json(self)
                     _json_response(self, 200, phone_node_qr(project, db, payload))
+                    return
+                if parsed.path == "/api/nodes/phone-service/start":
+                    payload = _read_json(self)
+                    _json_response(self, 200, start_android_node_service(payload))
                     return
                 if parsed.path == "/api/nodes/token":
                     payload = _read_json(self)

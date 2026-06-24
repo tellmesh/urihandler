@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 _DEFAULT_TRANSFER_TIMEOUT = 120.0
+_SHORT_VALUE_LIST_MAX = 20
 
 
 def route_key(uri: str) -> tuple[str, str]:
@@ -133,7 +134,7 @@ def _short_value(value: Any, *, limit: int = 600) -> Any:
     if isinstance(value, dict):
         return {str(k): _short_value(v, limit=limit) for k, v in value.items() if k not in {"bytes_b64", "dataUri"}}
     if isinstance(value, list):
-        return [_short_value(item, limit=limit) for item in value[:20]]
+        return [_short_value(item, limit=limit) for item in value[:_SHORT_VALUE_LIST_MAX]]
     return value
 
 

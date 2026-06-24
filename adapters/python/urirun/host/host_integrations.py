@@ -13,6 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 BINDINGS_VERSION = "urirun.bindings.v2"
+_SCHEMA_DEFAULT_LIMIT = 20
 
 
 PLANFILE_TASK_SCHEMA = {
@@ -220,7 +221,7 @@ HOST_DATA_SCHEMA = {
         "confidence": {"type": "number"},
         "query": {"type": "string"},
         "params": {"type": "array"},
-        "limit": {"type": "integer", "default": 20},
+        "limit": {"type": "integer", "default": _SCHEMA_DEFAULT_LIMIT},
         "kind": {"type": "string"},
         "uri": {"type": "string"},
         "path": {"type": "string"},
@@ -298,7 +299,7 @@ DOMAIN_MONITOR_SCHEMA = {
         "screenshot_dir": {"type": "string"},
         "create_repair_ticket": {"type": "boolean", "default": True},
         "dataset": {"type": "string", "default": "domains"},
-        "limit": {"type": "integer", "default": 20},
+        "limit": {"type": "integer", "default": _SCHEMA_DEFAULT_LIMIT},
         "stream": {"type": "string"},
         "event": {"type": "string"},
         "detail": {"type": "object"},

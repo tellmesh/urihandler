@@ -14,9 +14,7 @@ The mesh layer is intentionally thin:
 from __future__ import annotations
 
 import argparse
-import base64
 import collections
-import hashlib
 import hmac
 import importlib
 import json
@@ -407,6 +405,92 @@ from urirun.node.task_cli import (  # noqa: E402,F401
 )
 
 
+def _parse_api_json_args(args: argparse.Namespace) -> tuple[list[dict], int | None]:
+    """Parse ``--api`` JSON strings into a list of dicts.
+
+    Returns ``(apis, error_rc)`` where *error_rc* is non-None if a parse error
+    occurred and the caller should return that code immediately.
+    """
+    apis: list[dict] = []
+    for raw in getattr(args, "api", None) or []:
+        try:
+            parsed_api = json.loads(raw)
+        except ValueError as exc:
+            reglib._emit_json({"ok": False, "error": f"--api is not valid JSON: {exc}"}, "-")
+            return [], 2
+        if not isinstance(parsed_api, dict):
+            reglib._emit_json({"ok": False, "error": "--api must be a JSON object"}, "-")
+            return [], 2
+        apis.append(parsed_api)
+    return apis, None
+
+
+def _build_implicit_api(args: argparse.Namespace) -> dict:
+    """Build a single API descriptor from flat ``--api-id/kind/url/auth-*`` flags."""
+    api: dict = {
+        "id": args.api_id or "main",
+        "kind": args.api_kind or ("web" if args.kind == "device" else "rest"),
+        "url": args.api_url or args.url,
+    }
+    auth: dict = {}
+    if args.auth_type:
+        auth["type"] = args.auth_type
+    if args.auth_token:
+        auth["token"] = args.auth_token
+    if args.auth_header:
+        auth["headerName"] = args.auth_header
+    if args.auth_username:
+        auth["username"] = args.auth_username
+    if auth:
+        api["auth"] = auth
+    return api
+
+
+def _handle_add_node_advanced(args: argparse.Namespace) -> int:
+    """Handle the advanced ``add-node`` path (kind/api/auth flags present)."""
+    from urirun import host_dashboard
+
+    apis, error_rc = _parse_api_json_args(args)
+    if error_rc is not None:
+        return error_rc
+    if not apis and any([
+        args.api_id, args.api_kind, args.api_url,
+        args.auth_type, args.auth_token, args.auth_header, args.auth_username,
+    ]):
+        apis.append(_build_implicit_api(args))
+    payload = {
+        "name": args.name,
+        "url": args.url,
+        "kind": args.kind,
+        "tags": args.tag,
+        "apis": apis,
+        "capabilities": args.capability,
+    }
+    result = host_dashboard.node_add(args.config, payload)
+    reglib._emit_json(result, "-")
+    return 0 if result.get("ok") else 1
+
+
+def _handle_add_node(args: argparse.Namespace) -> int:
+    """Dispatch the ``add-node`` subcommand (advanced vs. simple path)."""
+    advanced = any([
+        getattr(args, "kind", None),
+        getattr(args, "api", None),
+        getattr(args, "api_id", None),
+        getattr(args, "api_kind", None),
+        getattr(args, "api_url", None),
+        getattr(args, "auth_type", None),
+        getattr(args, "auth_token", None),
+        getattr(args, "auth_header", None),
+        getattr(args, "auth_username", None),
+        getattr(args, "capability", None),
+    ])
+    if advanced:
+        return _handle_add_node_advanced(args)
+    reglib._emit_json(add_node(args.config, args.name, args.url, args.tag), "-")
+    return 0
+
+
 def _host_delegated_command(args: argparse.Namespace) -> int | None:
     """Handle host subcommands that delegate to another module or need no mesh."""
     if args.host_command == "dashboard":
@@ -417,8 +501,7 @@ def _host_delegated_command(args: argparse.Namespace) -> int | None:
         reglib._emit_json(init_host(args.config, args.name), "-")
         return 0
     if args.host_command == "add-node":
-        reglib._emit_json(add_node(args.config, args.name, args.url, args.tag), "-")
-        return 0
+        return _handle_add_node(args)
     if args.host_command == "data":
         return data_command(args)
     if args.host_command == "monitor":

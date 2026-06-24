@@ -482,7 +482,8 @@ def sync_manifest_command(args: argparse.Namespace) -> int:
         else:
             print("ok · manifest machine fields match the code")
     else:
-        print(f"synced {res['manifest']} · {('updated ' + str(res['changed'])) if res['wrote'] else 'already in sync'}"
+        _changed = res["changed"]
+        print(f"synced {res['manifest']} · {f'updated {_changed}' if res['wrote'] else 'already in sync'}"
               f"\n  routes={len(res['routes'])} uriSchemes={res['uriSchemes']} adapterKinds={res['adapterKinds']}")
     if not res.get("ok"):
         return 2

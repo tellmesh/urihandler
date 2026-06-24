@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import time
 from pathlib import Path
 
 from urirun import _registry as reglib, v2

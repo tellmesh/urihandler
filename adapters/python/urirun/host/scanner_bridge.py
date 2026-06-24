@@ -16,6 +16,7 @@ from .widgets import query_value
 PAGE_ACTION_LOCK = threading.Lock()
 PAGE_ACTION_QUEUES: dict[str, list[dict]] = {}
 _PAGE_ACTION_QUEUE_MAX = 50
+_POLL_ITEMS_MAX = 20
 
 
 @dataclass(frozen=True)
@@ -157,7 +158,7 @@ def scanner_live_state_from_streams(
         [dict(item) for item in streams],
         key=lambda item: str(item.get("updatedAt") or ""),
         reverse=True,
-    )[: max(1, min(20, int(limit or 8)))]
+    )[: max(1, min(_POLL_ITEMS_MAX, int(limit or 8)))]
     public_streams = []
     for stream in selected:
         candidates = [
@@ -364,7 +365,7 @@ def page_action_enqueue(
 
 def page_action_poll(target: str = "scanner", limit: int = 4) -> dict:
     target = (target or "scanner").strip() or "scanner"
-    limit = max(1, min(20, int(limit or 4)))
+    limit = max(1, min(_POLL_ITEMS_MAX, int(limit or 4)))
     with PAGE_ACTION_LOCK:
         queue = PAGE_ACTION_QUEUES.get(target, [])
         actions = queue[:limit]

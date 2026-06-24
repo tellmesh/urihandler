@@ -1,0 +1,174 @@
+version: urirun.node-connections.plan.v1
+updated: "2026-06-24"
+scope:
+  - host-node communication
+  - api-node
+  - device-node
+  - service lifecycle
+  - widgets-artifacts
+  - urifix recovery
+  - documentation
+
+landed:
+  - id: node-types-canonical
+    status: done
+    summary: Canonical node types include server, pc, rdp, smartphone, browser, web, api and device.
+    files:
+      - adapters/python/urirun/host/node_types.py
+      - tests/test_host_node_types.py
+  - id: api-device-node-config
+    status: done
+    summary: Host can persist api/device nodes with apis[], capabilities and kind tags.
+    files:
+      - adapters/python/urirun/host/host_dashboard.py
+      - tests/test_host_dashboard.py
+  - id: api-secret-ref
+    status: done
+    summary: API credentials are stored by reference through keyring-backed secretRef.
+    files:
+      - adapters/python/urirun/host/host_dashboard.py
+      - docs/SECRETS.md
+  - id: configured-api-execution
+    status: done
+    summary: HTTP-like configured APIs can run through configured:// and direct api:// routes.
+    routes:
+      - configured://host/node-api/command/request
+      - configured://host/node-api/query/status
+      - api://<node>/<api>/command/request
+  - id: device-route-boundary
+    status: done
+    summary: Device metadata routes work; non-HTTP protocols return connector_required without fake execution.
+    routes:
+      - device://<node>/<api>/query/status
+      - media://<node>/<api>/query/stream
+      - camera://<node>/<api>/query/snapshot
+      - ssh://<node>/<api>/command/run
+      - fs://<node>/<api>/query/list
+  - id: cli-add-api-device-node
+    status: done
+    summary: urirun host add-node supports --kind, --api, --api-id, --api-kind, --auth-* and --capability.
+    files:
+      - adapters/python/urirun/runtime/cli.py
+      - adapters/python/urirun/node/mesh.py
+      - adapters/python/tests/test_cli_parser.py
+      - adapters/python/tests/test_mesh.py
+  - id: docs-node-connections
+    status: done
+    summary: Practical node/API/device/service connection guide was added.
+    files:
+      - docs/NODE_CONNECTIONS.md
+      - docs/NODE_CONNECTIONS_TASK_PLAN.yaml
+      - docs/REFACTOR_ROADMAP.md
+      - docs/COMPONENTS.md
+      - README.md
+  - id: example-48-api-device-node
+    status: done
+    summary: Example for API node and device node registration and flow usage.
+    files:
+      - /home/tom/github/if-uri/examples/48-api-device-node/README.md
+      - /home/tom/github/if-uri/examples/48-api-device-node/register-demo.sh
+      - /home/tom/github/if-uri/examples/48-api-device-node/api-request.flow.yaml
+      - /home/tom/github/if-uri/examples/48-api-device-node/device-discovery.flow.yaml
+
+todo:
+  - id: urifix-connector-required-recovery
+    priority: P0
+    status: open
+    summary: Turn connector_required into structured recovery with connector candidates and retry payload.
+    acceptance:
+      - Given a media:// or ssh:// route without connector, response contains recoveryUri urifix://host/chain/command/repair.
+      - Recovery contains recommended connector package, install command and original retry payload.
+      - Dashboard renders recovery as next action instead of a generic error.
+  - id: side-effect-verification-contract
+    priority: P0
+    status: open
+    summary: Require verification blocks on file writes, syncs, service restarts, deletes and deploys.
+    acceptance:
+      - Each side-effecting host dashboard route returns verification.expected and verification.actual.
+      - Failed verification is retryable or has a human action.
+      - Tests cover document sync, service restart and artifact delete.
+  - id: route-executability-classification
+    priority: P1
+    status: open
+    summary: Mark discovered routes as executable, metadata, connector_required or external.
+    acceptance:
+      - /api/summary and /api/objects include route executionState.
+      - Discovery UI shows the state in the route list.
+      - urirun host routes --json includes the same field.
+  - id: api-device-capability-doctor
+    priority: P1
+    status: open
+    summary: Add a doctor route for API/device nodes.
+    acceptance:
+      - Doctor reports authConfigured, endpoint reachability, protocol kind and connector requirement.
+      - Doctor does not leak token values.
+      - Tests cover HTTP API, RTSP device interface and missing auth.
+  - id: service-lifecycle-standard
+    priority: P1
+    status: open
+    summary: Normalize service lifecycle routes for chat and scanner services.
+    routes:
+      - service://host/<service>/query/status
+      - service://host/<service>/command/start
+      - service://host/<service>/command/restart
+      - service://host/<service>/command/stop
+    acceptance:
+      - Restart uses port-owner detection and health check.
+      - Chat logs the flow and verification.
+      - Scanner and chat services share the same result shape.
+  - id: non-http-device-connectors
+    priority: P1
+    status: open
+    summary: Implement concrete connectors for RTSP/camera, SSH-device and fileshare/NAS.
+    candidate_connectors:
+      - urirun-connector-media
+      - urirun-connector-camera-device
+      - urirun-connector-ssh-device
+      - urirun-connector-fileshare
+    acceptance:
+      - media:// stream route is owned by a real connector.
+      - camera:// snapshot route can produce an artifact descriptor.
+      - fs:// fileshare route can list files without pretending to be local fs.
+      - ssh:// command route has auth and safe-command policy.
+  - id: host-dashboard-split-api-node
+    priority: P2
+    status: open
+    summary: Extract API/device node handling and URI invoke routing out of host_dashboard.py.
+    candidate_modules:
+      - urirun.host.configured_api
+      - urirun.host.uri_invoke
+      - urirun.host.dashboard_docs
+    acceptance:
+      - host_dashboard.py loses configured API helper functions.
+      - Existing tests keep passing through compatibility wrappers.
+  - id: widget-artifact-descriptor-sdk
+    priority: P2
+    status: open
+    summary: Add a shared descriptor contract for services, widgets and artifacts.
+    acceptance:
+      - Connectors return artifact descriptors only.
+      - Host/service registers final artifacts once.
+      - Widgets carry live=true and refresh/data URI.
+  - id: test-suite-sandbox-split
+    priority: P2
+    status: open
+    summary: Make restricted-sandbox test runs meaningful.
+    acceptance:
+      - Duplicate test module names no longer cause import mismatch.
+      - Socket-dependent tests are marked and skippable.
+      - A documented host/CLI subset remains green without network/socket permissions.
+
+verification:
+  last_targeted_command: >
+    ./venv/bin/python -m pytest -q tests/test_host_dashboard.py
+    tests/test_host_discovery.py tests/test_host_object_registry.py
+    tests/test_host_scanner_bridge.py tests/test_host_contracts.py
+    tests/test_host_fs_transfer.py tests/test_host_service_control.py
+    tests/test_host_widgets.py tests/test_host_node_types.py
+    adapters/python/tests/test_cli_parser.py
+    adapters/python/tests/test_mesh.py::MeshTests::test_host_config_add_node
+    adapters/python/tests/test_mesh.py::MeshTests::test_host_add_node_cli_persists_configured_api_node
+  last_targeted_result: "166 passed, 1 warning"
+  full_suite_note: >
+    Default pytest currently has duplicate-module import mismatch. With importlib
+    mode, socket-opening tests fail in the restricted sandbox with PermissionError.

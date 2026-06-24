@@ -986,17 +986,7 @@ def expand_binding(uri: str | None, binding) -> dict:
     return normalized
 
 
-def _binding_pairs(doc):
-    if isinstance(doc, list):
-        return [(item.get("uri"), item) for item in doc]
-    if isinstance(doc, dict) and "bindings" in doc:
-        bindings = doc["bindings"]
-        if isinstance(bindings, dict):
-            return list(bindings.items())
-        return [(item.get("uri"), item) for item in bindings]
-    if isinstance(doc, dict):
-        return list(doc.items())
-    raise ValueError("Unsupported bindings document")
+_binding_pairs = v1._binding_pairs
 
 
 def expand_bindings(doc) -> dict:
@@ -1218,19 +1208,8 @@ def validate_binding_document(doc) -> dict:
 # --------------------------------------------------------------------------- #
 # Artifact adoption
 # --------------------------------------------------------------------------- #
-def _iter_files(root: Path):
-    for path in root.rglob("*"):
-        if any(part in IGNORED_DIRS for part in path.relative_to(root).parts):
-            continue
-        if path.is_file():
-            yield path
-
-
-def _rel(path: Path, root: Path) -> str:
-    try:
-        return path.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError:
-        return path.as_posix()
+_iter_files = scan.iter_project_files
+_rel = scan.relpath
 
 
 def _empty_input_schema() -> dict:

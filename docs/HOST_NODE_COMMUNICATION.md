@@ -113,7 +113,31 @@ Two distinct credentials, do not confuse them:
 
 Startup banner (stdout): line 1 = `[urirun] <version> · node '<name>' · <url>`,
 line 2 = the enrollment PIN (with `--key-auth`) or how to read the admin token,
-followed by the machine `urirun.node.started` JSON event.
+followed by the machine `urirun.node.started` JSON event. The PIN line is bold
+green.
+
+### Token storage and validation in the dashboard
+
+The dashboard Nodes view stores a node's admin token in the OS **keyring** (service
+`urirun-node-token`, account = node name) and records only a non-secret reference
+(`secret://keyring/urirun-node-token/<name>`) in config — the value is never written
+to config, returned, or logged. `_node_token_for(name)` reads it back to attach
+`X-Urirun-Token` on `/run` calls.
+
+`POST /api/nodes/token` validates the token immediately after storing, via the
+read-only `_probe_node_token` (it calls the admin-gated
+`node://<self>/registry/query/installed` with the token, and — when the dashboard
+was started with `--identity` — also with the enrolled key). The response carries a
+verdict the UI renders as a colored indicator:
+
+- 🟢 `valid: true` — the node authorized the token;
+- 🔴 `valid: false` — the node rejected it (`check.tokenReason`); if `check.keyValid`
+  is true the UI adds "key-auth works, the token is redundant";
+- 🟡 `valid: null` — stored but unverified (node unreachable / no URL).
+
+A node started with `--key-auth` but no `--admin-token` will always report the token
+🔴 (it accepts only key signatures) — that is correct, not a bug: enroll with
+`uri-copy-id` and authorize by signing, no token needed.
 
 Node execution policy is the conjunction of:
 
@@ -162,6 +186,36 @@ Then choose the route family by evidence:
 - use `browser://.../cdp` for an attached debug session,
 - use `kvm://` input only when an input tool is present,
 - use OCR click-text only when OCR dependencies are present and verified.
+
+### Deploying `kvm://` to a node, and the capture-backend requirement
+
+A host with `urirun-connector-kvm` installed can push the `kvm://` surface to a node
+that lacks it, with no node-side `pip`, using a signed deploy (key-auth — no token):
+
+```python
+NodeClient(url, identity="~/.ssh/id_ed25519")._ensure_via_host_deploy("kvm", None, install=True)
+# -> flattens the single-file handler to _ensured_kvm.py, /deploy --allow 'kvm://**' --merge
+```
+
+The connector picks a host capture/input tool that matches the live session — Wayland
+first (`gnome-screenshot`/`grim`) then X11 (`scrot`/`xdotool`); the first that exists
+**and succeeds** wins, reported as `via`. Deploying the routes is not enough — the tool
+must be present AND the node process must reach the graphical session.
+
+Real Lenovo result (2026-06-24): the deploy succeeded and `kvm://laptop/screen/query/capture`
+executed, but returned `{ok:false, wayland:true, error:"gnome-screenshot ... timed out
+after 30s"}`. On Wayland `gnome-screenshot` goes through the GNOME Shell screenshot
+portal (D-Bus); a node process started outside the user's session (no
+`WAYLAND_DISPLAY`/`DBUS_SESSION_BUS_ADDRESS`/`XDG_RUNTIME_DIR`, or without portal trust)
+hangs there. This is an environment limit, not a deploy/connector bug. To get real
+frames on such a node:
+
+1. install `grim` (Wayland-native, no portal): `sudo dnf install grim` — the connector
+   auto-selects it (Wayland-first backends), and capture stops hanging;
+2. or run the node **inside** the user's graphical session so the portal is reachable;
+3. or use an X11 session, which enables `scrot` (capture) and `xdotool` (input).
+
+`kvm://.../input/...` additionally needs `ydotool`/`xdotool`/`wtype` on the node.
 
 ## Recommended deploy flow
 

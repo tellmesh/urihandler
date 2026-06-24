@@ -449,6 +449,24 @@ def _add_host_subparser(subparsers) -> None:
     host_add.add_argument("name")
     host_add.add_argument("url")
     host_add.add_argument("--tag", action="append", default=[])
+    host_add.add_argument("--kind", choices=[
+        "server", "pc", "rdp", "smartphone",
+        "browser", "browser-debug", "browser-chrome-plugin", "browser-firefox-plugin",
+        "web", "webpage", "api", "device",
+    ],
+                          help="operational node type; stored as kind:<type> tag and shown by the dashboard")
+    host_add.add_argument("--api", action="append", default=[],
+                          help="configured API/interface JSON; repeatable, e.g. '{\"id\":\"main\",\"kind\":\"rest\",\"url\":\"https://api.example/v1\"}'")
+    host_add.add_argument("--api-id", default=None, help="shortcut for one configured API/interface id")
+    host_add.add_argument("--api-kind", default=None, help="shortcut for one configured API/interface kind/protocol")
+    host_add.add_argument("--api-url", default=None, help="shortcut for one configured API/interface URL; default is node URL")
+    host_add.add_argument("--auth-type", default=None, help="auth type for shortcut API, e.g. bearer, api-key, basic")
+    host_add.add_argument("--auth-token", default=None,
+                          help="token/password/API key for shortcut API; stored in keyring when possible")
+    host_add.add_argument("--auth-header", default=None, help="header name for api-key/custom-header auth")
+    host_add.add_argument("--auth-username", default=None, help="username for basic auth")
+    host_add.add_argument("--capability", action="append", default=[],
+                          help="extra capability tag for api/device nodes, e.g. camera, files, shell")
 
     host_sub.add_parser("config", parents=[host_common], help="Print host mesh config")
 

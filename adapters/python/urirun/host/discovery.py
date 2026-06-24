@@ -71,12 +71,16 @@ def alias_map_from_list(value: Any) -> dict[str, str]:
     return out
 
 
-def node_alias_map_from_value(value: Any) -> dict[str, str]:
+def _node_map_from_value(value: Any, dict_fn: Any, list_fn: Any) -> dict[str, str]:
     if isinstance(value, dict):
-        return alias_map_from_dict(value)
+        return dict_fn(value)
     if isinstance(value, (list, tuple, set)):
-        return alias_map_from_list(value)
+        return list_fn(value)
     return {}
+
+
+def node_alias_map_from_value(value: Any) -> dict[str, str]:
+    return _node_map_from_value(value, alias_map_from_dict, alias_map_from_list)
 
 
 def normalize_known_node_url(raw: Any) -> str:
@@ -129,11 +133,7 @@ def url_map_from_list(value: Any) -> dict[str, str]:
 
 
 def node_url_map_from_value(value: Any) -> dict[str, str]:
-    if isinstance(value, dict):
-        return url_map_from_dict(value)
-    if isinstance(value, (list, tuple, set)):
-        return url_map_from_list(value)
-    return {}
+    return _node_map_from_value(value, url_map_from_dict, url_map_from_list)
 
 
 def node_dicts_from_url_map(nodes: dict[str, str], *, source: str) -> list[dict]:

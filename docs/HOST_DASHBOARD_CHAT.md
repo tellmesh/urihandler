@@ -347,6 +347,24 @@ that is still listening on the same port. If the port is owned by an unrelated
 process, urirun refuses unless the restart payload explicitly opts into a forced
 port kill.
 
+## Node Token Management
+
+Each node card in the Nodes view has a `🔑 Token zarządzania` panel. Pasting a token
+and saving it `POST`s `/api/nodes/token`, which stores the value in the OS keyring
+(never plaintext/DOM/logs) and **validates it against the node**, then renders a
+colored verdict:
+
+- 🟢 token poprawny — the node authorized it;
+- 🔴 token niepoprawny — rejected (reason shown); if the host's enrolled key still
+  authorizes, it adds "🟢 ale autoryzacja kluczem działa — token jest zbędny";
+- 🟡 zapisano, nie zweryfikowano — node unreachable or URL unknown.
+
+The card also shows a per-node `hasToken` badge (`✓ ustawiony` / `brak`). For a
+key-auth node (enrolled via `uri-copy-id`) no token is needed at all — start the
+chat/dashboard with `--identity <key>` so its `/run` calls are signed. See
+`docs/HOST_NODE_COMMUNICATION.md` for the PIN-vs-admin-token model and the
+validation mechanics.
+
 ## URI Repair
 
 Failed chains are diagnosed through a normal connector URI:

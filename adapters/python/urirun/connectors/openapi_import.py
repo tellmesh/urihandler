@@ -22,6 +22,7 @@ from typing import Any
 VERSION = "urirun.bindings.v2"
 _HTTP_METHODS = ("get", "post", "put", "patch", "delete", "head")
 _PATH_PARAM = re.compile(r"\{([a-zA-Z0-9_]+)\}")
+_HTTP_SPEC_TIMEOUT = 20
 
 
 def _route_uri(scheme: str, target: str, method: str, path: str) -> str:
@@ -82,7 +83,7 @@ def import_openapi(spec: dict, *, scheme: str, target: str = "api", base_url: st
 
 def load_spec(source: str) -> dict:
     if source.startswith(("http://", "https://")):
-        with urllib.request.urlopen(source, timeout=20) as response:
+        with urllib.request.urlopen(source, timeout=_HTTP_SPEC_TIMEOUT) as response:
             return json.loads(response.read().decode("utf-8"))
     return json.loads(Path(source).read_text(encoding="utf-8"))
 

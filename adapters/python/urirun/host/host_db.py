@@ -24,6 +24,7 @@ from urirun import errors
 
 
 DEFAULT_DB = "~/.urirun/host.db"
+_DEFAULT_QUERY_LIMIT = 20
 
 
 SCHEMA = """
@@ -253,7 +254,7 @@ def _sync_record_fts(conn: sqlite3.Connection, record: dict, dataset_id: str) ->
         return
 
 
-def search_records(path: str | None, query: str = "", dataset: str | None = None, limit: int = 20) -> list[dict]:
+def search_records(path: str | None, query: str = "", dataset: str | None = None, limit: int = _DEFAULT_QUERY_LIMIT) -> list[dict]:
     init_db(path)
     params: list[Any] = []
     where = []
@@ -307,17 +308,21 @@ def register_artifact(path: str | None, kind: str, uri: str, artifact_path: str 
         return row_dict(conn.execute("SELECT * FROM artifacts WHERE uri = ?", (uri,)).fetchone())
 
 
-def list_artifacts(path: str | None = None, kind: str | None = None, limit: int = 20) -> list[dict]:
+def _query_table(path: str | None, table: str, filter_col: str, filter_val: Any, limit: int) -> list[dict]:
     init_db(path)
     params: list[Any] = []
-    sql = "SELECT * FROM artifacts"
-    if kind:
-        sql += " WHERE kind = ?"
-        params.append(kind)
+    sql = f"SELECT * FROM {table}"
+    if filter_val:
+        sql += f" WHERE {filter_col} = ?"
+        params.append(filter_val)
     sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
     params.append(limit)
     with connection(path) as conn:
         return rows_dict(conn.execute(sql, params).fetchall())
+
+
+def list_artifacts(path: str | None = None, kind: str | None = None, limit: int = _DEFAULT_QUERY_LIMIT) -> list[dict]:
+    return _query_table(path, "artifacts", "kind", kind, limit)
 
 
 def artifacts_by_ids(path: str | None, ids: list[str]) -> list[dict]:
@@ -352,17 +357,8 @@ def add_check(path: str | None, subject: str, check_uri: str, status: str, resul
         return row_dict(conn.execute("SELECT * FROM checks WHERE id = ?", (check_id,)).fetchone())
 
 
-def recent_checks(path: str | None = None, subject: str | None = None, limit: int = 20) -> list[dict]:
-    init_db(path)
-    params: list[Any] = []
-    sql = "SELECT * FROM checks"
-    if subject:
-        sql += " WHERE subject = ?"
-        params.append(subject)
-    sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
-    params.append(limit)
-    with connection(path) as conn:
-        return rows_dict(conn.execute(sql, params).fetchall())
+def recent_checks(path: str | None = None, subject: str | None = None, limit: int = _DEFAULT_QUERY_LIMIT) -> list[dict]:
+    return _query_table(path, "checks", "subject", subject, limit)
 
 
 def add_log(path: str | None, stream: str, event: str, detail: dict | None = None) -> dict:
@@ -376,17 +372,8 @@ def add_log(path: str | None, stream: str, event: str, detail: dict | None = Non
         return row_dict(conn.execute("SELECT * FROM logs WHERE id = ?", (log_id,)).fetchone())
 
 
-def recent_logs(path: str | None = None, stream: str | None = None, limit: int = 20) -> list[dict]:
-    init_db(path)
-    params: list[Any] = []
-    sql = "SELECT * FROM logs"
-    if stream:
-        sql += " WHERE stream = ?"
-        params.append(stream)
-    sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
-    params.append(limit)
-    with connection(path) as conn:
-        return rows_dict(conn.execute(sql, params).fetchall())
+def recent_logs(path: str | None = None, stream: str | None = None, limit: int = _DEFAULT_QUERY_LIMIT) -> list[dict]:
+    return _query_table(path, "logs", "stream", stream, limit)
 
 
 def delete_logs(path: str | None, ids: list[str], stream: str | None = None, event: str | None = None) -> int:

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-06-24
+
+### Fixed
+- Fix unused-imports issues (ticket-371b1e22)
+- Fix magic-numbers issues (ticket-f831a40a)
+- Fix string-concat issues (ticket-e1aed0ef)
+
 ## [0.1.10] - 2026-06-23
 
 ### Fixed
@@ -178,6 +185,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expose their schema too. See `examples/28-llm-novnc-desktop` (an LLM drives a noVNC
   Docker desktop from an NL intent; the desktop driver is a *connector*, the schema in
   the action space is the only core change).
+
+## [0.4.129] - 2026-06-24
+
+### Docs
+- Update CHANGELOG.md
+- Update README.md
+- Update SUMD.md
+- Update SUMR.md
+- Update TODO.md
+- Update docs/COMPONENTS.md
+- Update docs/HOST_DASHBOARD_CHAT.md
+- Update docs/HOST_NODE_COMMUNICATION.md
+- Update docs/NODE_CONNECTIONS.md
+- Update docs/NODE_CONNECTIONS_TASK_PLAN.yaml
+- ... and 4 more files
+
+### Test
+- Update tests/test_host_dashboard.py
+- Update tests/test_host_node_types.py
+- Update tests/test_host_object_registry.py
+
+### Other
+- Update .urirun/scheme-index.json
+- Update adapters/python/tests/test_cli_parser.py
+- Update adapters/python/tests/test_mesh.py
+- Update adapters/python/tests/test_refactor_helpers.py
+- Update adapters/python/urirun/connectors/connector_lint.py
+- Update adapters/python/urirun/connectors/openapi_import.py
+- Update adapters/python/urirun/host/discovery.py
+- Update adapters/python/urirun/host/document_metadata.py
+- Update adapters/python/urirun/host/fs_transfer.py
+- Update adapters/python/urirun/host/host_dashboard.py
+- ... and 36 more files
 
 ## [0.4.128] - 2026-06-24
 

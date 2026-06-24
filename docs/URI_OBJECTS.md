@@ -18,6 +18,15 @@ The host dashboard currently emits them in `summary.objects` and through
 - `node:*`
 - `service:*`
 
+Node subtype metadata is emitted separately from object `kind`. A runtime object
+for a laptop still has `kind: "node"`, while `type` / `nodeType` can be `pc`,
+`server`, `rdp`, `smartphone`, `browser-debug`, `browser-chrome-plugin`,
+`browser-firefox-plugin`, `webpage`, `api` or `device`. The canonical list is exposed
+by `GET /api/node-types` and `GET /api/summary -> nodeTypes`.
+
+Compatibility aliases remain accepted: `browser` normalizes to `browser-debug`,
+and `web` / `webnode` normalize to `webpage`.
+
 Shape:
 
 ```json
@@ -28,8 +37,13 @@ Shape:
   "status": "up",
   "reachable": true,
   "url": "http://192.168.188.201:8765",
+  "type": "pc",
+  "nodeType": "pc",
+  "integrationLevel": "desktop",
   "transport": "http",
   "runtime": "urirun-node",
+  "apis": [],
+  "capabilities": [],
   "routes": [
     {
       "uri": "env://lenovo/runtime/query/health",
@@ -42,6 +56,28 @@ Shape:
   ]
 }
 ```
+
+For `api` and `device` nodes, `apis[]` describes one or more configured
+interfaces. These nodes may be external and may not expose native urirun
+`/health` or `/routes`; discovery can still expose configured routes such as
+`api://.../command/request`, `media://.../query/stream`, `camera://.../query/snapshot`,
+`ssh://.../command/run` and `fs://.../query/list`.
+
+Only HTTP-like configured interfaces are directly executable by the host:
+
+```text
+configured://host/node-api/command/request
+configured://host/node-api/query/status
+api://<node>/<api>/command/request
+device://<node>/<api>/command/request
+```
+
+The host resolves the node config, loads auth from `secretRef` via keyring, sends
+the HTTP request, and returns the response as portable JSON. Non-HTTP protocols
+advertised by a device node, such as RTSP, SMB/NFS, SSH or camera snapshot
+routes, intentionally return `connector_required` unless a dedicated connector
+or service owns that scheme. This keeps discovery useful without turning route
+metadata into fake execution.
 
 Artifacts and widgets are related but not the same thing. A widget is a live
 view owned by a host/service/node object. An artifact is a finished result owned
