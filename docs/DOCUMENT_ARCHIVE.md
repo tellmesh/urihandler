@@ -210,6 +210,13 @@ contains:
 
 Set `ensure_routes: false` only for tests or for a deliberately unmanaged node.
 
+If node-side `ensure` reports `no installed bindings or local source for scheme`,
+the host attempts a narrow fallback deployment over `/deploy`: it pushes
+`urirun_fs_file_transfer.py` and only the two required `fs://.../file/...`
+bindings. The result appears under `preflight.hostFallback`. This avoids SSH and
+does not require `pip install` on the node, but the node still needs deploy/admin
+authorization.
+
 Default target settings:
 
 ```bash

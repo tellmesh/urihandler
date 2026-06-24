@@ -164,6 +164,13 @@ route, not just the `fs` scheme. If the route still is not live, the sync stops
 before the first file and writes one blocked chat message with `preflight` detail
 instead of failing every PDF with the same route error.
 
+When the node cannot find a local `urirun-connector-fs` source, the host can
+still supply a minimal file-transfer shim through the node `/deploy` API. The
+preflight detail then contains `hostFallback`: pushed bindings for
+`write-b64`/`read-b64` plus a small `urirun_fs_file_transfer.py` handler module.
+This is intentionally narrower than installing the whole fs connector; it is
+only the primitive needed for verified document transfer.
+
 The sync result is contract-verified. A file counts as copied only when the
 write result returns the expected SHA-256 and the final read-back query returns
 the same SHA-256:
@@ -339,6 +346,19 @@ Without an external supervisor, the service wrapper replaces an older process
 that is still listening on the same port. If the port is owned by an unrelated
 process, urirun refuses unless the restart payload explicitly opts into a forced
 port kill.
+
+## URI Repair
+
+Failed chains are diagnosed through a normal connector URI:
+
+```text
+urifix://host/chain/command/repair
+```
+
+The dashboard exposes that route through `/api/uri/invoke` and also uses it
+internally after a failed `document://...sync-to-node` step. A missing node URL,
+missing auth, missing connector route, or missing fs transfer route should become
+a `nextIntent` with concrete recovery actions and, when safe, a retry payload.
 
 ## Operator Checklist
 

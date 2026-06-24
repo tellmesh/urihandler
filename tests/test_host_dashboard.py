@@ -1449,6 +1449,7 @@ def test_uri_invoke_lists_supported_host_actions():
     assert "dashboard://host/service/phone-scanner/command/restart" in uris
     assert "dashboard://host/service/chat/command/restart" in uris
     assert "document://host/archive/command/sync-to-node" in uris
+    assert "urifix://host/chain/command/repair" in uris
     assert all("layer" in item for item in result["actions"])
 
 
@@ -1835,6 +1836,52 @@ def test_sync_documents_to_node_preflights_required_fs_routes(monkeypatch, tmp_p
     assert result["verification"]["expectedFiles"] == 1
     assert "missing required fs transfer route" in next(iter(result["failedReasons"]))
     assert "blocked: 0/1 PDFs" in fake_db.logs[-1]["detail"]["content"]
+
+
+def test_ensure_node_uri_routes_deploys_host_fs_file_transfer_fallback(monkeypatch):
+    routes = [{"uri": "fs://host/duplicates/query/find"}]
+    calls = []
+
+    class FakeClient:
+        def routes(self):
+            return list(routes)
+
+        def ensure_scheme(self, scheme, roots=None, install=True, route=None):
+            calls.append(("ensure", scheme, route))
+            return {"ok": False, "scheme": scheme, "error": "no installed bindings or local source for scheme"}
+
+        def deploy(self, **kwargs):
+            calls.append(("deploy", kwargs))
+            routes.append({"uri": "fs://host/file/command/write-b64"})
+            routes.append({"uri": "fs://host/file/query/read-b64"})
+            return {"ok": True, "routeCount": 2}
+
+    monkeypatch.setattr(host_dashboard, "_node_client", lambda *a, **k: FakeClient())
+
+    result = host_dashboard._ensure_node_uri_routes(
+        "http://laptop.local:8766",
+        [
+            "fs://host/file/command/write-b64",
+            "fs://host/file/query/read-b64",
+        ],
+        node="laptop",
+    )
+
+    assert result["ok"] is True
+    assert result["missingBefore"] == [
+        "fs://host/file/command/write-b64",
+        "fs://host/file/query/read-b64",
+    ]
+    assert result["missingAfter"] == []
+    assert result["hostFallback"]["ok"] is True
+    deploy_call = [call for call in calls if call[0] == "deploy"][0][1]
+    assert "urirun_fs_file_transfer.py" in deploy_call["code"]
+    assert sorted(deploy_call["bindings"]["bindings"]) == [
+        "fs://host/file/command/write-b64",
+        "fs://host/file/query/read-b64",
+    ]
+    assert deploy_call["allow"] == ["fs://**"]
+    assert deploy_call["merge"] is True
 
 
 def test_remote_write_error_recognizes_node_error_value_without_error_key():
