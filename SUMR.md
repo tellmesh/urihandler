@@ -204,7 +204,7 @@ environment[name="local"] {
 
 ## Call Graph
 
-*388 nodes · 500 edges · 35 modules · CC̄=4.9*
+*388 nodes · 500 edges · 35 modules · CC̄=4.8*
 
 ### Hubs (by degree)
 
@@ -217,13 +217,13 @@ environment[name="local"] {
 | `info` *(in adapters.python.urirun.runtime.errors)* | 13 ⚠ | 2 | 27 | **29** |
 | `_upload_file` *(in adapters.python.urirun.host.document_sync)* | 6 | 1 | 27 | **28** |
 | `proto_from_registry` *(in adapters.python.urirun.runtime.codegen)* | 13 ⚠ | 2 | 25 | **27** |
-| `_cmd_upgrade` *(in adapters.python.urirun.runtime.v2)* | 14 ⚠ | 0 | 27 | **27** |
+| `_run_query_route` *(in adapters.python.urirun.host.host_db)* | 7 | 1 | 26 | **27** |
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.30s
+# generated in 0.47s
 # nodes: 388 | edges: 500 | modules: 35
-# CC̄=4.9
+# CC̄=4.8
 
 HUBS[20]:
   adapters.python.urirun.runtime.cli._build_parser
@@ -240,30 +240,30 @@ HUBS[20]:
     CC=6  in:1  out:27  total:28
   adapters.python.urirun.runtime.codegen.proto_from_registry
     CC=13  in:2  out:25  total:27
+  adapters.python.urirun.host.host_db._run_query_route
+    CC=7  in:1  out:26  total:27
+  adapters.python.urirun.host.document_sync._read_back_file
+    CC=11  in:1  out:26  total:27
   adapters.python.urirun.runtime.v2._cmd_upgrade
     CC=14  in:0  out:27  total:27
   adapters.python.urirun.connectors.connector_lint.lint_connector
     CC=9  in:3  out:24  total:27
-  adapters.python.urirun.host.document_sync._read_back_file
-    CC=11  in:1  out:26  total:27
-  adapters.python.urirun.host.host_db._run_query_route
-    CC=7  in:1  out:26  total:27
   adapters.python.urirun.runtime.v2.validate_binding_document
     CC=12  in:2  out:24  total:26
-  adapters.python.urirun.testing.smoke
-    CC=9  in:1  out:23  total:24
   adapters.python.urirun.runtime.v1.run
     CC=14  in:1  out:23  total:24
-  adapters.python.urirun.host.host_db.init_db
-    CC=2  in:17  out:6  total:23
+  adapters.python.urirun.testing.smoke
+    CC=9  in:1  out:23  total:24
   adapters.python.urirun.runtime.v2.scan_artifacts
     CC=11  in:4  out:19  total:23
+  adapters.python.urirun.host.host_db.init_db
+    CC=2  in:17  out:6  total:23
   adapters.python.urirun.host.document_sync.sync_documents_to_node
     CC=13  in:0  out:23  total:23
-  adapters.python.urirun.host.host_db.search_records
-    CC=6  in:1  out:21  total:22
   adapters.python.urirun.runtime.errors.problem
     CC=10  in:0  out:22  total:22
+  adapters.python.urirun.host.host_db.search_records
+    CC=6  in:1  out:21  total:22
   adapters.python.urirun.host.host_db.connection
     CC=1  in:18  out:3  total:21
 
@@ -554,9 +554,9 @@ EDGES:
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.30s
+# generated in 0.47s
 # nodes: 388 | edges: 500 | modules: 35
-# CC̄=4.9
+# CC̄=4.8
 
 HUBS[20]:
   adapters.python.urirun.runtime.cli._build_parser
@@ -573,30 +573,30 @@ HUBS[20]:
     CC=6  in:1  out:27  total:28
   adapters.python.urirun.runtime.codegen.proto_from_registry
     CC=13  in:2  out:25  total:27
+  adapters.python.urirun.host.host_db._run_query_route
+    CC=7  in:1  out:26  total:27
+  adapters.python.urirun.host.document_sync._read_back_file
+    CC=11  in:1  out:26  total:27
   adapters.python.urirun.runtime.v2._cmd_upgrade
     CC=14  in:0  out:27  total:27
   adapters.python.urirun.connectors.connector_lint.lint_connector
     CC=9  in:3  out:24  total:27
-  adapters.python.urirun.host.document_sync._read_back_file
-    CC=11  in:1  out:26  total:27
-  adapters.python.urirun.host.host_db._run_query_route
-    CC=7  in:1  out:26  total:27
   adapters.python.urirun.runtime.v2.validate_binding_document
     CC=12  in:2  out:24  total:26
-  adapters.python.urirun.testing.smoke
-    CC=9  in:1  out:23  total:24
   adapters.python.urirun.runtime.v1.run
     CC=14  in:1  out:23  total:24
-  adapters.python.urirun.host.host_db.init_db
-    CC=2  in:17  out:6  total:23
+  adapters.python.urirun.testing.smoke
+    CC=9  in:1  out:23  total:24
   adapters.python.urirun.runtime.v2.scan_artifacts
     CC=11  in:4  out:19  total:23
+  adapters.python.urirun.host.host_db.init_db
+    CC=2  in:17  out:6  total:23
   adapters.python.urirun.host.document_sync.sync_documents_to_node
     CC=13  in:0  out:23  total:23
-  adapters.python.urirun.host.host_db.search_records
-    CC=6  in:1  out:21  total:22
   adapters.python.urirun.runtime.errors.problem
     CC=10  in:0  out:22  total:22
+  adapters.python.urirun.host.host_db.search_records
+    CC=6  in:1  out:21  total:22
   adapters.python.urirun.host.host_db.connection
     CC=1  in:18  out:3  total:21
 
@@ -874,11 +874,11 @@ EDGES:
 ### Code Analysis (`project/analysis.toon.yaml`)
 
 ```toon markpact:analysis path=project/analysis.toon.yaml
-# code2llm | 153f 34181L | python:93,json:13,shell:10,yaml:4,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-24
-# generated in 0.06s
-# CC̅=4.9 | critical:23/1417 | dups:0 | cycles:0
+# code2llm | 155f 34793L | python:95,json:13,shell:10,yaml:4,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-24
+# generated in 0.12s
+# CC̅=4.8 | critical:18/1465 | dups:0 | cycles:0
 
-HEALTH[20]:
+HEALTH[18]:
   🟡 CC    _parse_sync_params CC=19 (limit:15)
   🟡 CC    _local_connector_deploy_payload CC=25 (limit:15)
   🟡 CC    ensure_scheme CC=32 (limit:15)
@@ -886,24 +886,22 @@ HEALTH[20]:
   🟡 CC    watch CC=16 (limit:15)
   🟡 CC    resolveParams CC=15 (limit:15)
   🟡 CC    run CC=19 (limit:15)
-  🟡 CC    _backfill_scanned_id_log CC=17 (limit:15)
-  🟡 CC    _scanner_crop_overlay CC=20 (limit:15)
-  🟡 CC    _prune_scanner_staging CC=23 (limit:15)
-  🟡 CC    _archive_scanned_document CC=17 (limit:15)
-  🟡 CC    _crop_quality_score CC=17 (limit:15)
-  🟡 CC    scanner_capture CC=30 (limit:15)
-  🟡 CC    scanner_best_finish CC=47 (limit:15)
-  🟡 CC    _chat_service_restart_argv CC=19 (limit:15)
+  🟡 CC    chat_service_restart_argv CC=18 (limit:15)
+  🟡 CC    free_port_from_matching_processes CC=19 (limit:15)
+  🟡 CC    _classify_route_run CC=18 (limit:15)
+  🟡 CC    node_test_routes CC=26 (limit:15)
   🟡 CC    uri_invoke CC=26 (limit:15)
   🟡 CC    _document_sync_retry_payload_from_urifix CC=23 (limit:15)
   🟡 CC    _decision_loop_for_document_sync CC=25 (limit:15)
   🟡 CC    chat_ask CC=100 (limit:15)
   🟡 CC    artifacts_delete CC=18 (limit:15)
+  🟡 CC    artifacts_cleanup_orphan_sidecars CC=19 (limit:15)
+  🟡 CC    _dashboard_api_response CC=21 (limit:15)
 
 REFACTOR[1]:
-  1. split 20 high-CC methods  (CC>15)
+  1. split 18 high-CC methods  (CC>15)
 
-PIPELINES[418]:
+PIPELINES[435]:
   [1] Src [http]: http
       PURITY: 100% pure
   [2] Src [_attacker_key]: _attacker_key
@@ -1012,8 +1010,8 @@ LAYERS:
   │ release-bump.sh             29L  0C    0m  CC=0.0    ←0
   │ sync-versions.sh            25L  0C    0m  CC=0.0    ←0
   │
-  adapters/                       CC̄=5.0    ←in:9  →out:0
-  │ !! host_dashboard            9914L  0C  252m  CC=100    ←0
+  adapters/                       CC̄=4.9    ←in:9  →out:0
+  │ !! host_dashboard            9953L  0C  278m  CC=100    ←0
   │ !! v2                        2024L  1C  125m  CC=14     ←4
   │ !! mesh                      1829L  3C   96m  CC=14     ←1
   │ !! __init__                   737L  1C   51m  CC=14     ←11
@@ -1022,9 +1020,9 @@ LAYERS:
   │ !! _scan                      666L  0C   35m  CC=14     ←0
   │ !! flow                       606L  0C   30m  CC=14     ←2
   │ !! connector_lint             600L  0C   34m  CC=14     ←1
+  │ !! _runtime                   584L  1C   29m  CC=13     ←2
   │ !! errors                     563L  0C   31m  CC=13     ←1
   │ !! host_db                    540L  0C   32m  CC=11     ←0
-  │ !! _runtime                   540L  1C   27m  CC=13     ←2
   │ domain_monitor             485L  1C   25m  CC=11     ←1
   │ v1                         471L  0C   25m  CC=14     ←0
   │ !! client                     464L  1C   26m  CC=32     ←0
@@ -1036,6 +1034,7 @@ LAYERS:
   │ manage                     369L  0C   23m  CC=12     ←0
   │ host_integrations          355L  0C   15m  CC=8      ←0
   │ task_cli                   343L  0C   25m  CC=11     ←1
+  │ !! service_control            323L  0C   13m  CC=19     ←0
   │ planfile_adapter           279L  1C   26m  CC=9      ←0
   │ worker                     266L  3C   20m  CC=13     ←0
   │ secrets                    263L  1C   18m  CC=9      ←1
@@ -1043,6 +1042,7 @@ LAYERS:
   │ adopt_pack                 245L  0C   12m  CC=13     ←0
   │ recovery                   232L  0C   13m  CC=12     ←2
   │ v2_mcp                     209L  0C   11m  CC=9      ←0
+  │ fs_transfer                206L  0C    7m  CC=14     ←0
   │ v2_grpc                    204L  0C   11m  CC=9      ←0
   │ discovery                  202L  0C    9m  CC=9      ←0
   │ compat                     199L  0C    6m  CC=10     ←0
@@ -1198,18 +1198,18 @@ EXTERNAL:
 ### Duplication (`project/duplication.toon.yaml`)
 
 ```toon markpact:analysis path=project/duplication.toon.yaml
-# redup/duplication | 19 groups | 84f 29124L | 2026-06-24
+# redup/duplication | 20 groups | 86f 29742L | 2026-06-24
 
 SUMMARY:
-  files_scanned: 84
-  total_lines:   29124
-  dup_groups:    19
-  dup_fragments: 45
-  saved_lines:   170
-  scan_ms:       1197
+  files_scanned: 86
+  total_lines:   29742
+  dup_groups:    20
+  dup_fragments: 47
+  saved_lines:   178
+  scan_ms:       1515
 
 HOTSPOTS[7] (files with most duplication):
-  host/host_dashboard.py  dup=58L  groups=5  frags=10  (0.2%)
+  host/host_dashboard.py  dup=66L  groups=6  frags=11  (0.2%)
   runtime/v2.py  dup=57L  groups=7  frags=12  (0.2%)
   __init__.py  dup=38L  groups=1  frags=3  (0.1%)
   host/host_db.py  dup=33L  groups=1  frags=3  (0.1%)
@@ -1217,7 +1217,7 @@ HOTSPOTS[7] (files with most duplication):
   runtime/v1.py  dup=16L  groups=2  frags=2  (0.1%)
   host/task_planner.py  dup=11L  groups=1  frags=1  (0.0%)
 
-DUPLICATES[19] (ranked by impact):
+DUPLICATES[20] (ranked by impact):
   [a58866334f01e99a] ! STRU  command  L=16 N=3 saved=32 sim=1.00
       __init__.py:47-62  (command)
       __init__.py:65-69  (shell)
@@ -1233,12 +1233,12 @@ DUPLICATES[19] (ranked by impact):
       runtime/v2.py:1871-1874  (_cmd_host)
       runtime/v2.py:1877-1880  (_cmd_node)
   [8d9b83d2bd35fb5d]   STRU  _free_port_from_old_scanner  L=13 N=2 saved=13 sim=1.00
-      host/host_dashboard.py:9793-9805  (_free_port_from_old_scanner)
-      host/host_dashboard.py:9808-9816  (_free_port_from_old_chat)
+      host/host_dashboard.py:9849-9861  (_free_port_from_old_scanner)
+      host/host_dashboard.py:9864-9872  (_free_port_from_old_chat)
   [b7534632e49155f1]   STRU  _host_db  L=4 N=4 saved=12 sim=1.00
-      host/host_dashboard.py:8119-8122  (_host_db)
-      host/host_dashboard.py:8125-8128  (_mesh)
-      host/host_dashboard.py:8131-8134  (_planfile_adapter)
+      host/host_dashboard.py:8221-8224  (_host_db)
+      host/host_dashboard.py:8227-8230  (_mesh)
+      host/host_dashboard.py:8233-8236  (_planfile_adapter)
       runtime/v2.py:634-637  (_host_integrations)
   [60d4dcb768819ab9]   EXAC  _binding_pairs  L=11 N=2 saved=11 sim=1.00
       runtime/v1.py:362-372  (_binding_pairs)
@@ -1246,12 +1246,15 @@ DUPLICATES[19] (ranked by impact):
   [bcc95f219db12f7c]   STRU  _json_from_text  L=11 N=2 saved=11 sim=1.00
       host/task_planner.py:82-92  (_json_from_text)
       node/flow.py:232-242  (json_from_text)
+  [f4f8c5ba3175290d]   EXAC  _short_value  L=8 N=2 saved=8 sim=1.00
+      host/fs_transfer.py:128-135  (_short_value)
+      host/host_dashboard.py:4704-4711  (_short_value)
   [61cba34717c9d3dc]   STRU  boolish  L=6 N=2 saved=6 sim=1.00
       host/document_sync.py:31-36  (boolish)
-      host/host_dashboard.py:8388-8393  (_boolish)
+      host/host_dashboard.py:8500-8505  (_boolish)
   [9b8d8dffe6b88b09]   STRU  _node_alias_map_from_value  L=6 N=2 saved=6 sim=1.00
-      host/host_dashboard.py:4247-4252  (_node_alias_map_from_value)
-      host/host_dashboard.py:4300-4305  (_node_url_map_from_value)
+      host/host_dashboard.py:4345-4350  (_node_alias_map_from_value)
+      host/host_dashboard.py:4398-4403  (_node_url_map_from_value)
   [e0131d32b5db30ac]   STRU  _emit_json  L=6 N=2 saved=6 sim=1.00
       runtime/_registry.py:618-623  (_emit_json)
       runtime/_scan.py:54-59  (emit_json)
@@ -1268,8 +1271,8 @@ DUPLICATES[19] (ranked by impact):
       runtime/worker.py:156-159  (close)
       runtime/worker.py:187-190  (close)
   [cdb2ba2d3a97a0f6]   STRU  _document_index_path  L=3 N=2 saved=3 sim=1.00
-      host/host_dashboard.py:4172-4174  (_document_index_path)
-      host/host_dashboard.py:4416-4418  (_scanned_id_log_path)
+      host/host_dashboard.py:4270-4272  (_document_index_path)
+      host/host_dashboard.py:4514-4516  (_scanned_id_log_path)
   [82d9f33906e33db9]   STRU  start_ticket  L=3 N=2 saved=3 sim=1.00
       host/planfile_adapter.py:197-199  (start_ticket)
       host/planfile_adapter.py:266-268  (ready_ticket)
@@ -1283,7 +1286,7 @@ DUPLICATES[19] (ranked by impact):
       runtime/v2.py:640-642  (planfile_task_bindings)
       runtime/v2.py:649-651  (host_data_bindings)
 
-REFACTOR[19] (ranked by priority):
+REFACTOR[20] (ranked by priority):
   [1] ○ extract_function   → utils/command.py
       WHY: 3 occurrences of 16-line block across 1 files — saves 32 lines
       FILES: __init__.py
@@ -1305,44 +1308,47 @@ REFACTOR[19] (ranked by priority):
   [7] ○ extract_function   → utils/_json_from_text.py
       WHY: 2 occurrences of 11-line block across 2 files — saves 11 lines
       FILES: host/task_planner.py, node/flow.py
-  [8] ○ extract_function   → host/utils/boolish.py
+  [8] ○ extract_function   → host/utils/_short_value.py
+      WHY: 2 occurrences of 8-line block across 2 files — saves 8 lines
+      FILES: host/fs_transfer.py, host/host_dashboard.py
+  [9] ○ extract_function   → host/utils/boolish.py
       WHY: 2 occurrences of 6-line block across 2 files — saves 6 lines
       FILES: host/document_sync.py, host/host_dashboard.py
-  [9] ○ extract_function   → host/utils/_node_alias_map_from_value.py
+  [10] ○ extract_function   → host/utils/_node_alias_map_from_value.py
       WHY: 2 occurrences of 6-line block across 1 files — saves 6 lines
       FILES: host/host_dashboard.py
-  [10] ○ extract_function   → runtime/utils/_emit_json.py
+  [11] ○ extract_function   → runtime/utils/_emit_json.py
       WHY: 2 occurrences of 6-line block across 2 files — saves 6 lines
       FILES: runtime/_registry.py, runtime/_scan.py
-  [11] ○ extract_function   → runtime/utils/iter_project_files.py
+  [12] ○ extract_function   → runtime/utils/iter_project_files.py
       WHY: 2 occurrences of 6-line block across 2 files — saves 6 lines
       FILES: runtime/_scan.py, runtime/v2.py
-  [12] ○ extract_function   → runtime/utils/replace.py
+  [13] ○ extract_function   → runtime/utils/replace.py
       WHY: 2 occurrences of 5-line block across 2 files — saves 5 lines
       FILES: runtime/v1.py, runtime/v2.py
-  [13] ○ extract_function   → runtime/utils/relpath.py
+  [14] ○ extract_function   → runtime/utils/relpath.py
       WHY: 2 occurrences of 5-line block across 2 files — saves 5 lines
       FILES: runtime/_scan.py, runtime/v2.py
-  [14] ○ extract_function   → runtime/utils/close.py
+  [15] ○ extract_function   → runtime/utils/close.py
       WHY: 2 occurrences of 4-line block across 1 files — saves 4 lines
       FILES: runtime/worker.py
-  [15] ○ extract_function   → host/utils/_document_index_path.py
+  [16] ○ extract_function   → host/utils/_document_index_path.py
       WHY: 2 occurrences of 3-line block across 1 files — saves 3 lines
       FILES: host/host_dashboard.py
-  [16] ○ extract_function   → host/utils/start_ticket.py
+  [17] ○ extract_function   → host/utils/start_ticket.py
       WHY: 2 occurrences of 3-line block across 1 files — saves 3 lines
       FILES: host/planfile_adapter.py
-  [17] ○ extract_function   → node/utils/save_host_config.py
+  [18] ○ extract_function   → node/utils/save_host_config.py
       WHY: 2 occurrences of 3-line block across 1 files — saves 3 lines
       FILES: node/config.py
-  [18] ○ extract_function   → node/utils/_data_artifact_register.py
+  [19] ○ extract_function   → node/utils/_data_artifact_register.py
       WHY: 2 occurrences of 3-line block across 1 files — saves 3 lines
       FILES: node/mesh.py
-  [19] ○ extract_function   → runtime/utils/planfile_task_bindings.py
+  [20] ○ extract_function   → runtime/utils/planfile_task_bindings.py
       WHY: 2 occurrences of 3-line block across 1 files — saves 3 lines
       FILES: runtime/v2.py
 
-QUICK_WINS[11] (low risk, high savings — do first):
+QUICK_WINS[12] (low risk, high savings — do first):
   [1] extract_function   saved=32L  → utils/command.py
       FILES: __init__.py
   [2] extract_function   saved=22L  → host/utils/list_artifacts.py
@@ -1357,12 +1363,12 @@ QUICK_WINS[11] (low risk, high savings — do first):
       FILES: v1.py, v2.py
   [7] extract_function   saved=11L  → utils/_json_from_text.py
       FILES: task_planner.py, flow.py
-  [8] extract_function   saved=6L  → host/utils/boolish.py
+  [8] extract_function   saved=8L  → host/utils/_short_value.py
+      FILES: fs_transfer.py, host_dashboard.py
+  [9] extract_function   saved=6L  → host/utils/boolish.py
       FILES: document_sync.py, host_dashboard.py
-  [9] extract_function   saved=6L  → host/utils/_node_alias_map_from_value.py
+  [10] extract_function   saved=6L  → host/utils/_node_alias_map_from_value.py
       FILES: host_dashboard.py
-  [10] extract_function   saved=6L  → runtime/utils/_emit_json.py
-      FILES: _registry.py, _scan.py
 
 DEPENDENCY_RISK[2] (duplicates spanning multiple packages):
   _host_db  packages=2  files=2
@@ -1372,7 +1378,7 @@ DEPENDENCY_RISK[2] (duplicates spanning multiple packages):
       host/task_planner.py
       node/flow.py
 
-EFFORT_ESTIMATE (total ≈ 6.4h):
+EFFORT_ESTIMATE (total ≈ 6.7h):
   medium command                             saved=32L  ~64min
   medium list_artifacts                      saved=22L  ~44min
   medium _cmd_add_openapi                    saved=16L  ~32min
@@ -1380,26 +1386,26 @@ EFFORT_ESTIMATE (total ≈ 6.4h):
   medium _host_db                            saved=12L  ~48min
   easy   _binding_pairs                      saved=11L  ~22min
   medium _json_from_text                     saved=11L  ~44min
+  easy   _short_value                        saved=8L  ~16min
   easy   boolish                             saved=6L  ~12min
   easy   _node_alias_map_from_value          saved=6L  ~12min
-  easy   _emit_json                          saved=6L  ~12min
-  ... +9 more (~70min)
+  ... +10 more (~82min)
 
 METRICS-TARGET:
-  dup_groups:  19 → 0
-  saved_lines: 170 lines recoverable
+  dup_groups:  20 → 0
+  saved_lines: 178 lines recoverable
 ```
 
 ### Evolution / Churn (`project/evolution.toon.yaml`)
 
 ```toon markpact:analysis path=project/evolution.toon.yaml
-# code2llm/evolution | 1396 func | 79f | 2026-06-24
-# generated in 0.01s
+# code2llm/evolution | 1444 func | 81f | 2026-06-24
+# generated in 0.03s
 
 NEXT[10] (ranked by impact):
   [1] !! SPLIT           adapters/python/urirun/host/host_dashboard.py
-      WHY: 9914L, 0 classes, max CC=100
-      EFFORT: ~4h  IMPACT: 991400
+      WHY: 9953L, 0 classes, max CC=100
+      EFFORT: ~4h  IMPACT: 995300
 
   [2] !! SPLIT           adapters/python/urirun/runtime/v2.py
       WHY: 2024L, 1 classes, max CC=14
@@ -1413,41 +1419,41 @@ NEXT[10] (ranked by impact):
       WHY: CC=100 exceeds 15
       EFFORT: ~1h  IMPACT: 6000
 
-  [5] !! SPLIT-FUNC      scanner_best_finish  CC=47  fan=34
-      WHY: CC=47 exceeds 15
-      EFFORT: ~1h  IMPACT: 1598
-
-  [6] !! SPLIT-FUNC      scanner_capture  CC=30  fan=37
-      WHY: CC=30 exceeds 15
-      EFFORT: ~1h  IMPACT: 1110
-
-  [7] !  SPLIT-FUNC      _archive_scanned_document  CC=17  fan=45
-      WHY: CC=17 exceeds 15
-      EFFORT: ~1h  IMPACT: 765
-
-  [8] !! SPLIT-FUNC      NodeClient.ensure_scheme  CC=32  fan=21
+  [5] !! SPLIT-FUNC      NodeClient.ensure_scheme  CC=32  fan=21
       WHY: CC=32 exceeds 15
       EFFORT: ~1h  IMPACT: 672
 
-  [9] !  SPLIT-FUNC      _scanner_crop_overlay  CC=20  fan=30
-      WHY: CC=20 exceeds 15
-      EFFORT: ~1h  IMPACT: 600
-
-  [10] !! SPLIT-FUNC      uri_invoke  CC=26  fan=23
+  [6] !! SPLIT-FUNC      uri_invoke  CC=26  fan=23
       WHY: CC=26 exceeds 15
       EFFORT: ~1h  IMPACT: 598
 
+  [7] !! SPLIT-FUNC      NodeClient._local_connector_deploy_payload  CC=25  fan=20
+      WHY: CC=25 exceeds 15
+      EFFORT: ~1h  IMPACT: 500
+
+  [8] !! SPLIT-FUNC      node_test_routes  CC=26  fan=19
+      WHY: CC=26 exceeds 15
+      EFFORT: ~1h  IMPACT: 494
+
+  [9] !  SPLIT-FUNC      artifacts_cleanup_orphan_sidecars  CC=19  fan=23
+      WHY: CC=19 exceeds 15
+      EFFORT: ~1h  IMPACT: 437
+
+  [10] !  SPLIT-FUNC      artifacts_delete  CC=18  fan=21
+      WHY: CC=18 exceeds 15
+      EFFORT: ~1h  IMPACT: 378
+
 
 RISKS[3]:
-  ⚠ Splitting adapters/python/urirun/host/host_dashboard.py may break 252 import paths
+  ⚠ Splitting adapters/python/urirun/host/host_dashboard.py may break 278 import paths
   ⚠ Splitting adapters/python/urirun/runtime/v2.py may break 125 import paths
   ⚠ Splitting adapters/python/urirun/node/mesh.py may break 96 import paths
 
 METRICS-TARGET:
-  CC̄:          4.9 → ≤3.4
+  CC̄:          4.8 → ≤3.4
   max-CC:      100 → ≤20
   god-modules: 14 → 0
-  high-CC(≥15): 23 → ≤11
+  high-CC(≥15): 18 → ≤9
   hub-types:   0 → ≤0
 
 PATTERNS (language parser shared logic):
@@ -1475,7 +1481,7 @@ PATTERNS (language parser shared logic):
     - Standardized FunctionInfo/ClassInfo models
 
 HISTORY:
-  prev CC̄=4.9 → now CC̄=4.9
+  prev CC̄=4.9 → now CC̄=4.8
 ```
 
 ## Intent

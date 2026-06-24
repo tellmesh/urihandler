@@ -61,7 +61,9 @@ Near-term extraction targets:
   building now live there. Port-owner detection and safe replacement helpers
   also moved there behind dashboard compatibility wrappers. Scanner restart
   still stays in the dashboard until its in-process server state is isolated.
-- `host/discovery.py` for URI object registry normalization.
+- `host/discovery.py` for URI object registry normalization. First split
+  landed: node alias resolution, known-node file merge, host-config enrichment
+  and node route probing moved out of `host_dashboard.py`.
 - `host/scanner_bridge.py` for dashboard-to-scanner API glue.
 
 ## Landed (2026-06-23)

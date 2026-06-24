@@ -32,6 +32,32 @@ from .document_sync import (
     document_sync_verification as _document_sync_verification_impl,
     sync_documents_to_node as _sync_documents_to_node_impl,
 )
+from .discovery import (
+    add_node_aliases as _add_node_aliases_impl,
+    alias_map_from_dict as _alias_map_from_dict_impl,
+    alias_map_from_list as _alias_map_from_list_impl,
+    classify_route_run as _classify_route_run_impl,
+    host_config as _host_config_impl,
+    iter_node_alias_values as _iter_node_alias_values_impl,
+    known_nodes_file_data as _known_nodes_file_data_impl,
+    known_nodes_file_urls as _known_nodes_file_urls_impl,
+    merge_known_nodes_into_config as _merge_known_nodes_into_config_impl,
+    node_alias_map_from_config_doc as _node_alias_map_from_config_doc_impl,
+    node_alias_map_from_context as _node_alias_map_from_context_impl,
+    node_alias_map_from_env as _node_alias_map_from_env_impl,
+    node_alias_map_from_known_nodes_file as _node_alias_map_from_known_nodes_file_impl,
+    node_alias_map_from_node_urls as _node_alias_map_from_node_urls_impl,
+    node_alias_map_from_value as _node_alias_map_from_value_impl,
+    node_dicts_from_url_map as _node_dicts_from_url_map_impl,
+    node_spec_aliases as _node_spec_aliases_impl,
+    node_test_routes as _node_test_routes_impl,
+    node_url_map_from_value as _node_url_map_from_value_impl,
+    normalize_known_node_url as _normalize_known_node_url_impl,
+    prompt_node_match as _prompt_node_match_impl,
+    route_inputs_example as _route_inputs_example_impl,
+    url_map_from_dict as _url_map_from_dict_impl,
+    url_map_from_list as _url_map_from_list_impl,
+)
 from .fs_transfer import (
     deploy_fs_file_transfer_fallback as _deploy_fs_file_transfer_fallback_impl,
     ensure_node_uri_routes as _ensure_node_uri_routes_impl,
@@ -4312,234 +4338,91 @@ def _document_sync_default_node() -> str:
 
 
 def _iter_node_alias_values(value: Any) -> list[str]:
-    if value is None:
-        return []
-    if isinstance(value, str):
-        return [item.strip() for item in re.split(r"[,;|]", value) if item.strip()]
-    if isinstance(value, (list, tuple, set)):
-        return [str(item).strip() for item in value if str(item).strip()]
-    return [str(value).strip()] if str(value).strip() else []
+    return _iter_node_alias_values_impl(value)
 
 
 def _add_node_aliases(out: dict[str, str], name: str, aliases: Any = None) -> None:
-    clean_name = str(name or "").strip()
-    if not clean_name:
-        return
-    out.setdefault(clean_name.casefold(), clean_name)
-    for alias in _iter_node_alias_values(aliases):
-        out.setdefault(alias.casefold(), clean_name)
-
-
-_NODE_ALIAS_KEYS = ("alias", "aliases", "host", "hostname", "label", "labels", "tags")
+    _add_node_aliases_impl(out, name, aliases)
 
 
 def _node_spec_aliases(spec: dict, fallback_name: str) -> tuple[str, list[str]]:
-    """The canonical name and collected alias values for one node spec dict."""
-    canonical = str(spec.get("name") or fallback_name).strip()
-    aliases: list[str] = []
-    for key in _NODE_ALIAS_KEYS:
-        aliases.extend(_iter_node_alias_values(spec.get(key)))
-    return canonical, aliases
+    return _node_spec_aliases_impl(spec, fallback_name)
 
 
 def _alias_map_from_dict(value: dict) -> dict[str, str]:
-    nodes = value.get("nodes")
-    if isinstance(nodes, (dict, list)):
-        return _node_alias_map_from_value(nodes)
-    out: dict[str, str] = {}
-    for name, spec in value.items():
-        if name == "nodes":
-            continue
-        if isinstance(spec, dict):
-            canonical, aliases = _node_spec_aliases(spec, name)
-            _add_node_aliases(out, canonical, aliases)
-        else:
-            _add_node_aliases(out, str(name))
-    return out
+    return _alias_map_from_dict_impl(value)
 
 
 def _alias_map_from_list(value: Any) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for item in value:
-        if not isinstance(item, dict):
-            text = str(item).strip()
-            if not text:
-                continue
-            name = text.split("=", 1)[0].strip() if "=" in text else text
-            _add_node_aliases(out, name)
-            continue
-        name, aliases = _node_spec_aliases(item, "")
-        _add_node_aliases(out, name, [name] + aliases)
-    return out
+    return _alias_map_from_list_impl(value)
 
 
 def _node_alias_map_from_value(value: Any) -> dict[str, str]:
-    if isinstance(value, dict):
-        return _alias_map_from_dict(value)
-    if isinstance(value, (list, tuple, set)):
-        return _alias_map_from_list(value)
-    return {}
+    return _node_alias_map_from_value_impl(value)
 
 
 def _normalize_known_node_url(raw: Any) -> str:
-    value = str(raw or "").strip()
-    if not value:
-        return ""
-    if "://" not in value:
-        value = f"http://{value if ':' in value else value + ':8765'}"
-    return value.rstrip("/")
+    return _normalize_known_node_url_impl(raw)
 
 
 def _url_map_from_dict(value: dict) -> dict[str, str]:
-    nodes = value.get("nodes")
-    if isinstance(nodes, (dict, list)):
-        return _node_url_map_from_value(nodes)
-    out: dict[str, str] = {}
-    for name, spec in value.items():
-        if name == "nodes":
-            continue
-        if isinstance(spec, dict):
-            clean_name = str(spec.get("name") or name).strip()
-            url = _normalize_known_node_url(spec.get("url") or spec.get("nodeUrl") or spec.get("node_url"))
-        else:
-            clean_name = str(name).strip()
-            url = _normalize_known_node_url(spec)
-        if clean_name and url:
-            out[clean_name] = url
-    return out
+    return _url_map_from_dict_impl(value)
 
 
 def _url_map_from_list(value: Any) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for item in value:
-        if isinstance(item, dict):
-            clean_name = str(item.get("name") or "").strip()
-            url = _normalize_known_node_url(item.get("url") or item.get("nodeUrl") or item.get("node_url"))
-        else:
-            text = str(item).strip()
-            if not text or "=" not in text:
-                continue
-            clean_name, raw_url = [part.strip() for part in text.split("=", 1)]
-            url = _normalize_known_node_url(raw_url)
-        if clean_name and url:
-            out[clean_name] = url
-    return out
+    return _url_map_from_list_impl(value)
 
 
 def _node_url_map_from_value(value: Any) -> dict[str, str]:
-    if isinstance(value, dict):
-        return _url_map_from_dict(value)
-    if isinstance(value, (list, tuple, set)):
-        return _url_map_from_list(value)
-    return {}
+    return _node_url_map_from_value_impl(value)
 
 
 def _node_dicts_from_url_map(nodes: dict[str, str], *, source: str) -> list[dict]:
-    return [
-        {"name": name, "url": url, "source": source}
-        for name, url in sorted(nodes.items())
-        if name and url
-    ]
+    return _node_dicts_from_url_map_impl(nodes, source=source)
 
 
 def _node_alias_map_from_config_doc(config_doc: dict | None) -> dict[str, str]:
-    if not isinstance(config_doc, dict):
-        return {}
-    return _node_alias_map_from_value(config_doc.get("nodes") or [])
+    return _node_alias_map_from_config_doc_impl(config_doc)
 
 
 def _node_alias_map_from_env() -> dict[str, str]:
-    out: dict[str, str] = {}
-    default_node = _document_sync_default_node()
-    if default_node:
-        out.setdefault(default_node.casefold(), default_node)
-    for key in os.environ:
-        if key.startswith("URIRUN_NODE_URL_"):
-            node = key.removeprefix("URIRUN_NODE_URL_").lower().replace("_", "-")
-            if node:
-                out.setdefault(node.casefold(), node)
-    for item in os.environ.get("URIRUN_NODES", "").replace(";", ",").split(","):
-        text = item.strip()
-        if not text:
-            continue
-        name = text.split("=", 1)[0].strip() if "=" in text else ""
-        if name:
-            out.setdefault(name.casefold(), name)
-    # URIRUN_NODE_ALIASES="node=alias1|alias2,other=desk" lets operators keep local words
-    # out of code while still allowing natural-language target resolution.
-    for item in os.environ.get("URIRUN_NODE_ALIASES", "").split(","):
-        text = item.strip()
-        if not text or "=" not in text:
-            continue
-        name, aliases = text.split("=", 1)
-        clean_name = name.strip()
-        if not clean_name:
-            continue
-        out.setdefault(clean_name.casefold(), clean_name)
-        for alias in _iter_node_alias_values(aliases):
-            out.setdefault(alias.casefold(), clean_name)
-    return out
+    return _node_alias_map_from_env_impl(default_node=_document_sync_default_node())
 
 
 def _node_alias_map_from_node_urls(node_urls: list[str] | None) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for item in node_urls or []:
-        text = str(item).strip()
-        if not text:
-            continue
-        name = text.split("=", 1)[0].strip() if "=" in text else ""
-        if name:
-            out.setdefault(name.casefold(), name)
-    return out
+    return _node_alias_map_from_node_urls_impl(node_urls)
 
 
 def _known_nodes_file_data() -> Any:
-    path = Path(os.environ.get("URIRUN_NODES_FILE") or "~/.urirun/nodes.json").expanduser()
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
+    return _known_nodes_file_data_impl()
 
 
 def _node_alias_map_from_known_nodes_file() -> dict[str, str]:
-    return _node_alias_map_from_value(_known_nodes_file_data())
+    return _node_alias_map_from_known_nodes_file_impl()
 
 
 def _known_nodes_file_urls() -> dict[str, str]:
-    return _node_url_map_from_value(_known_nodes_file_data())
+    return _known_nodes_file_urls_impl()
 
 
 def _merge_known_nodes_into_config(config_doc: dict | None) -> dict:
-    out = json.loads(json.dumps(config_doc if isinstance(config_doc, dict) else {}))
-    out.setdefault("nodes", [])
-    existing = {str(item.get("name") or "").strip() for item in out.get("nodes") or [] if isinstance(item, dict)}
-    merged = [dict(item) for item in out.get("nodes") or [] if isinstance(item, dict)]
-    for item in _node_dicts_from_url_map(_known_nodes_file_urls(), source="known-nodes-file"):
-        if item["name"] not in existing:
-            merged.append(item)
-    out["nodes"] = sorted(merged, key=lambda item: str(item.get("name") or ""))
-    return out
+    return _merge_known_nodes_into_config_impl(config_doc)
 
 
 def _node_alias_map_from_context(config: str | None, node_urls: list[str] | None = None) -> dict[str, str]:
-    out = _node_alias_map_from_env()
-    out.update(_node_alias_map_from_known_nodes_file())
-    out.update(_node_alias_map_from_node_urls(node_urls))
     try:
-        out.update(_node_alias_map_from_config_doc(_host_config(config, node_urls)))
+        config_doc = _host_config(config, node_urls)
     except Exception:
-        pass
-    return out
+        config_doc = None
+    return _node_alias_map_from_context_impl(
+        config_doc,
+        node_urls,
+        default_node=_document_sync_default_node(),
+    )
 
 
 def _prompt_node_match(prompt: str, alias_map: dict[str, str]) -> str:
-    text = prompt.casefold()
-    for alias, node in sorted(alias_map.items(), key=lambda item: len(item[0]), reverse=True):
-        if not alias:
-            continue
-        if re.search(rf"(?<![\w.-]){re.escape(alias)}(?![\w.-])", text):
-            return node
-    return ""
+    return _prompt_node_match_impl(prompt, alias_map)
 
 
 def _scanned_id_log_path() -> Path:
@@ -4609,85 +4492,24 @@ def _run_node_uri(
 
 
 def _route_inputs_example(route: dict) -> dict:
-    """A minimal example payload for a route, derived from its declared input schema
-    (defaults + required-field placeholders) — enough to make a query route dispatch."""
-    schema = route.get("inputSchema") or (route.get("config") or {}).get("inputSchema") or {}
-    if not isinstance(schema, dict) or not schema:
-        return {}
-    try:
-        import urirun
-        return urirun._example_payload(schema)
-    except Exception:  # noqa: BLE001
-        return {}
+    return _route_inputs_example_impl(route)
 
 
 def _classify_route_run(envelope: Any, value: Any) -> tuple[str, str]:
-    """Classify one route probe: ``ok`` (handler succeeded), ``handler-error`` (route DID
-    dispatch but returned ok=False — e.g. bad/empty input), ``not-found`` (no such route on the
-    node), or ``unreachable`` (transport/None). ``ok`` and ``handler-error`` both mean the route
-    EXISTS; ``not-found``/``unreachable`` mean it is missing or broken."""
-    err = (envelope.get("error") if isinstance(envelope, dict) else None) or {}
-    if isinstance(err, dict):
-        msg = str(err.get("message") or "")
-        if str(err.get("category") or "") == "NOT_FOUND" or "route not found" in msg.lower():
-            return "not-found", msg or "route not found"
-    if isinstance(value, dict):
-        if value.get("ok") is False:
-            return "handler-error", str(value.get("error") or "")[:200]
-        return "ok", ""
-    if isinstance(value, str):
-        return "ok", value.strip()[:120]
-    if isinstance(envelope, dict) and not envelope.get("ok"):
-        detail = (err.get("message") if isinstance(err, dict) else None) or envelope.get("error") or "no result"
-        return "unreachable", str(detail)[:200]
-    return "ok", ""
+    return _classify_route_run_impl(envelope, value)
 
 
 def node_test_routes(project: str, db: str | None, config: str | None, payload: dict, *,
                      node_urls: list[str] | None = None, token: str | None = None,
                      identity: str | None = None) -> dict:
-    """Probe a node's URIs and report which respond. ``payload``: ``{node, uris?}``. With
-    ``uris`` the caller's exact selection is tested (may include command routes — explicit
-    opt-in); without it, only the node's read-only ``*/query/*`` routes run (safe default).
-    Each route gets an example payload from its input schema; results classify ok / reachable /
-    missing so a node's surface can be health-checked from the dashboard."""
-    node = str((payload or {}).get("node") or "").strip()
-    if not node:
-        return {"ok": False, "error": "node is required"}
-    selected = [str(u).strip() for u in ((payload or {}).get("uris") or []) if str(u).strip()]
-    node_url = _node_url_from_config(config, node_urls, node)
-    if not node_url:
-        return {"ok": False, "error": f"no node_url resolvable for '{node}'", "node": node}
-    tok = _node_token_for(node, token)
-    try:
-        client = _node_client(node_url, token=tok, identity=identity)
-        routemap = {str(r.get("uri", "")): r for r in client.routes()}
-    except Exception as exc:  # noqa: BLE001
-        return {"ok": False, "error": f"cannot reach node: {exc}", "node": node, "nodeUrl": node_url}
-    if selected:
-        targets = [u for u in selected if u]
-        missing_sel = {u for u in selected if u not in routemap}
-    else:
-        targets = sorted(u for u in routemap if "/query/" in u)  # safe read-only default
-        missing_sel = set()
-    results = []
-    for uri in targets:
-        route = routemap.get(uri, {})
-        try:
-            env = client.run(uri, _route_inputs_example(route))
-            status, detail = _classify_route_run(env, client.value(env))
-        except Exception as exc:  # noqa: BLE001
-            status, detail = "unreachable", f"{type(exc).__name__}: {exc}"[:200]
-        results.append({"uri": uri, "ok": status == "ok", "status": status, "detail": detail,
-                        **({"note": "not advertised on this node"} if uri in missing_sel else {})})
-    reachable = sum(1 for r in results if r["status"] in ("ok", "handler-error"))
-    return {
-        "ok": True, "node": node, "nodeUrl": node_url,
-        "mode": "selected" if selected else "query",
-        "tested": len(results), "okCount": sum(1 for r in results if r["ok"]),
-        "reachable": reachable, "broken": len(results) - reachable,
-        "results": results,
-    }
+    return _node_test_routes_impl(
+        payload,
+        node_url_from_config=lambda node: _node_url_from_config(config, node_urls, node),
+        node_token_for=lambda node: _node_token_for(node, token),
+        node_client=_node_client,
+        token=token,
+        identity=identity,
+    )
 
 
 def _route_key(uri: str) -> tuple[str, str]:
@@ -8144,6 +7966,88 @@ def _run_inprocess_connector_uri(uri: str, action_payload: dict, db: str | None 
             "error": (env.get("error") or {}).get("message") if not env.get("ok") else None}
 
 
+def _uri_invoke_route(effective_uri: str, *, project: str, db: str | None, config: str | None,
+                      action_payload: dict, node_urls: list[str] | None, token: str | None,
+                      identity: str | None):
+    """Route a concrete (execute-mode, non-page) dashboard/scanner URI to its handler.
+
+    Returns the handler's result, or None when the URI is not a built-in dashboard action (the
+    caller then tries an in-process connector)."""
+    if effective_uri in {"scanner://host/capture/command/run", "scanner://host/capture"}:
+        return scanner_capture(project, db, action_payload)
+    if effective_uri in {"scanner://host/best/command/finish", "scanner://host/best/finish"}:
+        return scanner_best_finish(project, db, action_payload)
+    if effective_uri in {"scanner://host/session/command/log", "scanner://host/session"}:
+        return scanner_session(db, action_payload)
+    if effective_uri == "dashboard://host/phone-scanner/command/start":
+        return ensure_phone_scanner_service(
+            project,
+            db,
+            config,
+            node_urls=node_urls,
+            token=token,
+            identity=identity,
+        )
+    if effective_uri == "dashboard://host/service/phone-scanner/command/restart":
+        return restart_phone_scanner_service(
+            project,
+            db,
+            config,
+            node_urls=node_urls,
+            token=token,
+            identity=identity,
+            payload=action_payload,
+        )
+    if effective_uri == "dashboard://host/service/chat/command/restart":
+        return restart_chat_service(
+            action_payload,
+            project=project,
+            db=db,
+            config=config,
+            node_urls=node_urls,
+            token=token,
+            identity=identity,
+        )
+    if effective_uri in {"document://host/archive/command/sync-to-node", "document://host/archive/sync"}:
+        return sync_documents_to_node(
+            project,
+            db,
+            config,
+            action_payload,
+            node_urls=node_urls,
+            token=token,
+            identity=identity,
+        )
+    return None
+
+
+def _uri_invoke_page_action(uri: str, mode: str, payload: dict, action_payload: dict, db: str | None) -> dict:
+    """Enqueue a `layer=page` URI action for the scanner page (or reject if it must run locally)."""
+    source = str(payload.get("source") or action_payload.get("source") or "").strip().lower()
+    if source in {"page", "scanner-page"}:
+        raise ValueError(f"page URI action must be handled locally by the scanner page: {uri}")
+    return page_action_enqueue(
+        db,
+        target=str(action_payload.get("target") or "scanner"),
+        uri=uri,
+        payload=action_payload,
+        mode=mode,
+        source=str(payload.get("source") or "uri-invoke"),
+    )
+
+
+def _finalize_uri_result(result, uri: str) -> dict:
+    """Annotate a handler result with invokedUri and the urirun.tag artifact class."""
+    if isinstance(result, dict):
+        result.setdefault("invokedUri", uri)
+        # Surface the artifact/widget class when the result carries the urirun.tag contract.
+        tag_class = _result_artifact_class(result)
+        if tag_class is not None:
+            result.setdefault("artifactClass", tag_class)
+        return result
+    return {"ok": True, "invokedUri": uri, "result": result}
+
+
 def uri_invoke(
     project: str,
     db: str | None,
@@ -8169,64 +8073,13 @@ def uri_invoke(
         return _uri_simulated_result(uri, mode, action_payload, action)
 
     if action and action.get("layer") == "page":
-        source = str(payload.get("source") or action_payload.get("source") or "").strip().lower()
-        if source in {"page", "scanner-page"}:
-            raise ValueError(f"page URI action must be handled locally by the scanner page: {uri}")
-        return page_action_enqueue(
-            db,
-            target=str(action_payload.get("target") or "scanner"),
-            uri=uri,
-            payload=action_payload,
-            mode=mode,
-            source=str(payload.get("source") or "uri-invoke"),
-        )
+        return _uri_invoke_page_action(uri, mode, payload, action_payload, db)
 
-    if effective_uri in {"scanner://host/capture/command/run", "scanner://host/capture"}:
-        result = scanner_capture(project, db, action_payload)
-    elif effective_uri in {"scanner://host/best/command/finish", "scanner://host/best/finish"}:
-        result = scanner_best_finish(project, db, action_payload)
-    elif effective_uri in {"scanner://host/session/command/log", "scanner://host/session"}:
-        result = scanner_session(db, action_payload)
-    elif effective_uri == "dashboard://host/phone-scanner/command/start":
-        result = ensure_phone_scanner_service(
-            project,
-            db,
-            config,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-        )
-    elif effective_uri == "dashboard://host/service/phone-scanner/command/restart":
-        result = restart_phone_scanner_service(
-            project,
-            db,
-            config,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-            payload=action_payload,
-        )
-    elif effective_uri == "dashboard://host/service/chat/command/restart":
-        result = restart_chat_service(
-            action_payload,
-            project=project,
-            db=db,
-            config=config,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-        )
-    elif effective_uri in {"document://host/archive/command/sync-to-node", "document://host/archive/sync"}:
-        result = sync_documents_to_node(
-            project,
-            db,
-            config,
-            action_payload,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-        )
-    else:
+    result = _uri_invoke_route(
+        effective_uri, project=project, db=db, config=config, action_payload=action_payload,
+        node_urls=node_urls, token=token, identity=identity,
+    )
+    if result is None:
         # Not a hardcoded dashboard/scanner action: try an installed in-process connector
         # (widget://, artifact://, …) over the urirun runtime before giving up.
         dispatched = _run_inprocess_connector_uri(effective_uri, action_payload, db=db)
@@ -8234,14 +8087,7 @@ def uri_invoke(
             return dispatched
         raise ValueError(f"unsupported URI action: {uri}")
 
-    if isinstance(result, dict):
-        result.setdefault("invokedUri", uri)
-        # Surface the artifact/widget class when the result carries the urirun.tag contract.
-        tag_class = _result_artifact_class(result)
-        if tag_class is not None:
-            result.setdefault("artifactClass", tag_class)
-        return result
-    return {"ok": True, "invokedUri": uri, "result": result}
+    return _finalize_uri_result(result, uri)
 
 
 def _first(query: dict[str, list[str]], name: str, default: str | None = None) -> str | None:
@@ -8268,10 +8114,7 @@ def _planfile_adapter():
 
 
 def _host_config(config: str | None, node_urls: list[str] | None = None) -> dict:
-    mesh = _mesh()
-    loaded = mesh.load_host_config(config)
-    loaded = _merge_known_nodes_into_config(loaded)
-    return mesh.config_with_transient_node_urls(loaded, node_urls or [])
+    return _host_config_impl(_mesh(), config, node_urls)
 
 
 def _safe_tickets(project: str, sprint: str = "current", status: str | None = None, queue: str | None = None) -> tuple[list[dict], str | None]:
@@ -8543,21 +8386,16 @@ def _document_sync_auto_retry_enabled(payload: dict) -> bool:
     return _truthy_env("URIRUN_DOCUMENT_SYNC_AUTO_RETRY", "1")
 
 
-def _document_sync_retry_payload_from_urifix(urifix: dict | None, *, sync_node: str) -> dict | None:
-    if not isinstance(urifix, dict):
-        return None
-    diagnosis = urifix.get("diagnosis")
-    if not isinstance(diagnosis, dict):
-        diagnosis = {}
-    automatic = bool(urifix.get("repaired") or diagnosis.get("canAutoRetry"))
-    automatic = automatic or any(
-        bool(item.get("automatic")) for item in (urifix.get("recovery") or []) if isinstance(item, dict)
-    )
-    if not automatic:
-        return None
-    retry = urifix.get("retry")
-    if not isinstance(retry, dict):
-        return None
+def _urifix_auto_retry(urifix: dict) -> bool:
+    """True when a urifix diagnosis authorizes an automatic retry."""
+    diagnosis = urifix.get("diagnosis") if isinstance(urifix.get("diagnosis"), dict) else {}
+    if urifix.get("repaired") or diagnosis.get("canAutoRetry"):
+        return True
+    return any(bool(item.get("automatic")) for item in (urifix.get("recovery") or []) if isinstance(item, dict))
+
+
+def _validated_sync_retry_payload(retry: dict, sync_node: str) -> dict | None:
+    """Validate a urifix `retry` block targets this document-sync node, returning its payload."""
     if str(retry.get("uri") or "") != _DOCUMENT_SYNC_URI:
         return None
     if str(retry.get("mode") or "").casefold() != "execute":
@@ -8572,6 +8410,17 @@ def _document_sync_retry_payload_from_urifix(urifix: dict | None, *, sync_node: 
     if sync_node and retry_node and retry_node != sync_node:
         return None
     return dict(retry_payload)
+
+
+def _document_sync_retry_payload_from_urifix(urifix: dict | None, *, sync_node: str) -> dict | None:
+    if not isinstance(urifix, dict):
+        return None
+    if not _urifix_auto_retry(urifix):
+        return None
+    retry = urifix.get("retry")
+    if not isinstance(retry, dict):
+        return None
+    return _validated_sync_retry_payload(retry, sync_node)
 
 
 def _needs_screen_document_capture(prompt: str) -> bool:
@@ -8702,6 +8551,59 @@ def _selected_nodes_from_targets(selected_nodes: list[str], selected_targets: li
     return out
 
 
+def _decision_loop_status(execute: bool, error: dict | None, retry_available: bool) -> str:
+    if execute and not error:
+        return "done"
+    if error:
+        return "retryable" if retry_available else "blocked"
+    return "dry-run"
+
+
+def _decision_loop_next_intent(*, error: dict | None, execute: bool, recovery: list, urifix: dict | None,
+                               retry_available: bool, can_auto_execute_retry: bool,
+                               auto_retry_enabled: bool, retry_attempted: bool) -> dict | None:
+    """The next-action proposal for a document-sync decision loop (repair on error, execute on dry-run)."""
+    if error:
+        return {
+            "id": "repair-uri-chain",
+            "uri": "urifix://host/chain/command/repair",
+            "automatic": can_auto_execute_retry,
+            "status": "ready" if retry_available else "needs-input",
+            "actions": recovery,
+            "retry": (urifix or {}).get("retry"),
+            "policy": {
+                "autoRetry": auto_retry_enabled,
+                "retryAttempted": retry_attempted,
+            },
+        }
+    if not execute:
+        return {
+            "id": "execute-document-sync",
+            "uri": "document://host/archive/command/sync-to-node",
+            "automatic": False,
+            "status": "awaiting-execute",
+        }
+    return None
+
+
+def _decision_loop_observation(*, error: dict | None, execute: bool, recovered: bool,
+                               initial_error: dict | None) -> dict:
+    """The observation record (outcome kind + error context) for a document-sync decision loop."""
+    kind = (
+        "uri-step-failed" if error
+        else ("dry-run" if not execute else ("uri-flow-recovered" if recovered else "uri-flow-complete"))
+    )
+    observation = {
+        "kind": kind,
+        "failedStep": "sync-documents-to-node" if error or recovered else None,
+        "error": error,
+    }
+    if recovered:
+        observation["initialError"] = initial_error
+        observation["recoveredBy"] = "urifix://host/chain/command/repair"
+    return observation
+
+
 def _decision_loop_for_document_sync(prompt: str, *, execute: bool, sync_node: str, selected_nodes: list[str],
                                      selected_targets: list[str], flow: dict, timeline: list[dict],
                                      error: dict | None = None, urifix: dict | None = None,
@@ -8715,28 +8617,12 @@ def _decision_loop_for_document_sync(prompt: str, *, execute: bool, sync_node: s
     can_auto_retry = bool(diagnosis.get("canAutoRetry") or (urifix or {}).get("repaired"))
     retry_available = can_auto_retry and not retry_attempted
     can_auto_execute_retry = retry_available and auto_retry_enabled
-    status = "done" if execute and not error else (("retryable" if retry_available else "blocked") if error else "dry-run")
-    next_intent = None
-    if error:
-        next_intent = {
-            "id": "repair-uri-chain",
-            "uri": "urifix://host/chain/command/repair",
-            "automatic": can_auto_execute_retry,
-            "status": "ready" if retry_available else "needs-input",
-            "actions": recovery,
-            "retry": (urifix or {}).get("retry"),
-            "policy": {
-                "autoRetry": auto_retry_enabled,
-                "retryAttempted": retry_attempted,
-            },
-        }
-    elif not execute:
-        next_intent = {
-            "id": "execute-document-sync",
-            "uri": "document://host/archive/command/sync-to-node",
-            "automatic": False,
-            "status": "awaiting-execute",
-        }
+    status = _decision_loop_status(execute, error, retry_available)
+    next_intent = _decision_loop_next_intent(
+        error=error, execute=execute, recovery=recovery, urifix=urifix,
+        retry_available=retry_available, can_auto_execute_retry=can_auto_execute_retry,
+        auto_retry_enabled=auto_retry_enabled, retry_attempted=retry_attempted,
+    )
     return {
         "schema": "urirun.decision-loop.v1",
         "intent": {
@@ -8754,15 +8640,9 @@ def _decision_loop_for_document_sync(prompt: str, *, execute: bool, sync_node: s
             "timeline": timeline,
             "results": {"sync-documents-to-node": sync_result} if sync_result else {},
         },
-        "observation": {
-            "kind": (
-                "uri-step-failed" if error
-                else ("dry-run" if not execute else ("uri-flow-recovered" if recovered else "uri-flow-complete"))
-            ),
-            "failedStep": "sync-documents-to-node" if error or recovered else None,
-            "error": error,
-            **({"initialError": initial_error, "recoveredBy": "urifix://host/chain/command/repair"} if recovered else {}),
-        },
+        "observation": _decision_loop_observation(
+            error=error, execute=execute, recovered=recovered, initial_error=initial_error,
+        ),
         "nextIntent": next_intent,
     }
 
@@ -9429,20 +9309,10 @@ def _chat_generic_response(project: str, db: str | None, config: str | None, pay
     )
 
 
-def chat_ask(project: str, db: str | None, config: str | None, payload: dict, node_urls: list[str] | None = None,
-             token: str | None = None, identity: str | None = None) -> dict:
-    prompt = str(payload.get("prompt") or "").strip()
-    if not prompt:
-        raise ValueError("prompt is required")
-    requested_nodes = [str(item).strip() for item in (payload.get("nodes") or []) if str(item).strip()]
-    requested_targets = [str(item).strip() for item in (payload.get("targets") or []) if str(item).strip()]
-    selected_nodes = list(requested_nodes)
-    selected_targets = list(requested_targets)
-    if not selected_targets:
-        selected_targets = ["host", *[f"node:{name}" for name in selected_nodes]]
-    selected_nodes = _selected_nodes_from_targets(selected_nodes, selected_targets)
-    execute = bool(payload.get("execute"))
-    no_llm = bool(payload.get("no_llm") or payload.get("noLlm"))
+def _add_chat_user_message(db: str | None, prompt: str, config: str | None, node_urls: list[str] | None,
+                           *, execute: bool, no_llm: bool, requested_nodes: list, requested_targets: list,
+                           selected_nodes: list, selected_targets: list) -> None:
+    """Record the user's chat turn, previewing the resolved document-sync target when detected."""
     user_selected_nodes = list(selected_nodes)
     user_selected_targets = list(selected_targets)
     user_intent = None
@@ -9474,6 +9344,27 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
             **({"intent": user_intent} if user_intent else {}),
         },
     ))
+
+
+def chat_ask(project: str, db: str | None, config: str | None, payload: dict, node_urls: list[str] | None = None,
+             token: str | None = None, identity: str | None = None) -> dict:
+    prompt = str(payload.get("prompt") or "").strip()
+    if not prompt:
+        raise ValueError("prompt is required")
+    requested_nodes = [str(item).strip() for item in (payload.get("nodes") or []) if str(item).strip()]
+    requested_targets = [str(item).strip() for item in (payload.get("targets") or []) if str(item).strip()]
+    selected_nodes = list(requested_nodes)
+    selected_targets = list(requested_targets)
+    if not selected_targets:
+        selected_targets = ["host", *[f"node:{name}" for name in selected_nodes]]
+    selected_nodes = _selected_nodes_from_targets(selected_nodes, selected_targets)
+    execute = bool(payload.get("execute"))
+    no_llm = bool(payload.get("no_llm") or payload.get("noLlm"))
+    _add_chat_user_message(
+        db, prompt, config, node_urls, execute=execute, no_llm=no_llm,
+        requested_nodes=requested_nodes, requested_targets=requested_targets,
+        selected_nodes=selected_nodes, selected_targets=selected_targets,
+    )
     _dispatch = dict(
         project=project, db=db, config=config, payload=payload, prompt=prompt,
         selected_nodes=selected_nodes, selected_targets=selected_targets,
@@ -9592,6 +9483,39 @@ def _artifact_delete_candidate_paths(item: dict, project: str) -> list[tuple[str
     return out
 
 
+def _delete_one_artifact_file(artifact_path: str, role: str, project: str) -> dict:
+    """Delete one artifact file (if inside an allowed root) and return its delete-info record."""
+    info = {"path": artifact_path, "role": role, "deleted": False, "skipped": False, "error": ""}
+    if not _artifact_file_delete_allowed(artifact_path, project):
+        info["skipped"] = True
+        info["error"] = "path is outside allowed artifact roots"
+        return info
+    try:
+        target = Path(artifact_path).expanduser().resolve()
+        if target.is_file():
+            target.unlink()
+            info["deleted"] = True
+        else:
+            info["skipped"] = True
+            info["error"] = "file missing"
+    except OSError as exc:
+        info["error"] = str(exc)
+    return info
+
+
+def _delete_artifact_files(artifacts: list, project: str) -> list[dict]:
+    """Delete the on-disk files backing the given artifacts (deduped by path)."""
+    files: list[dict] = []
+    seen_paths: set[str] = set()
+    for item in artifacts:
+        for artifact_path, role in _artifact_delete_candidate_paths(item, project):
+            if not artifact_path or artifact_path in seen_paths:
+                continue
+            seen_paths.add(artifact_path)
+            files.append(_delete_one_artifact_file(artifact_path, role, project))
+    return files
+
+
 def artifacts_delete(project: str, db: str | None, payload: dict) -> dict:
     ids = payload.get("ids") or payload.get("artifactIds") or []
     if isinstance(ids, str):
@@ -9601,33 +9525,7 @@ def artifacts_delete(project: str, db: str | None, payload: dict) -> dict:
         return {"ok": False, "error": "ids are required", "deleted": 0, "filesDeleted": 0}
     host_db = _host_db()
     artifacts = host_db.artifacts_by_ids(db, clean_ids)
-    delete_files = _payload_bool(payload, "deleteFiles", True)
-    files: list[dict] = []
-    if delete_files:
-        seen_paths: set[str] = set()
-        for item in artifacts:
-            candidates = _artifact_delete_candidate_paths(item, project)
-            for artifact_path, role in candidates:
-                if not artifact_path or artifact_path in seen_paths:
-                    continue
-                seen_paths.add(artifact_path)
-                info = {"path": artifact_path, "role": role, "deleted": False, "skipped": False, "error": ""}
-                if not _artifact_file_delete_allowed(artifact_path, project):
-                    info["skipped"] = True
-                    info["error"] = "path is outside allowed artifact roots"
-                    files.append(info)
-                    continue
-                try:
-                    target = Path(artifact_path).expanduser().resolve()
-                    if target.is_file():
-                        target.unlink()
-                        info["deleted"] = True
-                    else:
-                        info["skipped"] = True
-                        info["error"] = "file missing"
-                except OSError as exc:
-                    info["error"] = str(exc)
-                files.append(info)
+    files = _delete_artifact_files(artifacts, project) if _payload_bool(payload, "deleteFiles", True) else []
     deleted = host_db.delete_artifacts(db, clean_ids)
     result = {
         "ok": True,
@@ -9702,16 +9600,8 @@ def artifacts_dedupe_rows(project: str, db: str | None, payload: dict) -> dict:
     return result
 
 
-def artifacts_cleanup_orphan_sidecars(project: str, db: str | None, payload: dict) -> dict:
-    delete_files = _payload_bool(payload, "deleteFiles", True)
-    include_artifact_dir = _payload_bool(payload, "includeArtifactDir", False)
-    roots = [Path(os.environ.get("URIRUN_DOCUMENT_DIR", "~/.urirun/documents")).expanduser()]
-    if include_artifact_dir:
-        roots.append(Path(os.environ.get("URIRUN_ARTIFACT_DIR", "~/.urirun/artifacts")).expanduser())
-    global_metadata = _global_document_metadata_paths()
-    sibling_suffixes = (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".bin")
-    files: list[dict] = []
-    seen: set[Path] = set()
+def _iter_orphan_candidates(roots: list, seen: set, global_metadata: set):
+    """Yield resolved ``*.json`` sidecar paths under roots, skipping the index and known metadata."""
     for root in roots:
         try:
             resolved_root = root.resolve()
@@ -9727,22 +9617,42 @@ def artifacts_cleanup_orphan_sidecars(project: str, db: str | None, payload: dic
             if target in seen or target in global_metadata or target.name == "index.json":
                 continue
             seen.add(target)
-            if not _artifact_file_delete_allowed(str(target), project):
-                files.append({"path": str(target), "role": "orphan-sidecar", "deleted": False, "skipped": True, "error": "path is outside allowed artifact roots"})
-                continue
-            siblings = [target.with_suffix(suffix) for suffix in sibling_suffixes]
-            if any(path.is_file() for path in siblings):
-                continue
-            info = {"path": str(target), "role": "orphan-sidecar", "deleted": False, "skipped": False, "error": ""}
-            if delete_files:
-                try:
-                    target.unlink()
-                    info["deleted"] = True
-                except OSError as exc:
-                    info["error"] = str(exc)
-            else:
-                info["skipped"] = True
-                info["error"] = "dry run"
+            yield target
+
+
+def _cleanup_one_sidecar(target: Path, project: str, *, delete_files: bool, sibling_suffixes: tuple) -> dict | None:
+    """Return a delete-info record for an orphan sidecar, or None when it still has a real sibling."""
+    if not _artifact_file_delete_allowed(str(target), project):
+        return {"path": str(target), "role": "orphan-sidecar", "deleted": False, "skipped": True, "error": "path is outside allowed artifact roots"}
+    siblings = [target.with_suffix(suffix) for suffix in sibling_suffixes]
+    if any(path.is_file() for path in siblings):
+        return None
+    info = {"path": str(target), "role": "orphan-sidecar", "deleted": False, "skipped": False, "error": ""}
+    if delete_files:
+        try:
+            target.unlink()
+            info["deleted"] = True
+        except OSError as exc:
+            info["error"] = str(exc)
+    else:
+        info["skipped"] = True
+        info["error"] = "dry run"
+    return info
+
+
+def artifacts_cleanup_orphan_sidecars(project: str, db: str | None, payload: dict) -> dict:
+    delete_files = _payload_bool(payload, "deleteFiles", True)
+    include_artifact_dir = _payload_bool(payload, "includeArtifactDir", False)
+    roots = [Path(os.environ.get("URIRUN_DOCUMENT_DIR", "~/.urirun/documents")).expanduser()]
+    if include_artifact_dir:
+        roots.append(Path(os.environ.get("URIRUN_ARTIFACT_DIR", "~/.urirun/artifacts")).expanduser())
+    global_metadata = _global_document_metadata_paths()
+    sibling_suffixes = (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".bin")
+    files: list[dict] = []
+    seen: set[Path] = set()
+    for target in _iter_orphan_candidates(roots, seen, global_metadata):
+        info = _cleanup_one_sidecar(target, project, delete_files=delete_files, sibling_suffixes=sibling_suffixes)
+        if info is not None:
             files.append(info)
     result = {
         "ok": True,
@@ -9770,49 +9680,84 @@ def documents_reconcile(project: str, db: str | None, payload: dict | None = Non
     return result
 
 
+def _api_summary(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
+    return 200, summary(project, db, config, node_urls=node_urls)
+
+
+def _api_tasks(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
+    tickets, error = _safe_tickets(
+        project,
+        sprint=str(_first(query, "sprint", "current")),
+        status=_first(query, "status"),
+        queue=_first(query, "queue") or None,
+    )
+    return 200, {"ok": error is None, "tickets": tickets, "error": error}
+
+
+def _api_checks(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
+    host_db = _host_db()
+    return 200, {"ok": True, "checks": host_db.recent_checks(db, subject=_first(query, "subject"), limit=int(_first(query, "limit", "20") or 20))}
+
+
+def _api_logs(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
+    host_db = _host_db()
+    return 200, {"ok": True, "logs": host_db.recent_logs(db, stream=_first(query, "stream"), limit=int(_first(query, "limit", "20") or 20))}
+
+
+def _api_artifacts(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
+    host_db = _host_db()
+    artifacts = host_db.list_artifacts(db, kind=_first(query, "kind"), limit=int(_first(query, "limit", "20") or 20))
+    include_missing = str(_first(query, "includeMissing", "") or "").lower() in {"1", "true", "yes", "on"}
+    include_duplicates = str(_first(query, "includeDuplicates", "") or "").lower() in {"1", "true", "yes", "on"}
+    return 200, {
+        "ok": True,
+        "artifacts": _visible_public_artifacts(
+            artifacts,
+            project,
+            include_missing=include_missing,
+            include_duplicates=include_duplicates,
+        ),
+    }
+
+
+def _api_chat_history(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
+    return 200, chat_history(db, project, limit=int(_first(query, "limit", "80") or 80))
+
+
+def _api_services_live(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
+    return 200, service_live_views(project, db=db, limit=int(_first(query, "limit", "8") or 8))
+
+
+def _api_scanner_live(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
+    return 200, scanner_live_state(project, limit=int(_first(query, "limit", "8") or 8))
+
+
+def _api_nodes_or_routes(path: str, config: str | None, node_urls: list[str] | None) -> tuple[int, dict]:
+    mesh = _mesh()
+    discovered = mesh.discover_mesh(_host_config(config, node_urls))
+    key = "nodes" if path == "/api/nodes" else "routes"
+    return 200, {"ok": True, key: discovered.get(key) or []}
+
+
+_API_ROUTES = {
+    "/api/summary": _api_summary,
+    "/api/tasks": _api_tasks,
+    "/api/checks": _api_checks,
+    "/api/logs": _api_logs,
+    "/api/artifacts": _api_artifacts,
+    "/api/chat/history": _api_chat_history,
+    "/api/services/live": _api_services_live,
+    "/api/scanner/live": _api_scanner_live,
+}
+
+
 def _dashboard_api_response(path: str, project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None = None) -> tuple[int, dict]:
     """Resolve a dashboard /api/* path to an (HTTP status, JSON payload) pair."""
-    if path == "/api/summary":
-        return 200, summary(project, db, config, node_urls=node_urls)
-    if path == "/api/tasks":
-        tickets, error = _safe_tickets(
-            project,
-            sprint=str(_first(query, "sprint", "current")),
-            status=_first(query, "status"),
-            queue=_first(query, "queue") or None,
-        )
-        return 200, {"ok": error is None, "tickets": tickets, "error": error}
+    handler = _API_ROUTES.get(path)
+    if handler is not None:
+        return handler(project, db, config, query, node_urls)
     if path in {"/api/nodes", "/api/routes"}:
-        mesh = _mesh()
-        discovered = mesh.discover_mesh(_host_config(config, node_urls))
-        key = "nodes" if path == "/api/nodes" else "routes"
-        return 200, {"ok": True, key: discovered.get(key) or []}
-    if path == "/api/checks":
-        host_db = _host_db()
-        return 200, {"ok": True, "checks": host_db.recent_checks(db, subject=_first(query, "subject"), limit=int(_first(query, "limit", "20") or 20))}
-    if path == "/api/logs":
-        host_db = _host_db()
-        return 200, {"ok": True, "logs": host_db.recent_logs(db, stream=_first(query, "stream"), limit=int(_first(query, "limit", "20") or 20))}
-    if path == "/api/artifacts":
-        host_db = _host_db()
-        artifacts = host_db.list_artifacts(db, kind=_first(query, "kind"), limit=int(_first(query, "limit", "20") or 20))
-        include_missing = str(_first(query, "includeMissing", "") or "").lower() in {"1", "true", "yes", "on"}
-        include_duplicates = str(_first(query, "includeDuplicates", "") or "").lower() in {"1", "true", "yes", "on"}
-        return 200, {
-            "ok": True,
-            "artifacts": _visible_public_artifacts(
-                artifacts,
-                project,
-                include_missing=include_missing,
-                include_duplicates=include_duplicates,
-            ),
-        }
-    if path == "/api/chat/history":
-        return 200, chat_history(db, project, limit=int(_first(query, "limit", "80") or 80))
-    if path == "/api/services/live":
-        return 200, service_live_views(project, db=db, limit=int(_first(query, "limit", "8") or 8))
-    if path == "/api/scanner/live":
-        return 200, scanner_live_state(project, limit=int(_first(query, "limit", "8") or 8))
+        return _api_nodes_or_routes(path, config, node_urls)
     return 404, {"ok": False, "error": "not found"}
 
 

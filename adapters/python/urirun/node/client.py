@@ -156,6 +156,66 @@ class NodeClient:
         return any(self._route_key(str(route.get("uri", ""))) == want for route in self.routes())
 
     @staticmethod
+    def _collect_scheme_specs(scheme: str) -> tuple[dict[str, tuple[str, str]], dict | None]:
+        """Collect (module, export) specs for each URI binding of scheme from host entry points.
+
+        Returns (specs, error). When error is not None return it immediately.
+        """
+        from urirun.runtime import v2  # noqa: PLC0415
+
+        items = [b for b in v2.entry_point_bindings(group="urirun.bindings", on_error="ignore")
+                 if str(b.get("uri", "")).split("://", 1)[0] == scheme]
+        if not items:
+            return {}, {"ok": False, "error": f"no host-installed connector serves {scheme}://"}
+        specs: dict[str, tuple[str, str]] = {}
+        for b in items:
+            py = b.get("python") if isinstance(b.get("python"), dict) else {}
+            module, export = py.get("module"), py.get("export")
+            if module and export:
+                specs[str(b["uri"])] = (str(module), str(export))
+        if not specs:
+            return {}, {"ok": False, "error": f"{scheme}:// has no local-function handlers to push"}
+        return specs, None
+
+    @staticmethod
+    def _narrow_specs_to_route(
+        scheme: str, route: str, specs: dict[str, tuple[str, str]],
+    ) -> tuple[dict[str, tuple[str, str]], dict | None]:
+        """Narrow specs to the module that owns route.
+
+        A scheme can be served by several connectors (e.g. fs:// = mcp-filesystem's
+        write_blob AND urirun-connector-fs's write-b64). Narrowing ensures a multi-connector
+        scheme flat-deploys cleanly. Returns (narrowed_specs, error).
+        """
+        want = NodeClient._route_key(route)
+        owner = next((m for u, (m, _e) in specs.items() if NodeClient._route_key(u) == want), None)
+        if owner is None:
+            provider = sorted({m for m, _ in specs.values()})[0] if specs else "?"
+            return specs, {
+                "ok": False,
+                "error": (f"host's {scheme}:// provider ({provider}) does not expose {route} "
+                          f"— a different connector owns that route"),
+            }
+        return {u: (m, e) for u, (m, e) in specs.items() if m == owner}, None
+
+    @staticmethod
+    def _load_module_source(module: str) -> tuple[str, dict | None]:
+        """Load source text of a Python module. Returns (source, error)."""
+        import importlib  # noqa: PLC0415
+        import re as _re  # noqa: PLC0415
+
+        try:
+            src_file = getattr(importlib.import_module(module), "__file__", "") or ""
+            source = open(src_file, encoding="utf-8").read() if src_file else ""  # noqa: WPS515
+        except Exception as exc:  # noqa: BLE001
+            return "", {"ok": False, "error": f"cannot read {module} source: {exc}"}
+        if not source:
+            return "", {"ok": False, "error": f"empty source for {module}"}
+        if _re.search(r"(?m)^\s*from\s+\.", source):
+            return "", {"ok": False, "error": f"{module} uses package-relative imports; not flat-deployable"}
+        return source, None
+
+    @staticmethod
     def _local_connector_deploy_payload(scheme: str, route: str | None = None) -> dict:
         """Build a signed-/deploy payload (code + bindings) from a connector installed in the
         HOST environment, for nodes that LACK a --manage surface (so node:// adopt/install is
@@ -166,48 +226,22 @@ class NodeClient:
         a different connector than the one a caller expects — e.g. fs:// served by the sandboxed
         mcp-filesystem ``write_blob`` rather than the unsandboxed ``write-b64``). Returns
         ``{ok, module, code, bindings}`` or ``{ok: False, error}``."""
-        import importlib
-        import re as _re
+        import re as _re  # noqa: PLC0415
 
-        from urirun.runtime import v2
-
-        items = [b for b in v2.entry_point_bindings(group="urirun.bindings", on_error="ignore")
-                 if str(b.get("uri", "")).split("://", 1)[0] == scheme]
-        if not items:
-            return {"ok": False, "error": f"no host-installed connector serves {scheme}://"}
-        specs: dict[str, tuple[str, str]] = {}
-        for b in items:
-            py = b.get("python") if isinstance(b.get("python"), dict) else {}
-            module, export = py.get("module"), py.get("export")
-            if module and export:
-                specs[str(b["uri"])] = (str(module), str(export))
-        if not specs:
-            return {"ok": False, "error": f"{scheme}:// has no local-function handlers to push"}
+        specs, err = NodeClient._collect_scheme_specs(scheme)
+        if err:
+            return err
         if route is not None:
-            # A scheme can be served by several connectors (e.g. fs:// = mcp-filesystem's
-            # write_blob AND urirun-connector-fs's write-b64). Narrow to the module that owns
-            # the REQUESTED route, so a multi-connector scheme still flat-deploys cleanly.
-            want = NodeClient._route_key(route)
-            owner = next((m for u, (m, _e) in specs.items() if NodeClient._route_key(u) == want), None)
-            if owner is None:
-                provider = sorted({m for m, _ in specs.values()})[0] if specs else "?"
-                return {"ok": False,
-                        "error": (f"host's {scheme}:// provider ({provider}) does not expose {route} "
-                                  f"— a different connector owns that route")}
-            specs = {u: (m, e) for u, (m, e) in specs.items() if m == owner}
+            specs, err = NodeClient._narrow_specs_to_route(scheme, route, specs)
+            if err:
+                return err
         modules = {m for m, _ in specs.values()}
         if len(modules) != 1:
             return {"ok": False, "error": f"{scheme}:// spans {len(modules)} modules; flat deploy needs one"}
         module = next(iter(modules))
-        try:
-            src_file = getattr(importlib.import_module(module), "__file__", "") or ""
-            source = open(src_file, encoding="utf-8").read() if src_file else ""
-        except Exception as exc:  # noqa: BLE001
-            return {"ok": False, "error": f"cannot read {module} source: {exc}"}
-        if not source:
-            return {"ok": False, "error": f"empty source for {module}"}
-        if _re.search(r"(?m)^\s*from\s+\.", source):
-            return {"ok": False, "error": f"{module} uses package-relative imports; not flat-deployable"}
+        source, err = NodeClient._load_module_source(module)
+        if err:
+            return err
         flat = "_ensured_" + _re.sub(r"[^a-z0-9_]", "_", scheme.lower())
         bindings = {
             uri: {
@@ -240,69 +274,61 @@ class NodeClient:
                 "deployed": dep.get("routeCount"),
                 **({} if live else {"error": "host-deploy did not make the requested route live"})}
 
-    def ensure_scheme(self, scheme: str, roots=None, install: bool = True, route: str | None = None) -> dict:
-        """Make `scheme://` live on the node, acquiring it if missing: adopt bindings already
-        installed in the node venv, else discover a connector (catalog/local ~/github/git)
-        via node:// management, install it, then adopt its routes. Older nodes fall back to
-        host-side merge-deploy. Needs --manage + admin token."""
-        if scheme in self.schemes() and (not route or self._has_route(route)):
-            return {"ok": True, "scheme": scheme, "already": True}
-        mgmt = f"node://{self.name}"
-        adopt_uri = f"{mgmt}/registry/command/adopt"
-
-        def try_adopt() -> dict:
-            if not any(str(r.get("uri", "")) == adopt_uri for r in self.routes()):
-                return {"ok": False, "error": "adopt not advertised"}
-            adopt = self.run(adopt_uri, {"scheme": scheme})
-            if not isinstance(adopt, dict):
-                return {"ok": False, "error": "invalid adopt response"}
-            if adopt.get("ok"):
-                live = self.schemes()
-                if scheme in live and (not route or self._has_route(route)):
-                    return {"ok": True, "scheme": scheme, "acquired": True, "adopted": adopt.get("adopted")}
-                if scheme in live and route:
-                    return {"ok": False, "scheme": scheme,
-                            "error": "adopt completed but requested route is not live",
-                            "route": route,
-                            "adopted": adopt.get("adopted"), "schemes": sorted(live)}
+    def _try_adopt_scheme(self, adopt_uri: str, scheme: str, route: str | None) -> dict:
+        """Attempt to adopt an already-installed scheme via node registry/adopt. Returns ok dict or failure."""
+        if not any(str(r.get("uri", "")) == adopt_uri for r in self.routes()):
+            return {"ok": False, "error": "adopt not advertised"}
+        adopt = self.run(adopt_uri, {"scheme": scheme})
+        if not isinstance(adopt, dict):
+            return {"ok": False, "error": "invalid adopt response"}
+        if adopt.get("ok"):
+            live = self.schemes()
+            if scheme in live and (not route or self._has_route(route)):
+                return {"ok": True, "scheme": scheme, "acquired": True, "adopted": adopt.get("adopted")}
+            if scheme in live and route:
                 return {"ok": False, "scheme": scheme,
-                        "error": "adopt completed but scheme is not live",
+                        "error": "adopt completed but requested route is not live",
+                        "route": route,
                         "adopted": adopt.get("adopted"), "schemes": sorted(live)}
-            return adopt
+            return {"ok": False, "scheme": scheme,
+                    "error": "adopt completed but scheme is not live",
+                    "adopted": adopt.get("adopted"), "schemes": sorted(live)}
+        return adopt
 
-        adopted = try_adopt()
-        if adopted.get("ok"):
-            return adopted
-        inst = self.value(self.run(f"{mgmt}/registry/query/installed", {"scheme": scheme}))
-        inst = inst if isinstance(inst, dict) else {}
-        binds = inst.get("bindings") or {}
-        if not binds and install:
-            disc = self.value(self.run(f"{mgmt}/connector/query/discover",
-                                       {"scheme": scheme, **({"roots": roots} if roots else {})}))
-            disc = disc if isinstance(disc, dict) else {}
-            locals_ = [c for c in disc.get("local", []) if c.get("source")]
-            # prefer connectors that explicitly declare this scheme; try each until one adopts
-            declared = [c for c in locals_ if scheme in (c.get("schemes") or [])]
-            candidates = declared or locals_
-            # route-granular: when a scheme is split across connectors (e.g. fs:// duplicates vs
-            # dir/file), prefer the one whose routes actually cover the requested route.
-            if route:
-                want = self._route_key(route)
-                candidates = sorted(candidates,
-                                    key=lambda c: 0 if any(self._route_key(r) == want for r in (c.get("routes") or [])) else 1)
-            for c in candidates:
-                self.run(f"{mgmt}/connector/command/install", {"source": c["source"], "editable": True})
-                adopted = try_adopt()
-                if adopted.get("ok"):
-                    return adopted
-            inst = self.value(self.run(f"{mgmt}/registry/query/installed", {"scheme": scheme}))
-            inst = inst if isinstance(inst, dict) else {}
-            binds = inst.get("bindings") or {}
+    def _ensure_via_discovery_install(
+        self, scheme: str, roots, route: str | None, mgmt: str, adopt_uri: str,
+    ) -> dict | None:
+        """Discover and install a connector for scheme; return adopt result on success, None otherwise."""
+        disc = self.value(self.run(f"{mgmt}/connector/query/discover",
+                                   {"scheme": scheme, **({"roots": roots} if roots else {})}))
+        disc = disc if isinstance(disc, dict) else {}
+        locals_ = [c for c in disc.get("local", []) if c.get("source")]
+        # prefer connectors that explicitly declare this scheme; try each until one adopts
+        declared = [c for c in locals_ if scheme in (c.get("schemes") or [])]
+        candidates = declared or locals_
+        # route-granular: prefer connectors whose routes cover the requested route
+        if route:
+            want = self._route_key(route)
+            candidates = sorted(candidates,
+                                key=lambda c: 0 if any(self._route_key(r) == want for r in (c.get("routes") or [])) else 1)
+        for c in candidates:
+            self.run(f"{mgmt}/connector/command/install", {"source": c["source"], "editable": True})
+            adopted = self._try_adopt_scheme(adopt_uri, scheme, route)
+            if adopted.get("ok"):
+                return adopted
+        return None
+
+    def _ensure_via_node_bindings(
+        self, scheme: str, route: str | None, install: bool, inst: dict, binds: dict,
+    ) -> dict:
+        """Deploy pre-fetched node bindings; fall back to host-side deploy if empty."""
         if not binds:
             # Nothing installed on the node for this scheme → push a host-installed connector.
             return self._ensure_via_host_deploy(scheme, route, install)
-        dep = self.deploy(bindings={"version": inst.get("version", "urirun.bindings.v2"), "bindings": binds},
-                          allow=[f"{scheme}://**"], merge=True)
+        dep = self.deploy(
+            bindings={"version": inst.get("version", "urirun.bindings.v2"), "bindings": binds},
+            allow=[f"{scheme}://**"], merge=True,
+        )
         route_ok = self._has_route(route) if route else True
         if route and not route_ok:
             # The node's installed connector serves the scheme but NOT the requested route
@@ -314,6 +340,30 @@ class NodeClient:
         return {"ok": scheme in self.schemes() and route_ok, "scheme": scheme,
                 **({"route": route, "routeLive": route_ok} if route else {}),
                 "deployed": dep.get("routeCount"), "acquired": True}
+
+    def ensure_scheme(self, scheme: str, roots=None, install: bool = True, route: str | None = None) -> dict:
+        """Make `scheme://` live on the node, acquiring it if missing: adopt bindings already
+        installed in the node venv, else discover a connector (catalog/local ~/github/git)
+        via node:// management, install it, then adopt its routes. Older nodes fall back to
+        host-side merge-deploy. Needs --manage + admin token."""
+        if scheme in self.schemes() and (not route or self._has_route(route)):
+            return {"ok": True, "scheme": scheme, "already": True}
+        mgmt = f"node://{self.name}"
+        adopt_uri = f"{mgmt}/registry/command/adopt"
+        adopted = self._try_adopt_scheme(adopt_uri, scheme, route)
+        if adopted.get("ok"):
+            return adopted
+        inst = self.value(self.run(f"{mgmt}/registry/query/installed", {"scheme": scheme}))
+        inst = inst if isinstance(inst, dict) else {}
+        binds = inst.get("bindings") or {}
+        if not binds and install:
+            result = self._ensure_via_discovery_install(scheme, roots, route, mgmt, adopt_uri)
+            if result is not None:
+                return result
+            inst = self.value(self.run(f"{mgmt}/registry/query/installed", {"scheme": scheme}))
+            inst = inst if isinstance(inst, dict) else {}
+            binds = inst.get("bindings") or {}
+        return self._ensure_via_node_bindings(scheme, route, install, inst, binds)
 
     def run_ensuring(self, uri: str, payload: dict | None = None, roots=None, **kw) -> dict:
         """Self-healing dispatch: if the URI's scheme isn't served, acquire it
@@ -334,11 +384,30 @@ class NodeClient:
         (kind=connector/scheme) or a folder (kind=folder). Needs admin token."""
         return self.run(f"node://{self.name}/host/command/request", {"kind": kind, "what": what})
 
+    @staticmethod
+    def _read_folder_files(src: str, max_files: int) -> dict:
+        """Read text files from src recursively (flat by basename); skip binaries."""
+        import glob  # noqa: PLC0415
+        import os  # noqa: PLC0415
+
+        code: dict = {}
+        for fp in sorted(glob.glob(os.path.join(src, "**", "*"), recursive=True)):
+            if not os.path.isfile(fp):
+                continue
+            try:
+                code[os.path.basename(fp)] = open(fp, encoding="utf-8").read()  # noqa: WPS515
+            except Exception:  # noqa: BLE001
+                continue  # skip binary / unreadable
+            if len(code) >= max_files:
+                break
+        return code
+
     def push_folder(self, name_or_path: str, roots=None, max_files: int = 200) -> dict:
         """Host-side: find a folder (abs path, or a dir named `name_or_path` under roots /
         ~/github) and push its text files to the node's deploy dir (flat, by basename)."""
-        import glob
-        import os
+        import glob  # noqa: PLC0415
+        import os  # noqa: PLC0415
+
         src = None
         p = os.path.expanduser(str(name_or_path))
         if os.path.isdir(p):
@@ -352,17 +421,8 @@ class NodeClient:
                 if src:
                     break
         if not src:
-            return {"ok": False, "error": f"folder {name_or_path!r} not found", "roots": search if not p else [p]}
-        code: dict = {}
-        for fp in sorted(glob.glob(os.path.join(src, "**", "*"), recursive=True)):
-            if not os.path.isfile(fp):
-                continue
-            try:
-                code[os.path.basename(fp)] = open(fp, encoding="utf-8").read()
-            except Exception:
-                continue  # skip binary / unreadable
-            if len(code) >= max_files:
-                break
+            return {"ok": False, "error": f"folder {name_or_path!r} not found", "roots": search}
+        code = self._read_folder_files(src, max_files)
         if not code:
             return {"ok": False, "error": "no text files to push", "folder": src}
         dep = self.deploy(code=code, merge=True)
@@ -408,11 +468,11 @@ class NodeClient:
             return []
 
     # --- live events (node -> host) ---
-    def watch(self, scheme: str | list | None = None, run: str | None = None,
-              stop: threading.Event | None = None, timeout: float = 30.0,
-              last_event_id: int | None = None) -> Iterator[dict]:
-        """Yield the node's SSE events live, each tagged with its `_id`. `scheme`/`run`
-        filter server-side; `last_event_id` replays what was missed (resume after a drop)."""
+    @staticmethod
+    def _watch_query_params(
+        scheme: str | list | None, run: str | None, last_event_id: int | None,
+    ) -> list:
+        """Build the query-string param list for the /events SSE endpoint."""
         params = []
         if scheme:
             params.append(("scheme", ",".join(scheme) if isinstance(scheme, list) else scheme))
@@ -420,7 +480,14 @@ class NodeClient:
             params.append(("run", run))
         if last_event_id is not None:
             params.append(("last_event_id", str(last_event_id)))
-        query = urlencode(params)
+        return params
+
+    def watch(self, scheme: str | list | None = None, run: str | None = None,
+              stop: threading.Event | None = None, timeout: float = 30.0,
+              last_event_id: int | None = None) -> Iterator[dict]:
+        """Yield the node's SSE events live, each tagged with its `_id`. `scheme`/`run`
+        filter server-side; `last_event_id` replays what was missed (resume after a drop)."""
+        query = urlencode(self._watch_query_params(scheme, run, last_event_id))
         url = self.base + "/events" + (f"?{query}" if query else "")
         headers = self._auth({"Accept": "text/event-stream"}, raw=b"", purpose=keyauth.PURPOSE_RUN)
         if last_event_id is not None:
