@@ -242,6 +242,21 @@ def test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen():
     assert "truthyParam('beep', true)" in host_dashboard.SCANNER_HTML
 
 
+def test_dashboard_chat_messages_can_copy_markdown():
+    html = host_dashboard.INDEX_HTML
+
+    assert "data-chat-copy-md" in html
+    assert "function chatMessageMarkdown" in html
+    assert "function copyChatMessageMarkdown" in html
+    assert "function markdownFence" in html
+    assert "markdownFence(JSON.stringify(detail, null, 2), 'json')" in html
+    assert "markdownFence(JSON.stringify(message, null, 2), 'json')" in html
+    assert "clipboardError = error" in html
+    assert "document.execCommand && document.execCommand('copy')" in html
+    assert "closest('[data-chat-copy-md]')" in html
+    assert "String(item.id || '') === sid" in html
+
+
 def test_chat_ask_generates_and_dry_runs_uri_flow(monkeypatch):
     fake_mesh = FakeMesh()
     fake_db = FakeHostDb()
@@ -318,8 +333,13 @@ def test_chat_ask_plans_document_sync_without_llm(monkeypatch):
         "depends_on": [],
     }]
     assert result["timeline"][0]["status"] == "dry-run"
+    assert result["decisionLoop"]["schema"] == "urirun.decision-loop.v1"
+    assert result["decisionLoop"]["intent"]["id"] == "document-sync"
+    assert result["decisionLoop"]["execution"]["status"] == "dry-run"
+    assert result["decisionLoop"]["nextIntent"]["id"] == "execute-document-sync"
     assert fake_db.logs[0]["detail"]["role"] == "user"
     assert fake_db.logs[1]["detail"]["content"] == "dry-run: document sync URI step"
+    assert fake_db.logs[1]["detail"]["detail"]["decisionLoop"]["execution"]["status"] == "dry-run"
     assert fake_db.logs[2]["detail"]["generator"]["intent"] == "document-sync"
 
 
@@ -351,6 +371,8 @@ def test_chat_ask_executes_document_sync_without_llm(monkeypatch):
     assert result["execute"] is True
     assert result["selectedNodes"] == ["laptop"]
     assert result["results"]["sync-documents-to-node"]["copied"] == 2
+    assert result["decisionLoop"]["execution"]["status"] == "done"
+    assert result["decisionLoop"]["nextIntent"] is None
     assert calls[0]["payload"] == {"node": "laptop", "dest_root": "~/Downloads/urirun-scans"}
     assert calls[0]["kwargs"]["node_urls"] == ["laptop=http://laptop.local:8766"]
     assert fake_db.logs[0]["detail"]["role"] == "user"
@@ -400,8 +422,14 @@ def test_chat_ask_document_sync_error_includes_urifix_recovery(monkeypatch):
     assert result["ok"] is False
     assert result["urifix"]["repaired"] is True
     assert result["retry"]["payload"]["node_url"] == "http://laptop.local:8766"
+    assert result["decisionLoop"]["execution"]["status"] == "blocked"
+    assert result["decisionLoop"]["observation"]["kind"] == "uri-step-failed"
+    assert result["decisionLoop"]["nextIntent"]["id"] == "repair-uri-chain"
+    assert result["decisionLoop"]["nextIntent"]["automatic"] is True
+    assert result["decisionLoop"]["nextIntent"]["retry"]["payload"]["node_url"] == "http://laptop.local:8766"
     assert result["timeline"][0]["recovery"]["actions"][0]["id"] == "retry-with-node-url"
     assert fake_db.logs[1]["detail"]["detail"]["retry"]["uri"] == "document://host/archive/command/sync-to-node"
+    assert fake_db.logs[1]["detail"]["detail"]["decisionLoop"]["nextIntent"]["uri"] == "urifix://host/chain/command/repair"
 
 
 def test_chat_ask_returns_recovery_when_planner_fails(monkeypatch):
@@ -1582,6 +1610,49 @@ def test_scanner_capture_uses_receipt_crop_for_preview_and_ocr(monkeypatch, tmp_
     assert fake_db.artifacts[0]["path"] == str(tmp_path / "cropped.jpg")
     assert result["message"]["attachments"] == []
     assert result["message"]["detail"]["ocr"]["text"] == "PARAGON"
+
+
+def test_orientation_summary_compacts_each_signal():
+    paddle = host_dashboard._orientation_summary(
+        {"orientation": {"source": "paddle-doc-orientation", "angle": 90, "rotated": True, "score": 0.92}})
+    assert paddle == {"source": "paddle-doc-orientation", "angle": 90, "rotated": True, "score": 0.92}
+
+    # No explicit source but OSD applied an angle -> reported as osd.
+    osd = host_dashboard._orientation_summary(
+        {"orientation": {"enabled": True, "angle": 270, "rotated": True, "osd": {"appliedAngle": 270}}})
+    assert osd["source"] == "osd" and osd["angle"] == 270 and osd["rotated"] is True
+
+    # Geometric cascade (enabled, no source, no osd angle).
+    geo = host_dashboard._orientation_summary({"orientation": {"enabled": True, "angle": 0, "rotated": False}})
+    assert geo["source"] == "geometry" and geo["angle"] == 0 and geo["rotated"] is False
+
+    # No crop / no orientation -> safe nulls.
+    assert host_dashboard._orientation_summary({}) == {"source": None, "angle": 0, "rotated": False, "score": None}
+
+
+def test_scanner_capture_surfaces_orientation(monkeypatch, tmp_path):
+    fake_db = FakeHostDb()
+    monkeypatch.setattr(host_dashboard, "_host_db", lambda: fake_db)
+    monkeypatch.setenv("URIRUN_SCANNER_DIR", str(tmp_path))
+    monkeypatch.setenv("URIRUN_SCANNER_LLM_EXTRACT", "0")
+
+    def fake_crop(path):
+        crop_path = Path(path).with_name("cropped.jpg")
+        crop_path.write_bytes(b"cropped")
+        return {"ok": True, "path": str(crop_path), "box": [1, 2, 3, 4], "width": 2, "height": 2,
+                "orientation": {"source": "paddle-doc-orientation", "angle": 0, "rotated": False, "score": 0.9}}
+
+    monkeypatch.setattr(host_dashboard, "_auto_crop_receipt", fake_crop)
+    monkeypatch.setattr(host_dashboard, "_local_image_ocr",
+                        lambda path, backend=None: {"ok": True, "backend": "mock", "text": "PARAGON", "chars": 7})
+    raw = base64.b64encode(b"fake-jpeg").decode("ascii")
+
+    result = host_dashboard.scanner_capture(str(tmp_path), ":memory:", {
+        "image": f"data:image/jpeg;base64,{raw}", "width": 100, "height": 200, "source": "phone", "force": True,
+    })
+
+    assert result["ok"] is True
+    assert result["orientation"] == {"source": "paddle-doc-orientation", "angle": 0, "rotated": False, "score": 0.9}
 
 
 def test_scanner_capture_ocrs_full_frame_by_default(monkeypatch, tmp_path):

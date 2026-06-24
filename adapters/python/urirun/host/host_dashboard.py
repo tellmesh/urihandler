@@ -1836,11 +1836,13 @@ INDEX_HTML = r"""<!doctype html>
       const selected = message.id && state.selectedChatMessageIds.has(message.id) ? 'checked' : '';
       const checkbox = message.id ? `<input type="checkbox" name="chatMessageSelect" value="${esc(message.id)}" ${selected}>` : '';
       const deleteButton = message.id ? `<button type="button" class="danger" data-chat-delete="${esc(message.id)}">Delete</button>` : '';
+      const copyMarkdownButton = message.id ? `<button type="button" data-chat-copy-md="${esc(message.id)}" title="Copy message as Markdown">Copy MD</button>` : '';
       return `<div class="message ${esc(role)}">
         <div class="message-head">
           <span class="message-title">${checkbox}<strong>${esc(role)}</strong></span>
           <span class="message-actions">
             <span class="subtle">${esc(message.created_at || '')}</span>
+            ${copyMarkdownButton}
             ${deleteButton}
           </span>
         </div>
@@ -1945,20 +1947,80 @@ INDEX_HTML = r"""<!doctype html>
       return parts.join('\n');
     }
 
+    function markdownFence(value, lang='') {
+      const body = text(value).replace(/```/g, '`\u200b``');
+      return '```' + (lang || '') + '\n' + body + '\n```';
+    }
+
+    function chatMessageMarkdown(message) {
+      const detail = message.detail || {};
+      const timeline = detail.timeline || [];
+      const attachments = messageAttachments(message);
+      const parts = [
+        '# Chat Message',
+        '',
+        `- role: ${message.role || 'system'}`,
+        `- created_at: ${message.created_at || ''}`,
+      ];
+      if (message.id) parts.push(`- id: ${message.id}`);
+      parts.push('', '## Content', '', markdownFence(message.content || '', 'text'));
+      if (timeline.length) {
+        parts.push('', '## URI Timeline', '', markdownFence(timeline.map((step) => {
+          const status = step.ok ? 'ok' : 'fail';
+          const target = step.target || '';
+          const uri = step.uri || '';
+          const error = step.error ? ` error=${JSON.stringify(step.error)}` : '';
+          return `${status} ${target} ${uri}${error}`.trim();
+        }).join('\n'), 'text'));
+      }
+      if (attachments.length) {
+        parts.push('', '## Attachments', '');
+        attachments.forEach((att) => {
+          parts.push(`- ${att.kind || 'file'}: ${att.path || att.uri || att.previewUrl || ''}`);
+        });
+        parts.push('', markdownFence(JSON.stringify(attachments, null, 2), 'json'));
+      }
+      if (Object.keys(detail).length) {
+        parts.push('', '## URI / JSON', '', markdownFence(JSON.stringify(detail, null, 2), 'json'));
+      }
+      parts.push('', '## Raw Message', '', markdownFence(JSON.stringify(message, null, 2), 'json'));
+      return parts.join('\n');
+    }
+
     async function copyTextToClipboard(value) {
+      let clipboardError = null;
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(value);
-        return;
+        try {
+          await navigator.clipboard.writeText(value);
+          return 'clipboard';
+        } catch (error) {
+          clipboardError = error;
+        }
       }
       const textarea = document.createElement('textarea');
       textarea.value = value;
       textarea.setAttribute('readonly', '');
       textarea.style.position = 'fixed';
+      textarea.style.left = '0';
+      textarea.style.top = '0';
+      textarea.style.width = '1px';
+      textarea.style.height = '1px';
       textarea.style.opacity = '0';
+      const previousFocus = document.activeElement;
       document.body.appendChild(textarea);
+      textarea.focus();
       textarea.select();
-      document.execCommand('copy');
+      textarea.setSelectionRange(0, textarea.value.length);
+      const copied = document.execCommand && document.execCommand('copy');
       textarea.remove();
+      if (previousFocus && typeof previousFocus.focus === 'function') {
+        try { previousFocus.focus(); } catch (error) {}
+      }
+      if (!copied) {
+        const reason = clipboardError ? ` (${clipboardError.message || clipboardError})` : '';
+        throw new Error(`clipboard copy failed${reason}`);
+      }
+      return 'execCommand';
     }
 
     async function copyVisibleChat() {
@@ -1968,6 +2030,18 @@ INDEX_HTML = r"""<!doctype html>
       window.__urirunLastCopiedChat = content;
       $('chatStatus').textContent = `copied ${state.visibleChatMessages.length}`;
       writeUrlState({ action: 'chat:copy', copied: state.visibleChatMessages.length }, { replace: true });
+    }
+
+    async function copyChatMessageMarkdown(id) {
+      const sid = String(id || '');
+      const message = state.chatMessages.find((item) => String(item.id || '') === sid)
+        || state.visibleChatMessages.find((item) => String(item.id || '') === sid);
+      if (!message) throw new Error(`chat message not found: ${id}`);
+      const content = chatMessageMarkdown(message);
+      const method = await copyTextToClipboard(content);
+      window.__urirunLastCopiedChatMarkdown = content;
+      $('chatStatus').textContent = `copied markdown (${method})`;
+      writeUrlState({ action: 'chat:copy-message-md', copied: 1 }, { replace: true });
     }
 
     function chatRenderSignature(visible) {
@@ -2184,9 +2258,19 @@ INDEX_HTML = r"""<!doctype html>
 	        contactAction(contactButton).catch((error) => alert(error.message));
 	        return;
 	      }
-	      const deleteId = event.target.dataset.chatDelete;
-	      if (deleteId) {
+      const deleteButton = event.target && event.target.closest ? event.target.closest('[data-chat-delete]') : null;
+      const deleteId = deleteButton ? deleteButton.dataset.chatDelete : '';
+      if (deleteId) {
 	        deleteChatMessages([deleteId]).catch((error) => alert(error.message));
+        return;
+      }
+      const copyMarkdownButton = event.target && event.target.closest ? event.target.closest('[data-chat-copy-md]') : null;
+      const copyMarkdownId = copyMarkdownButton ? copyMarkdownButton.dataset.chatCopyMd : '';
+      if (copyMarkdownId) {
+        copyChatMessageMarkdown(copyMarkdownId).catch((error) => {
+          $('chatStatus').textContent = error.message;
+          alert(error.message);
+        });
         return;
       }
       const artifactDeleteId = event.target.dataset.artifactDelete;
@@ -6006,6 +6090,22 @@ def _register_scanner_result(
     }
 
 
+def _orientation_summary(crop: dict) -> dict:
+    """Compact orientation facts for the capture response / UI: which signal decided the
+    rotation (``paddle-doc-orientation`` | ``osd`` | ``geometry``) and the applied PIL angle
+    (0 = the scan was already upright)."""
+    o = crop.get("orientation") if isinstance(crop, dict) and isinstance(crop.get("orientation"), dict) else {}
+    source = o.get("source")
+    if not source and o.get("enabled"):
+        source = "osd" if (o.get("osd") or {}).get("appliedAngle") is not None else "geometry"
+    return {
+        "source": source,
+        "angle": int(o.get("angle") or 0),
+        "rotated": bool(o.get("rotated")),
+        "score": o.get("score"),
+    }
+
+
 def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
     _prune_scanner_staging()
     mode = str(payload.get("mode") or "").lower()
@@ -6164,6 +6264,7 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
         "primaryArtifact": registered["primaryArtifact"],
         "ocr": ocr,
         "detectedDocument": detected_document,
+        "orientation": _orientation_summary(crop),
         "quality": quality,
         "overlay": overlay,
         "document": document,
@@ -6307,6 +6408,7 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
         "primaryArtifact": registered["primaryArtifact"],
         "ocr": ocr,
         "detectedDocument": best.get("detectedDocument") or {},
+        "orientation": _orientation_summary(crop),
         "quality": quality,
         "overlay": overlay,
         "document": document,
@@ -7279,6 +7381,56 @@ def _selected_nodes_from_targets(selected_nodes: list[str], selected_targets: li
     return out
 
 
+def _decision_loop_for_document_sync(prompt: str, *, execute: bool, sync_node: str, selected_nodes: list[str],
+                                     selected_targets: list[str], flow: dict, timeline: list[dict],
+                                     error: dict | None = None, urifix: dict | None = None,
+                                     sync_result: dict | None = None) -> dict:
+    status = "done" if execute and not error else ("blocked" if error else "dry-run")
+    recovery = (urifix or {}).get("recovery") or []
+    can_auto_retry = bool((urifix or {}).get("diagnosis", {}).get("canAutoRetry") or (urifix or {}).get("repaired"))
+    next_intent = None
+    if error:
+        next_intent = {
+            "id": "repair-uri-chain",
+            "uri": "urifix://host/chain/command/repair",
+            "automatic": can_auto_retry,
+            "status": "ready" if can_auto_retry else "needs-input",
+            "actions": recovery,
+            "retry": (urifix or {}).get("retry"),
+        }
+    elif not execute:
+        next_intent = {
+            "id": "execute-document-sync",
+            "uri": "document://host/archive/command/sync-to-node",
+            "automatic": False,
+            "status": "awaiting-execute",
+        }
+    return {
+        "schema": "urirun.decision-loop.v1",
+        "intent": {
+            "id": "document-sync",
+            "source": "host.document-archive",
+            "target": f"node:{sync_node}",
+            "prompt": prompt,
+            "selectedNodes": selected_nodes,
+            "selectedTargets": selected_targets,
+        },
+        "flow": flow,
+        "execution": {
+            "status": status,
+            "execute": execute,
+            "timeline": timeline,
+            "results": {"sync-documents-to-node": sync_result} if sync_result else {},
+        },
+        "observation": {
+            "kind": "uri-step-failed" if error else ("dry-run" if not execute else "uri-flow-complete"),
+            "failedStep": "sync-documents-to-node" if error else None,
+            "error": error,
+        },
+        "nextIntent": next_intent,
+    }
+
+
 def chat_ask(project: str, db: str | None, config: str | None, payload: dict, node_urls: list[str] | None = None,
              token: str | None = None, identity: str | None = None) -> dict:
     prompt = str(payload.get("prompt") or "").strip()
@@ -7525,6 +7677,18 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
                     "recoverable": bool(result["recovery"]),
                     "actions": result["recovery"],
                 }
+        result["decisionLoop"] = _decision_loop_for_document_sync(
+            prompt,
+            execute=execute,
+            sync_node=sync_node,
+            selected_nodes=sync_selected_nodes,
+            selected_targets=sync_selected_targets,
+            flow=flow,
+            timeline=timeline,
+            error=error,
+            urifix=result.get("urifix"),
+            sync_result=sync_result,
+        )
         if not execute or error:
             _add_chat_message(db, _chat_message(
                 "system",
@@ -7544,6 +7708,7 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
                     "patch": result.get("patch") or {},
                     "retry": result.get("retry"),
                     "urifix": result.get("urifix"),
+                    "decisionLoop": result.get("decisionLoop"),
                 },
             ))
         try:
@@ -7562,6 +7727,7 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
                     "error": error,
                     "recovery": result.get("recovery") or [],
                     "urifix": result.get("urifix"),
+                    "decisionLoop": result.get("decisionLoop"),
                 },
             )
         except Exception:

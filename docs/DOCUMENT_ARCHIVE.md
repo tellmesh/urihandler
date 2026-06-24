@@ -215,3 +215,9 @@ The destination layout mirrors the archive month folders:
   2026-06/
     rachunek_2026-06-19_duo-cafe-hanna-gruba_30.26-pln_doc-fv-877312030cff5231.pdf
 ```
+
+If the sync was requested from chat and the selected node has no URL in the host
+config, the dashboard asks `urifix://host/chain/command/repair` for recovery.
+With a known transient node URL, `urifix://` returns a retry payload containing
+`node_url`. Without one it returns a manual `provide-node-url` action. This keeps
+the sync deterministic without letting the planner invent a node address.

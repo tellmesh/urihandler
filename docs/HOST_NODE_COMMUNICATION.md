@@ -72,6 +72,22 @@ The default operator path is still dry-run first. `host ask`, `host flow`, and
 `host task` should require explicit `--execute` before mutating the node or an
 external system.
 
+## URI-chain recovery
+
+When a URI step fails, the caller should return the original error and a
+machine-readable recovery block instead of only a string. The host dashboard uses
+`urifix://host/chain/command/repair` when that connector is installed. `urifix`
+does not execute privileged actions by itself; it diagnoses the failed chain and
+returns a patch/retry contract or a human action such as `provide-node-url`.
+
+For example, document sync can fail because the prompt selected `node:lenovo`
+but the host config has no URL for that node. If the request was started with
+`--node-url lenovo=http://192.168.188.201:8766`, `urifix://` can return a retry
+payload with `node_url` filled in. If no node URL is known, the recovery remains
+manual and auditable.
+
+See `docs/HOST_DASHBOARD_CHAT.md` for the operator-facing chat contract.
+
 ## Authentication and policy
 
 There are two separate gates:

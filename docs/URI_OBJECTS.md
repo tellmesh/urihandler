@@ -3,6 +3,9 @@
 This is the working contract for object boundaries in urirun. It exists to keep
 new `urirun-connector-*` and `urirun-service-*` packages small and predictable.
 
+For a Polish operator/developer overview of the same component model, see
+`docs/COMPONENTS.md`.
+
 ## Object Types
 
 ### Connector
