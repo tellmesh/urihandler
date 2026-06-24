@@ -1274,6 +1274,26 @@ INDEX_HTML = r"""<!doctype html>
       }
     }
 
+    // Per-node token save (from a node card in the Nodes view). Reuses /api/nodes/token; the
+    // node name is the card's, the value goes straight to the OS keyring server-side.
+    async function saveNodeTokenFor(btn) {
+      const name = btn && btn.dataset ? btn.dataset.node : '';
+      const form = btn.closest('.node-token-form');
+      const input = form ? form.querySelector('.node-token-input') : null;
+      const status = form ? form.querySelector('.node-token-status') : null;
+      const token = (input && input.value) || '';
+      if (!name) { if (status) status.textContent = 'brak nazwy węzła'; return; }
+      if (!token) { if (status) status.textContent = 'wklej token'; return; }
+      if (status) status.textContent = 'zapisuję token…';
+      try {
+        const res = await api('/api/nodes/token', { method: 'POST', body: JSON.stringify({ name, token }) });
+        if (input) input.value = '';  // never keep the secret in the DOM
+        if (status) status.textContent = '✓ zapisano w keyring (' + (res.tokenRef || 'secret://keyring/urirun-node-token/' + name) + ')';
+      } catch (error) {
+        if (status) status.textContent = 'błąd: ' + error.message;
+      }
+    }
+
 	    function contactCard(contact) {
 	      const checked = state.selectedTargets.includes(contact.id) ? 'checked' : '';
 	      const disabled = contact.disabled ? 'disabled' : '';
@@ -8747,6 +8767,668 @@ def _decision_loop_for_document_sync(prompt: str, *, execute: bool, sync_node: s
     }
 
 
+def _scanner_flow_result(
+    service: dict,
+    autonomous_scan: bool,
+    camera_action_uri: str,
+    camera_payload: dict,
+    torch_click_uri: str,
+    torch_enabled: bool | None,
+    queued_camera: dict | None,
+    queued_torch: dict | None,
+    prompt: str,
+    selected_nodes: list[str],
+    selected_targets: list[str],
+) -> dict:
+    """Build the response dict for the phone-scanner chat path."""
+    return {
+        "ok": bool(service.get("ok")),
+        "prompt": prompt,
+        "execute": True,
+        "selectedNodes": selected_nodes,
+        "selectedTargets": selected_targets,
+        "generator": {"provider": "host-dashboard", "intent": "phone-scanner-service"},
+        "flow": {
+            "task": {"id": "phone-scanner-service", "title": "Start phone scanner service"},
+            "steps": [
+                {"id": "start-phone-scanner", "uri": "dashboard://host/phone-scanner/command/start", "payload": {}},
+                *([{
+                    "id": "queue-camera-autonomous" if autonomous_scan else "queue-camera-start",
+                    "uri": camera_action_uri,
+                    "payload": camera_payload,
+                }] if queued_camera else []),
+                *([{
+                    "id": "queue-camera-light",
+                    "uri": torch_click_uri,
+                    "payload": {"target": "scanner", "enabled": bool(torch_enabled)},
+                }] if queued_torch else []),
+            ],
+        },
+        "timeline": [
+            {
+                "id": "start-phone-scanner",
+                "uri": "dashboard://host/phone-scanner/command/start",
+                "target": "host",
+                "ok": bool(service.get("ok")),
+                "status": service.get("status"),
+            },
+            *([{
+                "id": "queue-camera-autonomous" if autonomous_scan else "queue-camera-start",
+                "uri": camera_action_uri,
+                "target": "scanner-page",
+                "ok": bool(queued_camera.get("ok")),
+                "status": "queued",
+                "autonomous": bool(autonomous_scan),
+            }] if queued_camera else []),
+            *([{
+                "id": "queue-camera-light",
+                "uri": torch_click_uri,
+                "target": "scanner-page",
+                "ok": bool(queued_torch.get("ok")),
+                "status": "queued",
+            }] if queued_torch else []),
+        ],
+        "results": {
+            "phone-scanner-service": service,
+            **({"camera-start": queued_camera} if queued_camera else {}),
+            **({"camera-torch": queued_torch} if queued_torch else {}),
+        },
+        "attachments": ((service.get("message") or {}).get("attachments") or []),
+    }
+
+
+def _chat_ask_phone_scanner(
+    project: str,
+    db: str | None,
+    config: str | None,
+    node_urls: list[str] | None,
+    token: str | None,
+    identity: str | None,
+    prompt: str,
+    execute: bool,
+    selected_nodes: list[str],
+    selected_targets: list[str],
+) -> dict:
+    """Handle phone-scanner chat requests (start scanner, queue camera/torch actions)."""
+    service = ensure_phone_scanner_service(
+        project, db, config=config, node_urls=node_urls, token=token, identity=identity,
+    )
+    queued_camera: dict | None = None
+    queued_torch: dict | None = None
+    camera_click_uri = "scanner://page/ui/button/start-camera/command/click"
+    camera_autonomous_uri = "scanner://page/camera/command/autonomous"
+    torch_click_uri = "scanner://page/ui/button/torch/command/click"
+    torch_enabled = _torch_enabled_from_prompt(prompt)
+    autonomous_scan = _is_autonomous_scanner_prompt(prompt)
+    camera_action_uri = camera_autonomous_uri if autonomous_scan else camera_click_uri
+    camera_payload = {
+        "target": "scanner",
+        "startBest": torch_enabled is None,
+        "auto": bool(autonomous_scan),
+        "count": int(os.environ.get("URIRUN_PHONE_SCANNER_BEST_COUNT", "6")),
+        "minScore": float(os.environ.get("URIRUN_PHONE_SCANNER_MIN_SCORE", "45")),
+        "interval": float(os.environ.get("URIRUN_PHONE_SCANNER_INTERVAL", "3")),
+    }
+    if autonomous_scan or _is_camera_start_prompt(prompt) or torch_enabled is not None:
+        queued_camera = page_action_enqueue(
+            db, target="scanner", uri=camera_action_uri, payload=camera_payload,
+            mode="execute", source="chat",
+        )
+        _add_chat_message(db, _chat_message(
+            "system",
+            "Autonomous scanner queued for the open scanner page. Open the scanner URL and accept the browser camera permission if prompted."
+            if autonomous_scan else
+            "Camera start queued for the open scanner page. Open the scanner URL and accept the browser camera permission if prompted.",
+            detail={
+                "uri": camera_action_uri,
+                "selectedTargets": ["service:phone-scanner"],
+                "queued": queued_camera,
+                "scannerUrl": service.get("url"),
+                "autonomous": bool(autonomous_scan),
+            },
+        ))
+    if torch_enabled is not None:
+        queued_torch = page_action_enqueue(
+            db, target="scanner", uri=torch_click_uri,
+            payload={"target": "scanner", "enabled": bool(torch_enabled)},
+            mode="execute", source="chat",
+        )
+        _add_chat_message(db, _chat_message(
+            "system",
+            f"Camera light {'on' if torch_enabled else 'off'} queued for the open scanner page.",
+            detail={
+                "uri": torch_click_uri,
+                "selectedTargets": ["service:phone-scanner"],
+                "enabled": bool(torch_enabled),
+                "queued": queued_torch,
+                "scannerUrl": service.get("url"),
+            },
+        ))
+    result = _scanner_flow_result(
+        service, autonomous_scan, camera_action_uri, camera_payload,
+        torch_click_uri, torch_enabled, queued_camera, queued_torch,
+        prompt, selected_nodes, selected_targets,
+    )
+    try:
+        _host_db().add_log(db, "chat", "ask", {
+            "prompt": prompt,
+            "execute": True,
+            "ok": result.get("ok"),
+            "selectedNodes": selected_nodes,
+            "selectedTargets": selected_targets,
+            "generator": result.get("generator"),
+            "timeline": result.get("timeline") or [],
+        })
+    except Exception:
+        pass
+    return result
+
+
+def _sync_execute_initial(
+    project: str,
+    db: str | None,
+    config: str | None,
+    node_urls: list[str] | None,
+    token: str | None,
+    identity: str | None,
+    sync_payload: dict,
+) -> tuple[dict | None, dict | None]:
+    """Run the first sync attempt. Returns (sync_result, error)."""
+    try:
+        sync_result = sync_documents_to_node(
+            project, db, config, sync_payload, node_urls=node_urls, token=token, identity=identity,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return None, {"type": type(exc).__name__, "message": str(exc), "uri": _DOCUMENT_SYNC_URI}
+    if sync_result is not None and not sync_result.get("ok"):
+        failed_reasons = sync_result.get("failedReasons") if isinstance(sync_result.get("failedReasons"), dict) else {}
+        top_reason = max(failed_reasons.items(), key=lambda item: item[1])[0] if failed_reasons else "document sync contract failed"
+        return sync_result, {
+            "type": "ContractError",
+            "message": str(top_reason),
+            "uri": _DOCUMENT_SYNC_URI,
+            "verification": sync_result.get("verification"),
+        }
+    return sync_result, None
+
+
+def _sync_ok_and_status(sync_result: dict | None, error: dict | None, execute: bool) -> tuple[bool, str]:
+    """Compute (ok, timeline_status) for the document-sync path."""
+    ok = bool((sync_result or {}).get("ok")) if execute and not error else not bool(error)
+    status = "done" if execute and ok else ("failed" if error else "dry-run")
+    return ok, status
+
+
+def _apply_urifix_recovery(
+    result: dict,
+    timeline: list[dict],
+    *,
+    project: str,
+    db: str | None,
+    config: str | None,
+    node_urls: list[str] | None,
+    token: str | None,
+    identity: str | None,
+    prompt: str,
+    execute: bool,
+    no_llm: bool,
+    payload: dict,
+    sync_node: str,
+    selected_nodes: list[str],
+    selected_targets: list[str],
+    error: dict,
+    sync_result: dict | None,
+) -> tuple[dict | None, dict | None, dict | None, bool, bool]:
+    """Diagnose the failed sync with urifix and, if possible, auto-retry.
+
+    Mutates result and timeline in place. Returns (urifix, final_error, initial_error, recovered, retry_attempted).
+    Single source of truth is decisionLoop (built by caller from urifix); raw urifix stays in
+    result only for the DB debug log — not promoted to recovery/patch/retry copies in chat.
+    """
+    initial_error = dict(error)
+    host_config_snapshot = None
+    try:
+        host_config_snapshot = _host_config(config, node_urls)
+    except Exception:  # noqa: BLE001
+        pass
+    urifix = _try_urifix_repair(
+        prompt,
+        {"nodes": selected_nodes, "targets": selected_targets, "execute": execute, "no_llm": no_llm},
+        result,
+        node_urls=node_urls,
+        host_config=host_config_snapshot,
+    )
+    if not urifix:
+        return None, error, initial_error, False, False
+    result["urifix"] = urifix
+    timeline[0]["recoverable"] = bool(urifix.get("recovery"))
+    retry_payload = (
+        _document_sync_retry_payload_from_urifix(urifix, sync_node=sync_node)
+        if execute and _document_sync_auto_retry_enabled(payload) else None
+    )
+    if not retry_payload:
+        return urifix, error, initial_error, False, False
+    retry_step = {
+        "id": "sync-documents-to-node.retry",
+        "uri": _DOCUMENT_SYNC_URI,
+        "target": retry_payload.get("node") or sync_node,
+        "ok": False,
+        "status": "failed",
+        "recoveredFrom": "sync-documents-to-node",
+        "generatedBy": "urifix://host/chain/command/repair",
+    }
+    recovered = False
+    try:
+        retry_result = sync_documents_to_node(
+            project, db, config, retry_payload, node_urls=node_urls, token=token, identity=identity,
+        )
+        retry_ok = bool(retry_result.get("ok"))
+        sync_result = retry_result
+        retry_step["ok"] = retry_ok
+        retry_step["status"] = "done" if retry_ok else "failed"
+        if retry_ok:
+            recovered = True
+            error = None
+            result["initialError"] = initial_error
+            result["recovered"] = True
+            result["recoveredBy"] = "urifix://host/chain/command/repair"
+        else:
+            error = {
+                "type": "RecoveryError",
+                "message": "document sync retry returned ok=false",
+                "uri": _DOCUMENT_SYNC_URI,
+                "initialError": initial_error,
+            }
+    except Exception as exc:  # noqa: BLE001
+        error = {
+            "type": type(exc).__name__,
+            "message": str(exc),
+            "uri": _DOCUMENT_SYNC_URI,
+            "initialError": initial_error,
+        }
+    timeline.append(retry_step)
+    ok = bool((sync_result or {}).get("ok")) if execute and not error else False
+    result["ok"] = ok
+    result["timeline"] = timeline
+    result["results"] = {"sync-documents-to-node": sync_result} if sync_result else {}
+    result["error"] = error
+    return urifix, error, initial_error, recovered, True
+
+
+def _chat_ask_document_sync(
+    project: str,
+    db: str | None,
+    config: str | None,
+    payload: dict,
+    node_urls: list[str] | None,
+    token: str | None,
+    identity: str | None,
+    prompt: str,
+    execute: bool,
+    no_llm: bool,
+    selected_nodes: list[str],
+    selected_targets: list[str],
+) -> dict:
+    """Handle document-sync chat requests."""
+    sync_node = _document_sync_node_from_prompt(prompt, selected_nodes, selected_targets, config, node_urls)
+    sync_selected_nodes = _selected_nodes_from_targets([*selected_nodes, sync_node], selected_targets)
+    sync_selected_targets = list(selected_targets)
+    node_target = f"node:{sync_node}"
+    if node_target not in sync_selected_targets:
+        sync_selected_targets.append(node_target)
+    sync_payload = {"node": sync_node, "dest_root": _document_sync_dest_from_prompt(prompt)}
+    step = {
+        "id": "sync-documents-to-node",
+        "uri": "document://host/archive/command/sync-to-node",
+        "payload": sync_payload,
+        "depends_on": [],
+    }
+    flow = {
+        "task": {"id": "document-sync-to-node", "title": "Copy archived document PDFs to URI node"},
+        "steps": [step],
+    }
+    generator = {"provider": "host-dashboard", "intent": "document-sync", "fallback": True}
+    sync_result: dict | None = None
+    error: dict | None = None
+    initial_error: dict | None = None
+    recovered = False
+    retry_attempted = False
+    if execute:
+        sync_result, error = _sync_execute_initial(project, db, config, node_urls, token, identity, sync_payload)
+    ok, status = _sync_ok_and_status(sync_result, error, execute)
+    timeline: list[dict] = [{
+        "id": "sync-documents-to-node",
+        "uri": _DOCUMENT_SYNC_URI,
+        "target": sync_node,
+        "ok": ok,
+        "status": status,
+    }]
+    result: dict = {
+        "ok": ok,
+        "prompt": prompt,
+        "execute": execute,
+        "selectedNodes": sync_selected_nodes,
+        "selectedTargets": sync_selected_targets,
+        "generator": generator,
+        "flow": flow,
+        "timeline": timeline,
+        "results": {"sync-documents-to-node": sync_result} if sync_result else {},
+        "error": error,
+    }
+    if error:
+        _, error, initial_error, recovered, retry_attempted = _apply_urifix_recovery(
+            result,
+            timeline,
+            project=project,
+            db=db,
+            config=config,
+            node_urls=node_urls,
+            token=token,
+            identity=identity,
+            prompt=prompt,
+            execute=execute,
+            no_llm=no_llm,
+            payload=payload,
+            sync_node=sync_node,
+            selected_nodes=selected_nodes,
+            selected_targets=selected_targets,
+            error=error,
+            sync_result=sync_result,
+        )
+    result["decisionLoop"] = _decision_loop_for_document_sync(
+        prompt,
+        execute=execute,
+        sync_node=sync_node,
+        selected_nodes=sync_selected_nodes,
+        selected_targets=sync_selected_targets,
+        flow=flow,
+        timeline=result.get("timeline") or timeline,
+        error=error,
+        urifix=result.get("urifix"),
+        sync_result=(result.get("results") or {}).get("sync-documents-to-node"),
+        initial_error=initial_error,
+        recovered=recovered,
+        retry_attempted=retry_attempted,
+        auto_retry_enabled=_document_sync_auto_retry_enabled(payload),
+    )
+    if recovered:
+        _add_chat_message(db, _chat_message(
+            "system",
+            "recovered: document sync URI step",
+            detail={
+                "schema": "urirun.decision-loop.v1",
+                "ok": result.get("ok"),
+                "decisionLoop": result.get("decisionLoop"),
+            },
+        ))
+    elif not execute or error:
+        _add_chat_message(db, _chat_message(
+            "system",
+            ("failed: document sync URI step" if error else "dry-run: document sync URI step"),
+            # The decision-loop object is self-contained (intent → flow → execution →
+            # observation → nextIntent), so the chat message carries just it (+ ok) instead
+            # of the former duplicated recovery/patch/retry/urifix/flow/timeline copies.
+            detail={
+                "schema": "urirun.decision-loop.v1",
+                "ok": result.get("ok"),
+                "decisionLoop": result.get("decisionLoop"),
+            },
+        ))
+    try:
+        _host_db().add_log(db, "chat", "ask", {
+            "prompt": prompt,
+            "execute": execute,
+            "ok": result.get("ok"),
+            "selectedNodes": sync_selected_nodes,
+            "selectedTargets": sync_selected_targets,
+            "decisionLoop": result.get("decisionLoop"),
+            "urifix": result.get("urifix"),
+        })
+    except Exception:
+        pass
+    return result
+
+
+def _chat_ask_general_planner_failure(
+    exc: BaseException,
+    db: str | None,
+    prompt: str,
+    execute: bool,
+    selected_nodes: list[str],
+    selected_targets: list[str],
+) -> dict:
+    """Build a planner-recovery result and emit chat/DB log when make_flow raises."""
+    from urirun.node.recovery import planner_failure  # noqa: PLC0415
+
+    result = planner_failure(exc, prompt=prompt, selected_nodes=selected_nodes, selected_targets=selected_targets)
+    result["execute"] = execute
+    result["generator"] = {
+        "provider": "host-dashboard",
+        "intent": "planner-recovery",
+        "fallback": True,
+        "reason": str(exc),
+    }
+    _add_chat_message(db, _chat_message(
+        "system",
+        f"failed: planner error ({(result.get('error') or {}).get('category') or 'UNKNOWN'}); recovery available",
+        detail={
+            "prompt": prompt,
+            "execute": execute,
+            "ok": False,
+            "selectedTargets": selected_targets,
+            "generator": result["generator"],
+            "flow": result.get("flow") or {},
+            "timeline": result.get("timeline") or [],
+            "results": {},
+            "error": result.get("error"),
+            "recovery": result.get("recovery") or [],
+        },
+    ))
+    try:
+        _host_db().add_log(db, "chat", "ask", {
+            "prompt": prompt,
+            "execute": execute,
+            "ok": False,
+            "selectedNodes": selected_nodes,
+            "selectedTargets": selected_targets,
+            "generator": result["generator"],
+            "timeline": result.get("timeline") or [],
+            "error": result.get("error"),
+            "recovery": result.get("recovery") or [],
+        })
+    except Exception:  # noqa: BLE001
+        pass
+    return result
+
+
+def _general_path_complete(
+    result: dict,
+    db: str | None,
+    prompt: str,
+    execute: bool,
+    selected_nodes: list[str],
+    selected_targets: list[str],
+    generator: dict,
+    flow: dict,
+    attachments: list,
+) -> None:
+    """Emit the chat message and DB log for the completed general mesh path."""
+    timeline = result.get("timeline") or []
+    status = "ok" if result.get("ok") else "failed"
+    content = f"{status}: {len(timeline)} URI step(s)"
+    if result.get("recovery"):
+        content += f", {len(result.get('recovery') or [])} recovery action(s)"
+    if attachments:
+        content += f", {len(attachments)} attachment(s)"
+    _add_chat_message(db, _chat_message(
+        "system",
+        content,
+        detail={
+            "prompt": prompt,
+            "execute": execute,
+            "ok": result.get("ok"),
+            "selectedTargets": selected_targets,
+            "generator": generator,
+            "flow": flow,
+            "timeline": timeline,
+            "results": result.get("results") or {},
+            "error": result.get("error"),
+            "recovery": result.get("recovery") or [],
+        },
+        attachments=attachments,
+    ))
+    try:
+        _host_db().add_log(db, "chat", "ask", {
+            "prompt": prompt,
+            "execute": execute,
+            "ok": result.get("ok"),
+            "selectedNodes": selected_nodes,
+            "selectedTargets": selected_targets,
+            "generator": generator,
+            "timeline": result.get("timeline") or [],
+            "recovery": result.get("recovery") or [],
+        })
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _chat_ask_general(
+    project: str,
+    db: str | None,
+    config: str | None,
+    payload: dict,
+    node_urls: list[str] | None,
+    token: str | None,
+    identity: str | None,
+    prompt: str,
+    execute: bool,
+    no_llm: bool,
+    selected_nodes: list[str],
+    selected_targets: list[str],
+) -> dict:
+    """Handle general LLM-to-URI mesh chat requests."""
+    mesh = _mesh()
+    old_token = os.environ.get("URIRUN_RUN_TOKEN")
+    old_identity = os.environ.get("URIRUN_RUN_IDENTITY")
+    if token:
+        os.environ["URIRUN_RUN_TOKEN"] = token
+        os.environ.pop("URIRUN_RUN_IDENTITY", None)
+    elif identity:
+        os.environ["URIRUN_RUN_IDENTITY"] = os.path.expanduser(identity)
+        os.environ.pop("URIRUN_RUN_TOKEN", None)
+    try:
+        discovered = mesh.discover_mesh(_host_config(config, node_urls))
+        capability_gap = _screen_document_capability_gap(prompt, discovered, selected_nodes, selected_targets)
+        if capability_gap:
+            result = {
+                "ok": False,
+                "prompt": prompt,
+                "execute": execute,
+                "selectedNodes": selected_nodes,
+                "selectedTargets": selected_targets,
+                "generator": {"provider": "host-dashboard", "intent": "capability-check"},
+                "nodeCount": len(discovered.get("nodes") or []),
+                "routeCount": len(discovered.get("routes") or []),
+                "flow": {"task": {"id": "capability-gap", "title": "Missing URI capability"}, "steps": []},
+                "timeline": [],
+                "results": {},
+                "error": capability_gap,
+            }
+            _add_chat_message(db, _chat_message(
+                "system",
+                "failed: missing screen-capture URI route for requested screenshot-to-document workflow",
+                detail={
+                    "prompt": prompt,
+                    "execute": execute,
+                    "ok": False,
+                    "selectedTargets": selected_targets,
+                    "generator": result["generator"],
+                    "flow": result["flow"],
+                    "timeline": [],
+                    "results": {},
+                    "error": capability_gap,
+                },
+            ))
+            try:
+                _host_db().add_log(db, "chat", "ask", {
+                    "prompt": prompt,
+                    "execute": execute,
+                    "ok": False,
+                    "selectedNodes": selected_nodes,
+                    "selectedTargets": selected_targets,
+                    "generator": result["generator"],
+                    "timeline": [],
+                    "error": capability_gap,
+                })
+            except Exception:  # noqa: BLE001
+                pass
+            return result
+        try:
+            flow, generator = mesh.make_flow(prompt, discovered, selected_nodes=selected_nodes, use_llm=not no_llm)
+        except Exception as exc:  # noqa: BLE001 - return a recovery contract instead of a raw API failure.
+            return _chat_ask_general_planner_failure(exc, db, prompt, execute, selected_nodes, selected_targets)
+        registry = mesh.registry_from_routes(discovered.get("routes") or [])
+        execution = mesh.execute_flow(flow, discovered, registry, execute=execute)
+    finally:
+        if old_token is None:
+            os.environ.pop("URIRUN_RUN_TOKEN", None)
+        else:
+            os.environ["URIRUN_RUN_TOKEN"] = old_token
+        if old_identity is None:
+            os.environ.pop("URIRUN_RUN_IDENTITY", None)
+        else:
+            os.environ["URIRUN_RUN_IDENTITY"] = old_identity
+    result = {
+        "ok": bool(execution.get("ok")),
+        "prompt": prompt,
+        "execute": execute,
+        "selectedNodes": selected_nodes,
+        "selectedTargets": selected_targets,
+        "generator": generator,
+        "nodeCount": len(discovered.get("nodes") or []),
+        "routeCount": len(discovered.get("routes") or []),
+        "flow": flow,
+        **execution,
+    }
+    result = _compact_chat_result(result, payload)
+    attachments = _collect_attachments(result, project)
+    result["attachments"] = attachments
+    _general_path_complete(result, db, prompt, execute, selected_nodes, selected_targets, generator, flow, attachments)
+    return result
+
+
+def _chat_phone_scanner_response(project: str, db: str | None, config: str | None, payload: dict, *, prompt: str,
+        selected_nodes: list, selected_targets: list, execute: bool, no_llm: bool,
+        node_urls: list[str] | None, token: str | None, identity: str | None) -> dict:
+    """Handle a phone-scanner chat prompt: start the service, queue camera/torch page
+    actions, and return the chat result. (Extracted from chat_ask.)"""
+    return _chat_ask_phone_scanner(
+        project, db, config, node_urls, token, identity, prompt, execute, selected_nodes, selected_targets,
+    )
+
+
+def _chat_document_sync_response(project: str, db: str | None, config: str | None, payload: dict, *, prompt: str,
+        selected_nodes: list, selected_targets: list, execute: bool, no_llm: bool,
+        node_urls: list[str] | None, token: str | None, identity: str | None) -> dict:
+    """Handle a document-sync chat prompt: run sync-to-node with urifix recovery/retry and
+    a decision-loop record. (Extracted from chat_ask.)"""
+    return _chat_ask_document_sync(
+        project, db, config, payload, node_urls, token, identity,
+        prompt, execute, no_llm, selected_nodes, selected_targets,
+    )
+
+
+def _chat_generic_response(project: str, db: str | None, config: str | None, payload: dict, *, prompt: str,
+        selected_nodes: list, selected_targets: list, execute: bool, no_llm: bool,
+        node_urls: list[str] | None, token: str | None, identity: str | None) -> dict:
+    """Handle a generic chat prompt: discover the mesh, plan a flow, execute it, and return
+    the compacted result. (Extracted from chat_ask.)"""
+    return _chat_ask_general(
+        project, db, config, payload, node_urls, token, identity,
+        prompt, execute, no_llm, selected_nodes, selected_targets,
+    )
+
+
 def chat_ask(project: str, db: str | None, config: str | None, payload: dict, node_urls: list[str] | None = None,
              token: str | None = None, identity: str | None = None) -> dict:
     prompt = str(payload.get("prompt") or "").strip()
@@ -8792,538 +9474,17 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
             **({"intent": user_intent} if user_intent else {}),
         },
     ))
+    _dispatch = dict(
+        project=project, db=db, config=config, payload=payload, prompt=prompt,
+        selected_nodes=selected_nodes, selected_targets=selected_targets,
+        execute=execute, no_llm=no_llm, node_urls=node_urls, token=token, identity=identity,
+    )
     if _is_phone_scanner_prompt(prompt):
-        service = ensure_phone_scanner_service(
-            project,
-            db,
-            config=config,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-        )
-        queued_camera = None
-        queued_torch = None
-        camera_click_uri = "scanner://page/ui/button/start-camera/command/click"
-        camera_autonomous_uri = "scanner://page/camera/command/autonomous"
-        torch_click_uri = "scanner://page/ui/button/torch/command/click"
-        torch_enabled = _torch_enabled_from_prompt(prompt)
-        autonomous_scan = _is_autonomous_scanner_prompt(prompt)
-        camera_action_uri = camera_autonomous_uri if autonomous_scan else camera_click_uri
-        camera_payload = {
-            "target": "scanner",
-            "startBest": torch_enabled is None,
-            "auto": bool(autonomous_scan),
-            "count": int(os.environ.get("URIRUN_PHONE_SCANNER_BEST_COUNT", "6")),
-            "minScore": float(os.environ.get("URIRUN_PHONE_SCANNER_MIN_SCORE", "45")),
-            "interval": float(os.environ.get("URIRUN_PHONE_SCANNER_INTERVAL", "3")),
-        }
-        if autonomous_scan or _is_camera_start_prompt(prompt) or torch_enabled is not None:
-            queued_camera = page_action_enqueue(
-                db,
-                target="scanner",
-                uri=camera_action_uri,
-                payload=camera_payload,
-                mode="execute",
-                source="chat",
-            )
-            camera_message = _chat_message(
-                "system",
-                "Autonomous scanner queued for the open scanner page. Open the scanner URL and accept the browser camera permission if prompted."
-                if autonomous_scan else
-                "Camera start queued for the open scanner page. Open the scanner URL and accept the browser camera permission if prompted.",
-                detail={
-                    "uri": camera_action_uri,
-                    "selectedTargets": ["service:phone-scanner"],
-                    "queued": queued_camera,
-                    "scannerUrl": service.get("url"),
-                    "autonomous": bool(autonomous_scan),
-                },
-            )
-            _add_chat_message(db, camera_message)
-        if torch_enabled is not None:
-            queued_torch = page_action_enqueue(
-                db,
-                target="scanner",
-                uri=torch_click_uri,
-                payload={"target": "scanner", "enabled": bool(torch_enabled)},
-                mode="execute",
-                source="chat",
-            )
-            torch_message = _chat_message(
-                "system",
-                f"Camera light {'on' if torch_enabled else 'off'} queued for the open scanner page.",
-                detail={
-                    "uri": torch_click_uri,
-                    "selectedTargets": ["service:phone-scanner"],
-                    "enabled": bool(torch_enabled),
-                    "queued": queued_torch,
-                    "scannerUrl": service.get("url"),
-                },
-            )
-            _add_chat_message(db, torch_message)
-        result = {
-            "ok": bool(service.get("ok")),
-            "prompt": prompt,
-            "execute": True,
-            "selectedNodes": selected_nodes,
-            "selectedTargets": selected_targets,
-            "generator": {"provider": "host-dashboard", "intent": "phone-scanner-service"},
-            "flow": {
-                "task": {"id": "phone-scanner-service", "title": "Start phone scanner service"},
-                "steps": [
-                    {"id": "start-phone-scanner", "uri": "dashboard://host/phone-scanner/command/start", "payload": {}},
-                    *([{
-                        "id": "queue-camera-autonomous" if autonomous_scan else "queue-camera-start",
-                        "uri": camera_action_uri,
-                        "payload": camera_payload,
-                    }] if queued_camera else []),
-                    *([{
-                        "id": "queue-camera-light",
-                        "uri": torch_click_uri,
-                        "payload": {"target": "scanner", "enabled": bool(torch_enabled)},
-                    }] if queued_torch else []),
-                ],
-            },
-            "timeline": [
-                {
-                    "id": "start-phone-scanner",
-                    "uri": "dashboard://host/phone-scanner/command/start",
-                    "target": "host",
-                    "ok": bool(service.get("ok")),
-                    "status": service.get("status"),
-                },
-                *([{
-                    "id": "queue-camera-autonomous" if autonomous_scan else "queue-camera-start",
-                    "uri": camera_action_uri,
-                    "target": "scanner-page",
-                    "ok": bool(queued_camera.get("ok")),
-                    "status": "queued",
-                    "autonomous": bool(autonomous_scan),
-                }] if queued_camera else []),
-                *([{
-                    "id": "queue-camera-light",
-                    "uri": torch_click_uri,
-                    "target": "scanner-page",
-                    "ok": bool(queued_torch.get("ok")),
-                    "status": "queued",
-                }] if queued_torch else []),
-            ],
-            "results": {
-                "phone-scanner-service": service,
-                **({"camera-start": queued_camera} if queued_camera else {}),
-                **({"camera-torch": queued_torch} if queued_torch else {}),
-            },
-            "attachments": ((service.get("message") or {}).get("attachments") or []),
-        }
-        try:
-            _host_db().add_log(
-                db,
-                "chat",
-                "ask",
-                {
-                    "prompt": prompt,
-                    "execute": True,
-                    "ok": result.get("ok"),
-                    "selectedNodes": selected_nodes,
-                    "selectedTargets": selected_targets,
-                    "generator": result.get("generator"),
-                    "timeline": result.get("timeline") or [],
-                },
-            )
-        except Exception:
-            pass
-        return result
+        return _chat_phone_scanner_response(**_dispatch)
     if _is_document_sync_prompt(prompt, selected_nodes, selected_targets, config, node_urls):
-        sync_node = _document_sync_node_from_prompt(prompt, selected_nodes, selected_targets, config, node_urls)
-        sync_selected_nodes = _selected_nodes_from_targets([*selected_nodes, sync_node], selected_targets)
-        sync_selected_targets = list(selected_targets)
-        node_target = f"node:{sync_node}"
-        if node_target not in sync_selected_targets:
-            sync_selected_targets.append(node_target)
-        sync_payload = {
-            "node": sync_node,
-            "dest_root": _document_sync_dest_from_prompt(prompt),
-        }
-        step = {
-            "id": "sync-documents-to-node",
-            "uri": "document://host/archive/command/sync-to-node",
-            "payload": sync_payload,
-            "depends_on": [],
-        }
-        flow = {
-            "task": {"id": "document-sync-to-node", "title": "Copy archived document PDFs to URI node"},
-            "steps": [step],
-        }
-        generator = {"provider": "host-dashboard", "intent": "document-sync", "fallback": True}
-        sync_result: dict | None = None
-        error: dict | None = None
-        initial_error: dict | None = None
-        recovered = False
-        retry_attempted = False
-        if execute:
-            try:
-                sync_result = sync_documents_to_node(
-                    project,
-                    db,
-                    config,
-                    sync_payload,
-                    node_urls=node_urls,
-                    token=token,
-                    identity=identity,
-                )
-            except Exception as exc:  # noqa: BLE001 - report the URI action failure to chat.
-                error = {
-                    "type": type(exc).__name__,
-                    "message": str(exc),
-                    "uri": _DOCUMENT_SYNC_URI,
-                }
-            if sync_result is not None and not sync_result.get("ok") and error is None:
-                failed_reasons = sync_result.get("failedReasons") if isinstance(sync_result.get("failedReasons"), dict) else {}
-                top_reason = max(failed_reasons.items(), key=lambda item: item[1])[0] if failed_reasons else "document sync contract failed"
-                error = {
-                    "type": "ContractError",
-                    "message": str(top_reason),
-                    "uri": _DOCUMENT_SYNC_URI,
-                    "verification": sync_result.get("verification"),
-                }
-        ok = bool((sync_result or {}).get("ok")) if execute and not error else not bool(error)
-        timeline = [{
-            "id": "sync-documents-to-node",
-            "uri": _DOCUMENT_SYNC_URI,
-            "target": sync_node,
-            "ok": ok,
-            "status": "done" if execute and ok else ("failed" if error else "dry-run"),
-        }]
-        result = {
-            "ok": ok,
-            "prompt": prompt,
-            "execute": execute,
-            "selectedNodes": sync_selected_nodes,
-            "selectedTargets": sync_selected_targets,
-            "generator": generator,
-            "flow": flow,
-            "timeline": timeline,
-            "results": {"sync-documents-to-node": sync_result} if sync_result else {},
-            "error": error,
-        }
-        if error:
-            initial_error = dict(error)
-            host_config_snapshot = None
-            try:
-                host_config_snapshot = _host_config(config, node_urls)
-            except Exception:
-                host_config_snapshot = None
-            urifix = _try_urifix_repair(
-                prompt,
-                {
-                    "nodes": selected_nodes,
-                    "targets": selected_targets,
-                    "execute": execute,
-                    "no_llm": no_llm,
-                },
-                result,
-                node_urls=node_urls,
-                host_config=host_config_snapshot,
-            )
-            if urifix:
-                # Single source of truth is `decisionLoop` (built below from urifix):
-                # its `nextIntent` carries the recovery actions + retry. Keep the raw urifix
-                # only for the DB debug log; do NOT promote recovery/patch/retry copies onto
-                # the result/timeline/chat detail (that was the 4x-duplication).
-                result["urifix"] = urifix
-                timeline[0]["recoverable"] = bool(urifix.get("recovery"))
-                retry_payload = (
-                    _document_sync_retry_payload_from_urifix(urifix, sync_node=sync_node)
-                    if execute and _document_sync_auto_retry_enabled(payload) else None
-                )
-                if retry_payload:
-                    retry_attempted = True
-                    retry_step = {
-                        "id": "sync-documents-to-node.retry",
-                        "uri": _DOCUMENT_SYNC_URI,
-                        "target": retry_payload.get("node") or sync_node,
-                        "ok": False,
-                        "status": "failed",
-                        "recoveredFrom": "sync-documents-to-node",
-                        "generatedBy": "urifix://host/chain/command/repair",
-                    }
-                    try:
-                        retry_result = sync_documents_to_node(
-                            project,
-                            db,
-                            config,
-                            retry_payload,
-                            node_urls=node_urls,
-                            token=token,
-                            identity=identity,
-                        )
-                        retry_ok = bool(retry_result.get("ok"))
-                        sync_result = retry_result
-                        retry_step["ok"] = retry_ok
-                        retry_step["status"] = "done" if retry_ok else "failed"
-                        if retry_ok:
-                            recovered = True
-                            error = None
-                            result["initialError"] = initial_error
-                            result["recovered"] = True
-                            result["recoveredBy"] = "urifix://host/chain/command/repair"
-                        else:
-                            error = {
-                                "type": "RecoveryError",
-                                "message": "document sync retry returned ok=false",
-                                "uri": _DOCUMENT_SYNC_URI,
-                                "initialError": initial_error,
-                            }
-                    except Exception as exc:  # noqa: BLE001 - show the retry failure without looping.
-                        error = {
-                            "type": type(exc).__name__,
-                            "message": str(exc),
-                            "uri": _DOCUMENT_SYNC_URI,
-                            "initialError": initial_error,
-                        }
-                    timeline.append(retry_step)
-                    ok = bool((sync_result or {}).get("ok")) if execute and not error else False
-                    result["ok"] = ok
-                    result["timeline"] = timeline
-                    result["results"] = {"sync-documents-to-node": sync_result} if sync_result else {}
-                    result["error"] = error
-        result["decisionLoop"] = _decision_loop_for_document_sync(
-            prompt,
-            execute=execute,
-            sync_node=sync_node,
-            selected_nodes=sync_selected_nodes,
-            selected_targets=sync_selected_targets,
-            flow=flow,
-            timeline=timeline,
-            error=error,
-            urifix=result.get("urifix"),
-            sync_result=sync_result,
-            initial_error=initial_error,
-            recovered=recovered,
-            retry_attempted=retry_attempted,
-            auto_retry_enabled=_document_sync_auto_retry_enabled(payload),
-        )
-        if recovered:
-            _add_chat_message(db, _chat_message(
-                "system",
-                "recovered: document sync URI step",
-                detail={
-                    "schema": "urirun.decision-loop.v1",
-                    "ok": ok,
-                    "decisionLoop": result.get("decisionLoop"),
-                },
-            ))
-        elif not execute or error:
-            _add_chat_message(db, _chat_message(
-                "system",
-                ("failed: document sync URI step" if error else "dry-run: document sync URI step"),
-                # The decision-loop object is self-contained (intent → flow → execution →
-                # observation → nextIntent), so the chat message carries just it (+ ok) instead
-                # of the former duplicated recovery/patch/retry/urifix/flow/timeline copies.
-                detail={
-                    "schema": "urirun.decision-loop.v1",
-                    "ok": ok,
-                    "decisionLoop": result.get("decisionLoop"),
-                },
-            ))
-        try:
-            _host_db().add_log(
-                db,
-                "chat",
-                "ask",
-                {
-                    "prompt": prompt,
-                    "execute": execute,
-                    "ok": ok,
-                    "selectedNodes": sync_selected_nodes,
-                    "selectedTargets": sync_selected_targets,
-                    "decisionLoop": result.get("decisionLoop"),
-                    # Full urifix diagnosis retained in the DB log only (debug), not in chat.
-                    "urifix": result.get("urifix"),
-                },
-            )
-        except Exception:
-            pass
-        return result
-    mesh = _mesh()
-    old_token = os.environ.get("URIRUN_RUN_TOKEN")
-    old_identity = os.environ.get("URIRUN_RUN_IDENTITY")
-    if token:
-        os.environ["URIRUN_RUN_TOKEN"] = token
-        os.environ.pop("URIRUN_RUN_IDENTITY", None)
-    elif identity:
-        os.environ["URIRUN_RUN_IDENTITY"] = os.path.expanduser(identity)
-        os.environ.pop("URIRUN_RUN_TOKEN", None)
-    try:
-        discovered = mesh.discover_mesh(_host_config(config, node_urls))
-        capability_gap = _screen_document_capability_gap(prompt, discovered, selected_nodes, selected_targets)
-        if capability_gap:
-            result = {
-                "ok": False,
-                "prompt": prompt,
-                "execute": execute,
-                "selectedNodes": selected_nodes,
-                "selectedTargets": selected_targets,
-                "generator": {"provider": "host-dashboard", "intent": "capability-check"},
-                "nodeCount": len(discovered.get("nodes") or []),
-                "routeCount": len(discovered.get("routes") or []),
-                "flow": {"task": {"id": "capability-gap", "title": "Missing URI capability"}, "steps": []},
-                "timeline": [],
-                "results": {},
-                "error": capability_gap,
-            }
-            _add_chat_message(db, _chat_message(
-                "system",
-                "failed: missing screen-capture URI route for requested screenshot-to-document workflow",
-                detail={
-                    "prompt": prompt,
-                    "execute": execute,
-                    "ok": False,
-                    "selectedTargets": selected_targets,
-                    "generator": result["generator"],
-                    "flow": result["flow"],
-                    "timeline": [],
-                    "results": {},
-                    "error": capability_gap,
-                },
-            ))
-            try:
-                _host_db().add_log(
-                    db,
-                    "chat",
-                    "ask",
-                    {
-                        "prompt": prompt,
-                        "execute": execute,
-                        "ok": False,
-                        "selectedNodes": selected_nodes,
-                        "selectedTargets": selected_targets,
-                        "generator": result["generator"],
-                        "timeline": [],
-                        "error": capability_gap,
-                    },
-                )
-            except Exception:
-                pass
-            return result
-        try:
-            flow, generator = mesh.make_flow(prompt, discovered, selected_nodes=selected_nodes, use_llm=not no_llm)
-        except Exception as exc:  # noqa: BLE001 - return a recovery contract instead of a raw API failure.
-            from urirun.node.recovery import planner_failure
+        return _chat_document_sync_response(**_dispatch)
+    return _chat_generic_response(**_dispatch)
 
-            result = planner_failure(exc, prompt=prompt, selected_nodes=selected_nodes, selected_targets=selected_targets)
-            result["execute"] = execute
-            result["generator"] = {
-                "provider": "host-dashboard",
-                "intent": "planner-recovery",
-                "fallback": True,
-                "reason": str(exc),
-            }
-            _add_chat_message(db, _chat_message(
-                "system",
-                f"failed: planner error ({(result.get('error') or {}).get('category') or 'UNKNOWN'}); recovery available",
-                detail={
-                    "prompt": prompt,
-                    "execute": execute,
-                    "ok": False,
-                    "selectedTargets": selected_targets,
-                    "generator": result["generator"],
-                    "flow": result.get("flow") or {},
-                    "timeline": result.get("timeline") or [],
-                    "results": {},
-                    "error": result.get("error"),
-                    "recovery": result.get("recovery") or [],
-                },
-            ))
-            try:
-                _host_db().add_log(
-                    db,
-                    "chat",
-                    "ask",
-                    {
-                        "prompt": prompt,
-                        "execute": execute,
-                        "ok": False,
-                        "selectedNodes": selected_nodes,
-                        "selectedTargets": selected_targets,
-                        "generator": result["generator"],
-                        "timeline": result.get("timeline") or [],
-                        "error": result.get("error"),
-                        "recovery": result.get("recovery") or [],
-                    },
-                )
-            except Exception:
-                pass
-            return result
-        registry = mesh.registry_from_routes(discovered.get("routes") or [])
-        execution = mesh.execute_flow(flow, discovered, registry, execute=execute)
-    finally:
-        if old_token is None:
-            os.environ.pop("URIRUN_RUN_TOKEN", None)
-        else:
-            os.environ["URIRUN_RUN_TOKEN"] = old_token
-        if old_identity is None:
-            os.environ.pop("URIRUN_RUN_IDENTITY", None)
-        else:
-            os.environ["URIRUN_RUN_IDENTITY"] = old_identity
-    result = {
-        "ok": bool(execution.get("ok")),
-        "prompt": prompt,
-        "execute": execute,
-        "selectedNodes": selected_nodes,
-        "selectedTargets": selected_targets,
-        "generator": generator,
-        "nodeCount": len(discovered.get("nodes") or []),
-        "routeCount": len(discovered.get("routes") or []),
-        "flow": flow,
-        **execution,
-    }
-    result = _compact_chat_result(result, payload)
-    attachments = _collect_attachments(result, project)
-    result["attachments"] = attachments
-    timeline = result.get("timeline") or []
-    status = "ok" if result.get("ok") else "failed"
-    content = f"{status}: {len(timeline)} URI step(s)"
-    if result.get("recovery"):
-        content += f", {len(result.get('recovery') or [])} recovery action(s)"
-    if attachments:
-        content += f", {len(attachments)} attachment(s)"
-    _add_chat_message(db, _chat_message(
-        "system",
-        content,
-        detail={
-            "prompt": prompt,
-            "execute": execute,
-            "ok": result.get("ok"),
-            "selectedTargets": selected_targets,
-            "generator": generator,
-            "flow": flow,
-            "timeline": timeline,
-            "results": result.get("results") or {},
-            "error": result.get("error"),
-            "recovery": result.get("recovery") or [],
-        },
-        attachments=attachments,
-    ))
-    try:
-        _host_db().add_log(
-            db,
-            "chat",
-            "ask",
-            {
-                "prompt": prompt,
-                "execute": execute,
-                "ok": result.get("ok"),
-                "selectedNodes": selected_nodes,
-                "selectedTargets": selected_targets,
-                "generator": generator,
-                "timeline": result.get("timeline") or [],
-                "recovery": result.get("recovery") or [],
-            },
-        )
-    except Exception:
-        pass
-    return result
 
 
 def task_action(project: str, ticket_id: str, action: str, payload: dict) -> dict:
