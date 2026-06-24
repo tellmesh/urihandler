@@ -986,6 +986,10 @@ INDEX_HTML = r"""<!doctype html>
       }
       const targets = (search.get('targets') || 'host').split(',').map((item) => item.trim()).filter(Boolean);
       state.selectedTargets = targets.length ? targets : ['host'];
+      (search.get('nodes') || '').split(',').map((item) => item.trim()).filter(Boolean).forEach((node) => {
+        const target = node.startsWith('node:') ? node : `node:${node}`;
+        if (!state.selectedTargets.includes(target)) state.selectedTargets.push(target);
+      });
     }
 
     function setChatFullscreen(enabled, options = {}) {
