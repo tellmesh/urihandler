@@ -243,6 +243,56 @@ class ArtifactSchemaValidationTests(unittest.TestCase):
         with patch.dict(sys.modules, {"urirun_artifacts": None}):
             self.assertIsNone(host_dashboard._artifact_schema_known("faktura"))
 
+    def test_document_schema_fields_written_to_entry(self):
+        # The exact annotation the archive entry receives, with a registry present.
+        registry_mod = types.ModuleType("urirun_artifacts.registry")
+        registry_mod.all_ids = lambda: ["faktura", "rachunek", "paragon"]
+        pkg = types.ModuleType("urirun_artifacts")
+        pkg.registry = registry_mod
+        with patch.dict(sys.modules, {"urirun_artifacts": pkg, "urirun_artifacts.registry": registry_mod}):
+            self.assertEqual(host_dashboard._document_schema_fields("Paragon"),
+                             {"schemaKnown": True, "schemaId": "paragon"})
+            self.assertEqual(host_dashboard._document_schema_fields("dokument"),
+                             {"schemaKnown": False, "schemaId": None})
+
+    def test_document_schema_fields_when_registry_missing(self):
+        with patch.dict(sys.modules, {"urirun_artifacts": None}):
+            self.assertEqual(host_dashboard._document_schema_fields("faktura"),
+                             {"schemaKnown": None, "schemaId": None})
+
+
+class ArtifactWidgetClassTests(unittest.TestCase):
+    """The host consumes the shared urirun.tag contract: a result's live/kind classifies
+    it as a frozen 'artifact' or a live 'widget'."""
+
+    def test_classify_helper(self):
+        self.assertEqual(host_dashboard._result_artifact_class({"live": False, "kind": "photo"}), "artifact")
+        self.assertEqual(host_dashboard._result_artifact_class({"live": True, "kind": "stream"}), "widget")
+        self.assertIsNone(host_dashboard._result_artifact_class({"kind": "photo"}))  # untagged -> host decides
+        self.assertIsNone(host_dashboard._result_artifact_class("not a dict"))
+
+    def test_inprocess_connector_result_is_classified(self):
+        import urirun
+        from urirun.runtime import discovery
+
+        tagged_env = {"ok": True, "result": {"type": "function",
+                      "value": {"ok": True, "kind": "photo", "live": False, "path": "/x.jpg"}}}
+        with patch.object(discovery, "registry_for_uri", lambda *a, **k: {}), \
+             patch.object(urirun, "run", lambda *a, **k: tagged_env):
+            out = host_dashboard._run_inprocess_connector_uri("camera://host/photo/query/snap", {})
+        self.assertEqual(out["artifactClass"], "artifact")
+
+    def test_inprocess_live_widget_is_classified(self):
+        import urirun
+        from urirun.runtime import discovery
+
+        tagged_env = {"ok": True, "result": {"type": "function",
+                      "value": {"ok": True, "kind": "stream", "live": True, "url": "rtsp://x"}}}
+        with patch.object(discovery, "registry_for_uri", lambda *a, **k: {}), \
+             patch.object(urirun, "run", lambda *a, **k: tagged_env):
+            out = host_dashboard._run_inprocess_connector_uri("camera://host/stream/query/open", {})
+        self.assertEqual(out["artifactClass"], "widget")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -880,6 +880,7 @@ INDEX_HTML = r"""<!doctype html>
       chatRenderKey: '',
       serviceViews: [],
       widgetRender: null,
+      dashboardWidgets: null,
       visibleChatMessages: [],
       visibleChatMessageIds: [],
       selectedChatMessageIds: new Set(),
@@ -1271,11 +1272,14 @@ INDEX_HTML = r"""<!doctype html>
 
     function renderArtifactFileGrid(items) {
       $('artifactCount').textContent = `${items.length} file(s)`;
-      $('artifactFileGrid').innerHTML = items.length
-        ? `<div class="artifact-file-row header">
+      const widgetRenderer = state.dashboardWidgets && state.dashboardWidgets.renderDashboardWidget;
+      $('artifactFileGrid').innerHTML = typeof widgetRenderer === 'function'
+        ? widgetRenderer('artifact-grid', { items, selectedIds: [...state.selectedArtifactIds] })
+        : (items.length
+          ? `<div class="artifact-file-row header">
             <div></div><div>Preview</div><div>File</div><div>URI / document</div><div>Created</div>
           </div>${items.map(renderArtifactFileRow).join('')}`
-        : empty('No artifacts recorded');
+          : empty('No artifacts recorded'));
       updateArtifactSelectionControls();
     }
 
@@ -1414,9 +1418,11 @@ INDEX_HTML = r"""<!doctype html>
     function messageAttachments(message) {
       const detail = message.detail || {};
       const document = detail.document || {};
-      const attachments = messageAttachments(message);
-      const hasPdf = attachments.some(isPdfAttachment);
-      return attachments.filter((att) => {
+      const attachments = message.attachments || [];
+      const rows = Array.isArray(message.attachments) ? attachments
+        : (Array.isArray(detail.attachments) ? detail.attachments : []);
+      const hasPdf = rows.some(isPdfAttachment);
+      return rows.filter((att) => {
         if (isPdfAttachment(att)) return true;
         if (hasPdf && isScannerFrameAttachment(att)) return false;
         if (isScannerFrameAttachment(att) && !(document.ok && document.path)) return false;
@@ -1758,10 +1764,20 @@ INDEX_HTML = r"""<!doctype html>
         const js = jsRes && jsRes.result && jsRes.result.js;
         if (js) {
           // The bundle is a single concatenated module (imports/exports stripped); evaluate it in
-          // its own scope and hand back its renderServiceView.
-          const factory = new Function(js + "\n;return (typeof renderServiceView === 'function') ? renderServiceView : null;");
-          const fn = factory();
-          if (typeof fn === 'function') state.widgetRender = fn;
+          // its own scope and hand back the renderers the dashboard can consume. The generic
+          // service-view renderer is used for live widgets; dashboard widgets cover artifacts and
+          // chat cards without duplicating those templates in this file.
+          const factory = new Function(js + "\n;return {"
+            + "renderServiceView: (typeof renderServiceView === 'function') ? renderServiceView : null,"
+            + "renderDashboardWidget: (typeof renderDashboardWidget === 'function') ? renderDashboardWidget : null,"
+            + "renderArtifactFileGrid: (typeof renderArtifactFileGrid === 'function') ? renderArtifactFileGrid : null,"
+            + "renderChatMessage: (typeof renderChatMessage === 'function') ? renderChatMessage : null,"
+            + "renderAttachment: (typeof renderAttachment === 'function') ? renderAttachment : null,"
+            + "messageAttachments: (typeof messageAttachments === 'function') ? messageAttachments : null"
+            + "};");
+          const widgets = factory();
+          if (widgets && typeof widgets.renderServiceView === 'function') state.widgetRender = widgets.renderServiceView;
+          state.dashboardWidgets = widgets || null;
         }
         const cssRes = await api('/api/uri/invoke', {
           method: 'POST',
@@ -1778,6 +1794,10 @@ INDEX_HTML = r"""<!doctype html>
           styleEl.textContent = css;
         }
         if (state.widgetRender) renderServiceViews();
+        if (state.dashboardWidgets && typeof state.dashboardWidgets.renderDashboardWidget === 'function') {
+          renderArtifacts(state.artifacts, { force: true });
+          renderChatHistory({ force: true });
+        }
       } catch (error) {
         // keep the inline renderers (state.widgetRender stays null)
         if (window.console) console.warn('widget bundle load failed, using inline renderers:', error.message);
@@ -1792,6 +1812,10 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function renderChatMessage(message) {
+      const widgetRenderer = state.dashboardWidgets && state.dashboardWidgets.renderDashboardWidget;
+      if (typeof widgetRenderer === 'function') {
+        return widgetRenderer('chat-message', { message, selectedIds: [...state.selectedChatMessageIds] });
+      }
       const detail = message.detail || {};
       const timeline = detail.timeline || [];
       const lines = timeline.map((step) => `${step.ok ? 'ok' : 'fail'} · ${step.target || ''} · ${step.uri}`).join('\n');
@@ -1949,7 +1973,7 @@ INDEX_HTML = r"""<!doctype html>
       });
     }
 
-    function renderChatHistory() {
+    function renderChatHistory(options={}) {
       const seenQr = new Set();
       const resultEl = $('chatResult');
       const stickToBottom = resultEl.scrollTop + resultEl.clientHeight >= resultEl.scrollHeight - 32;
@@ -1964,7 +1988,7 @@ INDEX_HTML = r"""<!doctype html>
       state.visibleChatMessages = visible;
       state.visibleChatMessageIds = visible.map((message) => message.id).filter(Boolean);
       const renderKey = chatRenderSignature(visible);
-      if (renderKey === state.chatRenderKey) {
+      if (!options.force && renderKey === state.chatRenderKey) {
         updateChatSelectionControls();
         return;
       }
@@ -4916,6 +4940,20 @@ def _artifact_schema_known(type_id: str) -> bool | None:
     return normalized in known
 
 
+def _document_schema_fields(doc_type: str) -> dict:
+    """The schema-registry annotation written onto an archived document entry.
+
+    ``schemaKnown`` is True/False when the urirun-artifacts registry is installed and the
+    document ``type`` is/isn't a registered schema, or None when the registry is absent.
+    ``schemaId`` carries the matched schema id only when known.
+    """
+    known = _artifact_schema_known(doc_type)
+    return {
+        "schemaKnown": known,
+        "schemaId": str(doc_type or "").strip().lower() if known else None,
+    }
+
+
 def _archive_scanned_document(
     *,
     display_path: Path,
@@ -5059,7 +5097,7 @@ def _archive_scanned_document(
             "cropPath": str(display_path),
         }
         _write_document_pdf(display_path, pdf_path, metadata=pdf_meta, ocr_text=ocr_text)
-        _document_schema_known = _artifact_schema_known(extracted.get("type"))
+        _schema_fields = _document_schema_fields(extracted.get("type"))
         entry = {
             "docId": doc_id,
             "docIdProvider": docid_info.get("provider"),
@@ -5087,8 +5125,8 @@ def _archive_scanned_document(
             "createdAt": _utc_now(),
             # Bridge to the urirun-artifacts schema registry: annotate whether the document
             # type is a known schema (None when the registry isn't installed). Non-fatal.
-            "schemaKnown": _document_schema_known,
-            "schemaId": str(extracted.get("type") or "").strip().lower() if _document_schema_known else None,
+            "schemaKnown": _schema_fields["schemaKnown"],
+            "schemaId": _schema_fields["schemaId"],
             **extracted,
         }
         json_path.write_text(
@@ -6740,6 +6778,20 @@ def _uri_simulated_result(uri: str, mode: str, action_payload: dict, action: dic
 _INPROCESS_BINDINGS_GROUP = "urirun.bindings"
 
 
+def _result_artifact_class(value: Any) -> str | None:
+    """Classify a connector result via the shared ``urirun.tag`` contract.
+
+    Returns ``"widget"`` for a live view (``live=True``), ``"artifact"`` for a frozen
+    output (``live=False``), or ``None`` when the result is untagged (no ``live`` key) so
+    the host falls back to its own taxonomy. This is how the host *consumes* the contract:
+    a live view is routed to the chat-stream (never the frozen artifact store) and a frozen
+    output to the artifact catalogue, by the connector's own declaration rather than a guess.
+    """
+    if not isinstance(value, dict) or "live" not in value:
+        return None
+    return "widget" if value.get("live") else "artifact"
+
+
 def _run_inprocess_connector_uri(uri: str, action_payload: dict) -> dict | None:
     """Execute an installed in-process connector URI (widget://, artifact://, …) through the
     urirun runtime and return its unwrapped handler value. Returns None when no connector owns
@@ -6765,6 +6817,7 @@ def _run_inprocess_connector_uri(uri: str, action_payload: dict) -> dict | None:
         value = (env.get("result") or {}).get("value") if isinstance(env.get("result"), dict) else None
     return {"ok": bool(env.get("ok")), "invokedUri": uri,
             "result": value if value is not None else env.get("result"),
+            "artifactClass": _result_artifact_class(value),
             "error": (env.get("error") or {}).get("message") if not env.get("ok") else None}
 
 
@@ -6860,6 +6913,10 @@ def uri_invoke(
 
     if isinstance(result, dict):
         result.setdefault("invokedUri", uri)
+        # Surface the artifact/widget class when the result carries the urirun.tag contract.
+        tag_class = _result_artifact_class(result)
+        if tag_class is not None:
+            result.setdefault("artifactClass", tag_class)
         return result
     return {"ok": True, "invokedUri": uri, "result": result}
 
