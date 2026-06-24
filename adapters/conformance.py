@@ -69,9 +69,9 @@ def python_reference() -> dict:
     return c.bindings()
 
 
-def main() -> int:
+def _collect_outputs() -> dict[str, dict]:
+    """Run every available language SDK's emitter and collect its bindings doc."""
     outputs: dict[str, dict] = {"python": python_reference()}
-
     for lang in LANGS:
         if not shutil.which(lang["tool"]):
             print(f"skip {lang['name']} ({lang['tool']} not available)")
@@ -83,7 +83,11 @@ def main() -> int:
             outputs[lang["name"]] = json.loads(out.stdout)
         except Exception as exc:  # noqa: BLE001
             print(f"WARN {lang['name']}: {exc}")
+    return outputs
 
+
+def _validate_contracts(outputs: dict[str, dict]) -> tuple[dict[str, dict], int]:
+    """Validate each SDK's bindings; return the essential contracts and an error count."""
     sys.path.insert(0, os.path.join(HERE, "python"))
     from urirun import validate_binding_document as validate
 
@@ -97,8 +101,13 @@ def main() -> int:
             errors += 1
             continue
         contracts[name] = essential(doc)
+    return contracts, errors
 
+
+def _compare_to_python(contracts: dict[str, dict]) -> int:
+    """Every non-python SDK's contract must equal the python reference."""
     ref = contracts.get("python")
+    errors = 0
     for name, contract in sorted(contracts.items()):
         if name == "python":
             continue
@@ -110,10 +119,13 @@ def main() -> int:
         else:
             print(f"ok   {name}: matches python and validates")
     print("ok   python: reference, validates")
+    return errors
 
-    # Functional check: the standardized contract must not just validate, it must
-    # actually run. Compile each language's bindings and execute the hash route
-    # against a known file; the real sha256 must match.
+
+def _exec_check(outputs: dict[str, dict], contracts: dict[str, dict]) -> int:
+    """Functional check: the standardized contract must not just validate, it must actually
+    run. Compile each language's bindings and execute the hash route against a known file;
+    the real sha256 must match."""
     import hashlib
     import tempfile
     import urirun
@@ -123,7 +135,7 @@ def main() -> int:
     fd, path = tempfile.mkstemp(suffix=".txt")
     os.write(fd, data)
     os.close(fd)
-    executed = 0
+    executed = errors = 0
     try:
         for name in sorted(contracts):
             reg = urirun.compile_registry(outputs[name])
@@ -139,7 +151,14 @@ def main() -> int:
     finally:
         os.unlink(path)
     print(f"exec: {executed}/{len(contracts)} connectors ran and produced the correct sha256")
+    return errors
 
+
+def main() -> int:
+    outputs = _collect_outputs()
+    contracts, errors = _validate_contracts(outputs)
+    errors += _compare_to_python(contracts)
+    errors += _exec_check(outputs, contracts)
     print(f"\n{len(contracts)} SDK(s) checked, {errors} error(s)")
     return 1 if errors else 0
 

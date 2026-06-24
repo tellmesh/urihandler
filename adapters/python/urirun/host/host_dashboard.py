@@ -892,6 +892,12 @@ INDEX_HTML = r"""<!doctype html>
                   <a id="addNodeHealth" href="#" target="_blank" rel="noreferrer">otwórz /health (sprawdź osiągalność)</a>
                   <span id="addNodeStatus" class="subtle"></span>
                 </div>
+                <label class="stack"><span class="subtle">Token zarządzania węzłem (X-Urirun-Token) — potrzebny do provisioningu tras na zdalnym węźle</span>
+                  <input id="addNodeToken" type="password" autocomplete="off" placeholder="wklej token węzła (zapisywany w keyring, nie w plaintext)"></label>
+                <div class="artifact-actions">
+                  <button type="button" onclick="saveNodeToken()">🔑 Zapisz token (keyring)</button>
+                  <span id="addNodeTokenStatus" class="subtle"></span>
+                </div>
                 <p class="subtle">„Zapisz" trwale dodaje node do host config (host go rozwiąże) i do ~/.urirun/nodes.json (urifix auto-naprawa). Albo wklej ręcznie jeden z poniższych:</p>
                 <pre id="addNodeSnippet" class="mono">— wpisz nazwę i URL powyżej —</pre>
               </div>
@@ -1187,6 +1193,25 @@ INDEX_HTML = r"""<!doctype html>
     }
     function saveNodeFromForm() {
       saveNode(($('addNodeName') || {}).value || '', ($('addNodeUrl') || {}).value || '');
+    }
+
+    // Store the node's management token in the OS keyring (server-side). The value is sent once,
+    // never echoed back; the field is cleared on success. User types it — never pre-filled.
+    async function saveNodeToken() {
+      const status = $('addNodeTokenStatus');
+      const name = (($('addNodeName') || {}).value || '').trim();
+      const tokenEl = $('addNodeToken');
+      const token = (tokenEl && tokenEl.value) || '';
+      if (!name) { if (status) status.textContent = 'najpierw podaj nazwę node\'a'; return; }
+      if (!token) { if (status) status.textContent = 'wklej token'; return; }
+      if (status) status.textContent = 'zapisuję token…';
+      try {
+        const res = await api('/api/nodes/token', { method: 'POST', body: JSON.stringify({ name, token }) });
+        if (tokenEl) tokenEl.value = '';  // never keep the secret in the DOM
+        if (status) status.textContent = 'token zapisany w keyring dla ' + (res.name || name) + ' (' + (res.tokenRef || '') + ')';
+      } catch (error) {
+        if (status) status.textContent = 'błąd: ' + error.message;
+      }
     }
 
 	    function contactCard(contact) {
@@ -3526,18 +3551,21 @@ def _service_view_from_query(project: str, query: dict[str, list[str]]) -> dict:
     }
 
 
+def _scanner_stream_summary(title: str, status: str, stream: dict) -> dict[str, str]:
+    best = stream.get("best") if isinstance(stream.get("best"), dict) else {}
+    doc = best.get("detectedDocument") if isinstance(best.get("detectedDocument"), dict) else {}
+    parts = [doc.get("type"), doc.get("date"), doc.get("contractor") or doc.get("supplier") or doc.get("category"), doc.get("amount")]
+    subtitle = " · ".join(str(part) for part in parts if part) or str(stream.get("seriesId") or "")
+    detail = f"{stream.get('count') or 0} frame(s)"
+    return {"title": title, "status": status, "subtitle": subtitle, "detail": detail}
+
+
 def _service_widget_summary(view: dict) -> dict[str, str]:
     title = str(view.get("title") or view.get("id") or "service view")
     status = str(view.get("status") or "unknown")
     streams = ((view.get("data") or {}).get("streams") or []) if isinstance(view.get("data"), dict) else []
     if streams and isinstance(streams[0], dict):
-        stream = streams[0]
-        best = stream.get("best") if isinstance(stream.get("best"), dict) else {}
-        doc = best.get("detectedDocument") if isinstance(best.get("detectedDocument"), dict) else {}
-        parts = [doc.get("type"), doc.get("date"), doc.get("contractor") or doc.get("supplier") or doc.get("category"), doc.get("amount")]
-        subtitle = " · ".join(str(part) for part in parts if part) or str(stream.get("seriesId") or "")
-        detail = f"{stream.get('count') or 0} frame(s)"
-        return {"title": title, "status": status, "subtitle": subtitle, "detail": detail}
+        return _scanner_stream_summary(title, status, streams[0])
     return {
         "title": title,
         "status": status,
@@ -3756,21 +3784,33 @@ def _public_artifacts(artifacts: list[dict], project: str) -> list[dict]:
     return [_public_artifact(artifact, project) for artifact in artifacts]
 
 
+def _attachment_visual_path(meta: dict) -> str:
+    return str(meta.get("displayImage") or meta.get("displayPath") or meta.get("previewImage") or meta.get("image") or "")
+
+
+def _apply_attachment_file_fields(item: dict, path: str, file_preview: str | None) -> None:
+    if path:
+        item["fileExists"] = bool(file_preview)
+        item["filePreviewUrl"] = file_preview or ""
+
+
+def _apply_attachment_visual_fields(item: dict, visual_path: str, visual_preview: str | None) -> None:
+    if visual_path:
+        item["previewExists"] = bool(visual_preview)
+        item["visualPath"] = visual_path
+        item["visualPreviewUrl"] = visual_preview or ""
+
+
 def _public_chat_attachment(attachment: dict, project: str) -> dict:
     """Normalize old chat attachments so the UI never embeds stale /api/file links."""
     item = dict(attachment or {})
     path = str(item.get("path") or "")
     file_preview = _preview_url(path, project) if path else None
     meta = item.get("meta") if isinstance(item.get("meta"), dict) else {}
-    visual_path = str(meta.get("displayImage") or meta.get("displayPath") or meta.get("previewImage") or meta.get("image") or "")
+    visual_path = _attachment_visual_path(meta)
     visual_preview = _preview_url(visual_path, project) if visual_path else None
-    if path:
-        item["fileExists"] = bool(file_preview)
-        item["filePreviewUrl"] = file_preview or ""
-    if visual_path:
-        item["previewExists"] = bool(visual_preview)
-        item["visualPath"] = visual_path
-        item["visualPreviewUrl"] = visual_preview or ""
+    _apply_attachment_file_fields(item, path, file_preview)
+    _apply_attachment_visual_fields(item, visual_path, visual_preview)
     preview = str(item.get("previewUrl") or "")
     if preview.startswith("/api/file?path="):
         item["previewUrl"] = file_preview or ""
@@ -3807,6 +3847,24 @@ def _artifact_dedupe_rank(item: dict) -> tuple[int, int, str]:
     return (missing_rank, kind_rank.get(str(item.get("kind") or ""), 5), str(item.get("created_at") or ""))
 
 
+def _merge_artifact_group(group: list[dict]) -> dict:
+    """Collapse one group of same-identity artifacts to the best-ranked one, annotated with
+    the ids/uris of the duplicates it absorbed."""
+    if len(group) == 1:
+        return group[0]
+    keep = sorted(group, key=_artifact_dedupe_rank)[0].copy()
+    keep_id = str(keep.get("id") or "")
+    keep["duplicateCount"] = len(group)
+    keep["duplicateIds"] = [str(item.get("id")) for item in group if item.get("id") and str(item.get("id")) != keep_id]
+    keep["duplicateArtifactIds"] = [str(item.get("id")) for item in group if item.get("id")]
+    keep["duplicateUris"] = [
+        str(item.get("uri"))
+        for item in group
+        if item.get("uri") and str(item.get("uri")) != str(keep.get("uri") or "")
+    ]
+    return keep
+
+
 def _dedupe_public_artifacts(public: list[dict]) -> list[dict]:
     groups: dict[tuple[str, str], list[dict]] = {}
     order: list[tuple[str, str]] = []
@@ -3816,26 +3874,7 @@ def _dedupe_public_artifacts(public: list[dict]) -> list[dict]:
             groups[key] = []
             order.append(key)
         groups[key].append(item)
-
-    out: list[dict] = []
-    for key in order:
-        group = groups[key]
-        if len(group) == 1:
-            out.append(group[0])
-            continue
-        keep = sorted(group, key=_artifact_dedupe_rank)[0].copy()
-        keep_id = str(keep.get("id") or "")
-        duplicate_ids = [str(item.get("id")) for item in group if item.get("id") and str(item.get("id")) != keep_id]
-        keep["duplicateCount"] = len(group)
-        keep["duplicateIds"] = duplicate_ids
-        keep["duplicateArtifactIds"] = [str(item.get("id")) for item in group if item.get("id")]
-        keep["duplicateUris"] = [
-            str(item.get("uri"))
-            for item in group
-            if item.get("uri") and str(item.get("uri")) != str(keep.get("uri") or "")
-        ]
-        out.append(keep)
-    return out
+    return [_merge_artifact_group(groups[key]) for key in order]
 
 
 def _visible_public_artifacts(
@@ -3967,6 +4006,30 @@ def _local_image_ocr_tesseract(path: str) -> dict:
     return {"ok": True, "backend": "tesseract", "text": text, "chars": len(text)}
 
 
+def _ocr_text_ok(result: dict | None) -> bool:
+    """True when an OCR result envelope actually carries usable (non-blank) text."""
+    return bool(result and result.get("ok") and str(result.get("text") or "").strip())
+
+
+def _ocr_connector_envelope(path: str, backend: str) -> tuple[dict | None, dict | None]:
+    """Run the urirun-connector-ocr read. Returns ``(envelope, None)`` on a successful call,
+    or ``(None, finished)`` where ``finished`` is a ready tesseract-fallback result when the
+    connector is unavailable or raised."""
+    try:
+        from urirun_connector_ocr.core import image_text  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        result = _local_image_ocr_tesseract(path)
+        result.setdefault("connectorError", f"urirun-connector-ocr unavailable: {exc}")
+        return None, result
+    try:
+        envelope = image_text(image=path, backend=backend, lang="eng+pol", max_chars=20000)
+    except Exception as exc:  # noqa: BLE001
+        result = _local_image_ocr_tesseract(path)
+        result.setdefault("connectorError", str(exc))
+        return None, result
+    return envelope, None
+
+
 def _local_image_ocr(path: str, backend: str | None = None) -> dict:
     """OCR a scanned image for the phone-scanner pipeline.
 
@@ -3986,19 +4049,10 @@ def _local_image_ocr(path: str, backend: str | None = None) -> dict:
     backend = str(backend if backend is not None else os.environ.get("URIRUN_SCANNER_OCR_BACKEND", "auto")).strip().lower()
     if backend in {"", "tesseract"}:
         return _local_image_ocr_tesseract(path)
-    try:
-        from urirun_connector_ocr.core import image_text  # type: ignore
-    except Exception as exc:  # noqa: BLE001
-        result = _local_image_ocr_tesseract(path)
-        result.setdefault("connectorError", f"urirun-connector-ocr unavailable: {exc}")
-        return result
-    try:
-        envelope = image_text(image=path, backend=backend, lang="eng+pol", max_chars=20000)
-    except Exception as exc:  # noqa: BLE001
-        result = _local_image_ocr_tesseract(path)
-        result.setdefault("connectorError", str(exc))
-        return result
-    if envelope.get("ok") and str(envelope.get("text") or "").strip():
+    envelope, finished = _ocr_connector_envelope(path, backend)
+    if finished is not None:  # connector unavailable / errored — tesseract fallback already built
+        return finished
+    if _ocr_text_ok(envelope):
         return {
             "ok": True,
             "backend": envelope.get("backend", backend),
@@ -4009,12 +4063,12 @@ def _local_image_ocr(path: str, backend: str | None = None) -> dict:
         }
     # Connector found nothing usable; fall back to tesseract so a scan never silently fails.
     fallback = _local_image_ocr_tesseract(path)
-    if fallback.get("ok") and str(fallback.get("text") or "").strip():
+    if _ocr_text_ok(fallback):
         return fallback
     # Last resort: read the image with a vision LLM. Covers the case where paddle is broken
     # AND tesseract is missing/blank — the scan still yields text instead of empty metadata.
     llm = _local_image_ocr_llm(path)
-    if llm and llm.get("ok") and str(llm.get("text") or "").strip():
+    if _ocr_text_ok(llm):
         return llm
     if not fallback.get("ok"):
         fallback.setdefault("connectorError", str(envelope.get("error") or "connector OCR returned no text"))
@@ -4315,6 +4369,22 @@ def _node_client(url: str, *, token: str | None = None, identity: str | None = N
     from urirun.node.client import NodeClient
 
     return NodeClient(url, token=token, identity=identity)
+
+
+def _node_token_for(node: str, fallback: str | None = None) -> str | None:
+    """Resolve a node's management token (X-Urirun-Token) from the keyring — set by the user via
+    the dashboard Nodes view (service 'urirun-node-token', account = node name) — falling back to
+    the host-wide token. Read-only on the secret store; the value is never logged or echoed."""
+    name = (node or "").strip()
+    if name:
+        try:
+            import keyring
+            value = keyring.get_password("urirun-node-token", name)
+            if value:
+                return value
+        except Exception:  # noqa: BLE001 - no keyring / no backend -> host-wide fallback
+            pass
+    return fallback
 
 
 def _run_node_uri(
@@ -4643,25 +4713,35 @@ def _document_sync_verification(
     source_root: Path,
     read_back: bool,
 ) -> dict:
-    expected = [path.relative_to(source_root).as_posix() for path in files]
-    uploaded = [item["relativePath"] for item in results if item.get("writeOk")]
-    verified = [item["relativePath"] for item in results if item.get("verified")]
-    mode = "read-back-sha256" if read_back else "write-ack-sha256"
-    return file_transfer_verification(
-        contract="document-sync.v1",
-        expected=expected,
-        uploaded=uploaded,
-        verified=verified,
-        mode=mode,
-    )
+    return _document_sync_verification_impl(files, results, source_root=source_root, read_back=read_back)
 
 
 def _document_archive_pdfs(root: Path) -> list[Path]:
-    if not root.is_dir():
-        return []
-    return sorted(
-        path for path in root.glob("*/*.pdf")
-        if path.is_file() and path.parent.name != "no_invoice"
+    return _document_archive_pdfs_impl(root)
+
+
+def _document_sync_deps() -> DocumentSyncDeps:
+    return DocumentSyncDeps(
+        document_archive_root=_document_archive_root,
+        default_node=_document_sync_default_node,
+        default_dest_root=_document_sync_default_dest_root,
+        node_url_from_config=_node_url_from_config,
+        archive_pdfs=_document_archive_pdfs,
+        verification=lambda files, results, source_root, read_back: _document_sync_verification(
+            files,
+            results,
+            source_root=source_root,
+            read_back=read_back,
+        ),
+        ensure_node_uri_routes=_ensure_node_uri_routes,
+        run_node_uri=_run_node_uri,
+        compact_remote_run=_compact_remote_run,
+        remote_write_error=_remote_write_error,
+        remote_read_error=_remote_read_error,
+        utc_now=_utc_now,
+        host_db=_host_db,
+        chat_message=_chat_message,
+        add_chat_message=_add_chat_message,
     )
 
 
@@ -4675,246 +4755,20 @@ def sync_documents_to_node(
     token: str | None = None,
     identity: str | None = None,
 ) -> dict:
-    source_root = Path(payload.get("source_root") or payload.get("sourceRoot") or _document_archive_root()).expanduser().resolve()
-    node = str(payload.get("node") or payload.get("targetNode") or _document_sync_default_node()).strip()
-    if not node:
-        raise ValueError("node is required: pass payload.node, select a node target, or set URIRUN_DOCUMENT_SYNC_NODE")
-    node_url = str(payload.get("node_url") or payload.get("nodeUrl") or "").strip()
-    if not node_url:
-        node_url = _node_url_from_config(config, node_urls, node) or ""
-    if not node_url:
-        raise ValueError("node_url is required when the target node is not present in host config")
-    node_url = node_url.rstrip("/")
-    dest_root = str(payload.get("dest_root") or payload.get("destRoot") or _document_sync_default_dest_root()).rstrip("/")
-    overwrite = bool(payload.get("overwrite", True))
-    make_dirs = bool(payload.get("make_dirs", payload.get("makeDirs", True)))
-    timeout = float(payload.get("timeout", 120.0) or 120.0)
-    # The remote node runs its fs connector as target "host" (fs://host/...); the node itself
-    # is addressed by node_url, NOT by the URI target. Sending fs://<node>/... made the remote
-    # find no matching route -> empty value -> "remote write failed". Default to "host" (same
-    # pattern as ocr's fs://host/file/query/blob); override with fs_target only if a node truly
-    # exposes the connector under a different target.
-    fs_target = str(payload.get("fs_target") or payload.get("fsTarget") or "host").strip() or "host"
-    fs_uri = f"fs://{fs_target}/file/command/write-b64"
-    fs_read_uri = f"fs://{fs_target}/file/query/read-b64"
-    read_back = _boolish(payload.get("verify_read_back", payload.get("verifyReadBack", payload.get("verify"))), True)
-    verify_max_bytes = int(payload.get("verify_max_bytes") or payload.get("verifyMaxBytes") or 25_000_000)
-    ensure_routes = _boolish(payload.get("ensure_routes", payload.get("ensureRoutes")), True)
-    connector_roots = payload.get("connector_roots", payload.get("connectorRoots", payload.get("roots")))
-
-    files = _document_archive_pdfs(source_root)
-    results: list[dict] = []
-    uploaded = 0
-    copied = 0
-    skipped = 0
-    failed_reasons: dict[str, int] = {}
-    preflight: dict | None = None
-
-    if ensure_routes and files:
-        required_routes = [fs_uri, fs_read_uri] if read_back else [fs_uri]
-        try:
-            preflight = _ensure_node_uri_routes(
-                node_url,
-                required_routes,
-                node=node,
-                token=token,
-                identity=identity,
-                timeout=min(timeout, 30.0),
-                roots=connector_roots,
-            )
-        except Exception as exc:  # noqa: BLE001 - fail before copying when route discovery cannot run.
-            preflight = {"ok": False, "error": str(exc), "requiredRoutes": required_routes}
-        if not preflight.get("ok"):
-            missing = preflight.get("missingAfter") or preflight.get("missingBefore") or required_routes
-            preflight_error = (
-                "remote node is missing required fs transfer route(s): "
-                f"{', '.join(str(item) for item in missing)}"
-            )
-            if preflight.get("error"):
-                preflight_error += f" ({preflight['error']})"
-            failed_reasons[preflight_error] = len(files)
-            verification = _document_sync_verification(files, results, source_root=source_root, read_back=read_back)
-            report = {
-                "ok": False,
-                "uri": "document://host/archive/command/sync-to-node",
-                "sourceRoot": str(source_root),
-                "node": node,
-                "nodeUrl": node_url,
-                "fsUri": fs_uri,
-                "fsReadUri": fs_read_uri,
-                "destRoot": dest_root,
-                "total": len(files),
-                "uploaded": 0,
-                "copied": 0,
-                "failed": len(files),
-                "skipped": skipped,
-                "failedReasons": failed_reasons,
-                "verification": verification,
-                "preflight": preflight,
-                "results": results,
-                "updatedAt": _utc_now(),
-            }
-            try:
-                _host_db().add_log(db, "document-sync", "sync-to-node", report)
-            except Exception:
-                pass
-            content = f"Document sync to {node} blocked: 0/{len(files)} PDFs -> {dest_root} ({preflight_error})"
-            message = _chat_message(
-                "system",
-                content,
-                detail={
-                    **report,
-                    "selectedTargets": ["host", f"node:{node}"],
-                },
-            )
-            _add_chat_message(db, message)
-            report["message"] = message
-            return report
-
-    for source in files:
-        rel = source.relative_to(source_root)
-        dest_path = f"{dest_root}/{rel.as_posix()}"
-        data = source.read_bytes()
-        sha256 = hashlib.sha256(data).hexdigest()
-        item = {
-            "source": str(source),
-            "relativePath": rel.as_posix(),
-            "dest": dest_path,
-            "bytes": len(data),
-            "sha256": sha256,
-        }
-        try:
-            run = _run_node_uri(
-                node_url,
-                fs_uri,
-                {
-                    "path": dest_path,
-                    "bytes_b64": base64.b64encode(data).decode("ascii"),
-                    "overwrite": overwrite,
-                    "make_dirs": make_dirs,
-                },
-                token=token,
-                identity=identity,
-                timeout=timeout,
-            )
-            value = run.get("value") if isinstance(run.get("value"), dict) else {}
-            remote_sha = value.get("sha256")
-            write_ok = bool(run.get("ok") and value.get("ok", True) and remote_sha == sha256)
-            item.update({
-                "ok": write_ok,
-                "writeOk": write_ok,
-                "verified": False,
-                "remotePath": value.get("path"),
-                "remoteSha256": remote_sha,
-                "overwritten": value.get("overwritten"),
-                "renamed": value.get("renamed"),
-            })
-            if write_ok:
-                uploaded += 1
-            else:
-                item["remote"] = _compact_remote_run(run)
-                item["error"] = _remote_write_error(run, run.get("value"), expected_sha=sha256, remote_sha=remote_sha)
-                failed_reasons[item["error"]] = failed_reasons.get(item["error"], 0) + 1
-        except Exception as exc:  # noqa: BLE001 - report per-file transfer failures.
-            item.update({"ok": False, "writeOk": False, "verified": False, "error": str(exc)})
-            failed_reasons[item["error"]] = failed_reasons.get(item["error"], 0) + 1
-        results.append(item)
-
-    for item in results:
-        if not item.get("writeOk"):
-            continue
-        if not read_back:
-            item["verified"] = True
-            copied += 1
-            continue
-        remote_path = str(item.get("remotePath") or item.get("dest") or "")
-        try:
-            run = _run_node_uri(
-                node_url,
-                fs_read_uri,
-                {
-                    "path": remote_path,
-                    "max_bytes": max(verify_max_bytes, int(item.get("bytes") or 0)),
-                },
-                token=token,
-                identity=identity,
-                timeout=timeout,
-            )
-            value = run.get("value") if isinstance(run.get("value"), dict) else {}
-            read_sha = value.get("sha256")
-            read_bytes = value.get("bytes")
-            verified = bool(
-                run.get("ok")
-                and value.get("ok", True)
-                and read_sha == item.get("sha256")
-                and (read_bytes in (None, item.get("bytes")))
-            )
-            item.update({
-                "ok": verified,
-                "verified": verified,
-                "readBackPath": value.get("path"),
-                "readBackSha256": read_sha,
-                "readBackBytes": read_bytes,
-            })
-            if verified:
-                copied += 1
-            else:
-                item["readBack"] = _compact_remote_run(run)
-                item["error"] = _remote_read_error(
-                    run,
-                    run.get("value"),
-                    expected_sha=str(item.get("sha256") or ""),
-                    remote_sha=read_sha,
-                )
-                failed_reasons[item["error"]] = failed_reasons.get(item["error"], 0) + 1
-        except Exception as exc:  # noqa: BLE001 - report per-file read-back failures.
-            item.update({"ok": False, "verified": False, "error": str(exc)})
-            failed_reasons[item["error"]] = failed_reasons.get(item["error"], 0) + 1
-
-    verification = _document_sync_verification(files, results, source_root=source_root, read_back=read_back)
-    failed = len(files) - copied
-    report = {
-        "ok": bool(verification.get("ok")),
-        "uri": "document://host/archive/command/sync-to-node",
-        "sourceRoot": str(source_root),
-        "node": node,
-        "nodeUrl": node_url,
-        "fsUri": fs_uri,
-        "fsReadUri": fs_read_uri,
-        "destRoot": dest_root,
-        "total": len(files),
-        "uploaded": uploaded,
-        "copied": copied,
-        "failed": failed,
-        "skipped": skipped,
-        "failedReasons": failed_reasons,
-        "verification": verification,
-        "preflight": preflight,
-        "results": results,
-        "updatedAt": _utc_now(),
-    }
-    try:
-        _host_db().add_log(db, "document-sync", "sync-to-node", report)
-    except Exception:
-        pass
-
-    status = "completed" if report["ok"] else "finished with errors"
-    top_reason = ""
-    if failed_reasons:
-        top_reason = max(failed_reasons.items(), key=lambda item: item[1])[0]
-    reason_suffix = f" ({top_reason})" if top_reason else ""
-    content = f"Document sync to {node} {status}: {copied}/{len(files)} PDFs -> {dest_root}{reason_suffix}"
-    message = _chat_message(
-        "system",
-        content,
-        detail={
-            **report,
-            "selectedTargets": ["host", f"node:{node}"],
-        },
+    # Use the per-node management token (set via the dashboard Nodes view, stored in keyring) when
+    # present, so node:// route provisioning on the target is authorized; else the host-wide token.
+    node_name = str((payload or {}).get("node") or (payload or {}).get("targetNode") or "").strip()
+    token = _node_token_for(node_name, token)
+    return _sync_documents_to_node_impl(
+        project,
+        db,
+        config,
+        payload,
+        deps=_document_sync_deps(),
+        node_urls=node_urls,
+        token=token,
+        identity=identity,
     )
-    _add_chat_message(db, message)
-    report["message"] = message
-    return report
 
 
 def _normalized_document_text(text: str) -> str:
@@ -8287,6 +8141,37 @@ def node_add(config: str | None, payload: dict) -> dict:
     return {"ok": True, "node": {"name": name, "url": url}, "nodes": updated.get("nodes", [])}
 
 
+def node_set_token(config: str | None, payload: dict) -> dict:
+    """Store a node's management token (X-Urirun-Token) the user typed in the Nodes view — into the
+    OS keyring (the system's secret store), never plaintext. Records only a non-secret reference
+    (`secret://keyring/urirun-node-token/<name>`) on the node config so the run path knows a token
+    exists. The token value is never persisted in config, returned, or logged."""
+    payload = payload if isinstance(payload, dict) else {}
+    name = str(payload.get("name") or "").strip()
+    secret = str(payload.get("token") or "")
+    if not name or not secret:
+        return {"ok": False, "error": "name and token are required"}
+    try:
+        import keyring
+        keyring.set_password("urirun-node-token", name, secret)
+    except Exception as exc:  # noqa: BLE001 - never fall back to plaintext
+        return {"ok": False, "error": f"could not store token securely (keyring): {exc}. "
+                                      f"Install keyring or set X-Urirun-Token via host env instead."}
+    token_ref = f"secret://keyring/urirun-node-token/{name}"
+    try:  # mark a non-secret reference on the node so the UI/run path know a token is set
+        from urirun.node import config as node_config
+        cfg = node_config.load_host_config(config)
+        for node in cfg.get("nodes", []):
+            if isinstance(node, dict) and node.get("name") == name:
+                node["tokenRef"] = token_ref
+                node.pop("token", None)  # defensive: never keep a plaintext token in config
+                node_config.save_host_config(cfg, config)
+                break
+    except Exception:  # noqa: BLE001 - the marker is best-effort; the keyring store is authoritative
+        pass
+    return {"ok": True, "name": name, "stored": "keyring", "tokenRef": token_ref}
+
+
 def _try_urifix_repair(prompt: str, request: dict, result: dict, *, node_urls: list[str] | None = None,
                        host_config: dict | None = None, known_nodes: list[str] | dict | None = None,
                        apply: bool = False, registry: Any = None) -> dict | None:
@@ -9571,6 +9456,10 @@ def create_handler(
                 if parsed.path == "/api/nodes/add":
                     payload = _read_json(self)
                     _json_response(self, 200, node_add(config, payload))
+                    return
+                if parsed.path == "/api/nodes/token":
+                    payload = _read_json(self)
+                    _json_response(self, 200, node_set_token(config, payload))
                     return
                 if parsed.path == "/api/uri/invoke":
                     payload = _read_json(self)

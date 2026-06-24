@@ -94,6 +94,50 @@ def classify(text: str) -> str:
     return "no-urirun-dep"
 
 
+def _pypi_write_guard(min_version: str) -> int | None:
+    """Return an exit code to abort the write, or None when the target version is on PyPI."""
+    present = pypi_has(min_version)
+    if present is None:
+        print(f"refusing to write: could not reach PyPI to confirm urirun=={min_version} "
+              f"exists (use --no-require-pypi to override)")
+        return 2
+    if not present:
+        print(f"refusing to write: urirun=={min_version} is not on PyPI yet — "
+              f"publish it first, or use --no-require-pypi")
+        return 2
+    return None
+
+
+def _repin_one(pyproject: "Path", min_version: str, write: bool) -> str:
+    """Process one connector pyproject, print its result line, and return a status bucket:
+    'skipped' | 'already' | 'changed' | 'failed'."""
+    name = pyproject.parent.name
+    text = pyproject.read_text(encoding="utf-8")
+    kind = classify(text)
+    if kind == "no-urirun-dep":
+        print(f"  skip   {name:<42} no urirun dependency")
+        return "skipped"
+    if kind == "versioned-or-bare":
+        print(f"  ok     {name:<42} already a version spec / bare (left as-is)")
+        return "already"
+    new_text, diffs = repin_text(text, min_version)
+    if not diffs:
+        print(f"  ok     {name:<42} already urirun>={min_version}")
+        return "already"
+    if tomllib is not None:  # validate TOML before committing
+        try:
+            tomllib.loads(new_text)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  FAIL   {name:<42} rewrite produced invalid TOML: {exc}")
+            return "failed"
+    if write:
+        pyproject.write_text(new_text, encoding="utf-8")
+        print(f"  REPIN  {name:<42} {diffs[0]}")
+    else:
+        print(f"  would  {name:<42} {diffs[0]}")
+    return "changed"
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Repin urirun-connector-* from git to a PyPI range")
     ap.add_argument("--root", default=None, help="dir containing urirun-connector-* (auto-detected)")
@@ -110,48 +154,14 @@ def main(argv: list[str] | None = None) -> int:
           f"mode: {'WRITE' if args.write else 'check (dry-run)'}\n")
 
     if args.write and not args.no_require_pypi:
-        present = pypi_has(args.min_version)
-        if present is None:
-            print(f"refusing to write: could not reach PyPI to confirm urirun=={args.min_version} "
-                  f"exists (use --no-require-pypi to override)")
-            return 2
-        if not present:
-            print(f"refusing to write: urirun=={args.min_version} is not on PyPI yet — "
-                  f"publish it first, or use --no-require-pypi")
-            return 2
+        guard = _pypi_write_guard(args.min_version)
+        if guard is not None:
+            return guard
 
-    changed = skipped = already = failed = 0
+    counts = {"skipped": 0, "already": 0, "changed": 0, "failed": 0}
     for pyproject in pkgs:
-        name = pyproject.parent.name
-        text = pyproject.read_text(encoding="utf-8")
-        kind = classify(text)
-        if kind == "no-urirun-dep":
-            print(f"  skip   {name:<42} no urirun dependency")
-            skipped += 1
-            continue
-        if kind == "versioned-or-bare":
-            print(f"  ok     {name:<42} already a version spec / bare (left as-is)")
-            already += 1
-            continue
-        new_text, diffs = repin_text(text, args.min_version)
-        if not diffs:
-            print(f"  ok     {name:<42} already urirun>={args.min_version}")
-            already += 1
-            continue
-        # validate TOML before committing
-        if tomllib is not None:
-            try:
-                tomllib.loads(new_text)
-            except Exception as exc:  # noqa: BLE001
-                print(f"  FAIL   {name:<42} rewrite produced invalid TOML: {exc}")
-                failed += 1
-                continue
-        if args.write:
-            pyproject.write_text(new_text, encoding="utf-8")
-            print(f"  REPIN  {name:<42} {diffs[0]}")
-        else:
-            print(f"  would  {name:<42} {diffs[0]}")
-        changed += 1
+        counts[_repin_one(pyproject, args.min_version, args.write)] += 1
+    changed, already, skipped, failed = counts["changed"], counts["already"], counts["skipped"], counts["failed"]
 
     verb = "repinned" if args.write else "to repin"
     print(f"\n{changed} {verb} · {already} already-versioned · {skipped} no-dep · {failed} failed")

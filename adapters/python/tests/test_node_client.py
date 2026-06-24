@@ -292,22 +292,28 @@ class LocalConnectorDeployPayloadTests(unittest.TestCase):
         self.assertFalse(r["ok"])
         self.assertIn("no host-installed connector", r["error"])
 
-    def test_fs_scheme_builds_flat_single_module_payload(self):
+    def test_multi_connector_scheme_without_route_bails(self):
+        # fs:// is served by BOTH mcp-filesystem (write_blob) and urirun-connector-fs (write-b64);
+        # without a route to disambiguate, a flat single-file deploy can't pick one connector.
         r = NodeClient._local_connector_deploy_payload("fs")
+        self.assertFalse(r["ok"])
+        self.assertIn("spans", r["error"])
+
+    def test_route_narrows_to_the_owning_connector(self):
+        # The document-sync case: write-b64 is owned by the unsandboxed urirun-connector-fs,
+        # not mcp-filesystem's write_blob — narrowing must push the former and not the latter.
+        r = NodeClient._local_connector_deploy_payload("fs", route="fs://host/file/command/write-b64")
         self.assertTrue(r["ok"], r)
-        self.assertTrue(r["module"].startswith("_ensured_fs"))
-        spec = next(iter(r["bindings"]["bindings"].values()))
-        self.assertEqual(spec["python"]["module"], r["module"])  # rewritten to the pushed module
+        uris = list(r["bindings"]["bindings"])
+        self.assertTrue(any("write-b64" in u for u in uris))
+        self.assertTrue(any("read-b64" in u for u in uris))
+        self.assertFalse(any("write_blob" in u for u in uris))  # narrowed off the other connector
         self.assertEqual(list(r["code"]), [r["module"] + ".py"])
 
-    def test_route_aware_rejects_route_owned_by_another_connector(self):
-        r = NodeClient._local_connector_deploy_payload("fs", route="fs://host/file/command/write-b64")
+    def test_route_not_provided_by_any_connector(self):
+        r = NodeClient._local_connector_deploy_payload("fs", route="fs://host/file/command/nope-xyz")
         self.assertFalse(r["ok"])
         self.assertIn("does not expose", r["error"])
-
-    def test_route_aware_accepts_a_route_the_provider_has(self):
-        r = NodeClient._local_connector_deploy_payload("fs", route="fs://host/file/command/write_blob")
-        self.assertTrue(r["ok"], r)
 
 
 if __name__ == "__main__":

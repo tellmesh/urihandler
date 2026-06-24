@@ -230,74 +230,89 @@ from urirun.node.formatting import (  # noqa: E402,F401
 )
 
 
+def _data_bindings(args: argparse.Namespace, host_db: Any) -> None:
+    doc = v2.host_data_bindings(target=args.target, db=args.db)
+    reglib._emit_json(doc, args.out)
+    if args.registry_out:
+        reglib.write_json(args.registry_out, v2.compile_registry(doc))
+
+
+def _data_init(args: argparse.Namespace, host_db: Any) -> None:
+    reglib._emit_json(host_db.init_db(args.db), "-")
+
+
+def _data_dataset_create(args: argparse.Namespace, host_db: Any) -> None:
+    dataset = host_db.create_dataset(
+        args.db, args.name,
+        description=args.description or "",
+        schema=_parse_json_option(args.schema, {"type": "object"}),
+    )
+    reglib._emit_json({"ok": True, "dataset": dataset}, "-")
+
+
+def _data_datasets(args: argparse.Namespace, host_db: Any) -> None:
+    reglib._emit_json({"datasets": host_db.list_datasets(args.db)}, "-")
+
+
+def _data_record_upsert(args: argparse.Namespace, host_db: Any) -> None:
+    record = host_db.upsert_record(
+        args.db, args.dataset, args.key,
+        _parse_json_option(args.data, {}),
+        source_uri=args.source_uri, confidence=args.confidence,
+    )
+    reglib._emit_json({"ok": True, "record": record}, "-")
+
+
+def _data_records(args: argparse.Namespace, host_db: Any) -> None:
+    records = host_db.search_records(args.db, query=args.query or "", dataset=args.dataset, limit=args.limit)
+    reglib._emit_json({"records": records}, "-")
+
+
+def _data_artifact_register(args: argparse.Namespace, host_db: Any) -> None:
+    artifact = host_db.register_artifact(args.db, args.kind, args.uri, args.path, _parse_json_option(args.meta, {}))
+    reglib._emit_json({"ok": True, "artifact": artifact}, "-")
+
+
+def _data_artifacts(args: argparse.Namespace, host_db: Any) -> None:
+    reglib._emit_json({"artifacts": host_db.list_artifacts(args.db, kind=args.kind, limit=args.limit)}, "-")
+
+
+def _data_check_add(args: argparse.Namespace, host_db: Any) -> None:
+    check = host_db.add_check(args.db, args.subject, args.check_uri, args.status, _parse_json_option(args.result, {}))
+    reglib._emit_json({"ok": True, "check": check}, "-")
+
+
+def _data_checks(args: argparse.Namespace, host_db: Any) -> None:
+    reglib._emit_json({"checks": host_db.recent_checks(args.db, subject=args.subject, limit=args.limit)}, "-")
+
+
+def _data_sql(args: argparse.Namespace, host_db: Any) -> None:
+    reglib._emit_json({"rows": host_db.read_only_sql(args.db, args.query, _parse_json_option(args.params, []), args.limit)}, "-")
+
+
+_DATA_HANDLERS = {
+    "bindings": _data_bindings,
+    "init": _data_init,
+    "dataset-create": _data_dataset_create,
+    "datasets": _data_datasets,
+    "record-upsert": _data_record_upsert,
+    "records": _data_records,
+    "artifact-register": _data_artifact_register,
+    "artifacts": _data_artifacts,
+    "check-add": _data_check_add,
+    "checks": _data_checks,
+    "sql": _data_sql,
+}
+
+
 def data_command(args: argparse.Namespace) -> int:
     from urirun import host_db
 
-    if args.data_command == "bindings":
-        doc = v2.host_data_bindings(target=args.target, db=args.db)
-        reglib._emit_json(doc, args.out)
-        if args.registry_out:
-            reglib.write_json(args.registry_out, v2.compile_registry(doc))
-        return 0
-
-    if args.data_command == "init":
-        reglib._emit_json(host_db.init_db(args.db), "-")
-        return 0
-
-    if args.data_command == "dataset-create":
-        dataset = host_db.create_dataset(
-            args.db,
-            args.name,
-            description=args.description or "",
-            schema=_parse_json_option(args.schema, {"type": "object"}),
-        )
-        reglib._emit_json({"ok": True, "dataset": dataset}, "-")
-        return 0
-
-    if args.data_command == "datasets":
-        reglib._emit_json({"datasets": host_db.list_datasets(args.db)}, "-")
-        return 0
-
-    if args.data_command == "record-upsert":
-        record = host_db.upsert_record(
-            args.db,
-            args.dataset,
-            args.key,
-            _parse_json_option(args.data, {}),
-            source_uri=args.source_uri,
-            confidence=args.confidence,
-        )
-        reglib._emit_json({"ok": True, "record": record}, "-")
-        return 0
-
-    if args.data_command == "records":
-        records = host_db.search_records(args.db, query=args.query or "", dataset=args.dataset, limit=args.limit)
-        reglib._emit_json({"records": records}, "-")
-        return 0
-
-    if args.data_command == "artifact-register":
-        artifact = host_db.register_artifact(args.db, args.kind, args.uri, args.path, _parse_json_option(args.meta, {}))
-        reglib._emit_json({"ok": True, "artifact": artifact}, "-")
-        return 0
-
-    if args.data_command == "artifacts":
-        reglib._emit_json({"artifacts": host_db.list_artifacts(args.db, kind=args.kind, limit=args.limit)}, "-")
-        return 0
-
-    if args.data_command == "check-add":
-        check = host_db.add_check(args.db, args.subject, args.check_uri, args.status, _parse_json_option(args.result, {}))
-        reglib._emit_json({"ok": True, "check": check}, "-")
-        return 0
-
-    if args.data_command == "checks":
-        reglib._emit_json({"checks": host_db.recent_checks(args.db, subject=args.subject, limit=args.limit)}, "-")
-        return 0
-
-    if args.data_command == "sql":
-        reglib._emit_json({"rows": host_db.read_only_sql(args.db, args.query, _parse_json_option(args.params, []), args.limit)}, "-")
-        return 0
-
-    return 1
+    handler = _DATA_HANDLERS.get(args.data_command)
+    if handler is None:
+        return 1
+    handler(args, host_db)
+    return 0
 
 
 def monitor_command(args: argparse.Namespace) -> int:
@@ -481,30 +496,18 @@ def ensure_command(args: argparse.Namespace) -> int:
     return 0 if res.get("ok") else 1
 
 
-def run_command(args: argparse.Namespace) -> int:
-    """`urirun host run <node> <uri> [--payload JSON] [--stream]` — dispatch a URI to a
-    node; with --stream, start it async and print the node's live progress until done."""
-    from urirun.node.client import NodeClient
-    config = host_config_for_args(args)
-    url = node_url(config, args.node)
-    token = getattr(args, "token", None) or os.environ.get("URIRUN_NODE_TOKEN")
-    identity = os.path.expanduser(args.identity) if getattr(args, "identity", None) and not token else None
-    client = NodeClient(url, token=token, identity=identity)
-    payload = json.loads(args.payload) if getattr(args, "payload", None) else {}
-    uri = client.concretize(args.uri)
-    timeout = float(getattr(args, "timeout", 120.0) or 120.0)
-    ensure = getattr(args, "ensure", False)
-    roots = getattr(args, "roots", None)
-    if ensure:  # self-heal: acquire the URI's scheme if the node lacks it
-        scheme = uri.split("://", 1)[0]
-        if scheme not in ("run",) and scheme not in client.schemes():
-            reglib._emit_json({"ensure": client.ensure_scheme(scheme, roots=roots)}, "-")
+def _maybe_ensure_scheme(client: Any, uri: str, ensure: bool, roots: Any) -> None:
+    """Self-heal: acquire the URI's scheme on the node first if it lacks it."""
+    if not ensure:
+        return
+    scheme = uri.split("://", 1)[0]
+    if scheme not in ("run",) and scheme not in client.schemes():
+        reglib._emit_json({"ensure": client.ensure_scheme(scheme, roots=roots)}, "-")
 
-    if not getattr(args, "stream", False):
-        env = client.run(uri, payload, timeout=timeout)
-        reglib._emit_json(env, "-")
-        return 0 if env.get("ok") else 1
 
+def _run_streamed(client: Any, uri: str, payload: dict, args: argparse.Namespace, timeout: float) -> int:
+    """Start the URI async and print the node's live progress until a result arrives,
+    falling back to a blocking run against a node too old for async."""
     run_id = getattr(args, "run_id", None) or f"cli-{int(time.time() * 1000)}"
     stop, done = threading.Event(), {"env": None}
 
@@ -536,6 +539,27 @@ def run_command(args: argparse.Namespace) -> int:
     env = done["env"] or {"ok": False, "error": "no result event received", "runId": run_id}
     reglib._emit_json(env, "-")
     return 0 if env.get("ok") else 1
+
+
+def run_command(args: argparse.Namespace) -> int:
+    """`urirun host run <node> <uri> [--payload JSON] [--stream]` — dispatch a URI to a
+    node; with --stream, start it async and print the node's live progress until done."""
+    from urirun.node.client import NodeClient
+    config = host_config_for_args(args)
+    url = node_url(config, args.node)
+    token = getattr(args, "token", None) or os.environ.get("URIRUN_NODE_TOKEN")
+    identity = os.path.expanduser(args.identity) if getattr(args, "identity", None) and not token else None
+    client = NodeClient(url, token=token, identity=identity)
+    payload = json.loads(args.payload) if getattr(args, "payload", None) else {}
+    uri = client.concretize(args.uri)
+    timeout = float(getattr(args, "timeout", 120.0) or 120.0)
+    _maybe_ensure_scheme(client, uri, getattr(args, "ensure", False), getattr(args, "roots", None))
+
+    if not getattr(args, "stream", False):
+        env = client.run(uri, payload, timeout=timeout)
+        reglib._emit_json(env, "-")
+        return 0 if env.get("ok") else 1
+    return _run_streamed(client, uri, payload, args, timeout)
 
 
 def _print_event(ev: dict, as_json: bool) -> None:
@@ -571,6 +595,13 @@ def watch_command(args: argparse.Namespace) -> int:
             mqtt_pub(event_topic(topic_prefix, ev), json.dumps(ev, ensure_ascii=False))
         _print_event(ev, as_json)
 
+    return _watch_loop(url, scheme=scheme, run=run, token=token, identity=identity, follow=follow, emit=emit)
+
+
+def _watch_loop(url: str, *, scheme: Any, run: Any, token: Any, identity: Any,
+                follow: bool, emit: Any) -> int:
+    """Stream a node's events through `emit`, reconnecting (when `follow`) from the last
+    event id after a drop. Returns 0 on a clean stop, 1 on a non-follow stream error."""
     last_id = None
     while True:
         try:
@@ -588,39 +619,61 @@ def watch_command(args: argparse.Namespace) -> int:
         time.sleep(2)  # reconnect after a drop, resuming from last_id
 
 
+def _host_cmd_config(args: argparse.Namespace, config: dict, mesh: dict) -> int:
+    reglib._emit_json(config, "-")
+    return 0
+
+
+def _host_cmd_nodes(args: argparse.Namespace, config: dict, mesh: dict) -> int:
+    reglib._emit_json(mesh, "-") if args.json else print(format_nodes(mesh))
+    return 0
+
+
+def _host_cmd_routes(args: argparse.Namespace, config: dict, mesh: dict) -> int:
+    reglib._emit_json({"routes": mesh["routes"]}, "-") if args.json else print(format_routes(mesh["routes"]))
+    return 0
+
+
+def _host_cmd_agents(args: argparse.Namespace, config: dict, mesh: dict) -> int:
+    payload = {
+        "nodes": mesh["nodes"],
+        "mcpTools": {node["name"]: (node.get("mcp") or {}).get("tools") or [] for node in mesh["nodes"]},
+        "a2aCards": {node["name"]: node.get("a2a") for node in mesh["nodes"]},
+        "uriProcesses": mesh["routes"],
+    }
+    reglib._emit_json(payload, "-")
+    return 0
+
+
+def _host_cmd_ask(args: argparse.Namespace, config: dict, mesh: dict) -> int:
+    prompt = " ".join(args.prompt)
+    flow, generator = make_flow(prompt, mesh, selected_nodes=args.node, use_llm=not args.no_llm)
+    if getattr(args, "flow_out", None):
+        write_flow_document(args.flow_out, flow_document(flow, prompt=prompt, generator=generator), getattr(args, "flow_format", None))
+    registry = registry_from_routes(mesh["routes"])
+    execution = execute_flow(flow, mesh, registry, execute=args.execute)
+    result = {"ok": execution["ok"], "prompt": prompt, "generator": generator, "flow": flow, **execution}
+    if getattr(args, "flow_out", None):
+        result["flowOut"] = args.flow_out
+    result = compact_result_artifacts(result, args, hint="host-ask")
+    reglib._emit_json(result, "-")
+    return 0 if result["ok"] else 1
+
+
+_HOST_MESH_HANDLERS = {
+    "config": _host_cmd_config,
+    "nodes": _host_cmd_nodes,
+    "routes": _host_cmd_routes,
+    "agents": _host_cmd_agents,
+    "ask": _host_cmd_ask,
+}
+
+
 def _host_mesh_command(args: argparse.Namespace, config: dict, mesh: dict) -> int | None:
     """Handle host subcommands that read the discovered mesh."""
-    if args.host_command == "config":
-        reglib._emit_json(config, "-")
-        return 0
-    if args.host_command == "nodes":
-        reglib._emit_json(mesh, "-") if args.json else print(format_nodes(mesh))
-        return 0
-    if args.host_command == "routes":
-        reglib._emit_json({"routes": mesh["routes"]}, "-") if args.json else print(format_routes(mesh["routes"]))
-        return 0
-    if args.host_command == "agents":
-        payload = {
-            "nodes": mesh["nodes"],
-            "mcpTools": {node["name"]: (node.get("mcp") or {}).get("tools") or [] for node in mesh["nodes"]},
-            "a2aCards": {node["name"]: node.get("a2a") for node in mesh["nodes"]},
-            "uriProcesses": mesh["routes"],
-        }
-        reglib._emit_json(payload, "-")
-        return 0
-    if args.host_command == "ask":
-        prompt = " ".join(args.prompt)
-        flow, generator = make_flow(prompt, mesh, selected_nodes=args.node, use_llm=not args.no_llm)
-        if getattr(args, "flow_out", None):
-            write_flow_document(args.flow_out, flow_document(flow, prompt=prompt, generator=generator), getattr(args, "flow_format", None))
-        registry = registry_from_routes(mesh["routes"])
-        execution = execute_flow(flow, mesh, registry, execute=args.execute)
-        result = {"ok": execution["ok"], "prompt": prompt, "generator": generator, "flow": flow, **execution}
-        if getattr(args, "flow_out", None):
-            result["flowOut"] = args.flow_out
-        result = compact_result_artifacts(result, args, hint="host-ask")
-        reglib._emit_json(result, "-")
-        return 0 if result["ok"] else 1
+    handler = _HOST_MESH_HANDLERS.get(args.host_command)
+    if handler is not None:
+        return handler(args, config, mesh)
     if args.host_command == "flow" and args.flow_command == "run":
         result = run_flow_document(load_flow_document(args.flow), mesh, execute=args.execute)
         result = compact_result_artifacts(result, args, hint="host-flow")
@@ -695,23 +748,25 @@ def copy_id_cli(argv: list[str] | None = None) -> int:
     return copy_id_command(args)
 
 
+def _split_deploy_doc(path: str | None) -> tuple[dict | None, dict | None]:
+    """Classify a deploy --bindings file as (bindings, registry); a compiled registry doc
+    carries ``routes`` or a ``*registry`` version, otherwise it's a bindings doc."""
+    if not path:
+        return None, None
+    doc = json_load(path)
+    if doc.get("version", "").endswith("registry") or "routes" in doc:
+        return None, doc
+    return doc, None
+
+
 def deploy_command(args: argparse.Namespace) -> int:
     """`urirun host deploy <node> --bindings F [--allow G] [--code F] [--env K=V]`."""
     config = host_config_for_args(args)
     url = node_url(config, args.node)
 
-    bindings = registry = None
-    if args.bindings:
-        doc = json_load(args.bindings)
-        if doc.get("version", "").endswith("registry") or "routes" in doc:
-            registry = doc
-        else:
-            bindings = doc
+    bindings, registry = _split_deploy_doc(args.bindings)
     code = {os.path.basename(p): Path(p).read_text(encoding="utf-8") for p in (args.code or [])}
-    env = {}
-    for pair in (args.env or []):
-        key, _, val = pair.partition("=")
-        env[key] = val
+    env = dict(pair.partition("=")[::2] for pair in (args.env or []))
     token = args.token or os.environ.get("URIRUN_NODE_TOKEN")
     identity = getattr(args, "identity", None)
     if identity and not token:
@@ -997,46 +1052,63 @@ def _deploy_registry(body: dict, existing: dict | None = None) -> dict:
     return new
 
 
-def apply_deploy(state: dict, body: dict) -> dict:
-    """Mutate a serving node's state from a /deploy payload: write any pushed handler
-    code, set handler env, then hot-swap the served registry / allow-policy / name.
-    Returns a summary. Raises ValueError on a malformed payload."""
+def _reimport_pushed_code(pushed_mods: list[str], summary: dict) -> None:
+    """Eagerly (re)import pushed handler modules so new code is live now and any load error
+    surfaces in the deploy response instead of failing later on the first /run."""
     import importlib
 
-    summary: dict = {"code": [], "env": []}
-    pushed_mods = _write_pushed_code(body.get("code") or {}, summary)
-    _apply_deploy_env(body.get("env") or {}, summary)  # before re-import: modules may read it
-    # eagerly (re)import so new code is live now and load errors surface in the response
     for mod in pushed_mods:
         try:
             importlib.import_module(mod)
         except Exception as exc:  # noqa: BLE001
             summary.setdefault("codeWarnings", []).append(f"{mod}: {type(exc).__name__}: {exc}")
 
+
+def _apply_deploy_surface(state: dict, body: dict) -> dict:
+    """Hot-swap the served registry+routes when the payload carries a surface; return the
+    effective registry either way."""
+    if body.get("registry") or body.get("bindings"):
+        registry = _deploy_registry(body, state.get("registry"))
+        state["registry"] = registry
+        state["routes"] = routes_from_registry(registry, source="deploy")  # host-pushed surface
+        return registry
+    return state.get("registry") or {"version": v2.VERSION, "bindings": {}}
+
+
+def _apply_deploy_allow(state: dict, body: dict, summary: dict) -> None:
+    """Replace (or, with ``merge``, union) the node's allow-list from the payload."""
+    if not isinstance(body.get("allow"), list):
+        return
+    if body.get("merge"):
+        merged_allow = list(state.get("allow") or [])
+        for pattern in body["allow"]:
+            if pattern not in merged_allow:
+                merged_allow.append(pattern)
+        state["allow"] = merged_allow
+        summary["allowMerged"] = True
+    else:
+        state["allow"] = list(body["allow"])
+
+
+def apply_deploy(state: dict, body: dict) -> dict:
+    """Mutate a serving node's state from a /deploy payload: write any pushed handler
+    code, set handler env, then hot-swap the served registry / allow-policy / name.
+    Returns a summary. Raises ValueError on a malformed payload."""
+    summary: dict = {"code": [], "env": []}
+    pushed_mods = _write_pushed_code(body.get("code") or {}, summary)
+    _apply_deploy_env(body.get("env") or {}, summary)  # before re-import: modules may read it
+    _reimport_pushed_code(pushed_mods, summary)
+
     has_surface = bool(body.get("registry") or body.get("bindings"))
     has_mutation = bool(body.get("code") or body.get("env") or isinstance(body.get("allow"), list) or body.get("name"))
     if not has_surface and not has_mutation:
         raise ValueError("deploy needs 'bindings' or 'registry'")
 
-    if has_surface:
-        registry = _deploy_registry(body, state.get("registry"))
-        state["registry"] = registry
-        state["routes"] = routes_from_registry(registry, source="deploy")  # host-pushed surface
-    else:
-        registry = state.get("registry") or {"version": v2.VERSION, "bindings": {}}
+    registry = _apply_deploy_surface(state, body)
     state["generation"] = state.get("generation", 1) + 1                # surface/code/policy changed
     if body.get("name"):
         state["name"] = str(body["name"])
-    if isinstance(body.get("allow"), list):
-        if body.get("merge"):
-            merged_allow = list(state.get("allow") or [])
-            for pattern in body["allow"]:
-                if pattern not in merged_allow:
-                    merged_allow.append(pattern)
-            state["allow"] = merged_allow
-            summary["allowMerged"] = True
-        else:
-            state["allow"] = list(body["allow"])
+    _apply_deploy_allow(state, body, summary)
 
     schemes = sorted({r["uri"].split("://", 1)[0] for r in state["routes"]})
     summary.update({"ok": True, "name": state["name"],
@@ -1045,6 +1117,39 @@ def apply_deploy(state: dict, body: dict) -> dict:
                     "registryEtag": registry_fingerprint(state["routes"]),
                     "registryGeneration": state["generation"]})
     return summary
+
+
+def _parse_sse_query(query: str) -> dict:
+    params: dict = {}
+    for part in query.split("&"):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            params[k] = unquote(v.replace("+", " "))
+    return params
+
+
+def _sse_initial_cursor(hub: "EventHub", params: dict, headers: Any) -> int:
+    """Resolve the replay cursor: explicit ?last_event_id, else the Last-Event-ID header,
+    else the hub's current id (no backlog). A non-integer cursor falls back to current."""
+    cursor = params.get("last_event_id")
+    if cursor is None:
+        cursor = headers.get("Last-Event-ID")
+    try:
+        return int(cursor) if cursor is not None else hub.current_id()
+    except ValueError:
+        return hub.current_id()
+
+
+def _sse_event_matches(ev: dict, schemes: set[str], runs: set[str]) -> bool:
+    scheme_ok = not schemes or str(ev.get("uri", "")).split("://", 1)[0] in schemes
+    run_ok = not runs or ev.get("run") in runs
+    return scheme_ok and run_ok
+
+
+def _sse_frame(ev: dict) -> bytes:
+    payload = {k: v for k, v in ev.items() if k != "_id"}
+    return (f"id: {ev.get('_id', '')}\n"
+            f"data: {json.dumps(payload, ensure_ascii=False)}\n\n").encode("utf-8")
 
 
 class NodeContext:
@@ -1084,24 +1189,37 @@ class NodeHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         self._guarded(self._post)
 
+    def _health_payload(self) -> dict:
+        c = self.ctx
+        # URI Node model: kind is always "node"; runtime says how it's hosted
+        # (bare/docker/vm/remote); services = managed long-runners.
+        return {"ok": True, "name": c.state["name"], "execute": c.execute,
+                "version": current_version(),
+                "kind": getattr(c, "kind", "node"),
+                "runtime": getattr(c, "runtime", {"type": "bare"}),
+                "serviceCount": len(getattr(c, "services", []) or []),
+                "routeCount": len(c.state["routes"]),
+                "registryEtag": registry_fingerprint(c.state["routes"]),
+                "registryGeneration": c.state.get("generation", 1),
+                "deploy": c.deploy_enabled, "events": c.hub.count(),
+                "policy": {"allow": list(c.state.get("allow") or []),
+                           "requireRunAuth": bool(c.run_auth_enforced),
+                           "allowSecrets": bool(c.allow_secrets)},
+                "keyAuth": c.key_auth, "keyCount": len(keyauth.load_authorized()) if c.key_auth else 0}
+
+    def _routes_payload(self) -> dict:
+        c = self.ctx
+        routes = list(c.state["routes"])
+        if c.manage_registry:
+            routes = routes + routes_from_registry(c.manage_registry, source="manage")
+        return {"ok": True, "name": c.state["name"], "routes": routes,
+                "etag": registry_fingerprint(routes),
+                "generation": c.state.get("generation", 1)}
+
     def _get(self):
         c = self.ctx
         if self.path == "/health":
-            send_json(self, 200, {"ok": True, "name": c.state["name"], "execute": c.execute,
-                                  "version": current_version(),
-                                  # URI Node model: kind is always "node"; runtime says how it's
-                                  # hosted (bare/docker/vm/remote); services = managed long-runners.
-                                  "kind": getattr(c, "kind", "node"),
-                                  "runtime": getattr(c, "runtime", {"type": "bare"}),
-                                  "serviceCount": len(getattr(c, "services", []) or []),
-                                  "routeCount": len(c.state["routes"]),
-                                  "registryEtag": registry_fingerprint(c.state["routes"]),
-                                  "registryGeneration": c.state.get("generation", 1),
-                                  "deploy": c.deploy_enabled, "events": c.hub.count(),
-                                  "policy": {"allow": list(c.state.get("allow") or []),
-                                             "requireRunAuth": bool(c.run_auth_enforced),
-                                             "allowSecrets": bool(c.allow_secrets)},
-                                  "keyAuth": c.key_auth, "keyCount": len(keyauth.load_authorized()) if c.key_auth else 0})
+            send_json(self, 200, self._health_payload())
             return
         if self.path == "/services":
             # the long-running apps ("URI Service") this node manages — each with a public_url
@@ -1114,12 +1232,7 @@ class NodeHandler(BaseHTTPRequestHandler):
             self._stream_events()
             return
         if self.path == "/routes" or self.path == "/uri-processes":
-            routes = list(c.state["routes"])
-            if c.manage_registry:
-                routes = routes + routes_from_registry(c.manage_registry, source="manage")
-            send_json(self, 200, {"ok": True, "name": c.state["name"], "routes": routes,
-                                  "etag": registry_fingerprint(routes),
-                                  "generation": c.state.get("generation", 1)})
+            send_json(self, 200, self._routes_payload())
             return
         if self.path == "/mcp/tools":
             send_json(self, 200, v2_mcp.to_mcp_manifest(c.state["registry"]))
@@ -1363,30 +1476,10 @@ class NodeHandler(BaseHTTPRequestHandler):
             send_json(self, 403, {"ok": False, "error": "unauthorized (/events requires X-Urirun-Token or an enrolled-key signature)"})
             return
         _, _, query = self.path.partition("?")
-        params = {}
-        for part in query.split("&"):
-            if "=" in part:
-                k, v = part.split("=", 1)
-                params[k] = unquote(v.replace("+", " "))
+        params = _parse_sse_query(query)
         schemes = {s for s in (params.get("scheme", "").split(",")) if s}
         runs = {r for r in (params.get("run", "").split(",")) if r}  # stream one run's progress
-        cursor = params.get("last_event_id")
-        if cursor is None:
-            cursor = self.headers.get("Last-Event-ID")
-        try:
-            last_id = int(cursor) if cursor is not None else c.hub.current_id()
-        except ValueError:
-            last_id = c.hub.current_id()
-
-        def matches(ev: dict) -> bool:
-            scheme_ok = not schemes or str(ev.get("uri", "")).split("://", 1)[0] in schemes
-            run_ok = not runs or ev.get("run") in runs
-            return scheme_ok and run_ok
-
-        def frame(ev: dict) -> bytes:
-            payload = {k: v for k, v in ev.items() if k != "_id"}
-            return (f"id: {ev.get('_id', '')}\n"
-                    f"data: {json.dumps(payload, ensure_ascii=False)}\n\n").encode("utf-8")
+        last_id = _sse_initial_cursor(c.hub, params, self.headers)
 
         try:
             self.send_response(200)
@@ -1397,8 +1490,8 @@ class NodeHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(f": connected to {c.state['name']}\n\n".encode("utf-8"))
             for ev in c.hub.replay_since(last_id):
-                if matches(ev):
-                    self.wfile.write(frame(ev))
+                if _sse_event_matches(ev, schemes, runs):
+                    self.wfile.write(_sse_frame(ev))
             self.wfile.flush()
         except (BrokenPipeError, ConnectionResetError, OSError):
             return
@@ -1411,8 +1504,8 @@ class NodeHandler(BaseHTTPRequestHandler):
                     self.wfile.write(b": keep-alive\n\n")
                     self.wfile.flush()
                     continue
-                if matches(ev):
-                    self.wfile.write(frame(ev))
+                if _sse_event_matches(ev, schemes, runs):
+                    self.wfile.write(_sse_frame(ev))
                     self.wfile.flush()
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
@@ -1529,6 +1622,42 @@ class NodeHandler(BaseHTTPRequestHandler):
         return
 
 
+def _warn_unauthenticated_node(name: str, host: str, port: int, execute: bool, run_auth_enforced: bool) -> None:
+    """Warn loudly if an executing node is reachable beyond localhost with no auth."""
+    is_local = host in ("127.0.0.1", "localhost", "::1", "")
+    if execute and not is_local and not run_auth_enforced:
+        sys.stderr.write(
+            f"[urirun] SECURITY: node '{name}' serves /run (and reads via /events) with NO "
+            f"authentication on {host}:{port} (reachable beyond localhost). Anyone who reaches this "
+            f"port can execute every --allow'ed route and watch its event stream. Bind 127.0.0.1, or "
+            f"add --admin-token/--key-auth and --require-run-auth (which also gates /events).\n"
+        )
+        sys.stderr.flush()
+
+
+def _announce_node_started(name: str, host: str, port: int, state: dict, execute: bool, *,
+                           deploy_enabled: bool, key_auth: bool,
+                           enroll_token: str | None, public_url: str) -> None:
+    """Emit the human startup banner (version, update hint, enroll PIN) and the machine
+    ``urirun.node.started`` event."""
+    vstatus = version_status()  # cached PyPI check; best-effort
+    sys.stderr.write(f"[urirun] {version_line()} starting node '{name}' on {host}:{port}\n")
+    if vstatus["status"] == "update-available":
+        sys.stderr.write(f"[urirun] a newer version is available: {vstatus['latest']} "
+                         f"(pip install -U 'urirun[keyauth]')\n")
+    if enroll_token:
+        # red, bold, and isolated on its own line so it stands out in the console scrollback.
+        sys.stderr.write(f"\033[1;31mTOKEN: {enroll_token}\033[0m"
+                         f"  — quote this to authorize enrollment: uri-copy-id {public_url} "
+                         f"--enroll-token {enroll_token}\n")
+    sys.stderr.flush()
+    print(json.dumps({"event": "urirun.node.started", "name": name, "host": host, "port": port,
+                      "execute": execute, "routes": len(state["routes"]),
+                      "deploy": deploy_enabled, "keyAuth": key_auth,
+                      "version": vstatus["version"], "latest": vstatus["latest"],
+                      "versionStatus": vstatus["status"]}), flush=True)
+
+
 def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, public_url: str | None = None,
                allow_secrets: bool = False, allow: list[str] | None = None, pool: bool = False,
                admin_token: str | None = None, key_auth: bool = False,
@@ -1546,15 +1675,7 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
     # require_run_auth needs a credential to check against; ignore it (with a warning
     # below) if neither a token nor key-auth is configured.
     run_auth_enforced = require_run_auth and deploy_enabled
-    _is_local = host in ("127.0.0.1", "localhost", "::1", "")
-    if execute and not _is_local and not run_auth_enforced:
-        sys.stderr.write(
-            f"[urirun] SECURITY: node '{name}' serves /run (and reads via /events) with NO "
-            f"authentication on {host}:{port} (reachable beyond localhost). Anyone who reaches this "
-            f"port can execute every --allow'ed route and watch its event stream. Bind 127.0.0.1, or "
-            f"add --admin-token/--key-auth and --require-run-auth (which also gates /events).\n"
-        )
-        sys.stderr.flush()
+    _warn_unauthenticated_node(name, host, port, execute, run_auth_enforced)
     # Mutable so POST /deploy can hot-swap what the node serves without a restart.
     state = {"name": name, "registry": registry,
              "routes": routes_from_registry(registry), "allow": list(allow or []),
@@ -1581,37 +1702,15 @@ def serve_node(name: str, registry: dict, host: str, port: int, execute: bool, p
                       runs={})  # run id -> progress.RunControl, for streaming/cancel/status
     server = ThreadingHTTPServer((host, port), NodeHandler)
     server.ctx = ctx  # type: ignore[attr-defined]
-    vstatus = version_status()  # cached PyPI check; best-effort
-    sys.stderr.write(f"[urirun] {version_line()} starting node '{name}' on {host}:{port}\n")
-    if vstatus["status"] == "update-available":
-        sys.stderr.write(f"[urirun] a newer version is available: {vstatus['latest']} "
-                         f"(pip install -U 'urirun[keyauth]')\n")
-    if enroll_token:
-        # red, bold, and isolated on its own line so it stands out in the console scrollback.
-        sys.stderr.write(f"\033[1;31mTOKEN: {enroll_token}\033[0m"
-                         f"  — quote this to authorize enrollment: uri-copy-id {public_url} "
-                         f"--enroll-token {enroll_token}\n")
-    sys.stderr.flush()
-    print(json.dumps({"event": "urirun.node.started", "name": name, "host": host, "port": port,
-                      "execute": execute, "routes": len(state["routes"]),
-                      "deploy": deploy_enabled, "keyAuth": key_auth,
-                      "version": vstatus["version"], "latest": vstatus["latest"],
-                      "versionStatus": vstatus["status"]}), flush=True)
+    _announce_node_started(name, host, port, state, execute,
+                           deploy_enabled=deploy_enabled, key_auth=key_auth,
+                           enroll_token=enroll_token, public_url=public_url)
     return server
 
 
-def _resolve_serve_opts(args: argparse.Namespace, node: dict) -> dict:
-    """Merge CLI args + node config into the serve_node options (CLI wins)."""
-    admin_token = resolve_admin_token(getattr(args, "admin_token", None), node.get("adminToken"),
-                                      bool(getattr(args, "generate_token", False)))
-    key_auth = bool(getattr(args, "key_auth", False) or node.get("keyAuth")
-                    or keyauth.authorized_keys_path().exists())
-    manage = bool(getattr(args, "manage", False) or node.get("manage"))
-    if manage and not (admin_token or key_auth):
-        sys.stderr.write("[urirun] --manage requires admin auth (--admin-token / --key-auth / "
-                         "--generate-token); node:// would be ungated. Disabling management.\n")
-        sys.stderr.flush()
-        manage = False
+def _serve_opts_merged(args: argparse.Namespace, node: dict, *,
+                       admin_token: str | None, key_auth: bool, manage: bool) -> dict:
+    """The serve_node option dict, merging CLI args over node config (CLI wins)."""
     return {
         # localhost default: exposing the node (its unauthenticated /run) is an explicit choice.
         "host": args.host or node.get("host") or "127.0.0.1",
@@ -1627,6 +1726,21 @@ def _resolve_serve_opts(args: argparse.Namespace, node: dict) -> dict:
         "runtime": node.get("runtime") or {"type": "bare"},
         "services": list(node.get("services") or []),
     }
+
+
+def _resolve_serve_opts(args: argparse.Namespace, node: dict) -> dict:
+    """Merge CLI args + node config into the serve_node options (CLI wins)."""
+    admin_token = resolve_admin_token(getattr(args, "admin_token", None), node.get("adminToken"),
+                                      bool(getattr(args, "generate_token", False)))
+    key_auth = bool(getattr(args, "key_auth", False) or node.get("keyAuth")
+                    or keyauth.authorized_keys_path().exists())
+    manage = bool(getattr(args, "manage", False) or node.get("manage"))
+    if manage and not (admin_token or key_auth):
+        sys.stderr.write("[urirun] --manage requires admin auth (--admin-token / --key-auth / "
+                         "--generate-token); node:// would be ungated. Disabling management.\n")
+        sys.stderr.flush()
+        manage = False
+    return _serve_opts_merged(args, node, admin_token=admin_token, key_auth=key_auth, manage=manage)
 
 
 def _node_serve(args: argparse.Namespace, node: dict, name: str, registry: dict) -> int:

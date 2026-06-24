@@ -52,8 +52,11 @@ Priority improvements:
 Near-term extraction targets:
 
 - `host/contracts.py` for verification contracts.
+- `host/document_sync.py` for archive sync and node transfer preflight. The
+  first split is landed: the transfer loop now lives in `host.document_sync`
+  behind a compatibility wrapper in `host_dashboard.py`. Continue by moving the
+  fs shim/preflight helpers next.
 - `host/service_control.py` for restart/start/status logic.
-- `host/document_sync.py` for archive sync and node transfer preflight.
 - `host/discovery.py` for URI object registry normalization.
 - `host/scanner_bridge.py` for dashboard-to-scanner API glue.
 

@@ -91,6 +91,36 @@ def _flags(row: dict) -> str:
     return " ".join(parts)
 
 
+def _print_fleet_report(rows: list[dict]) -> None:
+    counts: dict[str, int] = {}
+    for row in rows:
+        counts[row["state"]] = counts.get(row["state"], 0) + 1
+        flags = _flags(row)
+        print(f"  {row['state']:12} {row['connector']:40} {flags or 'ok'}")
+    summary = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+    print(f"\n{len(rows)} connectors · {summary}")
+
+
+def _lint_exit_code(rows: list[dict], strict: bool) -> int:
+    """Print any failure summaries to stderr and return the process exit code."""
+    drifted = [r["connector"] for r in rows if r.get("hasDrift") or r.get("hasAdapterDrift") or r.get("error")]
+    if drifted:
+        print(f"\nFAIL: {len(drifted)} connector(s) inconsistent (code/manifest disagree): {', '.join(drifted)}",
+              file=sys.stderr)
+        return 1
+    bypass = [r["connector"] for r in rows if r.get("secretBypass")]
+    if bypass:
+        print(f"\nFAIL: {len(bypass)} connector(s) read a secret-shaped env var without the secrets layer "
+              f"(use urirun.resolve_secret): {', '.join(bypass)}", file=sys.stderr)
+        return 1
+    if strict:
+        old = [r["connector"] for r in rows if r["state"] == "OLD-STYLE"]
+        if old:
+            print(f"\nFAIL (--strict): {len(old)} connector(s) not yet migrated: {', '.join(old)}", file=sys.stderr)
+            return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="lint-connectors", description=__doc__)
     ap.add_argument("--root", default=str(REPO_ROOT), help="monorepo root holding urirun-connector-* dirs")
@@ -102,30 +132,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(rows, indent=2))
     else:
-        counts: dict[str, int] = {}
-        for row in rows:
-            counts[row["state"]] = counts.get(row["state"], 0) + 1
-            flags = _flags(row)
-            print(f"  {row['state']:12} {row['connector']:40} {flags or 'ok'}")
-        summary = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
-        print(f"\n{len(rows)} connectors · {summary}")
-
-    drifted = [r["connector"] for r in rows if r.get("hasDrift") or r.get("hasAdapterDrift") or r.get("error")]
-    if drifted:
-        print(f"\nFAIL: {len(drifted)} connector(s) inconsistent (code/manifest disagree): {', '.join(drifted)}",
-              file=sys.stderr)
-        return 1
-    bypass = [r["connector"] for r in rows if r.get("secretBypass")]
-    if bypass:
-        print(f"\nFAIL: {len(bypass)} connector(s) read a secret-shaped env var without the secrets layer "
-              f"(use urirun.resolve_secret): {', '.join(bypass)}", file=sys.stderr)
-        return 1
-    if args.strict:
-        old = [r["connector"] for r in rows if r["state"] == "OLD-STYLE"]
-        if old:
-            print(f"\nFAIL (--strict): {len(old)} connector(s) not yet migrated: {', '.join(old)}", file=sys.stderr)
-            return 1
-    return 0
+        _print_fleet_report(rows)
+    return _lint_exit_code(rows, args.strict)
 
 
 if __name__ == "__main__":

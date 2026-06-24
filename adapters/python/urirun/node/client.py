@@ -181,16 +181,21 @@ class NodeClient:
             module, export = py.get("module"), py.get("export")
             if module and export:
                 specs[str(b["uri"])] = (str(module), str(export))
-        modules = {m for m, _ in specs.values()}
         if not specs:
             return {"ok": False, "error": f"{scheme}:// has no local-function handlers to push"}
         if route is not None:
+            # A scheme can be served by several connectors (e.g. fs:// = mcp-filesystem's
+            # write_blob AND urirun-connector-fs's write-b64). Narrow to the module that owns
+            # the REQUESTED route, so a multi-connector scheme still flat-deploys cleanly.
             want = NodeClient._route_key(route)
-            if not any(NodeClient._route_key(u) == want for u in specs):
-                provider = sorted(modules)[0] if modules else "?"
+            owner = next((m for u, (m, _e) in specs.items() if NodeClient._route_key(u) == want), None)
+            if owner is None:
+                provider = sorted({m for m, _ in specs.values()})[0] if specs else "?"
                 return {"ok": False,
                         "error": (f"host's {scheme}:// provider ({provider}) does not expose {route} "
                                   f"— a different connector owns that route")}
+            specs = {u: (m, e) for u, (m, e) in specs.items() if m == owner}
+        modules = {m for m, _ in specs.values()}
         if len(modules) != 1:
             return {"ok": False, "error": f"{scheme}:// spans {len(modules)} modules; flat deploy needs one"}
         module = next(iter(modules))
@@ -214,6 +219,26 @@ class NodeClient:
         }
         return {"ok": True, "module": flat, "code": {flat + ".py": source},
                 "bindings": {"version": "urirun.bindings.v2", "bindings": bindings}}
+
+    def _ensure_via_host_deploy(self, scheme: str, route: str | None, install: bool) -> dict:
+        """Push the HOST-installed connector that OWNS ``route`` (single-file handler) to the
+        node via signed /deploy. Covers nodes without --manage, and nodes whose installed
+        connector serves the scheme but not the specific route (e.g. fs:// via mcp-filesystem's
+        write_blob while the caller needs the unsandboxed write-b64). Needs an admin credential."""
+        if not (install and (getattr(self, "identity", None) or getattr(self, "token", None))):
+            return {"ok": False, "scheme": scheme, "error": "no installed bindings or local source for scheme"}
+        payload = self._local_connector_deploy_payload(scheme, route)
+        if not payload.get("ok"):
+            return {"ok": False, "scheme": scheme,
+                    "error": f"no installed bindings or local source for scheme ({payload.get('error')})"}
+        dep = self.deploy(code=payload["code"], bindings=payload["bindings"],
+                          allow=[f"{scheme}://**"], merge=True)
+        route_ok = self._has_route(route) if route else True
+        live = scheme in self.schemes() and route_ok
+        return {"ok": live, "scheme": scheme, "via": "host-deploy", "acquired": live,
+                **({"route": route, "routeLive": route_ok} if route else {}),
+                "deployed": dep.get("routeCount"),
+                **({} if live else {"error": "host-deploy did not make the requested route live"})}
 
     def ensure_scheme(self, scheme: str, roots=None, install: bool = True, route: str | None = None) -> dict:
         """Make `scheme://` live on the node, acquiring it if missing: adopt bindings already
@@ -274,26 +299,18 @@ class NodeClient:
             inst = inst if isinstance(inst, dict) else {}
             binds = inst.get("bindings") or {}
         if not binds:
-            # Last resort for a node WITHOUT --manage (node:// adopt/install unavailable):
-            # push a HOST-installed connector's single-file handler via signed /deploy. Needs
-            # an admin credential (identity/token); otherwise there's nothing more we can do.
-            if install and (getattr(self, "identity", None) or getattr(self, "token", None)):
-                payload = self._local_connector_deploy_payload(scheme, route)
-                if payload.get("ok"):
-                    dep = self.deploy(code=payload["code"], bindings=payload["bindings"],
-                                      allow=[f"{scheme}://**"], merge=True)
-                    route_ok = self._has_route(route) if route else True
-                    live = scheme in self.schemes() and route_ok
-                    return {"ok": live, "scheme": scheme, "via": "host-deploy", "acquired": live,
-                            **({"route": route, "routeLive": route_ok} if route else {}),
-                            "deployed": dep.get("routeCount"),
-                            **({} if live else {"error": "host-deploy did not make the scheme live"})}
-                return {"ok": False, "scheme": scheme,
-                        "error": f"no installed bindings or local source for scheme ({payload.get('error')})"}
-            return {"ok": False, "scheme": scheme, "error": "no installed bindings or local source for scheme"}
+            # Nothing installed on the node for this scheme → push a host-installed connector.
+            return self._ensure_via_host_deploy(scheme, route, install)
         dep = self.deploy(bindings={"version": inst.get("version", "urirun.bindings.v2"), "bindings": binds},
                           allow=[f"{scheme}://**"], merge=True)
         route_ok = self._has_route(route) if route else True
+        if route and not route_ok:
+            # The node's installed connector serves the scheme but NOT the requested route
+            # (e.g. fs:// via mcp-filesystem's write_blob, but the caller needs write-b64).
+            # Fall through to a host-side signed-deploy of the connector that owns the route.
+            fb = self._ensure_via_host_deploy(scheme, route, install)
+            if fb.get("ok"):
+                return fb
         return {"ok": scheme in self.schemes() and route_ok, "scheme": scheme,
                 **({"route": route, "routeLive": route_ok} if route else {}),
                 "deployed": dep.get("routeCount"), "acquired": True}
