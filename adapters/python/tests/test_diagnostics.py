@@ -124,6 +124,28 @@ class FitToEnvironmentTests(unittest.TestCase):
         d = diagnose(_err("ui-click: target not located"), step=self.STEP, environment=env)
         self.assertIn("ensure-cdp-dom", d["autoApplicable"])             # chrome present -> feasible
 
+    # node-exec-timeout's fix is a bounded os-level retry (no built-in CDP) — so an unreliable
+    # Wayland surface escalates the WHOLE surface to CDP instead of retrying os-level pixels.
+    TIMEOUT = "node error: TimeoutExpired: core:ui_wait timed out after 30 seconds"
+
+    def test_surface_escalation_when_oslevel_unreliable(self):
+        env = {"controlStrategies": {"cdp": False, "atspi": False, "vision": True},
+               "cdpFeasible": True, "controllable": True, "best": "vision",
+               "wayland": True, "osLevelReliable": False}
+        d = diagnose(_err(self.TIMEOUT, category="DEADLINE_EXCEEDED"), step=self.STEP, environment=env)
+        self.assertEqual(d["rule"], "node-exec-timeout")
+        self.assertEqual(d.get("surfaceEscalation"), "os-level->cdp")
+        self.assertIn("escalate-surface-cdp", d["autoApplicable"])   # auto-switch the WHOLE surface
+
+    def test_no_escalation_when_oslevel_reliable_overrides_heuristic(self):
+        # ground truth (reliable) beats the wayland+best heuristic that would otherwise escalate
+        env = {"controlStrategies": {"cdp": False, "atspi": False, "vision": True},
+               "cdpFeasible": True, "controllable": True, "best": "vision",
+               "wayland": True, "osLevelReliable": True}
+        d = diagnose(_err(self.TIMEOUT, category="DEADLINE_EXCEEDED"), step=self.STEP, environment=env)
+        self.assertNotIn("surfaceEscalation", d)
+        self.assertNotIn("escalate-surface-cdp", d["autoApplicable"])
+
     def test_uncontrollable_env_adds_install_action_and_no_auto(self):
         env = {"controlStrategies": {"cdp": False, "atspi": False, "vision": False},
                "cdpFeasible": False, "controllable": False, "best": None}

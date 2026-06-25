@@ -257,7 +257,12 @@ def fit_to_environment(diagnosis: dict, environment: dict) -> dict:
     # escalates the WHOLE surface to coordinate-free DOM control instead of retrying os-level.
     rem = diagnosis.get("remediation") or []
     ui_failure = any(s in str(a.get("uri") or "") for a in rem for s in ("/ui/", "/cdp/", "/input/"))
-    os_level_unreliable = bool(environment.get("wayland")) and environment.get("best") in (None, "atspi", "vision")
+    # Prefer the Mutter ground-truth flag (surface_report -> env.osLevelReliable) when present;
+    # fall back to the wayland+best heuristic only when reliability is unknown.
+    reliable = environment.get("osLevelReliable")
+    os_level_unreliable = (reliable is False) or (
+        reliable is None and bool(environment.get("wayland"))
+        and environment.get("best") in (None, "atspi", "vision"))
     already_cdp = any(str(a.get("id") or "").startswith("ensure-cdp")
                       or ("/cdp/" in str(a.get("uri") or "") and a.get("automatic")) for a in rem)
     if ui_failure and os_level_unreliable and cdp_feasible and not already_cdp:

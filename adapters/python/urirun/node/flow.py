@@ -17,6 +17,13 @@ from typing import Any
 from urirun import result_data, v2_service
 from urirun.node._util import json_write, now_id, slug
 from urirun.node.diagnostics import diagnose, fit_to_environment
+from urirun.node.reversible import (
+    CallableTransport,
+    ReversibleProcess,
+    Twin,
+    ledger_from_execution,
+    parse as _rev_parse,
+)
 from urirun.node.recovery import (
     apply_auto_remediation,
     can_retry_step,
@@ -734,7 +741,34 @@ def _flow_stdout(envelope: dict) -> str:
     return stdout if isinstance(stdout, str) else ""
 
 
-def verify_flow_execution(document: dict, execution: dict, *, executed: bool) -> dict | None:
+def _run_goal_check(goal: dict, dispatch) -> tuple[bool, dict]:
+    """Verify the GOAL STATE after a flow — the end-condition the task was FOR, not whether each
+    step returned ok. Calls ``goal['uri']`` (a state signature: a CDP eval of location/DOM, an
+    OCR verify, a file check…), pulls a value at the dotted ``path``, and asserts
+    ``contains``/``equals``/``present``. This is what closes the "every step green, nothing
+    achieved" gap — clicked 'Post' ok, but is the post actually on the feed?"""
+    try:
+        env = dispatch(goal["uri"], goal.get("payload") or {})
+    except Exception as exc:  # noqa: BLE001
+        return False, {"error": str(exc)[:160]}
+    val = result_data(env) if isinstance(env, dict) else None
+    actual = val
+    for key in str(goal.get("path") or "").split("."):
+        if key and isinstance(actual, dict):
+            actual = actual.get(key)
+    env_ok = bool(isinstance(env, dict) and env.get("ok"))
+    if "contains" in goal:
+        passed = env_ok and str(goal["contains"]) in str(actual or "")
+    elif "equals" in goal:
+        passed = env_ok and str(actual) == str(goal["equals"])
+    elif goal.get("present"):
+        passed = env_ok and actual not in (None, "", [], {})
+    else:
+        passed = env_ok
+    return passed, {"actual": str(actual)[:160] if actual is not None else None}
+
+
+def verify_flow_execution(document: dict, execution: dict, *, executed: bool, dispatch=None) -> dict | None:
     spec = document.get("verification")
     if not isinstance(spec, dict):
         return None
@@ -754,6 +788,19 @@ def verify_flow_execution(document: dict, execution: dict, *, executed: bool) ->
             passed = str(fragment) in stdout
             checks.append({"check": "expected_log_fragment", "step": step_id, "ok": passed})
             ok = ok and passed
+    # GOAL-VERIFY: did the flow reach its goal STATE, not just run green steps? A flow can pass
+    # every step yet achieve nothing (a click that missed); a goal check on the end-state fails
+    # the flow honestly even when all steps were ok.
+    goal = spec.get("goal")
+    if isinstance(goal, dict) and goal.get("uri"):
+        if not executed:
+            checks.append({"check": "goal", "ok": True, "skipped": "dry-run"})
+        elif dispatch is None:
+            checks.append({"check": "goal", "ok": True, "skipped": "no-dispatch"})
+        else:
+            passed, detail = _run_goal_check(goal, dispatch)
+            checks.append({"check": "goal", "uri": goal["uri"], "ok": passed, **detail})
+            ok = ok and passed
     return {"ok": ok, "checks": checks}
 
 
@@ -762,7 +809,8 @@ def run_flow_document(document: dict, mesh: dict, *, execute: bool) -> dict:
     flow = normalize_flow(document, route_uris)
     registry = registry_from_routes(mesh["routes"])
     execution = execute_flow(flow, mesh, registry, execute=execute)
-    verification = verify_flow_execution(document, execution, executed=execute)
+    goal_dispatch = lambda uri, payload=None: v2_service.call(uri, payload or {}, registry, mode="execute")
+    verification = verify_flow_execution(document, execution, executed=execute, dispatch=goal_dispatch)
     ok = bool(execution.get("ok")) and (verification is None or bool(verification.get("ok")))
     result = {"flow": flow, **execution}
     result["ok"] = ok
@@ -770,4 +818,55 @@ def run_flow_document(document: dict, mesh: dict, *, execute: bool) -> dict:
         result["source"] = document.get("source")
     if verification is not None:
         result["verification"] = verification
+    # Reversibility: turn the run into a transition registry (the dormant reversible engine, now
+    # CONSUMED) — every successful step whose connector returned an `inverse` becomes a rollbackable
+    # edge. A flow result now carries HOW to undo itself, not just what it did.
+    led = ledger_from_execution(execution)
+    if led:
+        result["reversible"] = {
+            "rollbackable": len(led),
+            "transitions": [{"forward": t.forward.uri, "inverse": t.inverse.uri,
+                             "args": t.inverse.args} for t in led],
+        }
     return result
+
+
+def _flow_transport(mesh: dict) -> CallableTransport:
+    """A Transport bound to the mesh that UNWRAPS each run envelope to the connector's own
+    ``{ok, inverse, state, ...}`` result — so the reversible engine sees the contract payload,
+    not the transport envelope."""
+    registry = registry_from_routes(mesh["routes"])
+
+    def _call(uri: str, payload: dict | None = None) -> dict:
+        env = v2_service.call(uri, payload or {}, registry, mode="execute")
+        val = result_data(env) if isinstance(env, dict) else None
+        return val if isinstance(val, dict) else {"ok": bool(env.get("ok"))}
+
+    return CallableTransport(_call)
+
+
+def rollback_flow(execution: dict, mesh: dict, *, scan_uri: str | None = None) -> dict:
+    """Undo a completed flow by navigating its registered inverses LIFO — consumes the
+    reversible engine on a NORMAL execute_flow result. When ``scan_uri`` (a connector scan route
+    returning ``{state}``) is given, a state RE-SCAN proves the return (final state == pre-flow);
+    otherwise the inverses are applied without the per-flow proof and the result says so."""
+    ledger = ledger_from_execution(execution)
+    if not ledger:
+        return {"ok": True, "undone": [], "note": "flow registered no reversible transitions"}
+    transport = _flow_transport(mesh)
+    proc = ReversibleProcess(transport)
+    if scan_uri:
+        try:
+            twin = Twin.scan(transport, scan_uri)
+            return proc.rollback_flow(twin, ledger, before_sig=None)
+        except Exception as exc:  # noqa: BLE001 - fall back to proof-less rollback below.
+            scan_uri = None
+    # proof-less: apply the inverses LIFO, report honestly that no state re-scan confirmed it.
+    undone = []
+    for tr in reversed(ledger):
+        res = transport.call(tr.inverse.uri, tr.inverse.args)
+        if not res.get("ok"):
+            return {"ok": False, "undone": undone, "stuck": tr.inverse.uri,
+                    "reason": f"inverse failed ({res.get('error')}) — KNOWN-BAD → escalate"}
+        undone.append(tr.inverse.uri)
+    return {"ok": True, "undone": undone, "proof": "none (no scan route given)"}

@@ -309,9 +309,9 @@ Language-agnostic URI to handler adapter
 ### `project/map.toon.yaml`
 
 ```toon markpact:analysis path=project/map.toon.yaml
-# urirun | 189f 49255L | python:167,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-25
-# stats: 1861 func | 71 cls | 189 mod | CC̄=4.9 | critical:232 | cycles:0
-# alerts[5]: CC test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen=125; CC test_archive_scanned_document_writes_pdf_json_index_and_detects_duplicate=26; CC test_sync_documents_to_node_copies_pdfs_and_logs_chat=23; CC test_chat_ask_plans_document_sync_without_llm=22; CC capability_check=17
+# urirun | 189f 49560L | python:167,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-25
+# stats: 1870 func | 73 cls | 189 mod | CC̄=4.9 | critical:234 | cycles:0
+# alerts[5]: CC test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen=125; CC fit_to_environment=30; CC test_archive_scanned_document_writes_pdf_json_index_and_detects_duplicate=26; CC test_sync_documents_to_node_copies_pdfs_and_logs_chat=23; CC test_chat_ask_plans_document_sync_without_llm=22
 # hotspots[5]: create_handler fan=56; _archive_scanned_document fan=39; _write_document_pdf fan=28; summary fan=28; serve fan=28
 # evolution: baseline
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
@@ -341,13 +341,13 @@ M[189]:
   adapters/python/tests/test_connector_smoke.py,83
   adapters/python/tests/test_daemon.py,41
   adapters/python/tests/test_declarative.py,103
-  adapters/python/tests/test_diagnostics.py,84
+  adapters/python/tests/test_diagnostics.py,152
   adapters/python/tests/test_discovery.py,127
   adapters/python/tests/test_dispatch_protocol.py,81
   adapters/python/tests/test_domain_monitor.py,162
   adapters/python/tests/test_errors.py,291
   adapters/python/tests/test_exec.py,147
-  adapters/python/tests/test_flow_rollup.py,119
+  adapters/python/tests/test_flow_rollup.py,127
   adapters/python/tests/test_gap5_authoring.py,105
   adapters/python/tests/test_host_dashboard.py,479
   adapters/python/tests/test_host_db.py,113
@@ -423,14 +423,14 @@ M[189]:
   adapters/python/urirun/node/_version.py,77
   adapters/python/urirun/node/client.py,559
   adapters/python/urirun/node/config.py,210
-  adapters/python/urirun/node/diagnostics.py,158
-  adapters/python/urirun/node/flow.py,684
+  adapters/python/urirun/node/diagnostics.py,279
+  adapters/python/urirun/node/flow.py,774
   adapters/python/urirun/node/formatting.py,79
   adapters/python/urirun/node/keyauth.py,174
   adapters/python/urirun/node/manage.py,431
   adapters/python/urirun/node/mesh.py,1976
   adapters/python/urirun/node/paths.py,39
-  adapters/python/urirun/node/recovery.py,262
+  adapters/python/urirun/node/recovery.py,280
   adapters/python/urirun/node/routing.py,144
   adapters/python/urirun/node/task_cli.py,343
   adapters/python/urirun/node/transport.py,529
@@ -630,8 +630,10 @@ D:
     test_run_fetch_resolves_env_and_templates(monkeypatch)
     test_run_fetch_get_sends_no_body(monkeypatch)
   adapters/python/tests/test_diagnostics.py:
-    e: _err,DiagnoseTests,RecoveryPlanEnrichmentTests
-    DiagnoseTests: test_ui_target_not_located_routes_to_cdp_dom(0),test_no_onscreen_text_also_matches_ui_target(0),test_debugger_down_proposes_dedicated_profile(0),test_node_exec_timeout(0),test_route_not_served_gated_on_not_found(0),test_route_not_served_category_gate(0),test_empty_target(0),test_no_match_returns_none(0)
+    e: _err,DiagnoseTests,SurfaceUpgradeTests,FitToEnvironmentTests,RecoveryPlanEnrichmentTests
+    DiagnoseTests: test_ui_target_not_located_routes_to_cdp_dom(0),test_no_onscreen_text_also_matches_ui_target(0),test_debugger_down_proposes_dedicated_profile(0),test_node_exec_timeout(0),test_route_not_served_gated_on_not_found(0),test_route_not_served_category_gate(0),test_not_logged_in(0),test_stale_node_urirun_beats_generic_route_not_served(0),test_empty_target(0),test_no_match_returns_none(0)
+    SurfaceUpgradeTests: test_target_not_located_on_login_page_becomes_not_logged_in(0),test_target_not_located_on_feed_stays_ui_target(0),test_empty_message_on_login_surface_for_kvm_step(0),test_surface_none_keeps_message_diagnosis(0)
+    FitToEnvironmentTests: test_cdp_fix_dropped_when_no_chrome(0),test_cdp_fix_kept_when_chrome_present(0),test_uncontrollable_env_adds_install_action_and_no_auto(0)
     RecoveryPlanEnrichmentTests: test_plan_carries_diagnosis_when_signature_known(0),test_plan_omits_diagnosis_when_unknown(0)
     _err(message;category)
   adapters/python/tests/test_discovery.py:
@@ -1742,12 +1744,16 @@ D:
     init_node(path;name;registry;host;port;execute)
     node_url(config;name_or_url)
   adapters/python/urirun/node/diagnostics.py:
-    e: _target,diagnose,_Rule
+    e: _target,_target_of,_is_login_surface,_build,diagnose,fit_to_environment,_Rule
     _Rule: __init__(4),matches(3)
     _target(step)
+    _target_of(actions)
+    _is_login_surface(surface)
+    _build(rule;step)
     diagnose(error)
+    fit_to_environment(diagnosis;environment)
   adapters/python/urirun/node/flow.py:
-    e: _flow_format,flow_document,write_flow_document,load_flow_document,first_url,nl_key,append_if_available,requested_folder_path,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,_uri_segments,_uri_matches_template,_uri_is_available,_normalize_flow_step,_normalize_flow_task,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,_action_ok,_action_error,_flow_step_failure,_flow_timeline_entry,_run_step,execute_flow,_flow_stdout,verify_flow_execution,run_flow_document
+    e: _flow_format,flow_document,write_flow_document,load_flow_document,first_url,nl_key,append_if_available,requested_folder_path,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,_uri_segments,_uri_matches_template,_uri_is_available,_normalize_flow_step,_normalize_flow_task,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,_action_ok,_action_error,_flow_step_failure,_flow_timeline_entry,_fetch_kvm_query,_fetch_env_profile,_fetch_surface,_run_step,_circuit_break,_preflight,execute_flow,_flow_stdout,verify_flow_execution,run_flow_document
     _flow_format(path;requested)
     flow_document(flow)
     write_flow_document(path;document;fmt)
@@ -1773,9 +1779,14 @@ D:
     resolve_step_payload(payload;results)
     _action_ok(env)
     _action_error(env)
-    _flow_step_failure(step;exc;routes)
+    _flow_step_failure(step;exc;routes;environment)
     _flow_timeline_entry(step;env;routes)
+    _fetch_kvm_query(step;registry;route;marker)
+    _fetch_env_profile(step;registry)
+    _fetch_surface(step;registry)
     _run_step(step;payload;registry;execute;routes;recover;max_retries)
+    _circuit_break(reason;timeline;results;recoveries)
+    _preflight(flow;registry)
     execute_flow(flow;mesh;registry;execute)
     _flow_stdout(envelope)
     verify_flow_execution(document;execution)
@@ -2749,7 +2760,7 @@ D:
 
 ```prolog markpact:analysis path=project/logic.pl
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.139', 'javascript').
+project_metadata('urirun', '0.4.142', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -2777,13 +2788,13 @@ project_file('adapters/python/tests/test_connector_sdk.py', 63, 'python').
 project_file('adapters/python/tests/test_connector_smoke.py', 83, 'python').
 project_file('adapters/python/tests/test_daemon.py', 41, 'python').
 project_file('adapters/python/tests/test_declarative.py', 103, 'python').
-project_file('adapters/python/tests/test_diagnostics.py', 84, 'python').
+project_file('adapters/python/tests/test_diagnostics.py', 152, 'python').
 project_file('adapters/python/tests/test_discovery.py', 127, 'python').
 project_file('adapters/python/tests/test_dispatch_protocol.py', 81, 'python').
 project_file('adapters/python/tests/test_domain_monitor.py', 162, 'python').
 project_file('adapters/python/tests/test_errors.py', 291, 'python').
 project_file('adapters/python/tests/test_exec.py', 147, 'python').
-project_file('adapters/python/tests/test_flow_rollup.py', 119, 'python').
+project_file('adapters/python/tests/test_flow_rollup.py', 127, 'python').
 project_file('adapters/python/tests/test_gap5_authoring.py', 105, 'python').
 project_file('adapters/python/tests/test_host_dashboard.py', 479, 'python').
 project_file('adapters/python/tests/test_host_db.py', 113, 'python').
@@ -2859,14 +2870,14 @@ project_file('adapters/python/urirun/node/_util.py', 38, 'python').
 project_file('adapters/python/urirun/node/_version.py', 77, 'python').
 project_file('adapters/python/urirun/node/client.py', 559, 'python').
 project_file('adapters/python/urirun/node/config.py', 210, 'python').
-project_file('adapters/python/urirun/node/diagnostics.py', 158, 'python').
-project_file('adapters/python/urirun/node/flow.py', 684, 'python').
+project_file('adapters/python/urirun/node/diagnostics.py', 279, 'python').
+project_file('adapters/python/urirun/node/flow.py', 774, 'python').
 project_file('adapters/python/urirun/node/formatting.py', 79, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 174, 'python').
 project_file('adapters/python/urirun/node/manage.py', 431, 'python').
 project_file('adapters/python/urirun/node/mesh.py', 1976, 'python').
 project_file('adapters/python/urirun/node/paths.py', 39, 'python').
-project_file('adapters/python/urirun/node/recovery.py', 262, 'python').
+project_file('adapters/python/urirun/node/recovery.py', 280, 'python').
 project_file('adapters/python/urirun/node/routing.py', 144, 'python').
 project_file('adapters/python/urirun/node/task_cli.py', 343, 'python').
 project_file('adapters/python/urirun/node/transport.py', 529, 'python').
@@ -3941,7 +3952,11 @@ python_function('adapters/python/urirun/node/config.py', 'save_node_config', 2, 
 python_function('adapters/python/urirun/node/config.py', 'init_node', 6, 1, 3).
 python_function('adapters/python/urirun/node/config.py', 'node_url', 2, 8, 4).
 python_function('adapters/python/urirun/node/diagnostics.py', '_target', 1, 7, 4).
-python_function('adapters/python/urirun/node/diagnostics.py', 'diagnose', 1, 13, 7).
+python_function('adapters/python/urirun/node/diagnostics.py', '_target_of', 1, 6, 3).
+python_function('adapters/python/urirun/node/diagnostics.py', '_is_login_surface', 1, 5, 4).
+python_function('adapters/python/urirun/node/diagnostics.py', '_build', 2, 3, 3).
+python_function('adapters/python/urirun/node/diagnostics.py', 'diagnose', 1, 19, 8).
+python_function('adapters/python/urirun/node/diagnostics.py', 'fit_to_environment', 2, 30, 8).
 python_function('adapters/python/urirun/node/flow.py', '_flow_format', 2, 3, 2).
 python_function('adapters/python/urirun/node/flow.py', 'flow_document', 1, 3, 2).
 python_function('adapters/python/urirun/node/flow.py', 'write_flow_document', 3, 3, 7).
@@ -3967,10 +3982,15 @@ python_function('adapters/python/urirun/node/flow.py', '_dig_path', 2, 4, 4).
 python_function('adapters/python/urirun/node/flow.py', 'resolve_step_payload', 2, 5, 5).
 python_function('adapters/python/urirun/node/flow.py', '_action_ok', 1, 3, 3).
 python_function('adapters/python/urirun/node/flow.py', '_action_error', 1, 2, 3).
-python_function('adapters/python/urirun/node/flow.py', '_flow_step_failure', 3, 2, 5).
+python_function('adapters/python/urirun/node/flow.py', '_flow_step_failure', 4, 2, 5).
 python_function('adapters/python/urirun/node/flow.py', '_flow_timeline_entry', 3, 5, 8).
-python_function('adapters/python/urirun/node/flow.py', '_run_step', 7, 16, 9).
-python_function('adapters/python/urirun/node/flow.py', 'execute_flow', 4, 12, 9).
+python_function('adapters/python/urirun/node/flow.py', '_fetch_kvm_query', 4, 6, 6).
+python_function('adapters/python/urirun/node/flow.py', '_fetch_env_profile', 2, 1, 1).
+python_function('adapters/python/urirun/node/flow.py', '_fetch_surface', 2, 1, 1).
+python_function('adapters/python/urirun/node/flow.py', '_run_step', 7, 18, 13).
+python_function('adapters/python/urirun/node/flow.py', '_circuit_break', 4, 2, 0).
+python_function('adapters/python/urirun/node/flow.py', '_preflight', 2, 15, 8).
+python_function('adapters/python/urirun/node/flow.py', 'execute_flow', 4, 21, 15).
 python_function('adapters/python/urirun/node/flow.py', '_flow_stdout', 1, 6, 2).
 python_function('adapters/python/urirun/node/flow.py', 'verify_flow_execution', 2, 10, 6).
 python_function('adapters/python/urirun/node/flow.py', 'run_flow_document', 2, 7, 7).
@@ -4103,7 +4123,7 @@ python_function('adapters/python/urirun/node/recovery.py', '_not_found_actions',
 python_function('adapters/python/urirun/node/recovery.py', '_fallback_actions', 2, 2, 3).
 python_function('adapters/python/urirun/node/recovery.py', 'recovery_actions', 1, 12, 10).
 python_function('adapters/python/urirun/node/recovery.py', 'recovery_plan', 1, 2, 4).
-python_function('adapters/python/urirun/node/recovery.py', 'apply_auto_remediation', 2, 10, 7).
+python_function('adapters/python/urirun/node/recovery.py', 'apply_auto_remediation', 2, 12, 7).
 python_function('adapters/python/urirun/node/recovery.py', 'can_retry_step', 1, 6, 4).
 python_function('adapters/python/urirun/node/recovery.py', 'planner_failure', 1, 3, 2).
 python_function('adapters/python/urirun/node/routing.py', 'uri_is_denied', 1, 2, 1).
@@ -4863,8 +4883,19 @@ python_method('DiagnoseTests', 'test_debugger_down_proposes_dedicated_profile', 
 python_method('DiagnoseTests', 'test_node_exec_timeout', 0, 1, 4).
 python_method('DiagnoseTests', 'test_route_not_served_gated_on_not_found', 0, 1, 4).
 python_method('DiagnoseTests', 'test_route_not_served_category_gate', 0, 1, 3).
+python_method('DiagnoseTests', 'test_not_logged_in', 0, 1, 3).
+python_method('DiagnoseTests', 'test_stale_node_urirun_beats_generic_route_not_served', 0, 1, 3).
 python_method('DiagnoseTests', 'test_empty_target', 0, 1, 3).
 python_method('DiagnoseTests', 'test_no_match_returns_none', 0, 1, 3).
+python_class('adapters/python/tests/test_diagnostics.py', 'SurfaceUpgradeTests').
+python_method('SurfaceUpgradeTests', 'test_target_not_located_on_login_page_becomes_not_logged_in', 0, 1, 4).
+python_method('SurfaceUpgradeTests', 'test_target_not_located_on_feed_stays_ui_target', 0, 1, 3).
+python_method('SurfaceUpgradeTests', 'test_empty_message_on_login_surface_for_kvm_step', 0, 1, 4).
+python_method('SurfaceUpgradeTests', 'test_surface_none_keeps_message_diagnosis', 0, 1, 3).
+python_class('adapters/python/tests/test_diagnostics.py', 'FitToEnvironmentTests').
+python_method('FitToEnvironmentTests', 'test_cdp_fix_dropped_when_no_chrome', 0, 3, 6).
+python_method('FitToEnvironmentTests', 'test_cdp_fix_kept_when_chrome_present', 0, 1, 3).
+python_method('FitToEnvironmentTests', 'test_uncontrollable_env_adds_install_action_and_no_auto', 0, 1, 4).
 python_class('adapters/python/tests/test_diagnostics.py', 'RecoveryPlanEnrichmentTests').
 python_method('RecoveryPlanEnrichmentTests', 'test_plan_carries_diagnosis_when_signature_known', 0, 1, 4).
 python_method('RecoveryPlanEnrichmentTests', 'test_plan_omits_diagnosis_when_unknown', 0, 1, 3).
@@ -5419,11 +5450,11 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 | `_frame_visual_metrics` *(in adapters.python.urirun.host.host_dashboard)* | 7 | 1 | 40 | **41** |
 | `_write_planfile_action` *(in adapters.python.urirun.host.host_integrations)* | 8 | 1 | 39 | **40** |
 | `summary` *(in adapters.python.urirun.host.host_dashboard)* | 6 | 2 | 37 | **39** |
-| `_scanner_crop_overlay` *(in adapters.python.urirun.host.host_dashboard)* | 8 | 2 | 33 | **35** |
+| `_collect_attachments` *(in adapters.python.urirun.host.host_dashboard)* | 1 | 1 | 34 | **35** |
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.21s
+# generated in 0.28s
 # nodes: 434 | edges: 500 | modules: 35
 # CC̄=4.7
 
@@ -5442,32 +5473,32 @@ HUBS[20]:
     CC=8  in:1  out:39  total:40
   adapters.python.urirun.host.host_dashboard.summary
     CC=6  in:2  out:37  total:39
-  adapters.python.urirun.host.host_dashboard._scanner_crop_overlay
-    CC=8  in:2  out:33  total:35
   adapters.python.urirun.host.host_dashboard._collect_attachments
     CC=1  in:1  out:34  total:35
+  adapters.python.urirun.host.host_dashboard._scanner_crop_overlay
+    CC=8  in:2  out:33  total:35
   adapters.python.urirun.host.host_dashboard.restart_phone_scanner_service
     CC=14  in:1  out:33  total:34
   adapters.python.urirun.host.host_dashboard._archive_redundant_duplicate
     CC=10  in:1  out:31  total:32
   adapters.python.urirun.host.host_dashboard._scanned_log_entry
     CC=8  in:1  out:28  total:29
-  adapters.python.urirun.host.document_metadata._normalize_llm_doc_fields
-    CC=14  in:1  out:28  total:29
   adapters.python.urirun.host.host_dashboard._supersede_archived_document
     CC=10  in:1  out:28  total:29
+  adapters.python.urirun.host.document_metadata._normalize_llm_doc_fields
+    CC=14  in:1  out:28  total:29
   adapters.python.urirun.host.document_sync._upload_file
     CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._build_sync_params
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.host.document_sync._read_back_file
-    CC=11  in:1  out:26  total:27
-  adapters.python.urirun.host.host_db._run_query_route
-    CC=7  in:1  out:26  total:27
   adapters.python.urirun.connectors.connector_lint.lint_connector
     CC=9  in:3  out:24  total:27
-  adapters.python.urirun.host.host_dashboard.node_add
-    CC=14  in:1  out:25  total:26
+  adapters.python.urirun.host.host_db._run_query_route
+    CC=7  in:1  out:26  total:27
+  adapters.python.urirun.host.document_sync._read_back_file
+    CC=11  in:1  out:26  total:27
+  adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service
+    CC=10  in:5  out:21  total:26
 
 MODULES:
   adapters.c.urirun  [4 funcs]

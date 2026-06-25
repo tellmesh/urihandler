@@ -1,16 +1,16 @@
 # System Architecture Analysis
-<!-- generated in 0.01s -->
+<!-- generated in 0.00s -->
 
 ## Overview
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 104, json: 13, shell: 10, yaml: 5, csharp: 4
+- **Languages**: python: 105, json: 13, shell: 10, yaml: 5, csharp: 4
 - **Analysis Mode**: static
-- **Total Functions**: 1697
-- **Total Classes**: 31
-- **Modules**: 164
-- **Entry Points**: 560
+- **Total Functions**: 1720
+- **Total Classes**: 39
+- **Modules**: 165
+- **Entry Points**: 574
 
 ## Architecture by Module
 
@@ -42,7 +42,7 @@
 - **File**: `_registry.py`
 
 ### adapters.python.urirun.node.flow
-- **Functions**: 37
+- **Functions**: 40
 - **File**: `flow.py`
 
 ### adapters.python.urirun.node.client
@@ -361,33 +361,37 @@ child processes t
 - **Methods**: 3
 - **Key Methods**: adapters.csharp.Urirun.Connector.Connector, adapters.csharp.Urirun.Connector.Command, adapters.csharp.Urirun.Connector.BindingsJson
 
+### adapters.python.urirun.node.reversible.Connector
+> The ADOPTION CONTRACT. A connector enters the engine by providing these three.
+- **Methods**: 3
+- **Key Methods**: adapters.python.urirun.node.reversible.Connector.call, adapters.python.urirun.node.reversible.Connector.scan_uri, adapters.python.urirun.node.reversible.Connector.schema
+- **Inherits**: Protocol
+
+### adapters.python.urirun.node.reversible.ReversibleProcess
+> The engine: execute with the invariant, build the ledger, roll back with proof. It
+knows NO connecto
+- **Methods**: 3
+- **Key Methods**: adapters.python.urirun.node.reversible.ReversibleProcess.execute, adapters.python.urirun.node.reversible.ReversibleProcess.rollback, adapters.python.urirun.node.reversible.ReversibleProcess.rollback_flow
+
 ### adapters.python.urirun.node.diagnostics._Rule
 - **Methods**: 2
 - **Key Methods**: adapters.python.urirun.node.diagnostics._Rule.__init__, adapters.python.urirun.node.diagnostics._Rule.matches
 
+### adapters.python.urirun.node.reversible.CallableTransport
+> Adapt any ``fn(uri, payload) -> dict`` into a Transport (e.g. a NodeClient.run bound
+method, or a te
+- **Methods**: 2
+- **Key Methods**: adapters.python.urirun.node.reversible.CallableTransport.__init__, adapters.python.urirun.node.reversible.CallableTransport.call
+
+### adapters.python.urirun.node.reversible.Twin
+> The environment model + a position signature. Holds its own scan route so a re-scan is
+self-sufficie
+- **Methods**: 2
+- **Key Methods**: adapters.python.urirun.node.reversible.Twin.scan, adapters.python.urirun.node.reversible.Twin.rescan
+
 ### adapters.java.example.HashConnector.HashConnector
 - **Methods**: 1
 - **Key Methods**: adapters.java.example.HashConnector.HashConnector.main
-
-### adapters.python.urirun.host.domain_monitor._RouteCtx
-> Resolved routing context shared across the per-package route handlers.
-- **Methods**: 1
-- **Key Methods**: adapters.python.urirun.host.domain_monitor._RouteCtx.key
-
-### adapters.python.urirun.runtime.v2._RunAbort
-> Carries a finished (error) envelope to the single exit point in run().
-- **Methods**: 1
-- **Key Methods**: adapters.python.urirun.runtime.v2._RunAbort.__init__
-- **Inherits**: Exception
-
-### adapters.python.urirun.node.mesh.NodeContext
-> Everything a NodeHandler needs to serve one node — the mutable `state` (name /
-registry / routes / a
-- **Methods**: 1
-- **Key Methods**: adapters.python.urirun.node.mesh.NodeContext.__init__
-
-### adapters.go.urirun.Schema
-- **Methods**: 0
 
 ## Data Transformation Functions
 
@@ -564,8 +568,8 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.runtime.v1.main` - 44 calls
 - `adapters.python.urirun.runtime.daemon.serve` - 41 calls
 - `adapters.python.urirun.host.host_dashboard.scanner_capture` - 40 calls
+- `adapters.python.urirun.node.diagnostics.fit_to_environment` - 38 calls
 - `adapters.python.urirun.host.host_dashboard.summary` - 37 calls
-- `adapters.python.urirun.node.diagnostics.fit_to_environment` - 37 calls
 - `adapters.python.urirun.host.host_dashboard.restart_phone_scanner_service` - 33 calls
 - `adapters.python.urirun.runtime._runtime.main` - 33 calls
 - `adapters.python.urirun.runtime.v2_adopt.main` - 31 calls

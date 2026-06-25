@@ -196,6 +196,20 @@ def recovery_actions(error: dict, *, step: dict | None = None, routes: list[dict
     return _fallback_actions(step, routes)
 
 
+def failure_signature(error: dict) -> str:
+    """A stable, LOW-CARDINALITY key for an error message, so unrecognized failure CLASSES can
+    be counted (not every unique string). Strips URIs, paths, quoted literals and digits — what
+    remains is the SHAPE of the failure, the unit a new playbook rule would key on."""
+    import re as _re
+    msg = str((error or {}).get("message") or "").casefold()
+    msg = _re.sub(r"[a-z]+://\S+", "<uri>", msg)
+    msg = _re.sub(r"(?<=\s)/\S+|^/\S+", "<path>", msg)
+    msg = _re.sub(r"'[^']*'|\"[^\"]*\"", "<v>", msg)
+    msg = _re.sub(r"\d+", "<n>", msg)
+    msg = _re.sub(r"\s+", " ", msg).strip()
+    return msg[:120] or "<empty>"
+
+
 def recovery_plan(error: dict, *, step: dict | None = None, routes: list[dict] | None = None,
                   environment: dict | None = None, surface: dict | None = None) -> dict:
     actions = recovery_actions(error, step=step, routes=routes)
@@ -209,6 +223,12 @@ def recovery_plan(error: dict, *, step: dict | None = None, routes: list[dict] |
     diagnosis = diagnose(error, step=step, routes=routes, environment=environment, surface=surface)
     if diagnosis:
         plan["diagnosis"] = diagnosis
+    else:
+        # No playbook rule matched: a NEW failure class. Flag it + a low-cardinality signature so
+        # it's COUNTABLE downstream (the unrecognized-signature counter that grows the playbook),
+        # instead of being silently absorbed by the generic fallback actions.
+        plan["unrecognized"] = True
+        plan["signature"] = failure_signature(error)
     return plan
 
 

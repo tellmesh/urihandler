@@ -1,11 +1,11 @@
-# urirun | 164f 39870L | yaml:5,txt:3,shell:10,python:104,yml:2,json:13,javascript:3,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,c:1,cpp:1,csharp:4,ruby:2 | 2026-06-25
+# urirun | 165f 40242L | yaml:5,txt:3,shell:10,python:105,yml:2,json:13,javascript:3,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,c:1,cpp:1,csharp:4,ruby:2 | 2026-06-25
 # generated in 0.03s
-# stats: 1697 func | 0 cls | 164 mod | CC̄=4.7 | critical:6 | cycles:0
-# alerts[5]: fan-out create_handler=59; fan-out _archive_scanned_document=43; fan-out _write_document_pdf=32; CC fit_to_environment=30; fan-out serve=30
+# stats: 1720 func | 0 cls | 165 mod | CC̄=4.7 | critical:8 | cycles:0
+# alerts[5]: fan-out create_handler=59; fan-out _archive_scanned_document=43; CC fit_to_environment=32; fan-out _write_document_pdf=32; fan-out serve=30
 # hotspots[5]: create_handler fan=59; _archive_scanned_document fan=43; _write_document_pdf fan=32; serve fan=30; summary fan=29
 # evolution: CC̄ 4.7→4.7 (flat 0.0)
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
-M[164]:
+M[165]:
   Makefile,138
   adapters/bash/example/hash-connector.sh,9
   adapters/bash/urirun.sh,17
@@ -84,14 +84,15 @@ M[164]:
   adapters/python/urirun/node/_version.py,76
   adapters/python/urirun/node/client.py,558
   adapters/python/urirun/node/config.py,209
-  adapters/python/urirun/node/diagnostics.py,278
-  adapters/python/urirun/node/flow.py,773
+  adapters/python/urirun/node/diagnostics.py,283
+  adapters/python/urirun/node/flow.py,872
   adapters/python/urirun/node/formatting.py,78
   adapters/python/urirun/node/keyauth.py,173
   adapters/python/urirun/node/manage.py,430
   adapters/python/urirun/node/mesh.py,1975
   adapters/python/urirun/node/paths.py,38
-  adapters/python/urirun/node/recovery.py,279
+  adapters/python/urirun/node/recovery.py,299
+  adapters/python/urirun/node/reversible.py,248
   adapters/python/urirun/node/routing.py,143
   adapters/python/urirun/node/task_cli.py,342
   adapters/python/urirun/node/transport.py,528
@@ -181,7 +182,7 @@ D:
     diagnose(error)
     fit_to_environment(diagnosis;environment)
   adapters/python/urirun/node/flow.py:
-    e: _flow_format,flow_document,write_flow_document,load_flow_document,first_url,nl_key,append_if_available,requested_folder_path,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,_uri_segments,_uri_matches_template,_uri_is_available,_normalize_flow_step,_normalize_flow_task,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,_action_ok,_action_error,_flow_step_failure,_flow_timeline_entry,_fetch_kvm_query,_fetch_env_profile,_fetch_surface,_run_step,_circuit_break,_preflight,execute_flow,_flow_stdout,verify_flow_execution,run_flow_document
+    e: _flow_format,flow_document,write_flow_document,load_flow_document,first_url,nl_key,append_if_available,requested_folder_path,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,_uri_segments,_uri_matches_template,_uri_is_available,_normalize_flow_step,_normalize_flow_task,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,_action_ok,_action_error,_flow_step_failure,_flow_timeline_entry,_fetch_kvm_query,_fetch_env_profile,_fetch_surface,_run_step,_circuit_break,_preflight,execute_flow,_flow_stdout,_run_goal_check,verify_flow_execution,run_flow_document,_flow_transport,rollback_flow
     _flow_format(path;requested)
     flow_document(flow)
     write_flow_document(path;document;fmt)
@@ -217,8 +218,11 @@ D:
     _preflight(flow;registry)
     execute_flow(flow;mesh;registry;execute)
     _flow_stdout(envelope)
+    _run_goal_check(goal;dispatch)
     verify_flow_execution(document;execution)
     run_flow_document(document;mesh)
+    _flow_transport(mesh)
+    rollback_flow(execution;mesh)
   adapters/python/urirun/node/manage.py:
     e: _pip,_install_policy,_classify_source,_policy_allows,install_policy,package_install,_refresh_install_caches,_project_root,connector_install,_connector_match,_scan_local_connectors,_augment_local_routes,_list_installed_connectors,connector_discover,_derive_local_routes,_read_json_manifest,_read_tellmesh_manifest,_read_connector_manifest,registry_installed,_installed_route_owners,_route_key,capability_check,registry_adopt,package_list,runtime_info,bindings
     _pip(args;timeout)
@@ -1411,7 +1415,7 @@ Connector a...
     expandBindings()
     compileRegistry()
   adapters/python/urirun/node/recovery.py:
-    e: _infer_category,normalize_error,exception_error,step_target,route_for_step,_llm_model_actions,_transient_actions,_not_found_actions,_fallback_actions,recovery_actions,recovery_plan,apply_auto_remediation,can_retry_step,planner_failure
+    e: _infer_category,normalize_error,exception_error,step_target,route_for_step,_llm_model_actions,_transient_actions,_not_found_actions,_fallback_actions,recovery_actions,failure_signature,recovery_plan,apply_auto_remediation,can_retry_step,planner_failure
     _infer_category(out)
     normalize_error(error)
     exception_error(exc)
@@ -1422,6 +1426,7 @@ Connector a...
     _not_found_actions(message;error;scheme)
     _fallback_actions(step;routes)
     recovery_actions(error)
+    failure_signature(error)
     recovery_plan(error)
     apply_auto_remediation(diagnosis;registry)
     can_retry_step(error)
@@ -1581,6 +1586,24 @@ Connector a...
     report()
     _print_table(modules)
     main(argv)
+  adapters/python/urirun/node/reversible.py:
+    e: CallSpec,Action,Transition,Transport,CallableTransport,Connector,Twin,ReversibleProcess,parse,path_of,sig,_step_kind,local_transport,rollback_partial_flow,_inner_value,ledger_from_execution
+    CallSpec:  # A route's declaration in a connector schema: does it mutate,...
+    Action:
+    Transition:  # One ledger entry — what makes the world navigable in BOTH di...
+    Transport(Protocol): call(2)  # Communication layer. In urirun this is HTTP to a node (wrap ...
+    CallableTransport: __init__(1),call(2)  # Adapt any ``fn(uri, payload) -> dict`` into a Transport (e.g...
+    Connector(Protocol): call(2),scan_uri(1),schema(2)  # The ADOPTION CONTRACT. A connector enters the engine by prov...
+    Twin: scan(2),rescan(1)  # The environment model + a position signature. Holds its own ...
+    ReversibleProcess: execute(3),rollback(2),rollback_flow(3)  # The engine: execute with the invariant, build the ledger, ro...
+    parse(uri)
+    path_of(uri)
+    sig(obj)
+    _step_kind(spec)
+    local_transport(by_scheme)
+    rollback_partial_flow(timeline;results;transport;twin)
+    _inner_value(env)
+    ledger_from_execution(execution)
   examples/matrix/verify.py:
     e: essential,main
     essential(doc)
