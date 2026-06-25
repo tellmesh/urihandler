@@ -1,10 +1,20 @@
 # Author: Tom Sapletta · https://tom.sapletta.com
 # Part of the ifURI solution.
 
+import importlib.util
 import unittest
 
 from urirun.node.client import NodeClient
 from urirun.node import client as client_mod
+
+# The fs-disambiguation tests below exercise _local_connector_deploy_payload against the
+# REAL host-installed fs connectors (urirun-connector-fs + mcp-filesystem). They are only
+# meaningful when those optional connectors are installed (the repo venv has them; a bare
+# venv does not) — skip rather than fail when absent so the suite is environment-robust.
+_HAS_FS_CONNECTORS = all(
+    importlib.util.find_spec(m) is not None
+    for m in ("urirun_connector_fs", "urirun_connector_mcp_filesystem")
+)
 
 
 class NodeClientTests(unittest.TestCase):
@@ -292,6 +302,7 @@ class LocalConnectorDeployPayloadTests(unittest.TestCase):
         self.assertFalse(r["ok"])
         self.assertIn("no host-installed connector", r["error"])
 
+    @unittest.skipUnless(_HAS_FS_CONNECTORS, "requires urirun-connector-fs + mcp-filesystem installed")
     def test_multi_connector_scheme_without_route_bails(self):
         # fs:// is served by BOTH mcp-filesystem (write_blob) and urirun-connector-fs (write-b64);
         # without a route to disambiguate, a flat single-file deploy can't pick one connector.
@@ -299,6 +310,7 @@ class LocalConnectorDeployPayloadTests(unittest.TestCase):
         self.assertFalse(r["ok"])
         self.assertIn("spans", r["error"])
 
+    @unittest.skipUnless(_HAS_FS_CONNECTORS, "requires urirun-connector-fs + mcp-filesystem installed")
     def test_route_narrows_to_the_owning_connector(self):
         # The document-sync case: write-b64 is owned by the unsandboxed urirun-connector-fs,
         # not mcp-filesystem's write_blob — narrowing must push the former and not the latter.
@@ -310,6 +322,7 @@ class LocalConnectorDeployPayloadTests(unittest.TestCase):
         self.assertFalse(any("write_blob" in u for u in uris))  # narrowed off the other connector
         self.assertEqual(list(r["code"]), [r["module"] + ".py"])
 
+    @unittest.skipUnless(_HAS_FS_CONNECTORS, "requires urirun-connector-fs + mcp-filesystem installed")
     def test_route_not_provided_by_any_connector(self):
         r = NodeClient._local_connector_deploy_payload("fs", route="fs://host/file/command/nope-xyz")
         self.assertFalse(r["ok"])

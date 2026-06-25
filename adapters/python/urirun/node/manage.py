@@ -314,6 +314,60 @@ def registry_installed(**payload: Any) -> dict:
     return {"ok": True, "version": v2.VERSION, "bindings": merged, "count": len(merged)}
 
 
+def _installed_route_owners() -> dict:
+    """{route-uri -> connector(entry-point name)} for every connector installed in this
+    env. Pure `urirun.bindings` introspection — no node, no admin mutation, no import of
+    the heavy connector modules beyond their bindings entry point."""
+    from urirun.runtime import v2
+    owners: dict = {}
+    for ep in v2._select_entry_points(v2.ENTRY_POINT_GROUP):
+        try:
+            obj = ep.load()
+            doc = obj() if callable(obj) else obj
+            for uri in (doc or {}).get("bindings") or {}:
+                owners.setdefault(uri, ep.name)
+        except Exception:  # noqa: BLE001 - one faulty connector must not blank the rest
+            continue
+    return owners
+
+
+def _route_key(uri: str) -> str:
+    """Normalise a route URI for matching regardless of the host/<name> segment, so
+    ``fs://host/file/command/write-b64`` matches ``fs://laptop/file/command/write-b64``."""
+    if "://" not in uri:
+        return uri
+    scheme, rest = uri.split("://", 1)
+    tail = rest.split("/", 1)[1] if "/" in rest else ""
+    return f"{scheme}://*/{tail}"
+
+
+def capability_check(**payload: Any) -> dict:
+    """Is a ``scheme`` (optionally a specific ``route``) served by a connector INSTALLED in
+    this environment? Pure read-only capability introspection exposed AS A URI:
+
+        node://<name>/capability/query/check {scheme?, route?}
+
+    Lets any caller — a host, a workflow, a flow step, or a test — gate on what is actually
+    runnable HERE without importing connector internals or guessing module names. Returns
+    ``{available, scheme, route, connectors:[…], routes:[…], count}``; ``available`` is
+    true iff the scheme (or the exact route, host-segment-insensitive) has a provider."""
+    scheme = str(payload.get("scheme") or "").lower().strip()
+    route = str(payload.get("route") or "").strip()
+    if route and "://" in route and not scheme:
+        scheme = route.split("://", 1)[0].lower()
+    owners = _installed_route_owners()
+    scoped = {u: c for u, c in owners.items()
+              if not scheme or (u.split("://", 1)[0].lower() == scheme if "://" in u else False)}
+    if route:
+        want = _route_key(route)
+        routes = sorted(u for u in scoped if _route_key(u) == want)
+    else:
+        routes = sorted(scoped)
+    connectors = sorted({scoped[u] for u in routes}) if route else sorted(set(scoped.values()))
+    return {"ok": True, "available": bool(routes), "scheme": scheme or None,
+            "route": route or None, "connectors": connectors, "routes": routes, "count": len(routes)}
+
+
 def registry_adopt(**payload: Any) -> dict:
     """Advertised management route; the live node HTTP handler owns the mutation."""
     return {"ok": False, "error": "registry/command/adopt must be executed against a managed node"}

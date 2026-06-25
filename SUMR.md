@@ -216,27 +216,27 @@ environment[name="local"] {
 | Function | CC | in | out | total |
 |----------|----|----|-----|-------|
 | `_archive_scanned_document` *(in adapters.python.urirun.host.host_dashboard)* | 14 ⚠ | 2 | 72 | **74** |
-| `_json_response` *(in adapters.python.urirun.host.host_dashboard)* | 1 | 37 | 13 | **50** |
 | `scanner_best_finish` *(in adapters.python.urirun.host.host_dashboard)* | 14 ⚠ | 2 | 48 | **50** |
+| `_json_response` *(in adapters.python.urirun.host.host_dashboard)* | 1 | 37 | 13 | **50** |
 | `scanner_capture` *(in adapters.python.urirun.host.host_dashboard)* | 12 ⚠ | 2 | 40 | **42** |
 | `_frame_visual_metrics` *(in adapters.python.urirun.host.host_dashboard)* | 7 | 1 | 40 | **41** |
 | `_write_planfile_action` *(in adapters.python.urirun.host.host_integrations)* | 8 | 1 | 39 | **40** |
 | `summary` *(in adapters.python.urirun.host.host_dashboard)* | 6 | 2 | 37 | **39** |
-| `_collect_attachments` *(in adapters.python.urirun.host.host_dashboard)* | 1 | 1 | 34 | **35** |
+| `_scanner_crop_overlay` *(in adapters.python.urirun.host.host_dashboard)* | 8 | 2 | 33 | **35** |
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.20s
+# generated in 0.21s
 # nodes: 434 | edges: 500 | modules: 35
 # CC̄=4.7
 
 HUBS[20]:
   adapters.python.urirun.host.host_dashboard._archive_scanned_document
     CC=14  in:2  out:72  total:74
-  adapters.python.urirun.host.host_dashboard._json_response
-    CC=1  in:37  out:13  total:50
   adapters.python.urirun.host.host_dashboard.scanner_best_finish
     CC=14  in:2  out:48  total:50
+  adapters.python.urirun.host.host_dashboard._json_response
+    CC=1  in:37  out:13  total:50
   adapters.python.urirun.host.host_dashboard.scanner_capture
     CC=12  in:2  out:40  total:42
   adapters.python.urirun.host.host_dashboard._frame_visual_metrics
@@ -245,20 +245,20 @@ HUBS[20]:
     CC=8  in:1  out:39  total:40
   adapters.python.urirun.host.host_dashboard.summary
     CC=6  in:2  out:37  total:39
-  adapters.python.urirun.host.host_dashboard._collect_attachments
-    CC=1  in:1  out:34  total:35
   adapters.python.urirun.host.host_dashboard._scanner_crop_overlay
     CC=8  in:2  out:33  total:35
+  adapters.python.urirun.host.host_dashboard._collect_attachments
+    CC=1  in:1  out:34  total:35
   adapters.python.urirun.host.host_dashboard.restart_phone_scanner_service
     CC=14  in:1  out:33  total:34
   adapters.python.urirun.host.host_dashboard._archive_redundant_duplicate
     CC=10  in:1  out:31  total:32
+  adapters.python.urirun.host.host_dashboard._supersede_archived_document
+    CC=10  in:1  out:28  total:29
   adapters.python.urirun.host.document_metadata._normalize_llm_doc_fields
     CC=14  in:1  out:28  total:29
   adapters.python.urirun.host.host_dashboard._scanned_log_entry
     CC=8  in:1  out:28  total:29
-  adapters.python.urirun.host.host_dashboard._supersede_archived_document
-    CC=10  in:1  out:28  total:29
   adapters.python.urirun.host.document_sync._upload_file
     CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._build_sync_params
@@ -269,8 +269,8 @@ HUBS[20]:
     CC=9  in:3  out:24  total:27
   adapters.python.urirun.host.host_db._run_query_route
     CC=7  in:1  out:26  total:27
-  adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service
-    CC=10  in:5  out:21  total:26
+  adapters.python.urirun.host.host_dashboard.node_add
+    CC=14  in:1  out:25  total:26
 
 MODULES:
   adapters.c.urirun  [4 funcs]
@@ -566,17 +566,17 @@ EDGES:
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.20s
+# generated in 0.21s
 # nodes: 434 | edges: 500 | modules: 35
 # CC̄=4.7
 
 HUBS[20]:
   adapters.python.urirun.host.host_dashboard._archive_scanned_document
     CC=14  in:2  out:72  total:74
-  adapters.python.urirun.host.host_dashboard._json_response
-    CC=1  in:37  out:13  total:50
   adapters.python.urirun.host.host_dashboard.scanner_best_finish
     CC=14  in:2  out:48  total:50
+  adapters.python.urirun.host.host_dashboard._json_response
+    CC=1  in:37  out:13  total:50
   adapters.python.urirun.host.host_dashboard.scanner_capture
     CC=12  in:2  out:40  total:42
   adapters.python.urirun.host.host_dashboard._frame_visual_metrics
@@ -585,20 +585,20 @@ HUBS[20]:
     CC=8  in:1  out:39  total:40
   adapters.python.urirun.host.host_dashboard.summary
     CC=6  in:2  out:37  total:39
-  adapters.python.urirun.host.host_dashboard._collect_attachments
-    CC=1  in:1  out:34  total:35
   adapters.python.urirun.host.host_dashboard._scanner_crop_overlay
     CC=8  in:2  out:33  total:35
+  adapters.python.urirun.host.host_dashboard._collect_attachments
+    CC=1  in:1  out:34  total:35
   adapters.python.urirun.host.host_dashboard.restart_phone_scanner_service
     CC=14  in:1  out:33  total:34
   adapters.python.urirun.host.host_dashboard._archive_redundant_duplicate
     CC=10  in:1  out:31  total:32
+  adapters.python.urirun.host.host_dashboard._supersede_archived_document
+    CC=10  in:1  out:28  total:29
   adapters.python.urirun.host.document_metadata._normalize_llm_doc_fields
     CC=14  in:1  out:28  total:29
   adapters.python.urirun.host.host_dashboard._scanned_log_entry
     CC=8  in:1  out:28  total:29
-  adapters.python.urirun.host.host_dashboard._supersede_archived_document
-    CC=10  in:1  out:28  total:29
   adapters.python.urirun.host.document_sync._upload_file
     CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._build_sync_params
@@ -609,8 +609,8 @@ HUBS[20]:
     CC=9  in:3  out:24  total:27
   adapters.python.urirun.host.host_db._run_query_route
     CC=7  in:1  out:26  total:27
-  adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service
-    CC=10  in:5  out:21  total:26
+  adapters.python.urirun.host.host_dashboard.node_add
+    CC=14  in:1  out:25  total:26
 
 MODULES:
   adapters.c.urirun  [4 funcs]
@@ -893,8 +893,8 @@ EDGES:
 ### Code Analysis (`project/analysis.toon.yaml`)
 
 ```toon markpact:analysis path=project/analysis.toon.yaml
-# code2llm | 164f 39311L | python:103,json:13,shell:10,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-25
-# generated in 0.07s
+# code2llm | 164f 39332L | python:103,json:13,shell:10,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-25
+# generated in 0.08s
 # CC̅=4.7 | critical:0/1678 | dups:0 | cycles:0
 
 HEALTH[0]: ok
@@ -1012,7 +1012,7 @@ LAYERS:
   │ sync-versions.sh            25L  0C    0m  CC=0.0    ←0
   │
   adapters/                       CC̄=4.7    ←in:9  →out:0
-  │ !! host_dashboard           11503L  0C  348m  CC=14     ←0
+  │ !! host_dashboard           11504L  0C  348m  CC=14     ←0
   │ !! v2                        2003L  1C  122m  CC=14     ←4
   │ !! mesh                      1975L  3C  102m  CC=14     ←2
   │ !! __init__                   737L  1C   51m  CC=14     ←12
@@ -1024,7 +1024,7 @@ LAYERS:
   │ !! connector_lint             602L  0C   34m  CC=14     ←1
   │ !! _runtime                   584L  1C   29m  CC=13     ←2
   │ !! errors                     563L  0C   31m  CC=13     ←1
-  │ !! client                     538L  1C   35m  CC=13     ←0
+  │ !! client                     558L  1C   35m  CC=12     ←0
   │ !! transport                  528L  0C   24m  CC=14     ←3
   │ !! host_db                    527L  0C   33m  CC=11     ←0
   │ !! document_metadata          517L  0C   22m  CC=14     ←1
@@ -1197,8 +1197,8 @@ COUPLING:
   examples.matrix                1                                                                                   ──                 
           scripts                1                                                                                                    ──
   CYCLES: none
-  HUB: v1.js/ (fan-in=6)
   HUB: adapters/ (fan-in=9)
+  HUB: v1.js/ (fan-in=6)
   SMELL: adapters.python/ fan-out=17 → split needed
 
 EXTERNAL:
@@ -1209,15 +1209,15 @@ EXTERNAL:
 ### Duplication (`project/duplication.toon.yaml`)
 
 ```toon markpact:analysis path=project/duplication.toon.yaml
-# redup/duplication | 15 groups | 93f 33958L | 2026-06-25
+# redup/duplication | 15 groups | 93f 33979L | 2026-06-25
 
 SUMMARY:
   files_scanned: 93
-  total_lines:   33958
+  total_lines:   33979
   dup_groups:    15
   dup_fragments: 37
   saved_lines:   143
-  scan_ms:       970
+  scan_ms:       1019
 
 HOTSPOTS[7] (files with most duplication):
   host/host_dashboard.py  dup=73L  groups=5  frags=12  (0.2%)
@@ -1234,9 +1234,9 @@ DUPLICATES[15] (ranked by impact):
       __init__.py:65-69  (shell)
       __init__.py:72-88  (handler)
   [8d9b83d2bd35fb5d]   STRU  _free_port_from_old_scanner  L=13 N=3 saved=26 sim=1.00
-      host/host_dashboard.py:11378-11390  (_free_port_from_old_scanner)
-      host/host_dashboard.py:11393-11401  (_free_port_from_old_chat)
-      host/host_dashboard.py:11404-11412  (_free_port_from_old_android_node)
+      host/host_dashboard.py:11379-11391  (_free_port_from_old_scanner)
+      host/host_dashboard.py:11394-11402  (_free_port_from_old_chat)
+      host/host_dashboard.py:11405-11413  (_free_port_from_old_android_node)
   [e819c3a558e3729d]   STRU  _cmd_add_openapi  L=4 N=5 saved=16 sim=1.00
       runtime/v2.py:1533-1536  (_cmd_add_openapi)
       runtime/v2.py:1539-1542  (_cmd_gen)
@@ -1244,9 +1244,9 @@ DUPLICATES[15] (ranked by impact):
       runtime/v2.py:1850-1853  (_cmd_host)
       runtime/v2.py:1856-1859  (_cmd_node)
   [b7534632e49155f1]   STRU  _host_db  L=4 N=4 saved=12 sim=1.00
-      host/host_dashboard.py:8465-8468  (_host_db)
-      host/host_dashboard.py:8471-8474  (_mesh)
-      host/host_dashboard.py:8477-8480  (_planfile_adapter)
+      host/host_dashboard.py:8466-8469  (_host_db)
+      host/host_dashboard.py:8472-8475  (_mesh)
+      host/host_dashboard.py:8478-8481  (_planfile_adapter)
       runtime/v2.py:634-637  (_host_integrations)
   [bcc95f219db12f7c]   STRU  _json_from_text  L=11 N=2 saved=11 sim=1.00
       host/task_planner.py:85-95  (_json_from_text)
@@ -1255,8 +1255,8 @@ DUPLICATES[15] (ranked by impact):
       host/service_control.py:213-222  (is_scanner_process)
       host/service_control.py:236-245  (is_android_node_process)
   [926b8a3d766222d9]   STRU  _chat_document_sync_response  L=9 N=2 saved=9 sim=1.00
-      host/host_dashboard.py:10354-10362  (_chat_document_sync_response)
-      host/host_dashboard.py:10365-10373  (_chat_generic_response)
+      host/host_dashboard.py:10355-10363  (_chat_document_sync_response)
+      host/host_dashboard.py:10366-10374  (_chat_generic_response)
   [3fed59bde8ae1620]   EXAC  replace  L=5 N=2 saved=5 sim=1.00
       runtime/v1.py:68-72  (replace)
       runtime/v2.py:507-511  (replace)
@@ -1264,11 +1264,11 @@ DUPLICATES[15] (ranked by impact):
       runtime/worker.py:156-159  (close)
       runtime/worker.py:187-190  (close)
   [cdb2ba2d3a97a0f6]   STRU  _document_index_path  L=3 N=2 saved=3 sim=1.00
-      host/host_dashboard.py:5363-5365  (_document_index_path)
-      host/host_dashboard.py:5464-5466  (_scanned_id_log_path)
+      host/host_dashboard.py:5364-5366  (_document_index_path)
+      host/host_dashboard.py:5465-5467  (_scanned_id_log_path)
   [bed22d936aabe8e2]   STRU  _api_checks  L=3 N=2 saved=3 sim=1.00
-      host/host_dashboard.py:11045-11047  (_api_checks)
-      host/host_dashboard.py:11050-11052  (_api_logs)
+      host/host_dashboard.py:11046-11048  (_api_checks)
+      host/host_dashboard.py:11051-11053  (_api_logs)
   [82d9f33906e33db9]   STRU  start_ticket  L=3 N=2 saved=3 sim=1.00
       host/planfile_adapter.py:197-199  (start_ticket)
       host/planfile_adapter.py:266-268  (ready_ticket)
@@ -1375,12 +1375,12 @@ METRICS-TARGET:
 
 ```toon markpact:analysis path=project/evolution.toon.yaml
 # code2llm/evolution | 1654 func | 88f | 2026-06-25
-# generated in 0.00s
+# generated in 0.01s
 
 NEXT[3] (ranked by impact):
   [1] !! SPLIT           adapters/python/urirun/host/host_dashboard.py
-      WHY: 11503L, 0 classes, max CC=14
-      EFFORT: ~4h  IMPACT: 161042
+      WHY: 11504L, 0 classes, max CC=14
+      EFFORT: ~4h  IMPACT: 161056
 
   [2] !! SPLIT           adapters/python/urirun/runtime/v2.py
       WHY: 2003L, 1 classes, max CC=14

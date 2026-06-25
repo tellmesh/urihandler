@@ -363,7 +363,16 @@ def llm_flow(prompt: str, routes: list[dict], nodes: list[dict]) -> dict:
             "content": (
                 "Return strict JSON only. Build a safe urirun flow for a host that controls nodes. "
                 "Use only allowedRoutes. If the request mentions all nodes, use every matching node. "
-                "Do not invent URIs."
+                "Do not invent URIs. "
+                # Desktop/UI grounding hints — make NL desktop-control flows execute correctly:
+                "For desktop/browser control, target on-screen elements by their VISIBLE label, "
+                "which is in the UI's own language (default English, e.g. 'Post'/'Start a post', NOT a "
+                "translation like 'Opublikuj') unless the request states the UI language. "
+                "After app/desktop/command/launch or any navigation, insert an input/command/wait "
+                "(a few seconds) before the first ui/* step so the page can settle. "
+                "Prefer ui/command/click-text or ui/command/click for clickable targets and "
+                "input/command/type for text fields; optionally add ui/query/verify or ui/query/wait "
+                "to confirm a target is present before acting on it."
             ),
         },
         {

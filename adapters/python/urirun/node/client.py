@@ -456,13 +456,33 @@ class NodeClient:
             return {k: NodeClient.resolve_refs(v, results) for k, v in payload.items()}
         if isinstance(payload, list):
             return [NodeClient.resolve_refs(v, results) for v in payload]
-        if isinstance(payload, str) and payload.startswith("$ref:"):
-            m = re.match(r"\$ref:(\d+)\.([\w.]+)", payload)
-            if m and int(m.group(1)) < len(results):
-                cur: Any = results[int(m.group(1))]
-                for part in m.group(2).split("."):
-                    cur = (cur or {}).get(part) if isinstance(cur, dict) else None
-                return cur if cur is not None else payload
+        if isinstance(payload, str):
+            # Check for exact match first to preserve original types (e.g. list, dict)
+            m_exact = re.match(r"^\$ref:(\d+)\.([\w.]+)$", payload)
+            if m_exact:
+                idx = int(m_exact.group(1))
+                if idx < len(results):
+                    cur = results[idx]
+                    for part in m_exact.group(2).split("."):
+                        cur = (cur or {}).get(part) if isinstance(cur, dict) else None
+                    if cur is not None:
+                        return cur
+                return payload
+
+            # Interpolate embedded refs
+            def repl(m):
+                idx = int(m.group(1))
+                if idx < len(results):
+                    cur = results[idx]
+                    for part in m.group(2).split("."):
+                        cur = (cur or {}).get(part) if isinstance(cur, dict) else None
+                    if cur is not None:
+                        if isinstance(cur, (list, dict)):
+                            return json.dumps(cur, ensure_ascii=False)
+                        return str(cur)
+                return m.group(0)
+
+            return re.sub(r"\$ref:(\d+)\.([\w.]+)", repl, payload)
         return payload
 
     def recent_log(self, limit: int = _RECENT_LOG_DEFAULT_LIMIT) -> list:

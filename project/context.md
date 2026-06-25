@@ -7,10 +7,10 @@
 - **Primary Language**: python
 - **Languages**: python: 103, json: 13, shell: 10, yaml: 5, csharp: 4
 - **Analysis Mode**: static
-- **Total Functions**: 1678
+- **Total Functions**: 1681
 - **Total Classes**: 30
 - **Modules**: 163
-- **Entry Points**: 558
+- **Entry Points**: 559
 
 ## Architecture by Module
 
@@ -80,6 +80,10 @@
 - **Classes**: 1
 - **File**: `planfile_adapter.py`
 
+### adapters.python.urirun.node.manage
+- **Functions**: 26
+- **File**: `manage.py`
+
 ### adapters.python.urirun.host.domain_monitor
 - **Functions**: 25
 - **Classes**: 1
@@ -97,10 +101,6 @@
 ### adapters.python.urirun.node.task_cli
 - **Functions**: 25
 - **File**: `task_cli.py`
-
-### adapters.python.urirun.node.transport
-- **Functions**: 24
-- **File**: `transport.py`
 
 ## Key Entry Points
 
@@ -146,6 +146,10 @@ Main execution flows into the system:
 line 
 - **Calls**: sys.stdout.write, sys.stdout.flush, cache.get, line.strip, json.loads, sys.stdout.flush, ref.partition, getattr
 
+### adapters.python.urirun.node.client.NodeClient.resolve_refs
+> Chain steps: replace "$ref:<i>.<field.path>" with an earlier step's output.
+- **Calls**: isinstance, isinstance, isinstance, re.match, re.sub, NodeClient.resolve_refs, NodeClient.resolve_refs, int
+
 ### adapters.python.urirun.runtime.v2_grpc.main
 - **Calls**: argparse.ArgumentParser, parser.add_subparsers, sub.add_parser, s.add_argument, s.add_argument, s.add_argument, s.add_argument, s.add_argument
 
@@ -175,6 +179,11 @@ refresh. The token bundle lives in the keyring under ``oauth:<provider>``
 
 ### adapters.python.urirun.host.document_sync.sync_documents_to_node
 - **Calls**: adapters.python.urirun.host.document_sync._parse_sync_params, deps.archive_pdfs, adapters.python.urirun.host.document_sync._check_preflight, deps.verification, adapters.python.urirun.host.document_sync._log_and_chat_report, adapters.python.urirun.host.document_sync._log_and_chat_report, adapters.python.urirun.host.document_sync._upload_file, item.get
+
+### adapters.python.urirun.node.manage.capability_check
+> Is a ``scheme`` (optionally a specific ``route``) served by a connector INSTALLED in
+this environment? Pure read-only capability introspection exposed
+- **Calls**: None.strip, None.strip, adapters.python.urirun.node.manage._installed_route_owners, None.lower, adapters.python.urirun.node.manage._route_key, sorted, sorted, sorted
 
 ### adapters.python.urirun.runtime.errors.problem
 > Project an error envelope to RFC 9457 ``application/problem+json``.
@@ -213,15 +222,6 @@ refresh. The token bundle lives in the keyring under ``oauth:<provider>``
 Scheme-level checks are insufficient for split connectors such as fs://:
 a node may expose
 - **Calls**: node_client, client.routes, set, adapters.python.urirun.host.fs_transfer.route_key, attempted_route_keys.add, ensured.append, client.routes, all
-
-### adapters.python.urirun.runtime.discovery.registry_for_uri
-> Compile a registry for just the connector owning ``uri``'s scheme (+ builtins).
-
-Falls back to full discovery (and refreshes the index) when the schem
-- **Calls**: adapters.python.urirun.runtime.discovery._scheme_of, adapters.python.urirun.runtime.discovery.load_index, list, adapters.python.urirun.runtime.discovery.build_index, v2.entry_point_bindings, bindings.extend, v2.compile_registry, None.get
-
-### adapters.python.urirun.node.mesh.NodeHandler._get
-- **Calls**: self.path.partition, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json, self.path.startswith, self._stream_events, adapters.python.urirun.node.mesh.send_json, adapters.python.urirun.node.mesh.send_json
 
 ## Process Flows
 
@@ -268,26 +268,21 @@ _cmd_upgrade [adapters.python.urirun.runtime.v2]
 _handler_worker_main [adapters.python.urirun.runtime.worker]
 ```
 
-### Flow 8: _worker_main
+### Flow 8: resolve_refs
+```
+resolve_refs [adapters.python.urirun.node.client.NodeClient]
+```
+
+### Flow 9: _worker_main
 ```
 _worker_main [adapters.python.urirun.runtime.worker]
 ```
 
-### Flow 9: _cmd_show
+### Flow 10: _cmd_show
 ```
 _cmd_show [adapters.python.urirun.connectors.connect_catalog]
   └─> fetch_connector
       └─> _get_json
-```
-
-### Flow 10: _local_image_ocr
-```
-_local_image_ocr [adapters.python.urirun.host.document_metadata]
-  └─> _ocr_connector_envelope
-      └─> _local_image_ocr_tesseract
-          └─> shutil_which
-      └─> _local_image_ocr_tesseract
-  └─> _ocr_text_ok
 ```
 
 ## Key Classes
@@ -582,6 +577,7 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.connectors.connector_lint.verify_connector` - 27 calls
 - `adapters.python.urirun.host.host_dashboard.phone_node_qr` - 26 calls
 - `adapters.python.urirun.host.discovery.node_alias_map_from_env` - 26 calls
+- `adapters.python.urirun.node.client.NodeClient.resolve_refs` - 26 calls
 - `adapters.python.urirun.host.host_dashboard.node_add` - 25 calls
 - `adapters.python.urirun.runtime.codegen.proto_from_registry` - 25 calls
 - `adapters.python.urirun.runtime._runtime.run` - 25 calls
@@ -596,11 +592,10 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.testing.smoke` - 23 calls
 - `adapters.python.urirun.host.document_sync.sync_documents_to_node` - 23 calls
 - `adapters.python.urirun.runtime.v1.run` - 23 calls
+- `adapters.python.urirun.node.manage.capability_check` - 23 calls
 - `adapters.python.urirun.host.host_dashboard.serve` - 22 calls
 - `adapters.python.urirun.runtime.errors.problem` - 22 calls
 - `adapters.python.urirun.connectors.resolver.index_local` - 22 calls
-- `adapters.python.urirun.host.host_db.search_records` - 21 calls
-- `adapters.python.urirun.host.host_dashboard.chat_history` - 21 calls
 
 ## System Interactions
 

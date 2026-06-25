@@ -1,5 +1,5 @@
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.135', 'javascript').
+project_metadata('urirun', '0.4.136', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -84,7 +84,7 @@ project_file('adapters/python/urirun/host/document_metadata.py', 518, 'python').
 project_file('adapters/python/urirun/host/document_sync.py', 404, 'python').
 project_file('adapters/python/urirun/host/domain_monitor.py', 488, 'python').
 project_file('adapters/python/urirun/host/fs_transfer.py', 210, 'python').
-project_file('adapters/python/urirun/host/host_dashboard.py', 11504, 'python').
+project_file('adapters/python/urirun/host/host_dashboard.py', 11505, 'python').
 project_file('adapters/python/urirun/host/host_db.py', 528, 'python').
 project_file('adapters/python/urirun/host/host_integrations.py', 357, 'python').
 project_file('adapters/python/urirun/host/node_types.py', 266, 'python').
@@ -104,9 +104,9 @@ project_file('adapters/python/urirun/node/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/node/_artifacts.py', 112, 'python').
 project_file('adapters/python/urirun/node/_util.py', 38, 'python').
 project_file('adapters/python/urirun/node/_version.py', 77, 'python').
-project_file('adapters/python/urirun/node/client.py', 539, 'python').
+project_file('adapters/python/urirun/node/client.py', 559, 'python').
 project_file('adapters/python/urirun/node/config.py', 210, 'python').
-project_file('adapters/python/urirun/node/flow.py', 618, 'python').
+project_file('adapters/python/urirun/node/flow.py', 627, 'python').
 project_file('adapters/python/urirun/node/formatting.py', 79, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 174, 'python').
 project_file('adapters/python/urirun/node/manage.py', 374, 'python').
@@ -2399,7 +2399,7 @@ python_method('NodeClient', 'request_capability', 2, 1, 1).
 python_method('NodeClient', '_read_folder_files', 2, 5, 8).
 python_method('NodeClient', 'push_folder', 3, 11, 11).
 python_method('NodeClient', 'value', 1, 6, 3).
-python_method('NodeClient', 'resolve_refs', 2, 13, 10).
+python_method('NodeClient', 'resolve_refs', 2, 12, 12).
 python_method('NodeClient', 'recent_log', 1, 6, 3).
 python_method('NodeClient', '_watch_query_params', 3, 5, 4).
 python_method('NodeClient', 'watch', 5, 12, 13).
