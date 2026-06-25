@@ -226,7 +226,7 @@ environment[name="local"] {
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.28s
+# generated in 0.25s
 # nodes: 434 | edges: 500 | modules: 35
 # CC̄=4.7
 
@@ -253,24 +253,24 @@ HUBS[20]:
     CC=14  in:1  out:33  total:34
   adapters.python.urirun.host.host_dashboard._archive_redundant_duplicate
     CC=10  in:1  out:31  total:32
-  adapters.python.urirun.host.host_dashboard._scanned_log_entry
-    CC=8  in:1  out:28  total:29
   adapters.python.urirun.host.host_dashboard._supersede_archived_document
     CC=10  in:1  out:28  total:29
+  adapters.python.urirun.host.host_dashboard._scanned_log_entry
+    CC=8  in:1  out:28  total:29
   adapters.python.urirun.host.document_metadata._normalize_llm_doc_fields
     CC=14  in:1  out:28  total:29
   adapters.python.urirun.host.document_sync._upload_file
     CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._build_sync_params
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
   adapters.python.urirun.host.host_db._run_query_route
     CC=7  in:1  out:26  total:27
   adapters.python.urirun.host.document_sync._read_back_file
     CC=11  in:1  out:26  total:27
-  adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service
-    CC=10  in:5  out:21  total:26
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
+  adapters.python.urirun.host.host_dashboard.node_add
+    CC=14  in:1  out:25  total:26
 
 MODULES:
   adapters.c.urirun  [4 funcs]
@@ -566,7 +566,7 @@ EDGES:
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.28s
+# generated in 0.25s
 # nodes: 434 | edges: 500 | modules: 35
 # CC̄=4.7
 
@@ -593,24 +593,24 @@ HUBS[20]:
     CC=14  in:1  out:33  total:34
   adapters.python.urirun.host.host_dashboard._archive_redundant_duplicate
     CC=10  in:1  out:31  total:32
-  adapters.python.urirun.host.host_dashboard._scanned_log_entry
-    CC=8  in:1  out:28  total:29
   adapters.python.urirun.host.host_dashboard._supersede_archived_document
     CC=10  in:1  out:28  total:29
+  adapters.python.urirun.host.host_dashboard._scanned_log_entry
+    CC=8  in:1  out:28  total:29
   adapters.python.urirun.host.document_metadata._normalize_llm_doc_fields
     CC=14  in:1  out:28  total:29
   adapters.python.urirun.host.document_sync._upload_file
     CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._build_sync_params
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
   adapters.python.urirun.host.host_db._run_query_route
     CC=7  in:1  out:26  total:27
   adapters.python.urirun.host.document_sync._read_back_file
     CC=11  in:1  out:26  total:27
-  adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service
-    CC=10  in:5  out:21  total:26
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
+  adapters.python.urirun.host.host_dashboard.node_add
+    CC=14  in:1  out:25  total:26
 
 MODULES:
   adapters.c.urirun  [4 funcs]
@@ -893,22 +893,24 @@ EDGES:
 ### Code Analysis (`project/analysis.toon.yaml`)
 
 ```toon markpact:analysis path=project/analysis.toon.yaml
-# code2llm | 165f 39870L | python:104,json:13,shell:10,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-25
-# generated in 0.08s
-# CC̅=4.7 | critical:6/1697 | dups:0 | cycles:0
+# code2llm | 166f 40242L | python:105,json:13,shell:10,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-25
+# generated in 0.09s
+# CC̅=4.7 | critical:8/1720 | dups:0 | cycles:0
 
-HEALTH[6]:
+HEALTH[8]:
   🟡 CC    capability_check CC=17 (limit:15)
   🟡 CC    diagnose CC=19 (limit:15)
-  🟡 CC    fit_to_environment CC=30 (limit:15)
+  🟡 CC    fit_to_environment CC=32 (limit:15)
   🟡 CC    _run_step CC=18 (limit:15)
   🟡 CC    _preflight CC=15 (limit:15)
   🟡 CC    execute_flow CC=21 (limit:15)
+  🟡 CC    _run_goal_check CC=17 (limit:15)
+  🟡 CC    verify_flow_execution CC=15 (limit:15)
 
 REFACTOR[1]:
-  1. split 6 high-CC methods  (CC>15)
+  1. split 8 high-CC methods  (CC>15)
 
-PIPELINES[520]:
+PIPELINES[529]:
   [1] Src [http]: http
       PURITY: 100% pure
   [2] Src [_attacker_key]: _attacker_key
@@ -1018,11 +1020,11 @@ LAYERS:
   │ release-bump.sh             29L  0C    0m  CC=0.0    ←0
   │ sync-versions.sh            25L  0C    0m  CC=0.0    ←0
   │
-  adapters/                       CC̄=4.8    ←in:9  →out:0
+  adapters/                       CC̄=4.7    ←in:10  →out:0
   │ !! host_dashboard           11504L  0C  348m  CC=14     ←0
   │ !! v2                        2003L  1C  122m  CC=14     ←4
   │ !! mesh                      1975L  3C  102m  CC=14     ←2
-  │ !! flow                       773L  0C   37m  CC=21     ←2
+  │ !! flow                       872L  0C   40m  CC=21     ←2
   │ !! __init__                   737L  1C   51m  CC=14     ←14
   │ !! _registry                  718L  0C   43m  CC=14     ←1
   │ !! cli                        707L  0C    7m  CC=1      ←1
@@ -1046,13 +1048,14 @@ LAYERS:
   │ discovery                  362L  0C   29m  CC=14     ←0
   │ host_integrations          356L  0C   15m  CC=8      ←0
   │ task_cli                   342L  0C   25m  CC=11     ←1
+  │ recovery                   299L  0C   15m  CC=12     ←2
+  │ !! diagnostics                283L  1C    8m  CC=32     ←2
   │ planfile_adapter           281L  1C   26m  CC=9      ←0
-  │ recovery                   279L  0C   14m  CC=12     ←2
-  │ !! diagnostics                278L  1C    8m  CC=30     ←2
   │ worker                     266L  3C   20m  CC=13     ←0
   │ node_types                 265L  0C    8m  CC=8      ←1
   │ secrets                    263L  1C   18m  CC=9      ←1
   │ connect_catalog            255L  0C   17m  CC=13     ←0
+  │ reversible                 248L  8C   19m  CC=10     ←1
   │ adopt_pack                 245L  0C   12m  CC=13     ←0
   │ object_registry            225L  0C   14m  CC=14     ←0
   │ fs_transfer                209L  0C    7m  CC=14     ←0
@@ -1100,7 +1103,7 @@ LAYERS:
   │ Urirun.java                 38L  1C    3m  CC=1      ←1
   │ paths                       38L  0C    3m  CC=5      ←4
   │ _util                       37L  0C    5m  CC=2      ←4
-  │ index.js                    33L  0C   11m  CC=8      ←8
+  │ index.js                    33L  0C   11m  CC=8      ←9
   │ Urirun.cs                   32L  1C    3m  CC=1      ←0
   │ main.go                     24L  0C    1m  CC=1      ←0
   │ urirun-connector.AssemblyInfo.cs    22L  0C    0m  CC=0.0    ←0
@@ -1197,17 +1200,17 @@ LAYERS:
 
 COUPLING:
                    adapters.python         adapters            v1.js    adapters.java    adapters.perl  examples.matrix          scripts
-  adapters.python               ──                9                6                1                1               ←1               ←1  !! fan-out
-         adapters               ←9               ──                                                                                       hub
+  adapters.python               ──               10                6                1                1               ←1               ←1  !! fan-out
+         adapters              ←10               ──                                                                                       hub
             v1.js               ←6                                ──                                                                      hub
     adapters.java               ←1                                                 ──                                                   
     adapters.perl               ←1                                                                  ──                                  
   examples.matrix                1                                                                                   ──                 
           scripts                1                                                                                                    ──
   CYCLES: none
-  HUB: adapters/ (fan-in=9)
   HUB: v1.js/ (fan-in=6)
-  SMELL: adapters.python/ fan-out=17 → split needed
+  HUB: adapters/ (fan-in=10)
+  SMELL: adapters.python/ fan-out=18 → split needed
 
 EXTERNAL:
   validation: run `vallm batch .` → validation.toon
@@ -1217,15 +1220,15 @@ EXTERNAL:
 ### Duplication (`project/duplication.toon.yaml`)
 
 ```toon markpact:analysis path=project/duplication.toon.yaml
-# redup/duplication | 15 groups | 94f 34517L | 2026-06-25
+# redup/duplication | 15 groups | 95f 34889L | 2026-06-25
 
 SUMMARY:
-  files_scanned: 94
-  total_lines:   34517
+  files_scanned: 95
+  total_lines:   34889
   dup_groups:    15
   dup_fragments: 37
   saved_lines:   143
-  scan_ms:       1517
+  scan_ms:       1040
 
 HOTSPOTS[7] (files with most duplication):
   host/host_dashboard.py  dup=73L  groups=5  frags=12  (0.2%)
@@ -1258,7 +1261,7 @@ DUPLICATES[15] (ranked by impact):
       runtime/v2.py:634-637  (_host_integrations)
   [bcc95f219db12f7c]   STRU  _json_from_text  L=11 N=2 saved=11 sim=1.00
       host/task_planner.py:85-95  (_json_from_text)
-      node/flow.py:251-261  (json_from_text)
+      node/flow.py:258-268  (json_from_text)
   [19899f9cfc86ca65]   STRU  is_scanner_process  L=10 N=2 saved=10 sim=1.00
       host/service_control.py:213-222  (is_scanner_process)
       host/service_control.py:236-245  (is_android_node_process)
@@ -1382,7 +1385,7 @@ METRICS-TARGET:
 ### Evolution / Churn (`project/evolution.toon.yaml`)
 
 ```toon markpact:analysis path=project/evolution.toon.yaml
-# code2llm/evolution | 1673 func | 89f | 2026-06-25
+# code2llm/evolution | 1696 func | 90f | 2026-06-25
 # generated in 0.01s
 
 NEXT[7] (ranked by impact):
@@ -1402,9 +1405,9 @@ NEXT[7] (ranked by impact):
       WHY: CC=21 exceeds 15
       EFFORT: ~1h  IMPACT: 420
 
-  [5] !! SPLIT-FUNC      fit_to_environment  CC=30  fan=13
-      WHY: CC=30 exceeds 15
-      EFFORT: ~1h  IMPACT: 390
+  [5] !! SPLIT-FUNC      fit_to_environment  CC=32  fan=13
+      WHY: CC=32 exceeds 15
+      EFFORT: ~1h  IMPACT: 416
 
   [6] !  SPLIT-FUNC      _run_step  CC=18  fan=16
       WHY: CC=18 exceeds 15
@@ -1422,9 +1425,9 @@ RISKS[3]:
 
 METRICS-TARGET:
   CC̄:          4.7 → ≤3.3
-  max-CC:      30 → ≤15
+  max-CC:      32 → ≤16
   god-modules: 18 → 0
-  high-CC(≥15): 6 → ≤3
+  high-CC(≥15): 8 → ≤4
   hub-types:   0 → ≤0
 
 PATTERNS (language parser shared logic):

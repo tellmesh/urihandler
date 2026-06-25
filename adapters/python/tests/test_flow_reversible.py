@@ -82,3 +82,36 @@ def test_run_flow_document_attaches_reversible_ledger(monkeypatch):
     assert result["reversible"]["rollbackable"] == 2
     fwds = [t["forward"] for t in result["reversible"]["transitions"]]
     assert "kvm://laptop/cdp/page/command/navigate" in fwds
+
+
+def _stub_run(monkeypatch, execution, verification):
+    monkeypatch.setattr(F, "execute_flow", lambda *a, **k: execution)
+    monkeypatch.setattr(F, "normalize_flow", lambda doc, uris: {"steps": doc.get("steps", [])})
+    monkeypatch.setattr(F, "verify_flow_execution", lambda *a, **k: verification)
+
+
+def test_compensation_undoes_on_goal_failure(monkeypatch):
+    # all steps green, but the GOAL check fails -> overall not ok -> saga compensation undoes
+    calls = []
+    _stub_run(monkeypatch, _execution_with_inverses(), {"ok": False, "checks": [{"check": "goal", "ok": False}]})
+    monkeypatch.setattr(F.v2_service, "call",
+                        lambda uri, payload, registry, mode="execute": calls.append((uri, payload))
+                        or {"ok": True, "result": {"value": {"ok": True}}})
+    result = F.run_flow_document({"steps": []}, _mesh(), execute=True, rollback_on_failure=True)
+    assert result["ok"] is False
+    assert result["compensation"]["ok"] is True
+    assert calls[0][0] == "kvm://laptop/cdp/page/command/navigate"   # LIFO undo ran
+
+
+def test_no_compensation_on_success(monkeypatch):
+    _stub_run(monkeypatch, _execution_with_inverses(), None)
+    monkeypatch.setattr(F.v2_service, "call", lambda *a, **k: {"ok": True})
+    result = F.run_flow_document({"steps": []}, _mesh(), execute=True, rollback_on_failure=True)
+    assert result["ok"] is True and "compensation" not in result
+
+
+def test_compensation_is_opt_in(monkeypatch):
+    _stub_run(monkeypatch, _execution_with_inverses(), {"ok": False})
+    monkeypatch.setattr(F.v2_service, "call", lambda *a, **k: {"ok": True})
+    result = F.run_flow_document({"steps": []}, _mesh(), execute=True)   # default: no auto-rollback
+    assert result["ok"] is False and "compensation" not in result

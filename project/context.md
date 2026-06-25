@@ -7,10 +7,10 @@
 - **Primary Language**: python
 - **Languages**: python: 105, json: 13, shell: 10, yaml: 5, csharp: 4
 - **Analysis Mode**: static
-- **Total Functions**: 1720
-- **Total Classes**: 39
+- **Total Functions**: 1726
+- **Total Classes**: 40
 - **Modules**: 165
-- **Entry Points**: 574
+- **Entry Points**: 575
 
 ## Architecture by Module
 
@@ -42,7 +42,7 @@
 - **File**: `_registry.py`
 
 ### adapters.python.urirun.node.flow
-- **Functions**: 40
+- **Functions**: 41
 - **File**: `flow.py`
 
 ### adapters.python.urirun.node.client
@@ -373,6 +373,12 @@ knows NO connecto
 - **Methods**: 3
 - **Key Methods**: adapters.python.urirun.node.reversible.ReversibleProcess.execute, adapters.python.urirun.node.reversible.ReversibleProcess.rollback, adapters.python.urirun.node.reversible.ReversibleProcess.rollback_flow
 
+### adapters.python.urirun.node.reversible.TwinMemory
+> Remembers the KNOWN-GOOD environment fingerprint per node (snapshot-on-success), so a later
+run dete
+- **Methods**: 3
+- **Key Methods**: adapters.python.urirun.node.reversible.TwinMemory.remember, adapters.python.urirun.node.reversible.TwinMemory.known_good, adapters.python.urirun.node.reversible.TwinMemory.drift
+
 ### adapters.python.urirun.node.diagnostics._Rule
 - **Methods**: 2
 - **Key Methods**: adapters.python.urirun.node.diagnostics._Rule.__init__, adapters.python.urirun.node.diagnostics._Rule.matches
@@ -388,10 +394,6 @@ method, or a te
 self-sufficie
 - **Methods**: 2
 - **Key Methods**: adapters.python.urirun.node.reversible.Twin.scan, adapters.python.urirun.node.reversible.Twin.rescan
-
-### adapters.java.example.HashConnector.HashConnector
-- **Methods**: 1
-- **Key Methods**: adapters.java.example.HashConnector.HashConnector.main
 
 ## Data Transformation Functions
 
@@ -570,16 +572,16 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.host.host_dashboard.scanner_capture` - 40 calls
 - `adapters.python.urirun.node.diagnostics.fit_to_environment` - 38 calls
 - `adapters.python.urirun.host.host_dashboard.summary` - 37 calls
+- `adapters.python.urirun.node.flow.execute_flow` - 34 calls
 - `adapters.python.urirun.host.host_dashboard.restart_phone_scanner_service` - 33 calls
 - `adapters.python.urirun.runtime._runtime.main` - 33 calls
 - `adapters.python.urirun.runtime.v2_adopt.main` - 31 calls
-- `adapters.python.urirun.node.mesh.copy_id_command` - 30 calls
 - `adapters.python.urirun.node.recovery.normalize_error` - 30 calls
+- `adapters.python.urirun.node.mesh.copy_id_command` - 30 calls
 - `adapters.python.urirun.host.host_dashboard.chat_ask` - 29 calls
 - `adapters.python.urirun.host.host_dashboard.connector_install` - 29 calls
 - `adapters.python.urirun.host.host_dashboard.artifacts_dedupe_rows` - 29 calls
 - `adapters.python.urirun.runtime.adopt_pack.adopt` - 28 calls
-- `adapters.python.urirun.node.flow.execute_flow` - 28 calls
 - `adapters.python.urirun.runtime.errors.info` - 27 calls
 - `adapters.python.urirun.connectors.connector_lint.verify_connector` - 27 calls
 - `adapters.python.urirun.host.host_dashboard.phone_node_qr` - 26 calls

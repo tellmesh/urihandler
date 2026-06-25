@@ -197,6 +197,47 @@ class ReversibleProcess:
         return {"ok": True, "undone": undone, "restored_to": restored}
 
 
+def environment_fingerprint(profile: dict) -> str:
+    """A stable fingerprint of the env DIMENSIONS that invalidate cached coordinates/surface when
+    they change — platform, wayland, display geometry, monitor count, best surface, os-level
+    reliability. Drift in THIS is the '3200x3800 <-> 1440x900 fluctuated mid-session' class: a
+    moved target the planner must re-measure, not guess against."""
+    dims = {"platform": profile.get("platform"), "wayland": profile.get("wayland"),
+            "display": profile.get("display"), "monitors": len(profile.get("monitors") or []),
+            "best": profile.get("best"), "osLevelReliable": profile.get("osLevelReliable")}
+    return "env-" + sig(dims)
+
+
+@dataclass
+class TwinMemory:
+    """Remembers the KNOWN-GOOD environment fingerprint per node (snapshot-on-success), so a later
+    run detects DRIFT — the structure changed (display reconfigured, surface switched) — and the
+    system re-measures instead of guessing on a moved target. Storage is pluggable via ``store``
+    (default in-memory dict; a JSON file or a host_db Artifact backend in production — snapshots
+    ARE Artifacts, no new store). Turns guessing into knowledge of a known-good state."""
+    store: dict = field(default_factory=dict)         # node -> {fingerprint, snapshot}
+
+    def remember(self, node: str, profile: dict) -> dict:
+        rec = {"fingerprint": environment_fingerprint(profile), "snapshot": profile}
+        self.store[node] = rec
+        return rec
+
+    def known_good(self, node: str) -> dict | None:
+        return self.store.get(node)
+
+    def drift(self, node: str, profile: dict) -> dict:
+        """Compare the live profile to the node's known-good. ``drifted`` true ⇒ re-capture the
+        environment / re-establish the surface; ``known`` false ⇒ nothing remembered yet."""
+        fp = environment_fingerprint(profile)
+        kg = self.store.get(node)
+        if not kg:
+            return {"known": False, "drifted": False, "current": fp,
+                    "reason": "no known-good captured yet"}
+        drifted = kg["fingerprint"] != fp
+        return {"known": True, "drifted": drifted, "knownGood": kg["fingerprint"], "current": fp,
+                "reason": "environment changed since the last known-good" if drifted else "matches known-good"}
+
+
 def local_transport(by_scheme: dict[str, Connector]) -> CallableTransport:
     """A dumb scheme->connector router (HTTP-to-node stand-in) for tests / in-process use."""
     def _route(uri: str, payload: dict) -> dict:
@@ -228,6 +269,19 @@ def _inner_value(env: Any) -> dict | None:
     return res if isinstance(res, dict) else None
 
 
+def _inverse_uri(forward_uri: str, inv: dict) -> str | None:
+    """Resolve an inverse action's target URI. A connector may return a full ``uri`` (it knows
+    its node — e.g. a class adopter), OR a node-less ``path`` (a stateless ``@handler`` cannot
+    know its own node): rebase the path onto the forward step's ``scheme://node`` so the inverse
+    targets the SAME node the forward did. Returns None when the inverse has neither."""
+    if inv.get("uri"):
+        return str(inv["uri"])
+    if inv.get("path"):
+        scheme, node, _ = parse(forward_uri)
+        return f"{scheme}://{node}/{str(inv['path']).lstrip('/')}"
+    return None
+
+
 def ledger_from_execution(execution: dict) -> list[Transition]:
     """Build a reversible ledger from a COMPLETED ``execute_flow`` result: every successful step
     whose connector returned an ``inverse`` becomes a Transition, in execution order. This lets a
@@ -242,7 +296,11 @@ def ledger_from_execution(execution: dict) -> list[Transition]:
             continue
         value = _inner_value(results.get(entry.get("id")))
         inv = value.get("inverse") if isinstance(value, dict) else None
-        if isinstance(inv, dict) and inv.get("uri"):
-            ledger.append(Transition(before="", forward=Action(str(entry.get("uri") or ""), {}),
-                                     inverse=Action(inv["uri"], inv.get("args", {})), after=""))
+        if not isinstance(inv, dict):
+            continue
+        fwd = str(entry.get("uri") or "")
+        inv_uri = _inverse_uri(fwd, inv)
+        if inv_uri:
+            ledger.append(Transition(before="", forward=Action(fwd, {}),
+                                     inverse=Action(inv_uri, inv.get("args", {})), after=""))
     return ledger

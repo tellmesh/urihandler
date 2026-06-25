@@ -117,7 +117,9 @@ test-v2: ## Run urirun v2 schema, runtime, and MCP/A2A smoke checks.
 
 .PHONY: build
 build: ## Build the Python adapter (wheel + sdist) into adapters/python/dist/. Needs: pip install build.
-	rm -rf adapters/python/dist
+	# also remove build/ : `cd adapters/python && python -m build` puts cwd on sys.path, so a
+	# stale ./build/ dir shadows PyPA build ("'build' is a package and cannot be directly executed").
+	rm -rf adapters/python/dist adapters/python/build
 	cd adapters/python && $(PYTHON) -m build
 
 .PHONY: publish

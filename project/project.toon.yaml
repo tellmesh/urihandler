@@ -1,4 +1,4 @@
-# urirun | 1720 func | 97f | 40242L | python | 2026-06-25
+# urirun | 1726 func | 97f | 40346L | python | 2026-06-25
 # generated in 0.00s
 
 HEALTH:
@@ -14,14 +14,14 @@ ALERTS[20]:
   !!! high_fan_out     _add_host_subparser = 29 (limit:10)
   !!! high_fan_out     scanner_best_finish = 26 (limit:10)
   !!! high_fan_out     main = 26 (limit:10)
-  !!! high_fan_out     scanner_capture = 25 (limit:10)
+  !!! cc_exceeded      execute_flow = 25 (limit:15)
 
 MODULES[166] (top by size):
   M[adapters/python/urirun/host/host_dashboard.py] 11504L C:0 F:348 CC↑14 D:0 (python)
   M[adapters/python/urirun/runtime/v2.py] 2003L C:1 F:122 CC↑14 D:4 (python)
   M[adapters/python/urirun/node/mesh.py] 1975L C:3 F:102 CC↑14 D:2 (python)
   M[planfile.yaml] 1319L C:0 F:0 CC↑0 D:0 (yaml)
-  M[adapters/python/urirun/node/flow.py] 872L C:0 F:40 CC↑21 D:2 (python)
+  M[adapters/python/urirun/node/flow.py] 898L C:0 F:41 CC↑25 D:2 (python)
   M[adapters/python/urirun/__init__.py] 737L C:1 F:51 CC↑14 D:14 (python)
   M[adapters/python/urirun/runtime/_registry.py] 718L C:0 F:43 CC↑14 D:1 (python)
   M[adapters/python/urirun/runtime/cli.py] 707L C:0 F:7 CC↑1 D:1 (python)
@@ -43,10 +43,10 @@ HOTSPOTS[10]:
 
 REFACTOR[15]:
   [1] H/L Split fit_to_environment (CC=32)
-  [2] H/H Split god module adapters/python/urirun/node/flow.py (872L, 0 classes)
-  [3] H/H Split god module adapters/python/urirun/__init__.py (737L, 1 classes)
-  [4] H/H Split god module adapters/python/urirun/connectors/connector_lint.py (602L, 0 classes)
-  [5] H/H Split god module adapters/python/urirun/host/document_metadata.py (517L, 0 classes)
+  [2] H/L Split execute_flow (CC=25)
+  [3] H/H Split god module adapters/python/urirun/node/flow.py (898L, 0 classes)
+  [4] H/H Split god module adapters/python/urirun/__init__.py (737L, 1 classes)
+  [5] H/H Split god module adapters/python/urirun/connectors/connector_lint.py (602L, 0 classes)
 
 EVOLUTION:
-  2026-06-25 CC̄=4.7 crit=227 40242L // Automated analysis
+  2026-06-25 CC̄=4.7 crit=227 40346L // Automated analysis

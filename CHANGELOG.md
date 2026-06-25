@@ -191,6 +191,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Docker desktop from an NL intent; the desktop driver is a *connector*, the schema in
   the action space is the only core change).
 
+## [0.4.145] - 2026-06-25
+
+### Docs
+- Update README.md
+- Update SUMR.md
+- Update project/README.md
+- Update project/context.md
+
+### Other
+- Update Makefile
+- Update adapters/python/tests/test_diagnostics.py
+- Update adapters/python/tests/test_flow_reversible.py
+- Update adapters/python/tests/test_reversible.py
+- Update adapters/python/urirun/node/diagnostics.py
+- Update adapters/python/urirun/node/flow.py
+- Update adapters/python/urirun/node/reversible.py
+- Update project/analysis.toon.yaml
+- Update project/calls.mmd
+- Update project/calls.png
+- ... and 13 more files
+
 ## [0.4.144] - 2026-06-25
 
 ### Docs

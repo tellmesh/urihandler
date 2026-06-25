@@ -824,7 +824,7 @@ def verify_flow_execution(document: dict, execution: dict, *, executed: bool, di
     return {"ok": ok, "checks": checks}
 
 
-def run_flow_document(document: dict, mesh: dict, *, execute: bool) -> dict:
+def run_flow_document(document: dict, mesh: dict, *, execute: bool, rollback_on_failure: bool = False) -> dict:
     route_uris = {route["uri"] for route in mesh["routes"] if safe_route(route)}
     flow = normalize_flow(document, route_uris)
     registry = registry_from_routes(mesh["routes"])
@@ -848,6 +848,12 @@ def run_flow_document(document: dict, mesh: dict, *, execute: bool) -> dict:
             "transitions": [{"forward": t.forward.uri, "inverse": t.inverse.uri,
                              "args": t.inverse.args} for t in led],
         }
+        # SAGA compensation: the flow FAILED (a step aborted, or the GOAL wasn't reached) yet left
+        # mutations behind — unwind them over the registered inverses so a failed autonomous run
+        # leaves NO partial mess, instead of a half-applied world. Opt-in (it acts on the world).
+        if not ok and execute and (rollback_on_failure or document.get("rollbackOnFailure")):
+            scan_uri = (document.get("verification") or {}).get("scan_uri")
+            result["compensation"] = rollback_flow(execution, mesh, scan_uri=scan_uri)
     return result
 
 

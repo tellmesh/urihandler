@@ -55,6 +55,12 @@ class DiagnoseTests(unittest.TestCase):
         self.assertIsNone(diagnose(_err("route not found", category="WEIRD"),
                                    step={"uri": "kvm://laptop/x/y/z"}))
 
+    def test_environment_drift_recaptures(self):
+        d = diagnose(_err("portal capture: screen size changed mid-session 3200x1800 -> 1440x900"),
+                     step={"uri": "kvm://laptop/screen/query/capture"})
+        self.assertEqual(d["rule"], "environment-drift")
+        self.assertIn("recapture-environment", d["autoApplicable"])   # re-measure, don't guess
+
     def test_not_logged_in(self):
         d = diagnose(_err("redirected to authwall - sign in required"),
                      step={"uri": "kvm://laptop/ui/command/click"})

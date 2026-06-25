@@ -1,4 +1,4 @@
-# code2llm/evolution | 1696 func | 90f | 2026-06-25
+# code2llm/evolution | 1702 func | 90f | 2026-06-25
 # generated in 0.01s
 
 NEXT[7] (ranked by impact):
@@ -14,9 +14,9 @@ NEXT[7] (ranked by impact):
       WHY: 1975L, 3 classes, max CC=14
       EFFORT: ~4h  IMPACT: 27650
 
-  [4] !  SPLIT-FUNC      execute_flow  CC=21  fan=20
-      WHY: CC=21 exceeds 15
-      EFFORT: ~1h  IMPACT: 420
+  [4] !! SPLIT-FUNC      execute_flow  CC=25  fan=24
+      WHY: CC=25 exceeds 15
+      EFFORT: ~1h  IMPACT: 600
 
   [5] !! SPLIT-FUNC      fit_to_environment  CC=32  fan=13
       WHY: CC=32 exceeds 15
@@ -40,7 +40,7 @@ METRICS-TARGET:
   CC̄:          4.7 → ≤3.3
   max-CC:      32 → ≤16
   god-modules: 18 → 0
-  high-CC(≥15): 8 → ≤4
+  high-CC(≥15): 9 → ≤4
   hub-types:   0 → ≤0
 
 PATTERNS (language parser shared logic):

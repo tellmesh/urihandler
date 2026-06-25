@@ -125,6 +125,24 @@ PLAYBOOK: list[_Rule] = [
         confidence=0.8,
     ),
     _Rule(
+        "environment-drift",
+        [r"display reconfigured", r"resolution (changed|fluctuat)", r"screen size changed",
+         r"monitor (added|removed|changed)", r"device.?scale.?factor"],
+        "The environment changed under the flow — display reconfigured / resolution fluctuated "
+        "(the 3200x1800<->1440x900 class). Cached coordinates and the chosen surface are stale; "
+        "re-capture the environment profile (and re-establish the surface) before retrying, rather "
+        "than acting on a moved target.",
+        lambda t: [
+            {"id": "recapture-environment", "kind": "discovery", "automatic": True,
+             "uri": f"kvm://{t}/env/query/profile",
+             "label": "Re-capture the environment profile (display/surface drifted from known-good)."},
+            {"id": "resurface", "kind": "provision", "automatic": True,
+             "uri": f"kvm://{t}/surface/query/current",
+             "label": "Re-read the foreground surface so the router re-picks cdp/atspi/vision for the new env."},
+        ],
+        confidence=0.8,
+    ),
+    _Rule(
         "not-logged-in",
         [r"authwall", r"login required", r"sign ?in", r"not logged in", r"zaloguj", r"\b401\b"],
         "The browser session is not authenticated — a fresh CDP profile lands on the login / "

@@ -11,6 +11,8 @@ from urirun.node.reversible import (
     ReversibleProcess,
     Transition,
     Twin,
+    TwinMemory,
+    environment_fingerprint,
     ledger_from_execution,
     local_transport,
     path_of,
@@ -242,6 +244,69 @@ class FlowBridgeTests(unittest.TestCase):
         rb = proc.rollback_flow(twin, ledger)
         self.assertFalse(rb["ok"])
         self.assertIn("stuck", rb)
+
+
+class TwinMemoryTests(unittest.TestCase):
+    """Known-good environment memory + drift detection — turns guessing into knowledge of a
+    known-good state (the 3200x1800 <-> 1440x900 fluctuation is exactly the drift it catches)."""
+    P1 = {"platform": "linux-wayland", "wayland": True, "display": {"width": 1440, "height": 900},
+          "monitors": [1], "best": "cdp", "osLevelReliable": False}
+    P2 = {**P1, "display": {"width": 3200, "height": 1800}}      # the mid-session resolution drift
+
+    def test_remember_then_no_drift_on_same_env(self):
+        m = TwinMemory(); m.remember("lap", self.P1)
+        d = m.drift("lap", dict(self.P1))
+        self.assertTrue(d["known"])
+        self.assertFalse(d["drifted"])
+
+    def test_drift_detected_on_display_change(self):
+        m = TwinMemory(); m.remember("lap", self.P1)
+        d = m.drift("lap", self.P2)
+        self.assertTrue(d["drifted"])
+        self.assertNotEqual(d["knownGood"], d["current"])
+
+    def test_no_known_good_yet_is_not_drift(self):
+        d = TwinMemory().drift("lap", self.P1)
+        self.assertFalse(d["known"])
+        self.assertFalse(d["drifted"])
+
+    def test_fingerprint_ignores_non_env_dims(self):
+        # an open window / scroll position is not an ENV dim -> same fingerprint, no false drift
+        self.assertEqual(environment_fingerprint({**self.P1, "windows": {"w1": 1}}),
+                         environment_fingerprint({**self.P1, "windows": {}}))
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class NodelessInverseRebaseTests(unittest.TestCase):
+    """ledger_from_execution must rebase a node-less ``inverse.path`` (what a stateless
+    @handler returns — it can't know its own node) onto the forward step's scheme://node, so a
+    kvm window/command/close result becomes a node-correct restore inverse; a full ``uri`` from
+    a class adopter is left unchanged."""
+
+    def _exec(self, fwd_uri, inv):
+        return {"timeline": [{"id": "s1", "uri": fwd_uri, "ok": True}],
+                "results": {"s1": {"result": {"value": {"ok": True, "inverse": inv}}}}}
+
+    def test_path_inverse_rebased_to_forward_node(self):
+        led = ledger_from_execution(self._exec(
+            "kvm://laptop/window/command/close",
+            {"path": "window/command/restore", "args": {"snapshot": {"id": "w1", "url": "u"}}}))
+        self.assertEqual(len(led), 1)
+        self.assertEqual(led[0].inverse.uri, "kvm://laptop/window/command/restore")
+        self.assertEqual(led[0].inverse.args["snapshot"]["id"], "w1")
+
+    def test_full_uri_inverse_left_unchanged(self):
+        led = ledger_from_execution(self._exec(
+            "data://store/kv/command/set",
+            {"uri": "data://store/kv/command/delete", "args": {"key": "k"}}))
+        self.assertEqual(led[0].inverse.uri, "data://store/kv/command/delete")
+
+    def test_inverse_without_uri_or_path_skipped(self):
+        led = ledger_from_execution(self._exec("kvm://laptop/window/command/close", {"args": {}}))
+        self.assertEqual(led, [])
 
 
 if __name__ == "__main__":
