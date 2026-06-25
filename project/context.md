@@ -5,12 +5,12 @@
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 103, json: 13, shell: 10, yaml: 5, csharp: 4
+- **Languages**: python: 104, json: 13, shell: 10, yaml: 5, csharp: 4
 - **Analysis Mode**: static
-- **Total Functions**: 1683
-- **Total Classes**: 30
-- **Modules**: 163
-- **Entry Points**: 559
+- **Total Functions**: 1687
+- **Total Classes**: 31
+- **Modules**: 164
+- **Entry Points**: 561
 
 ## Architecture by Module
 
@@ -361,6 +361,10 @@ child processes t
 - **Methods**: 3
 - **Key Methods**: adapters.csharp.Urirun.Connector.Connector, adapters.csharp.Urirun.Connector.Command, adapters.csharp.Urirun.Connector.BindingsJson
 
+### adapters.python.urirun.node.diagnostics._Rule
+- **Methods**: 2
+- **Key Methods**: adapters.python.urirun.node.diagnostics._Rule.__init__, adapters.python.urirun.node.diagnostics._Rule.matches
+
 ### adapters.java.example.HashConnector.HashConnector
 - **Methods**: 1
 - **Key Methods**: adapters.java.example.HashConnector.HashConnector.main
@@ -383,9 +387,6 @@ registry / routes / a
 - **Key Methods**: adapters.python.urirun.node.mesh.NodeContext.__init__
 
 ### adapters.go.urirun.Schema
-- **Methods**: 0
-
-### adapters.go.urirun.binding
 - **Methods**: 0
 
 ## Data Transformation Functions
@@ -567,8 +568,8 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.host.host_dashboard.restart_phone_scanner_service` - 33 calls
 - `adapters.python.urirun.runtime._runtime.main` - 33 calls
 - `adapters.python.urirun.runtime.v2_adopt.main` - 31 calls
-- `adapters.python.urirun.node.recovery.normalize_error` - 30 calls
 - `adapters.python.urirun.node.mesh.copy_id_command` - 30 calls
+- `adapters.python.urirun.node.recovery.normalize_error` - 30 calls
 - `adapters.python.urirun.host.host_dashboard.chat_ask` - 29 calls
 - `adapters.python.urirun.host.host_dashboard.connector_install` - 29 calls
 - `adapters.python.urirun.host.host_dashboard.artifacts_dedupe_rows` - 29 calls

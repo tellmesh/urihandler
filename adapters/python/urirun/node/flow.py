@@ -16,7 +16,14 @@ from typing import Any
 
 from urirun import result_data, v2_service
 from urirun.node._util import json_write, now_id, slug
-from urirun.node.recovery import can_retry_step, exception_error, normalize_error, recovery_plan, step_target
+from urirun.node.recovery import (
+    apply_auto_remediation,
+    can_retry_step,
+    exception_error,
+    normalize_error,
+    recovery_plan,
+    step_target,
+)
 from urirun.node.routing import (
     registry_from_routes,
     route_target,
@@ -365,14 +372,25 @@ def llm_flow(prompt: str, routes: list[dict], nodes: list[dict]) -> dict:
                 "Use only allowedRoutes. If the request mentions all nodes, use every matching node. "
                 "Do not invent URIs. "
                 # Desktop/UI grounding hints — make NL desktop-control flows execute correctly:
-                "For desktop/browser control, target on-screen elements by their VISIBLE label, "
-                "which is in the UI's own language (default English, e.g. 'Post'/'Start a post', NOT a "
-                "translation like 'Opublikuj') unless the request states the UI language. "
-                "After app/desktop/command/launch or any navigation, insert an input/command/wait "
-                "(a few seconds) before the first ui/* step so the page can settle. "
-                "Prefer ui/command/click-text or ui/command/click for clickable targets and "
-                "input/command/type for text fields; optionally add ui/query/verify or ui/query/wait "
-                "to confirm a target is present before acting on it."
+                "Target on-screen elements by their VISIBLE label, which is in the UI's own "
+                "language (default English, e.g. 'Post'/'Start a post', NOT a translation like "
+                "'Opublikuj') unless the request states the UI language. "
+                "After any launch or navigation, insert an input/command/wait (a few seconds) "
+                "before the first interaction so the page can settle. "
+                # Route-selection preference: DOM-level (CDP) beats pixel-level (OCR) for web content.
+                "ROUTE PREFERENCE — when the target is web content in a browser and the allowedRoutes "
+                "expose CDP page commands (uris containing 'cdp/page/command/click' or "
+                "'cdp/page/command/fill'), PREFER THEM for clicking buttons/links and filling fields: "
+                "they act through the DOM by role/visible-label, so they are coordinate-free and immune "
+                "to OCR misreads. For those CDP commands pass the target as 'text' (the visible label) "
+                "and 'role' (e.g. 'button', 'link', 'textbox') — NOT a CSS or Playwright selector — and "
+                "for fill put the content in 'value'. Launch the browser with a "
+                "'cdp/session/command/launch' route so those commands have a session. Use the pixel/OS "
+                "routes ('ui/command/click', "
+                "'ui/command/click-text', 'input/command/type') only for NATIVE desktop apps, or as a "
+                "fallback when no CDP session/route is available. Use 'window/command/focus' (kvm) to "
+                "focus a window regardless. Optionally add a ui/query/verify or page query to confirm a "
+                "target is present before acting on it."
             ),
         },
         {
@@ -522,6 +540,7 @@ def _run_step(
     timeline_entries: list[dict] = []
     recovery_entries: list[dict] = []
     attempt = 0
+    healed = False
     while True:
         try:
             env = v2_service.call(
@@ -556,6 +575,22 @@ def _run_step(
             })
             attempt += 1
             continue
+        # SELF-HEAL: a diagnosed failure with auto-applicable remediation (e.g. ensure a CDP
+        # session, wait for the page, adopt a scheme) gets FIXED once, then the step retried —
+        # so the loop repairs the cause instead of just aborting with a named diagnosis.
+        diagnosis = (entry.get("recovery") or {}).get("diagnosis")
+        if recover and execute and not healed and diagnosis and diagnosis.get("autoApplicable"):
+            applied = apply_auto_remediation(diagnosis, registry)
+            healed = True
+            timeline_entries.append({
+                "id": f"{step['id']}:self-heal", "uri": step["uri"],
+                "target": route_target(step["uri"]), "ok": any(a["ok"] for a in applied),
+                "type": "recovery", "action": "self-heal", "rule": diagnosis.get("rule"),
+                "applied": applied,
+            })
+            if any(a["ok"] for a in applied):
+                attempt = 0
+                continue
         return env, timeline_entries, recovery_entries, True
 
 

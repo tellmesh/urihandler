@@ -2,6 +2,7 @@
 # Part of the ifURI solution.
 
 import json
+import os
 import tempfile
 import time
 import unittest
@@ -10,9 +11,10 @@ import argparse
 import contextlib
 import io
 from pathlib import Path
+from unittest import mock
 
 from urirun import mesh
-from urirun.node import keyauth, manage
+from urirun.node import flow, keyauth, manage
 
 
 def _wait_healthy(base, tries=120, delay=0.1):
@@ -1260,6 +1262,66 @@ class MeshTests(unittest.TestCase):
             "browser://laptop/cdp/page/query/tabs",
         ])
         self.assertEqual(flow["steps"][0]["payload"]["url"], "https://www.linkedin.com/feed/")
+
+    def test_llm_flow_presents_cdp_dom_routes_and_prefers_them(self):
+        """The planner must (a) offer the specialized CDP page commands to the LLM and
+        (b) steer it to prefer them over the OCR/pixel ui routes for web content. We
+        capture the messages sent to the model and verify the catalog + guidance, then
+        confirm a CDP-based plan the model could return normalizes against allowed URIs."""
+        import urirun.host.task_planner as task_planner
+
+        captured = {}
+
+        class _Msg:
+            content = json.dumps({
+                "task": {"id": "post", "title": "post on linkedin"},
+                "steps": [
+                    {"id": "launch", "uri": "browser://laptop/cdp/session/command/launch",
+                     "payload": {"browser": "chrome", "url": "https://linkedin.com"}, "depends_on": []},
+                    {"id": "wait", "uri": "kvm://laptop/input/command/wait",
+                     "payload": {"seconds": 5}, "depends_on": ["launch"]},
+                    {"id": "start", "uri": "browser://laptop/cdp/page/command/click",
+                     "payload": {"text": "Start a post", "role": "button"}, "depends_on": ["wait"]},
+                    {"id": "type", "uri": "browser://laptop/cdp/page/command/fill",
+                     "payload": {"role": "textbox", "value": "hello"}, "depends_on": ["start"]},
+                    {"id": "post", "uri": "browser://laptop/cdp/page/command/click",
+                     "payload": {"text": "Post", "role": "button"}, "depends_on": ["type"]},
+                ],
+            })
+
+        def fake_completion(*, model, messages, **kwargs):
+            captured["messages"] = messages
+            return type("R", (), {"choices": [type("C", (), {"message": _Msg()})]})
+
+        with mock.patch.object(task_planner, "quiet_completion", fake_completion):
+            with mock.patch.dict(os.environ, {"URIRUN_LLM_MODEL": "test/model"}):
+                nodes = [{"name": "laptop", "reachable": True}]
+                routes = [
+                    {"uri": "browser://laptop/cdp/session/command/launch", "node": "laptop", "kind": "command", "safe": True},
+                    {"uri": "browser://laptop/cdp/page/command/click", "node": "laptop", "kind": "command", "safe": True},
+                    {"uri": "browser://laptop/cdp/page/command/fill", "node": "laptop", "kind": "command", "safe": True},
+                    {"uri": "kvm://laptop/ui/command/click", "node": "laptop", "kind": "command", "safe": True},
+                    {"uri": "kvm://laptop/input/command/type", "node": "laptop", "kind": "command", "safe": True},
+                    {"uri": "kvm://laptop/input/command/wait", "node": "laptop", "kind": "command", "safe": True},
+                ]
+                result = mesh.llm_flow("on laptop open linkedin and publish a post", routes, nodes)
+
+        system = captured["messages"][0]["content"]
+        user = captured["messages"][1]["content"]
+        # (a) the specialized CDP DOM verbs are in the catalog handed to the model
+        self.assertIn("cdp/page/command/click", user)
+        self.assertIn("cdp/page/command/fill", user)
+        # (b) the guidance steers selection toward CDP DOM over OCR/pixel routes
+        self.assertIn("cdp/page/command/click", system)
+        self.assertIn("PREFER", system)
+        self.assertIn("OCR", system)
+        # a returned CDP-based plan is valid against the allowed URIs (so selection sticks)
+        allowed = {r["uri"] for r in routes}
+        normalized = flow.normalize_flow(result, allowed)
+        chosen = [s["uri"] for s in normalized["steps"]]
+        self.assertIn("browser://laptop/cdp/page/command/click", chosen)
+        self.assertIn("browser://laptop/cdp/page/command/fill", chosen)
+        self.assertNotIn("kvm://laptop/ui/command/click", chosen)
 
     def test_heuristic_flow_maps_downloads_invoice_prompt_to_filesystem(self):
         nodes = [{"name": "lenovo", "reachable": True}]

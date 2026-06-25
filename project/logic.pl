@@ -1,5 +1,5 @@
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.138', 'javascript').
+project_metadata('urirun', '0.4.139', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -27,17 +27,19 @@ project_file('adapters/python/tests/test_connector_sdk.py', 63, 'python').
 project_file('adapters/python/tests/test_connector_smoke.py', 83, 'python').
 project_file('adapters/python/tests/test_daemon.py', 41, 'python').
 project_file('adapters/python/tests/test_declarative.py', 103, 'python').
+project_file('adapters/python/tests/test_diagnostics.py', 84, 'python').
 project_file('adapters/python/tests/test_discovery.py', 127, 'python').
 project_file('adapters/python/tests/test_dispatch_protocol.py', 81, 'python').
 project_file('adapters/python/tests/test_domain_monitor.py', 162, 'python').
 project_file('adapters/python/tests/test_errors.py', 291, 'python').
 project_file('adapters/python/tests/test_exec.py', 147, 'python').
+project_file('adapters/python/tests/test_flow_rollup.py', 119, 'python').
 project_file('adapters/python/tests/test_gap5_authoring.py', 105, 'python').
 project_file('adapters/python/tests/test_host_dashboard.py', 479, 'python').
 project_file('adapters/python/tests/test_host_db.py', 113, 'python').
 project_file('adapters/python/tests/test_install_upgrade.py', 109, 'python').
 project_file('adapters/python/tests/test_introspect.py', 76, 'python').
-project_file('adapters/python/tests/test_mesh.py', 1727, 'python').
+project_file('adapters/python/tests/test_mesh.py', 1789, 'python').
 project_file('adapters/python/tests/test_minimal_imports.py', 91, 'python').
 project_file('adapters/python/tests/test_no_urirun_shadow.py', 15, 'python').
 project_file('adapters/python/tests/test_node_client.py', 335, 'python').
@@ -107,13 +109,14 @@ project_file('adapters/python/urirun/node/_util.py', 38, 'python').
 project_file('adapters/python/urirun/node/_version.py', 77, 'python').
 project_file('adapters/python/urirun/node/client.py', 559, 'python').
 project_file('adapters/python/urirun/node/config.py', 210, 'python').
-project_file('adapters/python/urirun/node/flow.py', 627, 'python').
+project_file('adapters/python/urirun/node/diagnostics.py', 158, 'python').
+project_file('adapters/python/urirun/node/flow.py', 684, 'python').
 project_file('adapters/python/urirun/node/formatting.py', 79, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 174, 'python').
 project_file('adapters/python/urirun/node/manage.py', 431, 'python').
 project_file('adapters/python/urirun/node/mesh.py', 1976, 'python').
 project_file('adapters/python/urirun/node/paths.py', 39, 'python').
-project_file('adapters/python/urirun/node/recovery.py', 233, 'python').
+project_file('adapters/python/urirun/node/recovery.py', 262, 'python').
 project_file('adapters/python/urirun/node/routing.py', 144, 'python').
 project_file('adapters/python/urirun/node/task_cli.py', 343, 'python').
 project_file('adapters/python/urirun/node/transport.py', 529, 'python').
@@ -183,7 +186,7 @@ project_file('tests/test_host_object_registry.py', 153, 'python').
 project_file('tests/test_host_scanner_bridge.py', 403, 'python').
 project_file('tests/test_host_service_control.py', 160, 'python').
 project_file('tests/test_host_widgets.py', 85, 'python').
-project_file('tests/test_node_flow_recovery.py', 90, 'python').
+project_file('tests/test_node_flow_recovery.py', 110, 'python').
 project_file('tests/test_urirun.py', 12, 'python').
 project_file('tests/test_v2_service_auth.py', 47, 'python').
 project_file('tree.sh', 5, 'shell').
@@ -269,6 +272,7 @@ python_function('adapters/python/tests/test_declarative.py', 'test_bindings_from
 python_function('adapters/python/tests/test_declarative.py', 'test_bindings_from_spec_compiles_and_validates', 0, 3, 5).
 python_function('adapters/python/tests/test_declarative.py', 'test_run_fetch_resolves_env_and_templates', 1, 6, 6).
 python_function('adapters/python/tests/test_declarative.py', 'test_run_fetch_get_sends_no_body', 1, 4, 4).
+python_function('adapters/python/tests/test_diagnostics.py', '_err', 2, 1, 0).
 python_function('adapters/python/tests/test_discovery.py', '_fake_binding', 2, 1, 0).
 python_function('adapters/python/tests/test_discovery.py', 'test_build_index_maps_schemes', 2, 6, 4).
 python_function('adapters/python/tests/test_discovery.py', 'test_build_index_tracks_shared_scheme_candidates', 2, 5, 5).
@@ -297,6 +301,16 @@ python_function('adapters/python/tests/test_exec.py', 'test_subprocess_cwd_does_
 python_function('adapters/python/tests/test_exec.py', 'test_crash_is_contained', 2, 4, 6).
 python_function('adapters/python/tests/test_exec.py', 'test_subprocess_route_dry_run_does_not_call_handler', 2, 5, 5).
 python_function('adapters/python/tests/test_exec.py', 'test_handler_isolated_flag_sets_subprocess_adapter', 0, 4, 4).
+python_function('adapters/python/tests/test_flow_rollup.py', '_env', 1, 1, 0).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_action_ok_folds_inner_result_ok', 0, 3, 2).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_action_ok_false_when_transport_fails', 0, 2, 1).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_action_ok_true_when_inner_ok_absent', 0, 2, 1).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_action_error_surfaces_inner_error', 0, 3, 2).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_timeline_entry_reports_red_on_inner_failure', 0, 4, 2).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_timeline_entry_green_on_full_success', 0, 3, 2).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_execute_flow_aborts_on_inner_action_failure', 1, 5, 3).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_execute_flow_self_heals_then_succeeds', 1, 7, 5).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_execute_flow_green_when_every_action_succeeds', 1, 2, 3).
 python_function('adapters/python/tests/test_gap5_authoring.py', 'test_gen_handlers_emits_valid_typed_stubs', 0, 5, 3).
 python_function('adapters/python/tests/test_gap5_authoring.py', 'test_run_module_dispatches_from_a_plain_file', 1, 3, 5).
 python_function('adapters/python/tests/test_gap5_authoring.py', 'test_run_module_errors_clearly_on_empty_file', 1, 4, 3).
@@ -1176,6 +1190,8 @@ python_function('adapters/python/urirun/node/config.py', 'load_node_config', 1, 
 python_function('adapters/python/urirun/node/config.py', 'save_node_config', 2, 1, 2).
 python_function('adapters/python/urirun/node/config.py', 'init_node', 6, 1, 3).
 python_function('adapters/python/urirun/node/config.py', 'node_url', 2, 8, 4).
+python_function('adapters/python/urirun/node/diagnostics.py', '_target', 1, 7, 4).
+python_function('adapters/python/urirun/node/diagnostics.py', 'diagnose', 1, 13, 7).
 python_function('adapters/python/urirun/node/flow.py', '_flow_format', 2, 3, 2).
 python_function('adapters/python/urirun/node/flow.py', 'flow_document', 1, 3, 2).
 python_function('adapters/python/urirun/node/flow.py', 'write_flow_document', 3, 3, 7).
@@ -1199,9 +1215,11 @@ python_function('adapters/python/urirun/node/flow.py', 'llm_flow', 3, 7, 7).
 python_function('adapters/python/urirun/node/flow.py', 'make_flow', 4, 6, 5).
 python_function('adapters/python/urirun/node/flow.py', '_dig_path', 2, 4, 4).
 python_function('adapters/python/urirun/node/flow.py', 'resolve_step_payload', 2, 5, 5).
+python_function('adapters/python/urirun/node/flow.py', '_action_ok', 1, 3, 3).
+python_function('adapters/python/urirun/node/flow.py', '_action_error', 1, 2, 3).
 python_function('adapters/python/urirun/node/flow.py', '_flow_step_failure', 3, 2, 5).
-python_function('adapters/python/urirun/node/flow.py', '_flow_timeline_entry', 3, 4, 7).
-python_function('adapters/python/urirun/node/flow.py', '_run_step', 7, 7, 7).
+python_function('adapters/python/urirun/node/flow.py', '_flow_timeline_entry', 3, 5, 8).
+python_function('adapters/python/urirun/node/flow.py', '_run_step', 7, 16, 9).
 python_function('adapters/python/urirun/node/flow.py', 'execute_flow', 4, 12, 9).
 python_function('adapters/python/urirun/node/flow.py', '_flow_stdout', 1, 6, 2).
 python_function('adapters/python/urirun/node/flow.py', 'verify_flow_execution', 2, 10, 6).
@@ -1334,7 +1352,8 @@ python_function('adapters/python/urirun/node/recovery.py', '_transient_actions',
 python_function('adapters/python/urirun/node/recovery.py', '_not_found_actions', 3, 5, 3).
 python_function('adapters/python/urirun/node/recovery.py', '_fallback_actions', 2, 2, 3).
 python_function('adapters/python/urirun/node/recovery.py', 'recovery_actions', 1, 12, 10).
-python_function('adapters/python/urirun/node/recovery.py', 'recovery_plan', 1, 1, 3).
+python_function('adapters/python/urirun/node/recovery.py', 'recovery_plan', 1, 2, 4).
+python_function('adapters/python/urirun/node/recovery.py', 'apply_auto_remediation', 2, 10, 7).
 python_function('adapters/python/urirun/node/recovery.py', 'can_retry_step', 1, 6, 4).
 python_function('adapters/python/urirun/node/recovery.py', 'planner_failure', 1, 3, 2).
 python_function('adapters/python/urirun/node/routing.py', 'uri_is_denied', 1, 2, 1).
@@ -2028,6 +2047,7 @@ python_function('tests/test_host_widgets.py', 'test_service_widget_summary_uses_
 python_function('tests/test_host_widgets.py', 'test_service_widget_summary_falls_back_to_target_and_updated_at', 0, 2, 1).
 python_function('tests/test_node_flow_recovery.py', '_mesh', 1, 1, 0).
 python_function('tests/test_node_flow_recovery.py', '_one_step', 0, 1, 0).
+python_function('tests/test_node_flow_recovery.py', 'test_execute_flow_folds_action_ok_under_ok_envelope', 1, 5, 4).
 python_function('tests/test_node_flow_recovery.py', 'test_execute_flow_retries_transient_query_failure', 1, 8, 6).
 python_function('tests/test_node_flow_recovery.py', 'test_execute_flow_does_not_retry_transient_command_failure', 1, 5, 6).
 python_function('tests/test_node_flow_recovery.py', 'test_execute_flow_reports_missing_dependency_as_recovery_failure', 1, 5, 4).
@@ -2086,6 +2106,18 @@ python_method('ConnectorLintTests', 'test_missing_adapterkinds_skips_check', 0, 
 python_method('ConnectorLintTests', 'test_declarative_connector_is_not_flagged', 0, 1, 7).
 python_method('ConnectorLintTests', 'test_secret_env_read_without_resolver_is_a_bypass', 0, 2, 5).
 python_method('ConnectorLintTests', 'test_secret_env_read_with_resolver_is_not_a_bypass', 0, 2, 5).
+python_class('adapters/python/tests/test_diagnostics.py', 'DiagnoseTests').
+python_method('DiagnoseTests', 'test_ui_target_not_located_routes_to_cdp_dom', 0, 2, 5).
+python_method('DiagnoseTests', 'test_no_onscreen_text_also_matches_ui_target', 0, 1, 3).
+python_method('DiagnoseTests', 'test_debugger_down_proposes_dedicated_profile', 0, 1, 3).
+python_method('DiagnoseTests', 'test_node_exec_timeout', 0, 1, 4).
+python_method('DiagnoseTests', 'test_route_not_served_gated_on_not_found', 0, 1, 4).
+python_method('DiagnoseTests', 'test_route_not_served_category_gate', 0, 1, 3).
+python_method('DiagnoseTests', 'test_empty_target', 0, 1, 3).
+python_method('DiagnoseTests', 'test_no_match_returns_none', 0, 1, 3).
+python_class('adapters/python/tests/test_diagnostics.py', 'RecoveryPlanEnrichmentTests').
+python_method('RecoveryPlanEnrichmentTests', 'test_plan_carries_diagnosis_when_signature_known', 0, 1, 4).
+python_method('RecoveryPlanEnrichmentTests', 'test_plan_omits_diagnosis_when_unknown', 0, 1, 3).
 python_class('adapters/python/tests/test_domain_monitor.py', '_StatusHandler').
 python_method('_StatusHandler', 'do_GET', 0, 1, 4).
 python_method('_StatusHandler', 'log_message', 1, 1, 0).
@@ -2229,6 +2261,7 @@ python_method('MeshTests', 'test_heuristic_flow_maps_config_node_name_to_route_t
 python_method('MeshTests', 'test_heuristic_flow_maps_linkedin_screen_prompt_to_capture', 0, 1, 2).
 python_method('MeshTests', 'test_heuristic_flow_filters_selected_node_when_route_targets_overlap', 0, 2, 2).
 python_method('MeshTests', 'test_heuristic_flow_maps_browser_linkedin_prompt_to_cdp', 0, 2, 2).
+python_method('MeshTests', 'test_llm_flow_presents_cdp_dom_routes_and_prefers_them', 0, 3, 9).
 python_method('MeshTests', 'test_heuristic_flow_maps_downloads_invoice_prompt_to_filesystem', 0, 2, 2).
 python_method('MeshTests', 'test_heuristic_flow_does_not_fake_invoice_prompt_with_processes', 0, 1, 2).
 python_method('MeshTests', 'test_heuristic_flow_does_not_fake_browser_prompt_with_lone_health', 0, 1, 2).
@@ -2417,6 +2450,9 @@ python_method('NodeClient', 'recent_log', 1, 6, 3).
 python_method('NodeClient', '_watch_query_params', 3, 5, 4).
 python_method('NodeClient', 'watch', 5, 12, 13).
 python_method('NodeClient', 'stream_run', 3, 8, 5).
+python_class('adapters/python/urirun/node/diagnostics.py', '_Rule').
+python_method('_Rule', '__init__', 4, 2, 1).
+python_method('_Rule', 'matches', 3, 6, 2).
 python_class('adapters/python/urirun/node/mesh.py', 'EventHub').
 python_method('EventHub', '__init__', 1, 1, 3).
 python_method('EventHub', 'publish', 1, 3, 4).
@@ -2548,8 +2584,8 @@ makefile_target('clean', '').
 % ── Taskfile Tasks ───────────────────────────────────────
 
 % ── Environment Variables ────────────────────────────────
-env_variable('OPENROUTER_API_KEY', '*(not set)*', 'Required: OpenRouter API key (https://openrouter.ai/keys)').
-env_variable('LLM_MODEL', 'openrouter/qwen/qwen3-coder-next', 'Model (default: openrouter/qwen/qwen3-coder-next)').
+env_variable('ANTHROPIC_API_KEY', '*(not set)*', '=============================================================================').
+env_variable('LLM_MODEL', 'claude-sonnet-4-6', '').
 env_variable('PFIX_AUTO_APPLY', 'true', 'true = apply fixes without asking').
 env_variable('PFIX_AUTO_INSTALL_DEPS', 'true', 'true = auto pip/uv install').
 env_variable('PFIX_AUTO_RESTART', 'false', 'true = os.execv restart after fix').

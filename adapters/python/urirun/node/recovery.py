@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from urirun.node.diagnostics import diagnose
 from urirun.node.routing import route_target
 from urirun.runtime import errors as uri_errors
 
@@ -190,11 +191,39 @@ def recovery_actions(error: dict, *, step: dict | None = None, routes: list[dict
 
 def recovery_plan(error: dict, *, step: dict | None = None, routes: list[dict] | None = None) -> dict:
     actions = recovery_actions(error, step=step, routes=routes)
-    return {
+    plan = {
         "recoverable": bool(actions),
         "category": error.get("category"),
         "actions": actions,
     }
+    # Experience-driven layer: name the root cause + a specific, partly auto-applicable fix.
+    diagnosis = diagnose(error, step=step, routes=routes)
+    if diagnosis:
+        plan["diagnosis"] = diagnosis
+    return plan
+
+
+def apply_auto_remediation(diagnosis: dict, registry: dict, *, dispatch=None) -> list[dict]:
+    """Execute the ``automatic: True`` remediation URIs of a diagnosis (idempotent
+    provisioning / preconditions like cdp/session/ensure, cdp/page/ready, registry adopt).
+    Returns one ``{id, uri, ok, error?}`` per applied action. The step is retried by the
+    caller AFTER this — so a diagnosed failure is actually FIXED, not just reported. The
+    dispatch fn is injectable for testing (defaults to the URI service call)."""
+    from urirun import result_data, v2_service
+    call = dispatch or (lambda uri: v2_service.call(uri, {}, registry, mode="execute"))
+    applied: list[dict] = []
+    for action in diagnosis.get("remediation") or []:
+        if not action.get("automatic") or not action.get("uri"):
+            continue
+        try:
+            env = call(action["uri"])
+            value = result_data(env) if isinstance(env, dict) else None
+            value_ok = not isinstance(value, dict) or value.get("ok", True)
+            applied.append({"id": action["id"], "uri": action["uri"],
+                            "ok": bool(env.get("ok") and value_ok)})
+        except Exception as exc:  # noqa: BLE001 - a failed fix must not crash the flow
+            applied.append({"id": action["id"], "uri": action["uri"], "ok": False, "error": str(exc)})
+    return applied
 
 
 def can_retry_step(error: dict, *, step: dict, routes: list[dict], execute: bool, attempt: int, max_retries: int) -> bool:
