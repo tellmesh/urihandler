@@ -309,13 +309,13 @@ Language-agnostic URI to handler adapter
 ### `project/map.toon.yaml`
 
 ```toon markpact:analysis path=project/map.toon.yaml
-# urirun | 189f 49560L | python:167,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-25
-# stats: 1870 func | 73 cls | 189 mod | CC̄=4.9 | critical:234 | cycles:0
-# alerts[5]: CC test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen=125; CC fit_to_environment=30; CC test_archive_scanned_document_writes_pdf_json_index_and_detects_duplicate=26; CC test_sync_documents_to_node_copies_pdfs_and_logs_chat=23; CC test_chat_ask_plans_document_sync_without_llm=22
+# urirun | 192f 50353L | python:170,shell:10,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-25
+# stats: 1892 func | 85 cls | 192 mod | CC̄=4.9 | critical:237 | cycles:0
+# alerts[5]: CC test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen=125; CC fit_to_environment=32; CC test_archive_scanned_document_writes_pdf_json_index_and_detects_duplicate=26; CC execute_flow=25; CC test_sync_documents_to_node_copies_pdfs_and_logs_chat=23
 # hotspots[5]: create_handler fan=56; _archive_scanned_document fan=39; _write_document_pdf fan=28; summary fan=28; serve fan=28
 # evolution: baseline
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
-M[189]:
+M[192]:
   adapters/bash/example/hash-connector.sh,10
   adapters/bash/urirun.sh,18
   adapters/conformance.py,168
@@ -341,13 +341,14 @@ M[189]:
   adapters/python/tests/test_connector_smoke.py,83
   adapters/python/tests/test_daemon.py,41
   adapters/python/tests/test_declarative.py,103
-  adapters/python/tests/test_diagnostics.py,152
+  adapters/python/tests/test_diagnostics.py,174
   adapters/python/tests/test_discovery.py,127
   adapters/python/tests/test_dispatch_protocol.py,81
   adapters/python/tests/test_domain_monitor.py,162
   adapters/python/tests/test_errors.py,291
   adapters/python/tests/test_exec.py,147
-  adapters/python/tests/test_flow_rollup.py,127
+  adapters/python/tests/test_flow_reversible.py,85
+  adapters/python/tests/test_flow_rollup.py,171
   adapters/python/tests/test_gap5_authoring.py,105
   adapters/python/tests/test_host_dashboard.py,479
   adapters/python/tests/test_host_db.py,113
@@ -365,6 +366,7 @@ M[189]:
   adapters/python/tests/test_public_api.py,191
   adapters/python/tests/test_refactor_helpers.py,151
   adapters/python/tests/test_registry_portable.py,47
+  adapters/python/tests/test_reversible.py,249
   adapters/python/tests/test_routing.py,73
   adapters/python/tests/test_scheduler.py,62
   adapters/python/tests/test_secrets.py,168
@@ -423,14 +425,15 @@ M[189]:
   adapters/python/urirun/node/_version.py,77
   adapters/python/urirun/node/client.py,559
   adapters/python/urirun/node/config.py,210
-  adapters/python/urirun/node/diagnostics.py,279
-  adapters/python/urirun/node/flow.py,774
+  adapters/python/urirun/node/diagnostics.py,284
+  adapters/python/urirun/node/flow.py,893
   adapters/python/urirun/node/formatting.py,79
   adapters/python/urirun/node/keyauth.py,174
   adapters/python/urirun/node/manage.py,431
   adapters/python/urirun/node/mesh.py,1976
   adapters/python/urirun/node/paths.py,39
-  adapters/python/urirun/node/recovery.py,280
+  adapters/python/urirun/node/recovery.py,300
+  adapters/python/urirun/node/reversible.py,249
   adapters/python/urirun/node/routing.py,144
   adapters/python/urirun/node/task_cli.py,343
   adapters/python/urirun/node/transport.py,529
@@ -633,7 +636,7 @@ D:
     e: _err,DiagnoseTests,SurfaceUpgradeTests,FitToEnvironmentTests,RecoveryPlanEnrichmentTests
     DiagnoseTests: test_ui_target_not_located_routes_to_cdp_dom(0),test_no_onscreen_text_also_matches_ui_target(0),test_debugger_down_proposes_dedicated_profile(0),test_node_exec_timeout(0),test_route_not_served_gated_on_not_found(0),test_route_not_served_category_gate(0),test_not_logged_in(0),test_stale_node_urirun_beats_generic_route_not_served(0),test_empty_target(0),test_no_match_returns_none(0)
     SurfaceUpgradeTests: test_target_not_located_on_login_page_becomes_not_logged_in(0),test_target_not_located_on_feed_stays_ui_target(0),test_empty_message_on_login_surface_for_kvm_step(0),test_surface_none_keeps_message_diagnosis(0)
-    FitToEnvironmentTests: test_cdp_fix_dropped_when_no_chrome(0),test_cdp_fix_kept_when_chrome_present(0),test_uncontrollable_env_adds_install_action_and_no_auto(0)
+    FitToEnvironmentTests: test_cdp_fix_dropped_when_no_chrome(0),test_cdp_fix_kept_when_chrome_present(0),test_surface_escalation_when_oslevel_unreliable(0),test_no_escalation_when_oslevel_reliable_overrides_heuristic(0),test_uncontrollable_env_adds_install_action_and_no_auto(0)
     RecoveryPlanEnrichmentTests: test_plan_carries_diagnosis_when_signature_known(0),test_plan_omits_diagnosis_when_unknown(0)
     _err(message;category)
   adapters/python/tests/test_discovery.py:
@@ -681,8 +684,17 @@ D:
     test_crash_is_contained(tmp_path;monkeypatch)
     test_subprocess_route_dry_run_does_not_call_handler(tmp_path;monkeypatch)
     test_handler_isolated_flag_sets_subprocess_adapter()
+  adapters/python/tests/test_flow_reversible.py:
+    e: _execution_with_inverses,_mesh,test_ledger_from_execution_skips_queries_and_recovery_markers,test_rollback_flow_undoes_inverses_lifo,test_rollback_flow_escalates_on_failed_inverse,test_rollback_flow_noop_when_nothing_reversible,test_run_flow_document_attaches_reversible_ledger
+    _execution_with_inverses()
+    _mesh()
+    test_ledger_from_execution_skips_queries_and_recovery_markers()
+    test_rollback_flow_undoes_inverses_lifo(monkeypatch)
+    test_rollback_flow_escalates_on_failed_inverse(monkeypatch)
+    test_rollback_flow_noop_when_nothing_reversible(monkeypatch)
+    test_run_flow_document_attaches_reversible_ledger(monkeypatch)
   adapters/python/tests/test_flow_rollup.py:
-    e: _env,test_action_ok_folds_inner_result_ok,test_action_ok_false_when_transport_fails,test_action_ok_true_when_inner_ok_absent,test_action_error_surfaces_inner_error,test_timeline_entry_reports_red_on_inner_failure,test_timeline_entry_green_on_full_success,test_execute_flow_aborts_on_inner_action_failure,test_execute_flow_self_heals_then_succeeds,test_execute_flow_green_when_every_action_succeeds
+    e: _env,test_action_ok_folds_inner_result_ok,test_action_ok_false_when_transport_fails,test_action_ok_true_when_inner_ok_absent,test_action_error_surfaces_inner_error,test_timeline_entry_reports_red_on_inner_failure,test_timeline_entry_green_on_full_success,test_execute_flow_aborts_on_inner_action_failure,test_execute_flow_self_heals_then_succeeds,test_execute_flow_rolls_back_reversible_steps_on_failure,test_failed_flow_without_inverses_does_not_rollback,test_execute_flow_green_when_every_action_succeeds
     _env(inner_ok)
     test_action_ok_folds_inner_result_ok()
     test_action_ok_false_when_transport_fails()
@@ -692,6 +704,8 @@ D:
     test_timeline_entry_green_on_full_success()
     test_execute_flow_aborts_on_inner_action_failure(monkeypatch)
     test_execute_flow_self_heals_then_succeeds(monkeypatch)
+    test_execute_flow_rolls_back_reversible_steps_on_failure(monkeypatch)
+    test_failed_flow_without_inverses_does_not_rollback(monkeypatch)
     test_execute_flow_green_when_every_action_succeeds(monkeypatch)
   adapters/python/tests/test_gap5_authoring.py:
     e: test_gen_handlers_emits_valid_typed_stubs,test_run_module_dispatches_from_a_plain_file,test_run_module_errors_clearly_on_empty_file,test_connector_main_aggregates_routes_and_runs,test_connector_main_namespaces_clashing_route_names
@@ -823,6 +837,12 @@ D:
     test_assert_registry_portable_raises_on_local_function()
     test_smoke_requires_portability_by_default()
     test_smoke_portable_allow_opts_in_for_inprocess_connectors()
+  adapters/python/tests/test_reversible.py:
+    e: KvmFake,DataFake,ReversibleEngineTests,FlowBridgeTests
+    KvmFake: __init__(1),scan_uri(1),schema(2),call(2)  # Adopter #1 — browser windows. URL+scroll+form are serializab
+    DataFake: __init__(1),scan_uri(1),schema(2),call(2)  # Adopter #2 — a key-value store. SAME engine, different schem
+    ReversibleEngineTests: test_close_then_restore_returns_serialized_state_but_not_ephemeral(0),test_irreversible_step_is_blocked_and_prefix_rolls_back(0),test_mutation_returning_no_inverse_is_a_violation(0),test_same_engine_drives_data_connector(0),test_failed_inverse_escalates_with_known_bad_state(0)
+    FlowBridgeTests: _execution(0),test_ledger_extracts_only_steps_with_an_inverse(0),test_rollback_flow_undoes_lifo_with_whole_flow_proof(0),test_rollback_flow_escalates_on_residual_mutation(0)  # The bridge: roll back a flow that ran through the NORMAL run
   adapters/python/tests/test_routing.py:
     e: test_arbitrary_command_verbs_are_unsafe,test_fixed_and_dsl_commands_stay_safe,test_explicit_safe_false_overrides,test_route_is_safe_single_source_of_truth,test_safe_route_and_route_is_safe_agree,test_routes_from_registry_honors_author_declared_unsafe
     test_arbitrary_command_verbs_are_unsafe()
@@ -1753,7 +1773,7 @@ D:
     diagnose(error)
     fit_to_environment(diagnosis;environment)
   adapters/python/urirun/node/flow.py:
-    e: _flow_format,flow_document,write_flow_document,load_flow_document,first_url,nl_key,append_if_available,requested_folder_path,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,_uri_segments,_uri_matches_template,_uri_is_available,_normalize_flow_step,_normalize_flow_task,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,_action_ok,_action_error,_flow_step_failure,_flow_timeline_entry,_fetch_kvm_query,_fetch_env_profile,_fetch_surface,_run_step,_circuit_break,_preflight,execute_flow,_flow_stdout,verify_flow_execution,run_flow_document
+    e: _flow_format,flow_document,write_flow_document,load_flow_document,first_url,nl_key,append_if_available,requested_folder_path,_flow_intents,_append_target_steps,heuristic_flow,json_from_text,_uri_segments,_uri_matches_template,_uri_is_available,_normalize_flow_step,_normalize_flow_task,normalize_flow,normalize_flow_or_explain,llm_flow,make_flow,_dig_path,resolve_step_payload,_action_ok,_action_error,_flow_step_failure,_flow_timeline_entry,_fetch_kvm_query,_fetch_env_profile,_fetch_surface,_run_step,_circuit_break,_preflight,_rollback_partial,execute_flow,_flow_stdout,_run_goal_check,verify_flow_execution,run_flow_document,_flow_transport,rollback_flow
     _flow_format(path;requested)
     flow_document(flow)
     write_flow_document(path;document;fmt)
@@ -1787,10 +1807,14 @@ D:
     _run_step(step;payload;registry;execute;routes;recover;max_retries)
     _circuit_break(reason;timeline;results;recoveries)
     _preflight(flow;registry)
+    _rollback_partial(timeline;results;registry)
     execute_flow(flow;mesh;registry;execute)
     _flow_stdout(envelope)
+    _run_goal_check(goal;dispatch)
     verify_flow_execution(document;execution)
     run_flow_document(document;mesh)
+    _flow_transport(mesh)
+    rollback_flow(execution;mesh)
   adapters/python/urirun/node/formatting.py:
     e: format_table,format_nodes,format_routes,format_tickets
     format_table(rows;columns;headers)
@@ -1923,7 +1947,7 @@ D:
     deploy_dir()
     node_token_path()
   adapters/python/urirun/node/recovery.py:
-    e: _infer_category,normalize_error,exception_error,step_target,route_for_step,_llm_model_actions,_transient_actions,_not_found_actions,_fallback_actions,recovery_actions,recovery_plan,apply_auto_remediation,can_retry_step,planner_failure
+    e: _infer_category,normalize_error,exception_error,step_target,route_for_step,_llm_model_actions,_transient_actions,_not_found_actions,_fallback_actions,recovery_actions,failure_signature,recovery_plan,apply_auto_remediation,can_retry_step,planner_failure
     _infer_category(out)
     normalize_error(error)
     exception_error(exc)
@@ -1934,10 +1958,29 @@ D:
     _not_found_actions(message;error;scheme)
     _fallback_actions(step;routes)
     recovery_actions(error)
+    failure_signature(error)
     recovery_plan(error)
     apply_auto_remediation(diagnosis;registry)
     can_retry_step(error)
     planner_failure(exc)
+  adapters/python/urirun/node/reversible.py:
+    e: parse,path_of,sig,_step_kind,local_transport,rollback_partial_flow,_inner_value,ledger_from_execution,CallSpec,Action,Transition,Transport,CallableTransport,Connector,Twin,ReversibleProcess
+    CallSpec:  # A route's declaration in a connector schema: does it mutate,
+    Action:
+    Transition:  # One ledger entry — what makes the world navigable in BOTH di
+    Transport: call(2)  # Communication layer. In urirun this is HTTP to a node (wrap 
+    CallableTransport: __init__(1),call(2)  # Adapt any ``fn(uri, payload) -> dict`` into a Transport (e.g
+    Connector: call(2),scan_uri(1),schema(2)  # The ADOPTION CONTRACT. A connector enters the engine by prov
+    Twin: scan(3),rescan(1)  # The environment model + a position signature. Holds its own 
+    ReversibleProcess: execute(3),rollback(2),rollback_flow(3)  # The engine: execute with the invariant, build the ledger, ro
+    parse(uri)
+    path_of(uri)
+    sig(obj)
+    _step_kind(spec)
+    local_transport(by_scheme)
+    rollback_partial_flow(timeline;results;transport;twin)
+    _inner_value(env)
+    ledger_from_execution(execution)
   adapters/python/urirun/node/routing.py:
     e: uri_is_denied,route_is_safe,routes_from_registry,registry_fingerprint,safe_route,route_target,binding_for_remote_route,registry_from_routes,target_nodes,route_targets_for_nodes
     uri_is_denied(uri)
@@ -2760,7 +2803,7 @@ D:
 
 ```prolog markpact:analysis path=project/logic.pl
 % ── Project Metadata ─────────────────────────────────────
-project_metadata('urirun', '0.4.142', 'javascript').
+project_metadata('urirun', '0.4.143', 'javascript').
 
 % ── Project Files ────────────────────────────────────────
 project_file('adapters/bash/example/hash-connector.sh', 10, 'shell').
@@ -2788,13 +2831,14 @@ project_file('adapters/python/tests/test_connector_sdk.py', 63, 'python').
 project_file('adapters/python/tests/test_connector_smoke.py', 83, 'python').
 project_file('adapters/python/tests/test_daemon.py', 41, 'python').
 project_file('adapters/python/tests/test_declarative.py', 103, 'python').
-project_file('adapters/python/tests/test_diagnostics.py', 152, 'python').
+project_file('adapters/python/tests/test_diagnostics.py', 174, 'python').
 project_file('adapters/python/tests/test_discovery.py', 127, 'python').
 project_file('adapters/python/tests/test_dispatch_protocol.py', 81, 'python').
 project_file('adapters/python/tests/test_domain_monitor.py', 162, 'python').
 project_file('adapters/python/tests/test_errors.py', 291, 'python').
 project_file('adapters/python/tests/test_exec.py', 147, 'python').
-project_file('adapters/python/tests/test_flow_rollup.py', 127, 'python').
+project_file('adapters/python/tests/test_flow_reversible.py', 85, 'python').
+project_file('adapters/python/tests/test_flow_rollup.py', 171, 'python').
 project_file('adapters/python/tests/test_gap5_authoring.py', 105, 'python').
 project_file('adapters/python/tests/test_host_dashboard.py', 479, 'python').
 project_file('adapters/python/tests/test_host_db.py', 113, 'python').
@@ -2812,6 +2856,7 @@ project_file('adapters/python/tests/test_planfile_adapter.py', 344, 'python').
 project_file('adapters/python/tests/test_public_api.py', 191, 'python').
 project_file('adapters/python/tests/test_refactor_helpers.py', 151, 'python').
 project_file('adapters/python/tests/test_registry_portable.py', 47, 'python').
+project_file('adapters/python/tests/test_reversible.py', 249, 'python').
 project_file('adapters/python/tests/test_routing.py', 73, 'python').
 project_file('adapters/python/tests/test_scheduler.py', 62, 'python').
 project_file('adapters/python/tests/test_secrets.py', 168, 'python').
@@ -2870,14 +2915,15 @@ project_file('adapters/python/urirun/node/_util.py', 38, 'python').
 project_file('adapters/python/urirun/node/_version.py', 77, 'python').
 project_file('adapters/python/urirun/node/client.py', 559, 'python').
 project_file('adapters/python/urirun/node/config.py', 210, 'python').
-project_file('adapters/python/urirun/node/diagnostics.py', 279, 'python').
-project_file('adapters/python/urirun/node/flow.py', 774, 'python').
+project_file('adapters/python/urirun/node/diagnostics.py', 284, 'python').
+project_file('adapters/python/urirun/node/flow.py', 893, 'python').
 project_file('adapters/python/urirun/node/formatting.py', 79, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 174, 'python').
 project_file('adapters/python/urirun/node/manage.py', 431, 'python').
 project_file('adapters/python/urirun/node/mesh.py', 1976, 'python').
 project_file('adapters/python/urirun/node/paths.py', 39, 'python').
-project_file('adapters/python/urirun/node/recovery.py', 280, 'python').
+project_file('adapters/python/urirun/node/recovery.py', 300, 'python').
+project_file('adapters/python/urirun/node/reversible.py', 249, 'python').
 project_file('adapters/python/urirun/node/routing.py', 144, 'python').
 project_file('adapters/python/urirun/node/task_cli.py', 343, 'python').
 project_file('adapters/python/urirun/node/transport.py', 529, 'python').
@@ -3062,6 +3108,13 @@ python_function('adapters/python/tests/test_exec.py', 'test_subprocess_cwd_does_
 python_function('adapters/python/tests/test_exec.py', 'test_crash_is_contained', 2, 4, 6).
 python_function('adapters/python/tests/test_exec.py', 'test_subprocess_route_dry_run_does_not_call_handler', 2, 5, 5).
 python_function('adapters/python/tests/test_exec.py', 'test_handler_isolated_flag_sets_subprocess_adapter', 0, 4, 4).
+python_function('adapters/python/tests/test_flow_reversible.py', '_execution_with_inverses', 0, 1, 0).
+python_function('adapters/python/tests/test_flow_reversible.py', '_mesh', 0, 1, 0).
+python_function('adapters/python/tests/test_flow_reversible.py', 'test_ledger_from_execution_skips_queries_and_recovery_markers', 0, 3, 2).
+python_function('adapters/python/tests/test_flow_reversible.py', 'test_rollback_flow_undoes_inverses_lifo', 1, 5, 5).
+python_function('adapters/python/tests/test_flow_reversible.py', 'test_rollback_flow_escalates_on_failed_inverse', 1, 2, 4).
+python_function('adapters/python/tests/test_flow_reversible.py', 'test_rollback_flow_noop_when_nothing_reversible', 1, 2, 3).
+python_function('adapters/python/tests/test_flow_reversible.py', 'test_run_flow_document_attaches_reversible_ledger', 1, 5, 5).
 python_function('adapters/python/tests/test_flow_rollup.py', '_env', 1, 1, 0).
 python_function('adapters/python/tests/test_flow_rollup.py', 'test_action_ok_folds_inner_result_ok', 0, 3, 2).
 python_function('adapters/python/tests/test_flow_rollup.py', 'test_action_ok_false_when_transport_fails', 0, 2, 1).
@@ -3071,6 +3124,8 @@ python_function('adapters/python/tests/test_flow_rollup.py', 'test_timeline_entr
 python_function('adapters/python/tests/test_flow_rollup.py', 'test_timeline_entry_green_on_full_success', 0, 3, 2).
 python_function('adapters/python/tests/test_flow_rollup.py', 'test_execute_flow_aborts_on_inner_action_failure', 1, 5, 3).
 python_function('adapters/python/tests/test_flow_rollup.py', 'test_execute_flow_self_heals_then_succeeds', 1, 7, 5).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_execute_flow_rolls_back_reversible_steps_on_failure', 1, 5, 6).
+python_function('adapters/python/tests/test_flow_rollup.py', 'test_failed_flow_without_inverses_does_not_rollback', 1, 4, 3).
 python_function('adapters/python/tests/test_flow_rollup.py', 'test_execute_flow_green_when_every_action_succeeds', 1, 2, 3).
 python_function('adapters/python/tests/test_gap5_authoring.py', 'test_gen_handlers_emits_valid_typed_stubs', 0, 5, 3).
 python_function('adapters/python/tests/test_gap5_authoring.py', 'test_run_module_dispatches_from_a_plain_file', 1, 3, 5).
@@ -3956,7 +4011,7 @@ python_function('adapters/python/urirun/node/diagnostics.py', '_target_of', 1, 6
 python_function('adapters/python/urirun/node/diagnostics.py', '_is_login_surface', 1, 5, 4).
 python_function('adapters/python/urirun/node/diagnostics.py', '_build', 2, 3, 3).
 python_function('adapters/python/urirun/node/diagnostics.py', 'diagnose', 1, 19, 8).
-python_function('adapters/python/urirun/node/diagnostics.py', 'fit_to_environment', 2, 30, 8).
+python_function('adapters/python/urirun/node/diagnostics.py', 'fit_to_environment', 2, 32, 8).
 python_function('adapters/python/urirun/node/flow.py', '_flow_format', 2, 3, 2).
 python_function('adapters/python/urirun/node/flow.py', 'flow_document', 1, 3, 2).
 python_function('adapters/python/urirun/node/flow.py', 'write_flow_document', 3, 3, 7).
@@ -3990,10 +4045,14 @@ python_function('adapters/python/urirun/node/flow.py', '_fetch_surface', 2, 1, 1
 python_function('adapters/python/urirun/node/flow.py', '_run_step', 7, 18, 13).
 python_function('adapters/python/urirun/node/flow.py', '_circuit_break', 4, 2, 0).
 python_function('adapters/python/urirun/node/flow.py', '_preflight', 2, 15, 8).
-python_function('adapters/python/urirun/node/flow.py', 'execute_flow', 4, 21, 15).
+python_function('adapters/python/urirun/node/flow.py', '_rollback_partial', 3, 1, 3).
+python_function('adapters/python/urirun/node/flow.py', 'execute_flow', 4, 25, 18).
 python_function('adapters/python/urirun/node/flow.py', '_flow_stdout', 1, 6, 2).
-python_function('adapters/python/urirun/node/flow.py', 'verify_flow_execution', 2, 10, 6).
-python_function('adapters/python/urirun/node/flow.py', 'run_flow_document', 2, 7, 7).
+python_function('adapters/python/urirun/node/flow.py', '_run_goal_check', 2, 17, 7).
+python_function('adapters/python/urirun/node/flow.py', 'verify_flow_execution', 2, 15, 7).
+python_function('adapters/python/urirun/node/flow.py', 'run_flow_document', 2, 10, 10).
+python_function('adapters/python/urirun/node/flow.py', '_flow_transport', 1, 1, 7).
+python_function('adapters/python/urirun/node/flow.py', 'rollback_flow', 2, 6, 9).
 python_function('adapters/python/urirun/node/formatting.py', 'format_table', 3, 6, 9).
 python_function('adapters/python/urirun/node/formatting.py', 'format_nodes', 1, 8, 5).
 python_function('adapters/python/urirun/node/formatting.py', 'format_routes', 1, 7, 4).
@@ -4122,10 +4181,19 @@ python_function('adapters/python/urirun/node/recovery.py', '_transient_actions',
 python_function('adapters/python/urirun/node/recovery.py', '_not_found_actions', 3, 5, 3).
 python_function('adapters/python/urirun/node/recovery.py', '_fallback_actions', 2, 2, 3).
 python_function('adapters/python/urirun/node/recovery.py', 'recovery_actions', 1, 12, 10).
-python_function('adapters/python/urirun/node/recovery.py', 'recovery_plan', 1, 2, 4).
+python_function('adapters/python/urirun/node/recovery.py', 'failure_signature', 1, 4, 5).
+python_function('adapters/python/urirun/node/recovery.py', 'recovery_plan', 1, 2, 5).
 python_function('adapters/python/urirun/node/recovery.py', 'apply_auto_remediation', 2, 12, 7).
 python_function('adapters/python/urirun/node/recovery.py', 'can_retry_step', 1, 6, 4).
 python_function('adapters/python/urirun/node/recovery.py', 'planner_failure', 1, 3, 2).
+python_function('adapters/python/urirun/node/reversible.py', 'parse', 1, 1, 2).
+python_function('adapters/python/urirun/node/reversible.py', 'path_of', 1, 1, 1).
+python_function('adapters/python/urirun/node/reversible.py', 'sig', 1, 1, 4).
+python_function('adapters/python/urirun/node/reversible.py', '_step_kind', 1, 2, 0).
+python_function('adapters/python/urirun/node/reversible.py', 'local_transport', 1, 1, 3).
+python_function('adapters/python/urirun/node/reversible.py', 'rollback_partial_flow', 4, 2, 3).
+python_function('adapters/python/urirun/node/reversible.py', '_inner_value', 1, 5, 2).
+python_function('adapters/python/urirun/node/reversible.py', 'ledger_from_execution', 1, 10, 7).
 python_function('adapters/python/urirun/node/routing.py', 'uri_is_denied', 1, 2, 1).
 python_function('adapters/python/urirun/node/routing.py', 'route_is_safe', 2, 3, 2).
 python_function('adapters/python/urirun/node/routing.py', 'routes_from_registry', 2, 8, 5).
@@ -4895,6 +4963,8 @@ python_method('SurfaceUpgradeTests', 'test_surface_none_keeps_message_diagnosis'
 python_class('adapters/python/tests/test_diagnostics.py', 'FitToEnvironmentTests').
 python_method('FitToEnvironmentTests', 'test_cdp_fix_dropped_when_no_chrome', 0, 3, 6).
 python_method('FitToEnvironmentTests', 'test_cdp_fix_kept_when_chrome_present', 0, 1, 3).
+python_method('FitToEnvironmentTests', 'test_surface_escalation_when_oslevel_unreliable', 0, 1, 5).
+python_method('FitToEnvironmentTests', 'test_no_escalation_when_oslevel_reliable_overrides_heuristic', 0, 1, 3).
 python_method('FitToEnvironmentTests', 'test_uncontrollable_env_adds_install_action_and_no_auto', 0, 1, 4).
 python_class('adapters/python/tests/test_diagnostics.py', 'RecoveryPlanEnrichmentTests').
 python_method('RecoveryPlanEnrichmentTests', 'test_plan_carries_diagnosis_when_signature_known', 0, 1, 4).
@@ -5156,6 +5226,27 @@ python_method('DecisionLoopTests', 'test_recovered_records_initial_error', 0, 1,
 python_class('adapters/python/tests/test_refactor_helpers.py', 'DashboardApiRoutingTests').
 python_method('DashboardApiRoutingTests', 'test_unknown_path_is_404', 0, 1, 3).
 python_method('DashboardApiRoutingTests', 'test_route_table_covers_expected_endpoints', 0, 2, 1).
+python_class('adapters/python/tests/test_reversible.py', 'KvmFake').
+python_method('KvmFake', '__init__', 1, 1, 0).
+python_method('KvmFake', 'scan_uri', 1, 1, 0).
+python_method('KvmFake', 'schema', 2, 1, 1).
+python_method('KvmFake', 'call', 2, 7, 4).
+python_class('adapters/python/tests/test_reversible.py', 'DataFake').
+python_method('DataFake', '__init__', 1, 1, 0).
+python_method('DataFake', 'scan_uri', 1, 1, 0).
+python_method('DataFake', 'schema', 2, 1, 1).
+python_method('DataFake', 'call', 2, 7, 4).
+python_class('adapters/python/tests/test_reversible.py', 'ReversibleEngineTests').
+python_method('ReversibleEngineTests', 'test_close_then_restore_returns_serialized_state_but_not_ephemeral', 0, 1, 14).
+python_method('ReversibleEngineTests', 'test_irreversible_step_is_blocked_and_prefix_rolls_back', 0, 1, 14).
+python_method('ReversibleEngineTests', 'test_mutation_returning_no_inverse_is_a_violation', 0, 1, 13).
+python_method('ReversibleEngineTests', 'test_same_engine_drives_data_connector', 0, 1, 12).
+python_method('ReversibleEngineTests', 'test_failed_inverse_escalates_with_known_bad_state', 0, 1, 11).
+python_class('adapters/python/tests/test_reversible.py', 'FlowBridgeTests').
+python_method('FlowBridgeTests', '_execution', 0, 1, 1).
+python_method('FlowBridgeTests', 'test_ledger_extracts_only_steps_with_an_inverse', 0, 3, 4).
+python_method('FlowBridgeTests', 'test_rollback_flow_undoes_lifo_with_whole_flow_proof', 0, 2, 10).
+python_method('FlowBridgeTests', 'test_rollback_flow_escalates_on_residual_mutation', 0, 1, 10).
 python_class('adapters/python/tests/test_scheduler.py', 'SchedulerTests').
 python_method('SchedulerTests', 'test_systemd_preview_and_install', 0, 1, 9).
 python_method('SchedulerTests', 'test_cli_schedule_cron_preview', 0, 1, 9).
@@ -5270,6 +5361,25 @@ python_method('NodeHandler', '_run_ok', 1, 5, 4).
 python_method('NodeHandler', '_handle_deploy', 0, 11, 20).
 python_method('NodeHandler', '_handle_enroll', 0, 11, 14).
 python_method('NodeHandler', 'log_message', 1, 1, 0).
+python_class('adapters/python/urirun/node/reversible.py', 'CallSpec').
+python_class('adapters/python/urirun/node/reversible.py', 'Action').
+python_class('adapters/python/urirun/node/reversible.py', 'Transition').
+python_class('adapters/python/urirun/node/reversible.py', 'Transport').
+python_method('Transport', 'call', 2, 1, 0).
+python_class('adapters/python/urirun/node/reversible.py', 'CallableTransport').
+python_method('CallableTransport', '__init__', 1, 1, 0).
+python_method('CallableTransport', 'call', 2, 1, 1).
+python_class('adapters/python/urirun/node/reversible.py', 'Connector').
+python_method('Connector', 'call', 2, 1, 0).
+python_method('Connector', 'scan_uri', 1, 1, 0).
+python_method('Connector', 'schema', 2, 1, 0).
+python_class('adapters/python/urirun/node/reversible.py', 'Twin').
+python_method('Twin', 'scan', 3, 2, 4).
+python_method('Twin', 'rescan', 1, 1, 2).
+python_class('adapters/python/urirun/node/reversible.py', 'ReversibleProcess').
+python_method('ReversibleProcess', 'execute', 3, 8, 8).
+python_method('ReversibleProcess', 'rollback', 2, 4, 5).
+python_method('ReversibleProcess', 'rollback_flow', 3, 6, 5).
 python_class('adapters/python/urirun/runtime/_runtime.py', 'PolicyError').
 python_class('adapters/python/urirun/runtime/progress.py', 'RunControl').
 python_method('RunControl', '__init__', 2, 1, 1).
@@ -5454,7 +5564,7 @@ sumd_workflow_step('clean', 1, 'rm -rf node_modules .pytest_cache adapters/pytho
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.28s
+# generated in 0.25s
 # nodes: 434 | edges: 500 | modules: 35
 # CC̄=4.7
 
@@ -5481,24 +5591,24 @@ HUBS[20]:
     CC=14  in:1  out:33  total:34
   adapters.python.urirun.host.host_dashboard._archive_redundant_duplicate
     CC=10  in:1  out:31  total:32
-  adapters.python.urirun.host.host_dashboard._scanned_log_entry
-    CC=8  in:1  out:28  total:29
   adapters.python.urirun.host.host_dashboard._supersede_archived_document
     CC=10  in:1  out:28  total:29
+  adapters.python.urirun.host.host_dashboard._scanned_log_entry
+    CC=8  in:1  out:28  total:29
   adapters.python.urirun.host.document_metadata._normalize_llm_doc_fields
     CC=14  in:1  out:28  total:29
   adapters.python.urirun.host.document_sync._upload_file
     CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._build_sync_params
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
   adapters.python.urirun.host.host_db._run_query_route
     CC=7  in:1  out:26  total:27
   adapters.python.urirun.host.document_sync._read_back_file
     CC=11  in:1  out:26  total:27
-  adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service
-    CC=10  in:5  out:21  total:26
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
+  adapters.python.urirun.host.host_dashboard.node_add
+    CC=14  in:1  out:25  total:26
 
 MODULES:
   adapters.c.urirun  [4 funcs]

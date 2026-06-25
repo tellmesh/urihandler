@@ -1,14 +1,14 @@
-# urirun | 1697 func | 96f | 39870L | python | 2026-06-25
+# urirun | 1720 func | 97f | 40242L | python | 2026-06-25
 # generated in 0.00s
 
 HEALTH:
-  CC̄=4.7  critical=224 (limit:10)  dup=2  cycles=0
+  CC̄=4.7  critical=227 (limit:10)  dup=2  cycles=0
 
 ALERTS[20]:
   !!! high_fan_out     create_handler = 59 (limit:10)
   !!! high_fan_out     _archive_scanned_document = 43 (limit:10)
+  !!! cc_exceeded      fit_to_environment = 32 (limit:15)
   !!! high_fan_out     _write_document_pdf = 32 (limit:10)
-  !!! cc_exceeded      fit_to_environment = 30 (limit:15)
   !!! high_fan_out     serve = 30 (limit:10)
   !!! high_fan_out     summary = 29 (limit:10)
   !!! high_fan_out     _add_host_subparser = 29 (limit:10)
@@ -16,12 +16,12 @@ ALERTS[20]:
   !!! high_fan_out     main = 26 (limit:10)
   !!! high_fan_out     scanner_capture = 25 (limit:10)
 
-MODULES[165] (top by size):
+MODULES[166] (top by size):
   M[adapters/python/urirun/host/host_dashboard.py] 11504L C:0 F:348 CC↑14 D:0 (python)
   M[adapters/python/urirun/runtime/v2.py] 2003L C:1 F:122 CC↑14 D:4 (python)
   M[adapters/python/urirun/node/mesh.py] 1975L C:3 F:102 CC↑14 D:2 (python)
   M[planfile.yaml] 1319L C:0 F:0 CC↑0 D:0 (yaml)
-  M[adapters/python/urirun/node/flow.py] 773L C:0 F:37 CC↑21 D:2 (python)
+  M[adapters/python/urirun/node/flow.py] 872L C:0 F:40 CC↑21 D:2 (python)
   M[adapters/python/urirun/__init__.py] 737L C:1 F:51 CC↑14 D:14 (python)
   M[adapters/python/urirun/runtime/_registry.py] 718L C:0 F:43 CC↑14 D:1 (python)
   M[adapters/python/urirun/runtime/cli.py] 707L C:0 F:7 CC↑1 D:1 (python)
@@ -32,7 +32,7 @@ MODULES[165] (top by size):
   M[adapters/python/urirun/runtime/errors.py] 563L C:0 F:31 CC↑13 D:1 (python)
   M[adapters/python/urirun/node/client.py] 558L C:1 F:35 CC↑12 D:0 (python)
   M[goal.yaml] 538L C:0 F:0 CC↑0 D:0 (yaml)
-  LANGS: python:104/json:13/shell:10/yaml:5/csharp:4/javascript:3/c:3/txt:3/ruby:2/typescript:2/go:2/php:2/java:2/rust:2/other:2/toml:2/yml:2/pm:1/perl:1
+  LANGS: python:105/json:13/shell:10/yaml:5/csharp:4/javascript:3/c:3/txt:3/ruby:2/typescript:2/go:2/php:2/java:2/rust:2/other:2/toml:2/yml:2/pm:1/perl:1
 
 HOTSPOTS[10]:
   ★ create_handler fan=59  // Orchestrates 59 calls
@@ -42,11 +42,11 @@ HOTSPOTS[10]:
   ★ summary fan=29  // Orchestrates 29 calls
 
 REFACTOR[15]:
-  [1] H/L Split fit_to_environment (CC=30)
-  [2] H/H Split god module adapters/python/urirun/node/flow.py (773L, 0 classes)
+  [1] H/L Split fit_to_environment (CC=32)
+  [2] H/H Split god module adapters/python/urirun/node/flow.py (872L, 0 classes)
   [3] H/H Split god module adapters/python/urirun/__init__.py (737L, 1 classes)
   [4] H/H Split god module adapters/python/urirun/connectors/connector_lint.py (602L, 0 classes)
   [5] H/H Split god module adapters/python/urirun/host/document_metadata.py (517L, 0 classes)
 
 EVOLUTION:
-  2026-06-25 CC̄=4.7 crit=224 39870L // Automated analysis
+  2026-06-25 CC̄=4.7 crit=227 40242L // Automated analysis

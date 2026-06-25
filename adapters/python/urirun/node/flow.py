@@ -674,8 +674,18 @@ def _preflight(flow: dict, registry: dict) -> list[dict]:
     return entries
 
 
+def _rollback_partial(timeline: list, results: dict, registry: dict) -> dict | None:
+    """Undo the REVERSIBLE steps a failed flow already ran (their connector-returned inverses),
+    so a give-up leaves a clean state, not a half-applied mutation. None when nothing was
+    reversible — a no-op for flows whose connectors return no inverse, hence safe by default."""
+    from urirun.node.reversible import CallableTransport, rollback_partial_flow
+    transport = CallableTransport(lambda uri, payload: v2_service.call(uri, payload, registry, mode="execute"))
+    return rollback_partial_flow(timeline, results, transport)
+
+
 def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recover: bool = True,
-                 max_retries: int = 1, max_wall_clock: float = 180.0, max_remediations: int = 6) -> dict:
+                 max_retries: int = 1, max_wall_clock: float = 180.0, max_remediations: int = 6,
+                 rollback_on_failure: bool = True) -> dict:
     old_map = os.environ.get("URI_SERVICE_MAP")
     os.environ["URI_SERVICE_MAP"] = json.dumps(mesh.get("serviceMap") or {})
     results = {}
@@ -721,7 +731,17 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recov
                 # actually carries the error, falling back to the step's recovery record.
                 err = next((e["error"] for e in reversed(step_timeline) if "error" in e),
                            step_recoveries[-1]["error"] if step_recoveries else {"message": "step failed"})
-                return {"ok": False, "timeline": timeline, "results": results, "error": err, "recovery": recoveries}
+                out = {"ok": False, "timeline": timeline, "results": results, "error": err, "recovery": recoveries}
+                # ROLLBACK-ON-GIVE-UP: catch -> diagnose -> heal -> (still failed) -> undo the
+                # reversible mutations this flow already made, so the failure leaves a clean state.
+                if rollback_on_failure and execute:
+                    rb = _rollback_partial(timeline, results, registry)
+                    if rb is not None:
+                        timeline.append({"id": "flow:rollback", "uri": step["uri"], "type": "recovery",
+                                         "action": "rollback", "ok": bool(rb.get("ok")),
+                                         "undone": len(rb.get("undone") or [])})
+                        out["rollback"] = rb
+                return out
         result = {"ok": True, "timeline": timeline, "results": results}
         if recoveries:
             result["recovery"] = recoveries

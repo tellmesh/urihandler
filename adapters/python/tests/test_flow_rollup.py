@@ -112,6 +112,50 @@ def test_execute_flow_self_heals_then_succeeds(monkeypatch) -> None:
     assert heal and heal[0]["rule"] == "ui-target-not-located"
 
 
+def test_execute_flow_rolls_back_reversible_steps_on_failure(monkeypatch) -> None:
+    """catch -> (no heal, recover off) -> give up -> ROLLBACK: a flow that wrote a reversible
+    step then failed on the next step undoes the write, so the failure leaves a clean state."""
+    inverses_fired = []
+
+    def fake_call(uri, payload, registry, mode):
+        if uri.endswith("/file/command/write-b64"):           # reversible step -> returns an inverse
+            return {"uri": uri, "ok": True, "result": {"value": {
+                "ok": True, "did": "wrote",
+                "inverse": {"uri": "fs://n/file/command/delete", "args": {"path": "/x"}}}}}
+        if uri.endswith("/file/command/delete"):              # the inverse the rollback fires
+            inverses_fired.append(uri)
+            return {"uri": uri, "ok": True, "result": {"value": {"ok": True}}}
+        return {"uri": uri, "ok": True, "result": {"value": {"ok": False, "error": "boom"}}}  # step 2 fails
+
+    monkeypatch.setattr(flow.v2_service, "call", fake_call)
+    flow_doc = {"steps": [
+        {"id": "w", "uri": "fs://n/file/command/write-b64", "payload": {}},
+        {"id": "x", "uri": "fs://n/thing/command/explode", "payload": {}, "depends_on": ["w"]},
+    ]}
+    res = flow.execute_flow(flow_doc, mesh={}, registry={}, execute=True, recover=False)
+
+    assert res["ok"] is False                                 # flow failed
+    assert inverses_fired == ["fs://n/file/command/delete"]   # the write was UNDONE
+    assert res["rollback"]["ok"] is True
+    assert any(e.get("action") == "rollback" for e in res["timeline"])
+
+
+def test_failed_flow_without_inverses_does_not_rollback(monkeypatch) -> None:
+    # safe by default: a flow whose connectors return no inverse has nothing to undo
+    calls = []
+
+    def fake_call(uri, payload, registry, mode):
+        calls.append(uri)
+        return {"uri": uri, "ok": True, "result": {"value": {"ok": False, "error": "boom"}}}
+
+    monkeypatch.setattr(flow.v2_service, "call", fake_call)
+    res = flow.execute_flow({"steps": [{"id": "a", "uri": "kvm://n/ui/command/click", "payload": {}}]},
+                            mesh={}, registry={}, execute=True, recover=False)
+    assert res["ok"] is False
+    assert "rollback" not in res                               # no-op, no extra calls
+    assert calls == ["kvm://n/ui/command/click"]
+
+
 def test_execute_flow_green_when_every_action_succeeds(monkeypatch) -> None:
     flow_doc = {"steps": [
         {"id": "a", "uri": "kvm://laptop/ui/command/click", "payload": {}},
