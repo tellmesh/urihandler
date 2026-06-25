@@ -21,6 +21,7 @@ from urirun.node.reversible import (
     CallableTransport,
     ReversibleProcess,
     Twin,
+    TwinMemory,
     ledger_from_execution,
     parse as _rev_parse,
 )
@@ -722,6 +723,54 @@ def _rollback_partial(timeline: list, results: dict, registry: dict) -> dict | N
     return rollback_partial_flow(timeline, results, transport)
 
 
+def _kvm_targets(flow: dict) -> list[str]:
+    """Distinct node targets whose steps interact with a kvm-controlled surface, so the twin
+    memory captures one known-good profile per real machine (not per step)."""
+    seen: list[str] = []
+    for s in flow.get("steps") or []:
+        target = route_target(str(s.get("uri") or ""))
+        if target and target not in seen and (
+            "/cdp/page/" in str(s.get("uri") or "")
+            or str(s.get("uri") or "").startswith(f"kvm://{target}/")
+        ):
+            seen.append(target)
+    return seen
+
+
+def _capture_known_good(flow: dict, registry: dict, memory: TwinMemory) -> None:
+    """Snapshot-on-success, but only on the FIRST run: read each target's live environment profile
+    once and remember it as the known-good fingerprint. On later runs this is a no-op — the
+    baseline is sticky, so a drifted environment is detected against the *original* known-good,
+    not silently adopted. Best-effort: a node that won't answer ``env/query/profile`` is simply
+    left without a baseline (drift() will report ``known: false``), never an error."""
+    for target in _kvm_targets(flow):
+        if memory.known_good(target) is not None:
+            continue                                    # baseline already established; keep it sticky
+        prof = _fetch_env_profile({"uri": f"kvm://{target}/_"}, registry)
+        if isinstance(prof, dict):
+            memory.remember(target, prof)
+
+
+def _drift_timeline(flow: dict, registry: dict, memory: TwinMemory) -> list[dict]:
+    """Compare each target's LIVE profile to its just-captured known-good and emit a timeline
+    entry when they differ. Diagnosis only — does NOT abort, force dry-run, or auto-remeasure;
+    the flow continues so an operator (or the recovery layer) decides what a drift means."""
+    entries: list[dict] = []
+    for target in _kvm_targets(flow):
+        prof = _fetch_env_profile({"uri": f"kvm://{target}/_"}, registry)
+        if not isinstance(prof, dict):
+            continue
+        d = memory.drift(target, prof)
+        if d.get("drifted") or not d.get("known"):
+            entries.append({
+                "id": f"twin:drift:{target}", "target": target, "type": "twin-drift",
+                "ok": True, "action": "environment-drift",
+                "drift": d,
+                "uri": f"kvm://{target}/env/query/profile",
+            })
+    return entries
+
+
 def _circuit_break_if_over(start: float, max_wall_clock: float, remediations_used: int,
                            max_remediations: int, timeline: list, results: dict, recoveries: list) -> dict | None:
     if time.monotonic() - start > max_wall_clock:
@@ -772,7 +821,8 @@ def _abort_envelope(step: dict, step_timeline: list, step_recoveries: list, time
 
 def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recover: bool = True,
                  max_retries: int = 1, max_wall_clock: float = 180.0, max_remediations: int = 6,
-                 rollback_on_failure: bool = True) -> dict:
+                 rollback_on_failure: bool = True,
+                 memory: TwinMemory | None = None) -> dict:
     old_map = os.environ.get("URI_SERVICE_MAP")
     os.environ["URI_SERVICE_MAP"] = json.dumps(mesh.get("serviceMap") or {})
     results = {}
@@ -784,6 +834,10 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recov
     try:
         if execute and recover:
             timeline.extend(_preflight(flow, registry))   # provision known surfaces up-front
+        if memory is not None:
+            _capture_known_good(flow, registry, memory)
+            drift_entries = _drift_timeline(flow, registry, memory)
+            timeline.extend(drift_entries)
         for step in flow["steps"]:
             # circuit-breaker: bound the WHOLE flow for unattended autonomy — a bad plan must not
             # spin self-healing forever and burn the node.
