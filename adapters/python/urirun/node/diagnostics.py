@@ -68,10 +68,15 @@ PLAYBOOK: list[_Rule] = [
     _Rule(
         "ui-target-not-located",
         [r"target not located", r"no on-screen text matches", r"no control strategy could",
-         r"vision: target not located"],
+         r"vision: target not located",
+         # browser-control / CDP-DOM phrasings (cdp/page/command/click|fill -> element not found)
+         r"element not found", r"no element (matching|found)", r"could not find element",
+         r"no (dom )?node (found|matching)"],
         "The UI target was not found by the active control strategy — typically OCR on a dark / "
-        "late-rendered page, a role/label-language mismatch (e.g. Polish vs English labels), or the "
-        "page not loaded yet. Targeting by DOM role/name via CDP is OCR-immune and language-agnostic.",
+        "late-rendered page, a role/label-language mismatch (e.g. Polish vs English labels), the page "
+        "not loaded yet, OR (on a browser/CDP step) a login/authwall where the target simply doesn't "
+        "exist. Targeting by DOM role/name via CDP is OCR-immune and language-agnostic; if a surface "
+        "probe shows a login page this upgrades to not-logged-in (auth re-launch, human-gated).",
         lambda t: [
             {"id": "ensure-cdp-dom", "kind": "provision", "automatic": True,
              "uri": f"kvm://{t}/cdp/session/command/ensure",
