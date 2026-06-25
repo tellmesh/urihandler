@@ -226,7 +226,7 @@ environment[name="local"] {
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.22s
+# generated in 0.20s
 # nodes: 434 | edges: 500 | modules: 35
 # CC̄=4.7
 
@@ -259,16 +259,16 @@ HUBS[20]:
     CC=8  in:1  out:28  total:29
   adapters.python.urirun.host.host_dashboard._supersede_archived_document
     CC=10  in:1  out:28  total:29
-  adapters.python.urirun.host.document_sync._build_sync_params
-    CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._upload_file
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.host.host_db._run_query_route
-    CC=7  in:1  out:26  total:27
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
+  adapters.python.urirun.host.document_sync._build_sync_params
+    CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._read_back_file
     CC=11  in:1  out:26  total:27
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
+  adapters.python.urirun.host.host_db._run_query_route
+    CC=7  in:1  out:26  total:27
   adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service
     CC=10  in:5  out:21  total:26
 
@@ -566,7 +566,7 @@ EDGES:
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.22s
+# generated in 0.20s
 # nodes: 434 | edges: 500 | modules: 35
 # CC̄=4.7
 
@@ -599,16 +599,16 @@ HUBS[20]:
     CC=8  in:1  out:28  total:29
   adapters.python.urirun.host.host_dashboard._supersede_archived_document
     CC=10  in:1  out:28  total:29
-  adapters.python.urirun.host.document_sync._build_sync_params
-    CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._upload_file
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.host.host_db._run_query_route
-    CC=7  in:1  out:26  total:27
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
+  adapters.python.urirun.host.document_sync._build_sync_params
+    CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._read_back_file
     CC=11  in:1  out:26  total:27
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
+  adapters.python.urirun.host.host_db._run_query_route
+    CC=7  in:1  out:26  total:27
   adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service
     CC=10  in:5  out:21  total:26
 
@@ -893,8 +893,8 @@ EDGES:
 ### Code Analysis (`project/analysis.toon.yaml`)
 
 ```toon markpact:analysis path=project/analysis.toon.yaml
-# code2llm | 164f 39293L | python:103,json:13,shell:10,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-24
-# generated in 0.08s
+# code2llm | 164f 39311L | python:103,json:13,shell:10,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-25
+# generated in 0.07s
 # CC̅=4.7 | critical:0/1678 | dups:0 | cycles:0
 
 HEALTH[0]: ok
@@ -1012,15 +1012,15 @@ LAYERS:
   │ sync-versions.sh            25L  0C    0m  CC=0.0    ←0
   │
   adapters/                       CC̄=4.7    ←in:9  →out:0
-  │ !! host_dashboard           11493L  0C  348m  CC=14     ←0
+  │ !! host_dashboard           11503L  0C  348m  CC=14     ←0
   │ !! v2                        2003L  1C  122m  CC=14     ←4
-  │ !! mesh                      1975L  3C  102m  CC=14     ←1
+  │ !! mesh                      1975L  3C  102m  CC=14     ←2
   │ !! __init__                   737L  1C   51m  CC=14     ←12
   │ !! _registry                  718L  0C   43m  CC=14     ←1
   │ !! cli                        707L  0C    7m  CC=1      ←1
   │ !! scanner_bridge             670L  1C   25m  CC=12     ←0
   │ !! _scan                      659L  0C   34m  CC=14     ←0
-  │ !! flow                       609L  0C   30m  CC=14     ←2
+  │ !! flow                       617L  0C   30m  CC=14     ←2
   │ !! connector_lint             602L  0C   34m  CC=14     ←1
   │ !! _runtime                   584L  1C   29m  CC=13     ←2
   │ !! errors                     563L  0C   31m  CC=13     ←1
@@ -1209,15 +1209,15 @@ EXTERNAL:
 ### Duplication (`project/duplication.toon.yaml`)
 
 ```toon markpact:analysis path=project/duplication.toon.yaml
-# redup/duplication | 15 groups | 93f 33940L | 2026-06-24
+# redup/duplication | 15 groups | 93f 33958L | 2026-06-25
 
 SUMMARY:
   files_scanned: 93
-  total_lines:   33940
+  total_lines:   33958
   dup_groups:    15
   dup_fragments: 37
   saved_lines:   143
-  scan_ms:       961
+  scan_ms:       970
 
 HOTSPOTS[7] (files with most duplication):
   host/host_dashboard.py  dup=73L  groups=5  frags=12  (0.2%)
@@ -1250,7 +1250,7 @@ DUPLICATES[15] (ranked by impact):
       runtime/v2.py:634-637  (_host_integrations)
   [bcc95f219db12f7c]   STRU  _json_from_text  L=11 N=2 saved=11 sim=1.00
       host/task_planner.py:85-95  (_json_from_text)
-      node/flow.py:235-245  (json_from_text)
+      node/flow.py:243-253  (json_from_text)
   [19899f9cfc86ca65]   STRU  is_scanner_process  L=10 N=2 saved=10 sim=1.00
       host/service_control.py:213-222  (is_scanner_process)
       host/service_control.py:236-245  (is_android_node_process)
@@ -1374,13 +1374,13 @@ METRICS-TARGET:
 ### Evolution / Churn (`project/evolution.toon.yaml`)
 
 ```toon markpact:analysis path=project/evolution.toon.yaml
-# code2llm/evolution | 1654 func | 88f | 2026-06-24
-# generated in 0.01s
+# code2llm/evolution | 1654 func | 88f | 2026-06-25
+# generated in 0.00s
 
 NEXT[3] (ranked by impact):
   [1] !! SPLIT           adapters/python/urirun/host/host_dashboard.py
-      WHY: 11493L, 0 classes, max CC=14
-      EFFORT: ~4h  IMPACT: 160902
+      WHY: 11503L, 0 classes, max CC=14
+      EFFORT: ~4h  IMPACT: 161042
 
   [2] !! SPLIT           adapters/python/urirun/runtime/v2.py
       WHY: 2003L, 1 classes, max CC=14

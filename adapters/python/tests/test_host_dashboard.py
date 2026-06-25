@@ -125,7 +125,7 @@ class HostDashboardTests(unittest.TestCase):
         self.assertIn("http://127.0.0.1:8123/", "".join(buffer))
 
 
-@unittest.skipUnless(host_dashboard._business_key is not None, "docid.dedup not installed")
+@unittest.skipUnless(host_dashboard._DOCID_DEDUP_IMPORT_ERROR is None, "docid.dedup not installed")
 class ScanDedupBusinessKeyTests(unittest.TestCase):
     """A cash receipt has no transaction token and re-scans differ in framing/OCR, so the
     merchant+date+total business key (corroborated by shared monetary tokens) is what stops

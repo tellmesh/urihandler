@@ -1,10 +1,10 @@
-# code2llm/evolution | 1654 func | 88f | 2026-06-24
-# generated in 0.01s
+# code2llm/evolution | 1654 func | 88f | 2026-06-25
+# generated in 0.00s
 
 NEXT[3] (ranked by impact):
   [1] !! SPLIT           adapters/python/urirun/host/host_dashboard.py
-      WHY: 11493L, 0 classes, max CC=14
-      EFFORT: ~4h  IMPACT: 160902
+      WHY: 11503L, 0 classes, max CC=14
+      EFFORT: ~4h  IMPACT: 161042
 
   [2] !! SPLIT           adapters/python/urirun/runtime/v2.py
       WHY: 2003L, 1 classes, max CC=14

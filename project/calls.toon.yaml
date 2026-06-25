@@ -1,5 +1,5 @@
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.22s
+# generated in 0.20s
 # nodes: 434 | edges: 500 | modules: 35
 # CC̄=4.7
 
@@ -32,16 +32,16 @@ HUBS[20]:
     CC=8  in:1  out:28  total:29
   adapters.python.urirun.host.host_dashboard._supersede_archived_document
     CC=10  in:1  out:28  total:29
-  adapters.python.urirun.host.document_sync._build_sync_params
-    CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._upload_file
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.host.host_db._run_query_route
-    CC=7  in:1  out:26  total:27
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
+  adapters.python.urirun.host.document_sync._build_sync_params
+    CC=6  in:1  out:27  total:28
   adapters.python.urirun.host.document_sync._read_back_file
     CC=11  in:1  out:26  total:27
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
+  adapters.python.urirun.host.host_db._run_query_route
+    CC=7  in:1  out:26  total:27
   adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service
     CC=10  in:5  out:21  total:26
 

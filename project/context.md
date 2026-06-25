@@ -596,11 +596,11 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.testing.smoke` - 23 calls
 - `adapters.python.urirun.host.document_sync.sync_documents_to_node` - 23 calls
 - `adapters.python.urirun.runtime.v1.run` - 23 calls
+- `adapters.python.urirun.host.host_dashboard.serve` - 22 calls
 - `adapters.python.urirun.runtime.errors.problem` - 22 calls
 - `adapters.python.urirun.connectors.resolver.index_local` - 22 calls
 - `adapters.python.urirun.host.host_db.search_records` - 21 calls
 - `adapters.python.urirun.host.host_dashboard.chat_history` - 21 calls
-- `adapters.python.urirun.host.host_dashboard.ensure_phone_scanner_service` - 21 calls
 
 ## System Interactions
 

@@ -151,7 +151,8 @@ try:
     )
     from docid.visual_fingerprint import FieldSource as _DocidFieldSource
     from docid.visual_fingerprint import merge_records as _docid_merge_records
-except Exception as _DOCID_DEDUP_IMPORT_ERROR:  # noqa: BLE001
+except Exception as err:  # noqa: BLE001
+    _DOCID_DEDUP_IMPORT_ERROR = err
     _DOCID_FINGERPRINT_DISTINCT_FIELDS = ("number", "auth", "time", "card")
     _DOCID_VISUAL_NEAR_DISTANCE = 10
     _DOCID_VISUAL_STRONG_DISTANCE = 6

@@ -1,12 +1,12 @@
-# redup/duplication | 15 groups | 93f 33940L | 2026-06-24
+# redup/duplication | 15 groups | 93f 33958L | 2026-06-25
 
 SUMMARY:
   files_scanned: 93
-  total_lines:   33940
+  total_lines:   33958
   dup_groups:    15
   dup_fragments: 37
   saved_lines:   143
-  scan_ms:       961
+  scan_ms:       970
 
 HOTSPOTS[7] (files with most duplication):
   host/host_dashboard.py  dup=73L  groups=5  frags=12  (0.2%)
@@ -39,7 +39,7 @@ DUPLICATES[15] (ranked by impact):
       runtime/v2.py:634-637  (_host_integrations)
   [bcc95f219db12f7c]   STRU  _json_from_text  L=11 N=2 saved=11 sim=1.00
       host/task_planner.py:85-95  (_json_from_text)
-      node/flow.py:235-245  (json_from_text)
+      node/flow.py:243-253  (json_from_text)
   [19899f9cfc86ca65]   STRU  is_scanner_process  L=10 N=2 saved=10 sim=1.00
       host/service_control.py:213-222  (is_scanner_process)
       host/service_control.py:236-245  (is_android_node_process)
