@@ -457,6 +457,57 @@ def _check_step_deps(sid: str, uri: str, step: dict, results: dict, timeline: li
             "recovery": [{"stepId": sid, "uri": uri, "error": err, "plan": entry["recovery"]}]}
 
 
+_DISPATCH_CONTINUE = object()   # sentinel: loop continues
+_DISPATCH_BREAK    = object()   # sentinel: loop must break (done)
+
+
+def _thin_dispatch_step(step: dict, envelope: FlowEnvelope, dispatch_uri,
+                        timeline: list, results: dict) -> "dict | object":
+    """Execute one step and return:
+    - an early-exit dict  (flow abort — caller must return it)
+    - _DISPATCH_BREAK     (flow is done — caller must break)
+    - _DISPATCH_CONTINUE  (step finished cleanly — continue loop)
+    """
+    uri = step["uri"]
+    sid = step.get("id") or uri
+    dep_fail = _check_step_deps(sid, uri, step, results, timeline)
+    if dep_fail is not None:
+        return dep_fail
+    payload = resolve_step_payload(step.get("payload") or {}, results)
+    if "/memory/command/remember" in uri:
+        payload = _enrich_remember_with_degraded(payload, results, timeline=timeline)
+    envelope.record(uri, "call")
+
+    r = dispatch_uri(uri, payload)
+
+    if step.get("optional"):
+        kind = (r.get("next") or {}).get("kind") or "continue"
+        timeline.append(_thin_step_entry(sid, uri, r))
+        results[sid] = r
+        return _DISPATCH_CONTINUE
+
+    r = _thin_fold_inner_ok(r)
+    kind = _next_kind(r)
+    envelope.record(uri, "return", ok=r.get("ok", True), next=kind)
+    _thin_update_ledger(envelope, uri, r)
+    timeline.append(_thin_step_entry(sid, uri, r))
+    results[sid] = r
+
+    if not r.get("ok", True) and kind == "continue":
+        err_dict = r.get("error") or {"message": f"step {uri} failed", "category": "ACTION_FAILED"}
+        return {"ok": False, "timeline": timeline, "results": results,
+                "error": err_dict, "next": {"kind": "failed"},
+                "envelope": dataclasses.asdict(envelope)}
+
+    if kind == "continue":
+        return _DISPATCH_CONTINUE
+    should_break, early = _thin_handle_non_continue(
+        kind, r, step, sid, uri, payload, envelope, dispatch_uri, timeline, results)
+    if early is not None:
+        return early
+    return _DISPATCH_BREAK if should_break else _DISPATCH_CONTINUE
+
+
 def _thin_driver(
     steps: list[dict],
     envelope: FlowEnvelope,
@@ -486,58 +537,13 @@ def _thin_driver(
                                    max_retries, max_remediations, start, max_wall_clock)
         if brk is not None:
             return brk
-
         envelope.position = i
-        uri = step["uri"]
-        sid = step.get("id") or uri
-        dep_fail = _check_step_deps(sid, uri, step, results, timeline)
-        if dep_fail is not None:
-            return dep_fail
-        payload = resolve_step_payload(step.get("payload") or {}, results)
-        if "/memory/command/remember" in uri:
-            # The remember step runs last; stamp it with the run's degraded outcome and
-            # execution timeline so the memory handler can store both without access to the
-            # driver's internal state (the handler only sees the payload).
-            payload = _enrich_remember_with_degraded(payload, results, timeline=timeline)
-        envelope.record(uri, "call")
+        outcome = _thin_dispatch_step(step, envelope, dispatch_uri, timeline, results)
+        if outcome is _DISPATCH_BREAK:
+            break
+        if outcome is not _DISPATCH_CONTINUE:
+            return outcome  # type: ignore[return-value]
 
-        r = dispatch_uri(uri, payload)
-
-        if step.get("optional"):
-            # Soft steps (drift/remember): never abort the flow on failure.
-            kind = (r.get("next") or {}).get("kind") or "continue"
-            timeline.append(_thin_step_entry(sid, uri, r))
-            results[sid] = r
-            continue
-
-        r = _thin_fold_inner_ok(r)
-
-        kind = _next_kind(r)
-        envelope.record(uri, "return", ok=r.get("ok", True), next=kind)
-
-        _thin_update_ledger(envelope, uri, r)
-
-        timeline.append(_thin_step_entry(sid, uri, r))
-        results[sid] = r
-
-        # Step failed with no explicit next.kind → abort immediately.
-        if not r.get("ok", True) and kind == "continue":
-            err_dict = r.get("error") or {"message": f"step {uri} failed", "category": "ACTION_FAILED"}
-            return {"ok": False, "timeline": timeline, "results": results,
-                    "error": err_dict, "next": {"kind": "failed"},
-                    "envelope": dataclasses.asdict(envelope)}
-
-        if kind != "continue":
-            should_break, early = _thin_handle_non_continue(
-                kind, r, step, sid, uri, payload, envelope, dispatch_uri, timeline, results)
-            if early is not None:
-                return early
-            if should_break:
-                break
-
-    # Dry-run (execute=False) never ACHIEVES the goal, so goal verification can only
-    # fail — skip it. Otherwise a preview of a valid plan reports goal-failed the moment
-    # the twin verify route becomes resolvable in-process (e.g. connector-twin installed).
     rb = _thin_goal_verify(dispatch_uri, envelope, timeline, results) if execute else None
     if rb is not None:
         return rb

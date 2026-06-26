@@ -385,6 +385,25 @@ PLAYBOOK: list[_Rule] = [
         categories={"NOT_FOUND"},
         confidence=0.8,
     ),
+    _Rule(
+        "missing-precondition",
+        [r"missing dependencies", r"precondition not met", r"portal not granted",
+         r"permission denied", r"not satisf"],
+        "A step's precondition is unmet — a required permission (portal grant, login), a missing "
+        "dependency step result, or a resource lock not acquired. The acquire→prove→retry loop "
+        "handles this: ready://ensure acquires automatically when possible, or surfaces a one-tap "
+        "item for human-gated preconditions.",
+        lambda t: [
+            {"id": "ensure-precondition", "kind": "precondition", "automatic": True,
+             "uri": f"ready://{t}/ready/command/ensure",
+             "label": "Acquire the missing precondition via the readiness kernel (auto or one-tap)."},
+            {"id": "check-readiness", "kind": "diagnostic", "automatic": True,
+             "uri": f"ready://{t}/ready/query/report",
+             "label": "Report all known preconditions and their current status."},
+        ],
+        categories={"FAILED_PRECONDITION", "PERMISSION_DENIED"},
+        confidence=0.8,
+    ),
 ]
 
 

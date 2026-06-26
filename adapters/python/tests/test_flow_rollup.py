@@ -192,6 +192,76 @@ def test_llm_flow_injects_environment_facts_into_planner(monkeypatch) -> None:
     assert "bestSurface" in system["content"] and "guidance" in system["content"]  # told to ground on them
 
 
+def test_execute_flow_acquire_path_retries_after_precondition_met(monkeypatch) -> None:
+    """Thin-driver acquire path: step returns next.kind='acquire' → driver calls
+    ready://<node>/ready/command/ensure → precondition acquired → step retried → ok."""
+    capture_calls: dict = {"n": 0}
+
+    def fake_call(uri, payload, registry, mode):
+        if "ready/command/ensure" in uri:
+            return {"ok": True, "acquired": True, "satisfied": True,
+                    "precondition": payload.get("precondition", "")}
+        if "screen/command/capture" not in uri:
+            return {"ok": True, "result": {"value": {"ok": True}}}
+        capture_calls["n"] += 1
+        if capture_calls["n"] == 1:
+            return {"ok": False,
+                    "error": {"message": "portal not granted", "category": "PERMISSION_DENIED"},
+                    "next": {"kind": "acquire"},
+                    "acquire": {"precondition": "wayland-portal-screenshot",
+                                "provider": "xdg-portal", "hint": "grant in portal dialog",
+                                "humanGated": False}}
+        return {"ok": True, "result": {"value": {"ok": True, "path": "/tmp/shot.png"}}}
+
+    monkeypatch.setattr(flow.v2_service, "call", fake_call)
+    flow_doc = {"steps": [
+        {"id": "capture", "uri": "kvm://laptop/screen/command/capture", "payload": {}},
+    ]}
+    res = flow.execute_flow(flow_doc, mesh={}, registry={}, execute=True)
+
+    assert res["ok"] is True
+    assert capture_calls["n"] == 2                                    # first failed, second ok
+    retry_entry = next((e for e in res["timeline"] if ":retry" in e.get("id", "")), None)
+    assert retry_entry is not None
+    assert retry_entry.get("precondition") == "wayland-portal-screenshot"
+
+
+def test_execute_flow_acquire_path_blocks_when_human_gated(monkeypatch) -> None:
+    """Thin-driver acquire path: ready://ensure returns ok=False (human-gated) →
+    flow is blocked with the one-tap acquire item in the result."""
+    capture_calls: dict = {"n": 0}
+
+    def fake_call(uri, payload, registry, mode):
+        if "ready/command/ensure" in uri:
+            return {"ok": False, "satisfied": False,
+                    "acquire": {"precondition": "wayland-portal-screenshot",
+                                "provider": "xdg-portal",
+                                "hint": "Open Settings → Privacy → Screen to allow capture.",
+                                "humanGated": True}}
+        if "screen/command/capture" not in uri:
+            return {"ok": True, "result": {"value": {"ok": True}}}
+        capture_calls["n"] += 1
+        return {"ok": False,
+                "error": {"message": "portal not granted", "category": "PERMISSION_DENIED"},
+                "next": {"kind": "acquire"},
+                "acquire": {"precondition": "wayland-portal-screenshot",
+                            "provider": "xdg-portal", "hint": "grant in portal dialog",
+                            "humanGated": True}}
+
+    monkeypatch.setattr(flow.v2_service, "call", fake_call)
+    flow_doc = {"steps": [
+        {"id": "capture", "uri": "kvm://laptop/screen/command/capture", "payload": {}},
+    ]}
+    res = flow.execute_flow(flow_doc, mesh={}, registry={}, execute=True)
+
+    assert res["ok"] is False
+    assert capture_calls["n"] == 1                                    # tried once, then blocked
+    assert res.get("blocked", {}).get("precondition") == "wayland-portal-screenshot"
+    assert res.get("next", {}).get("kind") == "acquire"
+    blocked_entry = next((e for e in res["timeline"] if ":blocked" in e.get("id", "")), None)
+    assert blocked_entry is not None
+
+
 def test_fetch_planner_environments_builds_context(monkeypatch) -> None:
     """The dashboard-feeding helper: fetch each node's env profile + foreground surface and
     format them as planner_context (so the LLM gets grounded facts). Non-answering nodes skip."""

@@ -91,37 +91,26 @@ def _flow_scheme_dispatch(uri: str, payload: dict | None = None) -> "dict | None
     return None  # unknown verb -> NOT_FOUND
 
 
-def inprocess_fallback(uri: str, payload: dict | None = None) -> dict | None:
-    """Call an installed connector URI in-process via the urirun runtime.
-
-    Returns None when no connector owns the route (so the caller can raise the
-    correct "unsupported action" error), or a dict on success or handler failure.
-
-    Tier 2a — entry-point discovery (installed packages with urirun.bindings group).
-    Tier 2b — DECORATED_BINDINGS (connector.handler() registrations without an entry point).
-    Tier 2c — flow:// scheme (dynamic plan-as-artifact dispatch, no static registry needed)."""
-    # Tier 2c: flow:// scheme — plan atoms as first-class URI artifacts
-    if uri.startswith("flow://"):
-        return _flow_scheme_dispatch(uri, payload)
-
-    try:
-        import urirun
-        from urirun.runtime import discovery, v2 as _v2
-        registry = discovery.registry_for_uri(uri, _INPROCESS_BINDINGS_GROUP)
-        env = urirun.run(uri, registry, payload=dict(payload or {}),
-                         mode="execute", policy={"allowExecute": True})
+def _inprocess_run(uri: str, payload: dict) -> "dict | None":
+    """Tier 2a+2b: run uri via entry-point discovery, then decorated bindings on NOT_FOUND.
+    Returns the raw urirun envelope, or None when no route exists for uri."""
+    import urirun
+    from urirun.runtime import discovery, v2 as _v2
+    registry = discovery.registry_for_uri(uri, _INPROCESS_BINDINGS_GROUP)
+    env = urirun.run(uri, registry, payload=payload, mode="execute", policy={"allowExecute": True})
+    if not env.get("ok") and (env.get("error") or {}).get("category") == "NOT_FOUND":
+        live_binding = _v2.decorated_bindings()["bindings"].get(uri)
+        if live_binding is None:
+            return None
+        reg2 = urirun.compile_registry(_v2.build_binding_document([live_binding]))
+        env = urirun.run(uri, reg2, payload=payload, mode="execute", policy={"allowExecute": True})
         if not env.get("ok") and (env.get("error") or {}).get("category") == "NOT_FOUND":
-            # Tier 2b: DECORATED_BINDINGS (connector.handler() with no package entry point)
-            live_binding = _v2.decorated_bindings()["bindings"].get(uri)
-            if live_binding is None:
-                return None
-            reg2 = urirun.compile_registry(_v2.build_binding_document([live_binding]))
-            env = urirun.run(uri, reg2, payload=dict(payload or {}),
-                             mode="execute", policy={"allowExecute": True})
-            if not env.get("ok") and (env.get("error") or {}).get("category") == "NOT_FOUND":
-                return None
-    except Exception as exc:  # noqa: BLE001
-        return {"ok": False, "invokedUri": uri, "error": str(exc)}
+            return None
+    return env
+
+
+def _env_to_result(uri: str, env: dict) -> dict:
+    """Normalize a urirun envelope to the standard {ok, invokedUri, result, error} shape."""
     try:
         import urirun as _u
         value = _u.result_data(env)
@@ -134,6 +123,26 @@ def inprocess_fallback(uri: str, payload: dict | None = None) -> dict | None:
         "result": value if value is not None else env.get("result"),
         "error": (env.get("error") or {}).get("message") if not env.get("ok") else None,
     }
+
+
+def inprocess_fallback(uri: str, payload: dict | None = None) -> dict | None:
+    """Call an installed connector URI in-process via the urirun runtime.
+
+    Returns None when no connector owns the route (so the caller can raise the
+    correct "unsupported action" error), or a dict on success or handler failure.
+
+    Tier 2a — entry-point discovery (installed packages with urirun.bindings group).
+    Tier 2b — DECORATED_BINDINGS (connector.handler() registrations without an entry point).
+    Tier 2c — flow:// scheme (dynamic plan-as-artifact dispatch, no static registry needed)."""
+    if uri.startswith("flow://"):
+        return _flow_scheme_dispatch(uri, payload)
+    try:
+        env = _inprocess_run(uri, dict(payload or {}))
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "invokedUri": uri, "error": str(exc)}
+    if env is None:
+        return None
+    return _env_to_result(uri, env)
 
 
 def make_local_dispatch_uri(registry: dict, run_mode: str, fallback=None):
