@@ -1957,7 +1957,13 @@ def restart_phone_scanner_service(
             "url": _phone_scanner_url(scanner_port),
         }
 
-    replaced = _free_port_from_old_scanner(scanner_port, force=force_port_kill)
+    replaced = _free_port_from_matching_processes(
+        scanner_port,
+        force=force_port_kill,
+        emit=False,
+        is_target=_is_scanner_process_impl,
+        event_prefix="urirun.service_scanner",
+    )
     if replaced.get("holders"):
         if not replaced.get("ok") or replaced.get("remaining"):
             return {
@@ -2558,7 +2564,13 @@ def restart_android_node_service(payload: dict | None = None) -> dict:
         return _schedule_restart_command_impl(argv, payload, meta)
 
     port = int(payload.get("port") or os.environ.get("URIRUN_ANDROID_NODE_PORT") or 8195)
-    replaced = _free_port_from_old_android_node(port, force=force_port_kill)
+    replaced = _free_port_from_matching_processes(
+        port,
+        force=force_port_kill,
+        emit=False,
+        is_target=_is_android_node_process_impl,
+        event_prefix="urirun.service_android_node",
+    )
     if replaced.get("holders") and (not replaced.get("ok") or replaced.get("remaining")):
         return {
             "ok": False,
@@ -4752,43 +4764,6 @@ def _free_port_from_matching_processes(
         sleep_fn=time.sleep,
         time_fn=time.time,
         emit_fn=print,
-    )
-
-
-def _free_port_from_old_scanner(port: int, *, force: bool = False, emit: bool = False) -> dict:
-    """Free a scanner-owned port before rebinding it.
-
-    By default this only terminates processes whose cmdline is clearly the scanner service.
-    `force=True` may be used by an explicit URI/CLI request in a controlled dev environment.
-    """
-    return _free_port_from_matching_processes(
-        port,
-        force=force,
-        emit=emit,
-        is_target=_is_scanner_process_impl,
-        event_prefix="urirun.service_scanner",
-    )
-
-
-def _free_port_from_old_chat(port: int, *, force: bool = False, emit: bool = False) -> dict:
-    """Free a chat-dashboard-owned port before rebinding it."""
-    return _free_port_from_matching_processes(
-        port,
-        force=force,
-        emit=emit,
-        is_target=_is_chat_process_impl,
-        event_prefix="urirun.service_chat",
-    )
-
-
-def _free_port_from_old_android_node(port: int, *, force: bool = False, emit: bool = False) -> dict:
-    """Free an android-node/webpage-relay-owned port before rebinding it."""
-    return _free_port_from_matching_processes(
-        port,
-        force=force,
-        emit=emit,
-        is_target=_is_android_node_process_impl,
-        event_prefix="urirun.service_android_node",
     )
 
 
