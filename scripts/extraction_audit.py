@@ -135,6 +135,17 @@ PRESETS: dict[str, dict] = {
         "allow_outward": ("urirun.runtime.", "urirun.node.", "urirun.connectors."),
         "allow_exact": ("urirun", "urirun.runtime"),
     },
+    "J": {
+        "name": "contracts (event schema)",
+        # Candidate for urirun-contracts: pure-data event/node schema with zero urirun.* imports.
+        # dispatch_protocol stays in urirun-runtime (it imports urirun.runtime.v2).
+        "package": {
+            "urirun.node.event_schema",
+        },
+        "package_prefixes": (),
+        "allow_outward": (),
+        "allow_exact": (),
+    },
 }
 
 
