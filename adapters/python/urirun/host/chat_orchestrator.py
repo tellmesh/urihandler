@@ -942,12 +942,16 @@ def _chat_ask_general_build_result(
 
 
 def _try_recall_gate(twin_memory, selected_nodes: list, prompt: str) -> tuple:
-    """Check the episode recall gate; return (flow, generator) or (None, None) on miss."""
-    if twin_memory is None or not selected_nodes:
+    """Check the episode recall gate; return (flow, generator) or (None, None) on miss.
+
+    When selected_nodes is empty (user did not pin a node in the UI), we probe with
+    node="" and env_fp="" so the twin recall handler can fall through to intent-only
+    (flow_store) tier — avoiding a hard miss just because the UI target wasn't set."""
+    if twin_memory is None:
         return None, None
     from urirun.host.dispatch import inprocess_fallback as _iproc  # noqa: PLC0415
-    _node = selected_nodes[0]
-    _env_fp = (twin_memory.known_good(_node) or {}).get("fingerprint") or ""
+    _node = selected_nodes[0] if selected_nodes else ""
+    _env_fp = (twin_memory.known_good(_node) or {}).get("fingerprint") or "" if _node else ""
     _recalled = _iproc("twin://host/flow/query/recall",
                        {"prompt": prompt, "env_fp": _env_fp, "node": _node})
     if not (isinstance(_recalled, dict) and _recalled.get("ok") and _recalled.get("found")):

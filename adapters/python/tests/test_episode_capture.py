@@ -8,9 +8,84 @@ import shutil
 import tempfile
 import unittest
 
-from urirun.host.twin_bridge import capture_episode
+from urirun.host.twin_bridge import capture_episode, _infer_node_from_flow
 from urirun.node.episode import intent_signature
 from urirun.node.twin_store import durable_memory
+
+
+class TestInferNodeFromFlow(unittest.TestCase):
+    """_infer_node_from_flow must return the ACTUAL node from step URIs, not the UI-default
+    selected_targets value, so recall keys are keyed by the correct env fingerprint."""
+
+    def test_remote_node_extracted_from_step_uris(self):
+        flow = {"steps": [
+            {"uri": "env://lenovo/runtime/query/health"},
+            {"uri": "log://lenovo/session/command/write"},
+        ]}
+        assert _infer_node_from_flow(flow, ["host"]) == "lenovo"
+
+    def test_host_fallback_when_all_steps_are_host(self):
+        flow = {"steps": [{"uri": "kvm://host/screen/query/capture"}]}
+        assert _infer_node_from_flow(flow, ["host"]) == "host"
+
+    def test_first_non_host_authority_wins(self):
+        flow = {"steps": [
+            {"uri": "kvm://host/screen/query/capture"},
+            {"uri": "kvm://remote/screen/query/capture"},
+        ]}
+        assert _infer_node_from_flow(flow, ["host"]) == "remote"
+
+    def test_steps_with_host_authority_win_over_selectedNodes(self):
+        # step URIs say "host" → steps are ground truth, selectedNodes is ignored
+        flow = {"steps": [{"uri": "kvm://host/screen/query/capture"}],
+                "selectedNodes": ["office"]}
+        assert _infer_node_from_flow(flow, ["host"]) == "host"
+
+    def test_selectedNodes_fallback_when_no_step_uris(self):
+        # no step URIs → fall back to flow["selectedNodes"]
+        flow = {"steps": [{"id": "s1"}], "selectedNodes": ["office"]}
+        assert _infer_node_from_flow(flow, ["host"]) == "office"
+
+    def test_empty_flow_uses_selected_targets_stripped(self):
+        assert _infer_node_from_flow({}, ["node:lenovo"]) == "lenovo"
+
+    def test_empty_everything_defaults_to_host(self):
+        assert _infer_node_from_flow({}, []) == "host"
+
+    def test_capture_episode_uses_actual_node_not_ui_default(self):
+        """Regression: selectedTargets=['host'] (UI default) MUST NOT poison recall key
+        when steps execute on a different node (e.g. 'lenovo')."""
+        import os, shutil, tempfile
+        tmp = tempfile.mkdtemp(prefix="ep-node-infer-")
+        old = os.environ.get("URIRUN_TWIN_MEMORY")
+        try:
+            os.environ["URIRUN_TWIN_MEMORY"] = os.path.join(tmp, "twin.json")
+            mem = durable_memory()
+            mem.remember("lenovo", {"platform": "fedora", "best": "kvm"})
+            fp_lenovo = mem.known_good("lenovo")["fingerprint"]
+
+            flow = {"steps": [
+                {"id": "s1", "uri": "env://lenovo/runtime/query/health"},
+                {"id": "s2", "uri": "log://lenovo/session/command/write"},
+            ]}
+            ids = capture_episode(
+                execute=True, flow=flow, prompt="zrob screenshot na lenovo",
+                selected_targets=["host"],  # ← UI default, NOT "node:lenovo"
+                timeline=flow["steps"], results={"s1": {"ok": True}, "s2": {"ok": True}},
+                status="ok",
+            )
+            assert ids is not None
+            # Episode must be recallable by lenovo's fingerprint, not host's
+            hit = durable_memory().recall_episode(
+                intent_signature("zrob screenshot na lenovo"), fp_lenovo)
+            assert hit is not None, (
+                "Episode should be keyed to lenovo env_fp, not host")
+        finally:
+            if old is None:
+                os.environ.pop("URIRUN_TWIN_MEMORY", None)
+            else:
+                os.environ["URIRUN_TWIN_MEMORY"] = old
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 class TestCaptureEpisode(unittest.TestCase):

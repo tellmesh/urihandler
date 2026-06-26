@@ -235,6 +235,32 @@ def _obs_episode_id(intent_sig: str, env_fp: str, steps: list) -> "str | None":
     return None
 
 
+def _infer_node_from_flow(flow: dict, selected_targets: list) -> str:
+    """Derive the actual node name from flow steps (URI authority), falling back to
+    flow['selectedNodes'][0], then selected_targets[0], then 'host'.
+    This avoids poisoning recall keys when the UI default 'host' selectedTarget is sent
+    but steps actually execute on a remote node (e.g. 'lenovo')."""
+    steps = (flow or {}).get("steps") or []
+    found_host = False
+    for step in steps:
+        uri = step.get("uri") or ""
+        if "://" in uri:
+            authority = uri.split("://", 1)[1].split("/")[0]
+            if authority and authority != "host":
+                return authority
+            if authority == "host":
+                found_host = True
+    if found_host:
+        return "host"
+    # No step URIs found — fall back to planner's selectedNodes, then UI targets
+    flow_nodes = (flow or {}).get("selectedNodes") or []
+    if flow_nodes:
+        return flow_nodes[0]
+    target = (selected_targets[0] if selected_targets else None) or "host"
+    # strip "node:" prefix added by UI targeting (e.g. "node:lenovo" → "lenovo")
+    return target.removeprefix("node:") if target.startswith("node:") else target
+
+
 def capture_episode(*, execute: bool, flow: dict, prompt: str, selected_targets: list,
                     timeline: list, results: dict, status: str,
                     next_intent=None, recovery: "list | None" = None,
@@ -255,7 +281,7 @@ def capture_episode(*, execute: bool, flow: dict, prompt: str, selected_targets:
     from urirun.node.episode import intent_signature, make_episode  # noqa: PLC0415
     from urirun.node.flow import _flow_key  # noqa: PLC0415
     from urirun.node.twin_store import durable_memory  # noqa: PLC0415
-    node = (selected_targets[0] if selected_targets else None) or "host"
+    node = _infer_node_from_flow(flow, selected_targets)
     mem = durable_memory()
     env_fp = (mem.known_good(node) or {}).get("fingerprint") or ""
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
