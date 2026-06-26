@@ -1266,6 +1266,207 @@ def ensure_best_overlay(best: dict, crop: dict, quality: dict, original_path: Pa
     return overlay, overlay_path
 
 
+def scanner_capture(
+    project: str,
+    db: "str | None",
+    payload: dict,
+    *,
+    deps: ScannerBridgeDeps,
+    archive_fn: "Callable[..., dict]",
+    local_image_ocr_fn: "Callable[..., dict]",
+    extract_document_metadata_fn: "Callable[..., dict]",
+    truthy_env_fn: "Callable[[str, str], Any]",
+) -> dict:
+    prune_scanner_staging(_scanner_staging_dir)
+    mode = str(payload.get("mode") or "").lower()
+    archive = not (payload.get("archive") is False or mode in {"candidate", "best-candidate", "analyze", "analysis"})
+    mime, raw, digest, ext = _decode_capture_image(str(payload.get("image") or ""))
+    root = _scanner_staging_dir()
+    root.mkdir(parents=True, exist_ok=True)
+    import time as _time  # noqa: PLC0415
+    name = f"{_time.strftime('%Y%m%dT%H%M%SZ', _time.gmtime())}-phone-scan-{digest[:12]}{ext}"
+    path = root / name
+    path.write_bytes(raw)
+    crop = auto_crop_receipt(path)
+    display_path = capture_display_path(crop, path)
+    ocr, detected_document = capture_ocr_and_detect(
+        path, display_path, payload, archive,
+        local_image_ocr=local_image_ocr_fn,
+        extract_document_metadata=extract_document_metadata_fn,
+        truthy_env=truthy_env_fn,
+    )
+    quality = document_frame_quality(crop, ocr, detected_document, display_path)
+    overlay = scanner_crop_overlay(path, crop, quality)
+    overlay_path = str(overlay.get("path") or "") if overlay.get("ok") else ""
+    uri = f"scanner://host/capture/{digest[:16]}"
+    document: dict = {"ok": False, "reason": "analysis-only", "metadata": detected_document}
+    min_score = float(os.environ.get("URIRUN_PHONE_SCANNER_MIN_SCORE", "45"))
+    if archive and not capture_quality_ok(payload, quality, min_score):
+        return capture_reject_result(
+            uri=uri, min_score=min_score, quality=quality, ocr=ocr, crop=crop, overlay=overlay,
+            detected_document=detected_document, paths=[path, display_path, overlay_path],
+        )
+    if archive:
+        try:
+            document = archive_fn(
+                display_path=display_path,
+                original_path=path,
+                ocr=ocr,
+                crop=crop,
+                source_sha256=digest,
+                captured_at=payload.get("capturedAt"),
+                metadata=detected_document,
+            )
+        except Exception as exc:  # noqa: BLE001
+            document = {"ok": False, "error": str(exc), "metadata": detected_document}
+    if not archive:
+        return capture_candidate_result(
+            project, payload, uri=uri, mime=mime, digest=digest, raw_len=len(raw), path=path,
+            display_path=display_path, overlay_path=overlay_path, overlay=overlay, crop=crop,
+            ocr=ocr, detected_document=detected_document, quality=quality,
+            preview_url=deps.preview_url,
+        )
+    meta = {
+        "source": payload.get("source") or "phone",
+        "width": payload.get("width"),
+        "height": payload.get("height"),
+        "mime": mime,
+        "sha256": digest,
+        "bytes": len(raw),
+        "originalPath": str(path),
+        "displayPath": str(display_path),
+        "overlayPath": overlay_path,
+        "overlay": overlay,
+        "crop": crop,
+        "capturedAt": payload.get("capturedAt"),
+        "userAgent": payload.get("userAgent", ""),
+        "ocr": ocr,
+        "detectedDocument": detected_document,
+        "quality": quality,
+        "document": document,
+    }
+    registered = register_scanner_result(
+        deps, project, db,
+        uri=uri, display_path=display_path, original_path=path,
+        meta=meta, crop=crop, ocr=ocr, document=document, content_prefix="Phone scan saved",
+    )
+    return {
+        "ok": True,
+        "uri": uri,
+        "artifact": registered["artifact"],
+        "scanArtifact": registered["scanArtifact"],
+        "documentArtifact": registered["documentArtifact"],
+        "primaryArtifact": registered["primaryArtifact"],
+        "ocr": ocr,
+        "detectedDocument": detected_document,
+        "orientation": orientation_summary(crop),
+        "quality": quality,
+        "overlay": overlay,
+        "document": document,
+        "message": registered["message"],
+    }
+
+
+def scanner_best_finish(
+    project: str,
+    db: "str | None",
+    payload: dict,
+    *,
+    deps: ScannerBridgeDeps,
+    archive_fn: "Callable[..., dict]",
+    local_image_ocr_fn: "Callable[..., dict]",
+    truthy_env_fn: "Callable[[str, str], Any]",
+) -> dict:
+    prune_scanner_staging(_scanner_staging_dir)
+    series_id = str(payload.get("seriesId") or "").strip()
+    if not series_id:
+        raise ValueError("seriesId is required")
+    series = scanner_best_take(series_id, clear=payload.get("clear", True) is not False)
+    if not series:
+        return best_series_not_found(series_id)
+    best = resolve_best_candidate(series)
+    if not isinstance(best, dict):
+        return best_finish_store_failure(series_id, series, status="failed",
+                                        error="scanner best series has no candidates")
+    quality = best.get("quality") if isinstance(best.get("quality"), dict) else {}
+    quality_rejected, min_score = best_quality_rejected(payload, quality)
+    if quality_rejected:
+        return best_finish_store_failure(
+            series_id, series, status="rejected",
+            error="no reliable receipt or invoice candidate found",
+            best=best, project=project, extra={"minScore": min_score},
+            preview_url=deps.preview_url,
+        )
+    original_path, display_path = best_candidate_paths(best)
+    if not original_path.is_file() or not display_path.is_file():
+        return best_finish_store_failure(series_id, series, status="failed",
+                                         error="best candidate file is missing",
+                                         best=best, project=project, preview_url=deps.preview_url)
+    crop, ocr = best_crop_and_ocr(best)
+    ocr = refresh_best_ocr(ocr, original_path, display_path,
+                           local_image_ocr=local_image_ocr_fn, truthy_env=truthy_env_fn)
+    digest = str(best.get("sha256") or _file_sha256(original_path))
+    detected_document = best.get("detectedDocument") or {}
+    try:
+        document = archive_fn(
+            display_path=display_path,
+            original_path=original_path,
+            ocr=ocr,
+            crop=crop,
+            source_sha256=digest,
+            captured_at=str(best.get("capturedAt") or ""),
+        )
+    except Exception as exc:  # noqa: BLE001
+        document = {"ok": False, "error": str(exc), "metadata": detected_document}
+    uri = str(best.get("uri") or f"scanner://host/capture/{digest[:16]}")
+    overlay, overlay_path = ensure_best_overlay(best, crop, quality, original_path)
+    meta = {
+        "source": "phone-best",
+        "seriesId": series_id,
+        "frameIndex": best.get("frameIndex"),
+        "candidateCount": len(series.get("candidates", [])),
+        "width": best.get("width"),
+        "height": best.get("height"),
+        "mime": best.get("mime"),
+        "sha256": digest,
+        "bytes": best.get("bytes"),
+        "originalPath": str(original_path),
+        "displayPath": str(display_path),
+        "overlayPath": overlay_path,
+        "overlay": overlay,
+        "crop": crop,
+        "capturedAt": best.get("capturedAt"),
+        "userAgent": best.get("userAgent", ""),
+        "ocr": ocr,
+        "detectedDocument": detected_document,
+        "quality": quality,
+        "document": document,
+    }
+    registered = register_scanner_result(
+        deps, project, db,
+        uri=uri, display_path=display_path, original_path=original_path,
+        meta=meta, crop=crop, ocr=ocr, document=document, content_prefix="Best phone scan saved",
+    )
+    store_best_finish(series, series_id, best, document, registered)
+    return {
+        "ok": True,
+        "seriesId": series_id,
+        "best": scanner_public_candidate_for_live(best, project, preview_url=deps.preview_url),
+        "uri": uri,
+        "artifact": registered["artifact"],
+        "scanArtifact": registered["scanArtifact"],
+        "documentArtifact": registered["documentArtifact"],
+        "primaryArtifact": registered["primaryArtifact"],
+        "ocr": ocr,
+        "detectedDocument": detected_document,
+        "orientation": orientation_summary(crop),
+        "quality": quality,
+        "overlay": overlay,
+        "document": document,
+        "message": registered["message"],
+    }
+
+
 _LAST_STAGING_PRUNE: float = 0.0
 
 
