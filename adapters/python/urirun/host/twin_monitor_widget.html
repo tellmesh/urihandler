@@ -906,6 +906,12 @@
                     backoffMs = 2000;
                     if (data.flows) renderFlows(data.flows);
                     renderTwinExtras(data);
+                    // Drive the NOW/NEXT monitors + FINGERPRINT/URL/STATUS from the latest live step
+                    // event. The poll already returns the event ring buffer, and the demo path feeds
+                    // applyEvent — but live never did, so those single fields stayed '--' while the
+                    // aggregate panels (flows/episodes/proofs) filled.
+                    const _latestEvent = (data.events || []).filter(e => e && e.transition).slice(-1)[0];
+                    if (_latestEvent) applyEvent(_latestEvent);
                     document.getElementById('sayLead').innerText =
                         `Zsynchronizowano ${new Date().toLocaleTimeString()} · ${data.total ?? 0} znanych przepływów`;
                 } catch (err) {

@@ -357,21 +357,42 @@ def is_desktop_task_prompt(prompt: str) -> bool:
     return any(kw in prompt.lower() for kw in _DESKTOP_TASK_KEYWORDS)
 
 
+def _nodes_from_store(store) -> dict:
+    """Per-node {fingerprint, snapshot} from the known-good store."""
+    nodes: dict = {}
+    pairs = store.items() if hasattr(store, "items") else []
+    for node_name, rec in pairs:
+        if isinstance(rec, dict):
+            nodes[node_name] = {"fingerprint": rec.get("fingerprint"), "snapshot": rec.get("snapshot")}
+    return nodes
+
+
+def _split_episodes(all_episodes: list) -> "tuple[list, list, list]":
+    """Split episodes into (ok, failed, health). Health-check episodes are deduped to the latest
+    per goal (episodes arrive newest-first) so they don't flood the panel, and ok/failed are kept
+    apart so the UI never conflates outcomes under one flow_key."""
+    seen_health: dict = {}
+    ok: list = []
+    failed: list = []
+    for ep in all_episodes:
+        status = (ep.get("outcome") or {}).get("status") or ""
+        goal = ep.get("goal") or ""
+        if "health" in goal.lower() or "sprawdz" in goal.lower():
+            seen_health[goal] = ep
+        elif status == "failed":
+            failed.append(ep)
+        else:
+            ok.append(ep)
+    return ok, failed, list(seen_health.values())
+
+
 def api_twin_state(project: str, db: "str | None", config: "str | None", query: dict,
                    node_urls: "list[str] | None" = None) -> "tuple[int, dict]":
     from urirun.node.twin_store import durable_memory as _durable_memory  # noqa: PLC0415
     mem = _durable_memory()
     limit = int((query.get("limit") or [20])[0])
     flows = mem.known_good_flows()
-    nodes: dict = {}
-    store = mem.store
-    pairs = store.items() if hasattr(store, "items") else []
-    for node_name, rec in pairs:
-        if isinstance(rec, dict):
-            nodes[node_name] = {
-                "fingerprint": rec.get("fingerprint"),
-                "snapshot": rec.get("snapshot"),
-            }
+    nodes = _nodes_from_store(mem.store)
     # Ring buffer: last 50 step events for initial panel state (avoids SSE cold-start)
     step_events = [
         e for e in TWIN_EVENT_HUB.replay_since(0)
@@ -383,23 +404,7 @@ def api_twin_state(project: str, db: "str | None", config: "str | None", query: 
     proof_store = getattr(mem, "proof_store", None)
     proofs = list(proof_store.values()) if hasattr(proof_store, "values") else []
     all_episodes = mem.known_good_episodes() if hasattr(mem, "known_good_episodes") else []
-    # Split episodes by outcome status so the UI never conflates ok/degraded/failed under
-    # one flow_key. Deduplicate noisy health-check episodes: keep only the latest per goal.
-    _seen_health: dict = {}
-    episodes_ok: list = []
-    episodes_failed: list = []
-    for ep in all_episodes:
-        status = (ep.get("outcome") or {}).get("status") or ""
-        goal = ep.get("goal") or ""
-        is_health = "health" in goal.lower() or "sprawdz" in goal.lower()
-        if is_health:
-            _seen_health[goal] = ep  # keep only latest (episodes are newest-first)
-            continue
-        if status == "failed":
-            episodes_failed.append(ep)
-        else:
-            episodes_ok.append(ep)
-    health_episodes = list(_seen_health.values())
+    episodes_ok, episodes_failed, health_episodes = _split_episodes(all_episodes)
     return 200, {
         "ok": True,
         "nodes": nodes,

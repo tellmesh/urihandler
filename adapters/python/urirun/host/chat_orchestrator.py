@@ -564,7 +564,11 @@ def _general_path_complete(
 ) -> None:
     """Emit the chat message and DB log for the completed general mesh path."""
     timeline = result.get("timeline") or []
-    status = ("degraded" if result.get("degraded") else "ok") if result.get("ok") else "failed"
+    # Derive ok from user-facing timeline steps (not from execution.ok which includes
+    # post-loop goal-verify/rollback that may fail even when every step succeeded).
+    _exec_steps = [t for t in timeline if t.get("type") != "recovery"]
+    steps_all_ok = all(t.get("ok", True) for t in _exec_steps) if _exec_steps else bool(result.get("ok"))
+    status = ("degraded" if result.get("degraded") else "ok") if steps_all_ok else "failed"
     content = f"{status}: {len(timeline)} URI step(s)"
     if result.get("recovery"):
         content += f", {len(result.get('recovery') or [])} recovery action(s)"
@@ -590,7 +594,7 @@ def _general_path_complete(
         detail={
             "prompt": prompt,
             "execute": execute,
-            "ok": result.get("ok"),
+            "ok": steps_all_ok,
             "degraded": result.get("degraded", False),
             "degradedReason": result.get("degradedReason"),
             "selectedTargets": selected_targets,
@@ -607,7 +611,7 @@ def _general_path_complete(
         deps.host_db_fn().add_log(db, "chat", "ask", {
             "prompt": prompt,
             "execute": execute,
-            "ok": result.get("ok"),
+            "ok": steps_all_ok,
             "selectedNodes": selected_nodes,
             "selectedTargets": selected_targets,
             "generator": generator,

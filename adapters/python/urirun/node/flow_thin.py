@@ -335,6 +335,27 @@ def _results_degraded(results: dict) -> tuple[bool, str | None]:
     return False, None
 
 
+def _capture_proof_from_result(sid: str, r: object) -> "dict | None":
+    """One {kind, step, path, bytes, …} proof from a successful capture step result, or None
+    when the step isn't a successful screenshot capture."""
+    if not isinstance(r, dict) or not r.get("ok"):
+        return None
+    inner = r  # unwrap thin-driver envelope: result.value or the dict itself
+    res = r.get("result")
+    if isinstance(res, dict):
+        inner = res.get("value") if isinstance(res.get("value"), dict) else res
+    if not isinstance(inner, dict):
+        return None
+    if inner.get("kind") != "screenshot" and inner.get("action") != "capture":
+        return None
+    path = inner.get("path") or ""
+    bts = inner.get("bytes") or 0
+    if not path or not bts:
+        return None
+    return {"kind": "file", "step": sid, "path": path, "bytes": bts,
+            "format": inner.get("format") or "png", "via": inner.get("via") or ""}
+
+
 def _capture_proofs_from_results(results: dict) -> list[dict]:
     """Extract evidence proofs from successful capture step results.
 
@@ -343,30 +364,9 @@ def _capture_proofs_from_results(results: dict) -> list[dict]:
     ``/api/twin/state proofs[]`` is non-empty after a successful capture flow."""
     proofs: list[dict] = []
     for sid, r in (results or {}).items():
-        if not isinstance(r, dict) or not r.get("ok"):
-            continue
-        # Unwrap thin-driver envelope: result.value or the dict itself.
-        inner = r
-        res = r.get("result")
-        if isinstance(res, dict):
-            inner = res.get("value") if isinstance(res.get("value"), dict) else res
-        if not isinstance(inner, dict):
-            continue
-        # Detect capture via kind (kvm returns kind="screenshot") or action fallback.
-        if inner.get("kind") != "screenshot" and inner.get("action") != "capture":
-            continue
-        path = inner.get("path") or ""
-        bts = inner.get("bytes") or 0
-        if not path or not bts:
-            continue
-        proofs.append({
-            "kind": "file",
-            "step": sid,
-            "path": path,
-            "bytes": bts,
-            "format": inner.get("format") or "png",
-            "via": inner.get("via") or "",
-        })
+        proof = _capture_proof_from_result(sid, r)
+        if proof is not None:
+            proofs.append(proof)
     return proofs
 
 

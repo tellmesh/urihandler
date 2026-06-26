@@ -571,13 +571,9 @@ def _orchestrate_steps(flow: dict, registry: dict, execute: bool, recover: bool,
                        rollback_on_failure: bool, memory, dispatch_uri,
                        routes: list, timeline: list, results: dict,
                        recoveries: list) -> dict:
-    # ARCHITECTURE NOTE (P0.3 — Opcja B): two engines coexist intentionally.
-    # _thin_driver (see execute_flow) is the production path when dispatch_uri is set:
-    # steps carry their own next-intent, the driver follows. _orchestrate_steps is the
-    # fallback when dispatch_uri=None — central retry/self-heal logic in the orchestrator
-    # rather than delegated to steps. Callers without dispatch_uri (tests, run_flow_document
-    # without URI) reach this path. Semantic changes that affect both paths MUST be made
-    # in both. Migration of all callers to the thin path is out of scope for this plan.
+    # DEPRECATED (Faza 4): execute_flow no longer calls this function.
+    # _thin_driver is now the sole engine for all callers.
+    # Kept here so any out-of-tree callers get a deprecation period before removal.
     start = time.monotonic()
     remediations_used = 0
     if execute and recover:
@@ -749,43 +745,32 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recov
                  memory: TwinMemory | None = None,
                  dispatch_uri=None,
                  envelope: FlowEnvelope | None = None) -> dict:
-    # Thin-driver path: opt-in via envelope= OR auto when dispatch_uri is set.
-    # When dispatch_uri is provided without an explicit envelope, auto-create one
-    # from the flow's task so every dispatched flow goes through the thin driver
-    # (observable events, envelope-aware steps, goal-verify, SAGA rollback).
-    # Callers without dispatch_uri → full orchestrator path with recovery/self-heal.
-    if envelope is None and dispatch_uri is not None:
+    # Thin-driver is the sole engine. Callers that don't provide a dispatch_uri
+    # get one backed by v2_service.call, so the same observable envelope-aware
+    # path is always used — no second engine, no silent fallback.
+    if dispatch_uri is None:
+        _mode = "execute" if execute else "dry-run"
+        dispatch_uri = lambda u, p=None: v2_service.call(  # noqa: E731
+            u, p or {}, registry or {}, mode=_mode)
+    if envelope is None:
         envelope = FlowEnvelope(
             flow_id=str(flow.get("task", {}).get("id") or ""),
             goal=flow.get("task") or {},
         )
-    if envelope is not None and dispatch_uri is not None:
-        old_map = _set_service_map(mesh)
-        try:
-            _dispatch = (
-                _make_memory_dispatch(dispatch_uri, memory, flow, registry)
-                if memory is not None else dispatch_uri
-            )
-            routes = (mesh or {}).get("routes") or []
-            steps = _build_thin_plan(flow.get("steps") or [], flow,
-                                     execute=execute, memory=memory, routes=routes)
-            return _thin_driver(steps, envelope, _dispatch,
-                                registry=registry, execute=execute,
-                                max_retries=max_retries,
-                                max_remediations=max_remediations,
-                                max_wall_clock=max_wall_clock)
-        finally:
-            _restore_service_map(old_map)
     old_map = _set_service_map(mesh)
-    results: dict = {}
-    timeline: list = []
-    recoveries: list = []
     try:
-        return _orchestrate_steps(
-            flow, registry, execute, recover, max_retries, max_wall_clock,
-            max_remediations, rollback_on_failure, memory, dispatch_uri,
-            mesh.get("routes") or [], timeline, results, recoveries,
+        _dispatch = (
+            _make_memory_dispatch(dispatch_uri, memory, flow, registry)
+            if memory is not None else dispatch_uri
         )
+        routes = (mesh or {}).get("routes") or []
+        steps = _build_thin_plan(flow.get("steps") or [], flow,
+                                 execute=execute, memory=memory, routes=routes)
+        return _thin_driver(steps, envelope, _dispatch,
+                            registry=registry, execute=execute,
+                            max_retries=max_retries,
+                            max_remediations=max_remediations,
+                            max_wall_clock=max_wall_clock)
     finally:
         _restore_service_map(old_map)
 
@@ -842,6 +827,17 @@ def run_flow_document(document: dict, mesh: dict, *, execute: bool, rollback_on_
                                 dispatch_uri=None)
 
 
+def _inproc_category(env: dict) -> str:
+    return (env.get("error") or {}).get("category") or ""
+
+
+def _inproc_result(env: dict) -> dict:
+    """Normalize a urirun.run envelope into the dispatch fallback's {ok, result, error} shape."""
+    val = (env.get("result") or {}).get("value") if isinstance(env.get("result"), dict) else None
+    return {"ok": bool(env.get("ok")), "result": val,
+            "error": (env.get("error") or {}).get("message") if not env.get("ok") else None}
+
+
 def _in_process_discovery(uri: str, payload: dict | None = None) -> "dict | None":
     """Tier-2 fallback: resolve *uri* through installed connectors (entry-point scan),
     then through DECORATED_BINDINGS (connector.handler() registrations not in entry points).
@@ -854,10 +850,8 @@ def _in_process_discovery(uri: str, payload: dict | None = None) -> "dict | None
         reg2 = _disc.registry_for_uri(uri, "urirun.bindings")
         env = _u.run(uri, reg2, payload=dict(payload or {}),
                      mode="execute", policy={"allowExecute": True})
-        if (env.get("error") or {}).get("category") != "NOT_FOUND":
-            val = (env.get("result") or {}).get("value") if isinstance(env.get("result"), dict) else None
-            return {"ok": bool(env.get("ok")), "result": val,
-                    "error": (env.get("error") or {}).get("message") if not env.get("ok") else None}
+        if _inproc_category(env) != "NOT_FOUND":
+            return _inproc_result(env)
         # Tier 2b: DECORATED_BINDINGS — connector.handler() registrations that have no entry point
         # (e.g. the twin:// connector registered by flow.py at module import time).
         live_binding = _v2.decorated_bindings()["bindings"].get(uri)
@@ -866,11 +860,9 @@ def _in_process_discovery(uri: str, payload: dict | None = None) -> "dict | None
         reg3 = _u.compile_registry(_v2.build_binding_document([live_binding]))
         env = _u.run(uri, reg3, payload=dict(payload or {}),
                      mode="execute", policy={"allowExecute": True})
-        if (env.get("error") or {}).get("category") == "NOT_FOUND":
+        if _inproc_category(env) == "NOT_FOUND":
             return None
-        val = (env.get("result") or {}).get("value") if isinstance(env.get("result"), dict) else None
-        return {"ok": bool(env.get("ok")), "result": val,
-                "error": (env.get("error") or {}).get("message") if not env.get("ok") else None}
+        return _inproc_result(env)
     except Exception as _exc:  # noqa: BLE001
         return {"ok": False, "invokedUri": uri,
                 "error": {"message": str(_exc), "category": "INPROCESS_ERROR"}}
