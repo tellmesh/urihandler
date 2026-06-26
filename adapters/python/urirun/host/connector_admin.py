@@ -145,3 +145,96 @@ def connector_env_check(payload: dict) -> dict:
             "error": env_check_error(ok, image, proc.returncode, tail)}
 
 
+
+import subprocess
+import sys
+
+CONNECTOR_INSTALL_TIMEOUT = 300
+
+
+def _connector_install_node(node: str, payload: dict, *, config: "str | None",
+                            node_urls: "list[str] | None", token: "str | None",
+                            identity: "str | None",
+                            node_url_from_config: "Any", node_token_for: "Any",
+                            node_client: "Any") -> dict:
+    """Install a connector on a remote node (NodeClient.ensure_scheme)."""
+    raw = str(payload.get("scheme") or payload.get("spec") or "").strip()
+    scheme = raw.split("://", 1)[0].strip().lower()
+    if scheme.startswith("urirun-connector-"):
+        scheme = scheme[len("urirun-connector-"):]
+    if not scheme:
+        return {"ok": False, "error": "scheme is required to install on a node (e.g. 'time')"}
+    node_url = node_url_from_config(config, node_urls, node)
+    if not node_url:
+        return {"ok": False, "error": "unknown node '" + node + "'"}
+    tok = node_token_for(node, token)
+    client = node_client(node_url, token=tok, identity=identity)
+    try:
+        before = sorted(client.schemes())
+    except Exception:  # noqa: BLE001
+        before = []
+    try:
+        res = client.ensure_scheme(scheme, install=True)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "target": "node:" + node, "nodeUrl": node_url, "scheme": scheme, "error": str(exc)}
+    res = res if isinstance(res, dict) else {"ok": bool(res)}
+    try:
+        after = sorted(client.schemes())
+    except Exception:  # noqa: BLE001
+        after = before
+    ok = bool(res.get("ok"))
+    return {"ok": ok, "target": "node:" + node, "nodeUrl": node_url, "scheme": scheme,
+            "already": bool(res.get("already")), "schemes": after,
+            "added": sorted(set(after) - set(before)), "detail": res,
+            "error": None if ok else (res.get("error") or "ensure_scheme failed")}
+
+
+def connector_install(project: str, payload: dict, *, config: "str | None" = None,
+                      node_urls: "list[str] | None" = None, token: "str | None" = None,
+                      identity: "str | None" = None,
+                      node_url_from_config: "Any" = None,
+                      node_token_for: "Any" = None,
+                      node_client: "Any" = None) -> dict:
+    """Install a URI connector on the host or a node from a chosen source."""
+    payload = payload if isinstance(payload, dict) else {}
+    target = str(payload.get("target") or "host").strip()
+    if target.startswith("node:"):
+        return _connector_install_node(
+            target[len("node:"):], payload, config=config, node_urls=node_urls,
+            token=token, identity=identity,
+            node_url_from_config=node_url_from_config,
+            node_token_for=node_token_for,
+            node_client=node_client,
+        )
+    source = str(payload.get("source") or "pip").strip().lower()
+    spec = str(payload.get("spec") or "").strip()
+    if not spec:
+        return {"ok": False, "error": "spec is required (package, repo, path or image)"}
+    pip_tail = connector_pip_tail(source, spec)
+    if pip_tail is None:
+        hints = {
+            "npm": "npm install -g " + spec + "   # expose via a urirun node argv connector",
+            "docker": "docker pull " + spec + "   # run via a docker-exec / docker-run adapter route",
+            "http": "register " + spec + " as an http:// connector route (no host install needed)",
+        }
+        return {"ok": False, "source": source, "spec": spec,
+                "error": "source '" + source + "' is not host pip-installable",
+                "hint": hints.get(source, "unsupported source")}
+    cmd = [sys.executable, "-m", "pip", "install", *pip_tail]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=CONNECTOR_INSTALL_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "source": source, "spec": spec, "command": " ".join(cmd),
+                "error": "pip install timed out after " + str(CONNECTOR_INSTALL_TIMEOUT) + "s"}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "source": source, "spec": spec, "command": " ".join(cmd), "error": str(exc)}
+    ok = proc.returncode == 0
+    schemes = refresh_connector_schemes() if ok else []
+
+    def _tail(text: str) -> str:
+        return "\n".join((text or "").strip().splitlines()[-12:])
+
+    return {"ok": ok, "source": source, "spec": spec, "command": " ".join(cmd),
+            "returncode": proc.returncode, "schemes": schemes,
+            "stdout": _tail(proc.stdout), "stderr": _tail(proc.stderr),
+            "error": None if ok else (_tail(proc.stderr) or "pip install failed")}

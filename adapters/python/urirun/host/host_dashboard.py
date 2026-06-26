@@ -78,7 +78,7 @@ from .document_sync import (
     find_duplicate_document as _find_duplicate_document,
     archive_redundant_duplicate as _archive_redundant_duplicate,
     supersede_archived_document as _supersede_archived_document,
-    archive_scanned_document as _archive_scanned_document,
+    archive_scanned_document as _archive_scanned_document_impl,
     _transaction_fingerprint,
     _fingerprint_match_count,
 )
@@ -177,6 +177,8 @@ from .object_registry import (
 )
 from .connector_admin import (
     CONNECTOR_DOCKER_TIMEOUT as _CONNECTOR_DOCKER_TIMEOUT,
+    connector_install as _connector_install_impl,
+    _connector_install_node as _connector_install_node_impl,
     connector_pip_tail as _connector_pip_tail,
     refresh_connector_schemes as _refresh_connector_schemes,
     env_check_error as _env_check_error,
@@ -341,6 +343,23 @@ def _prune_scanner_staging(*, min_interval: float = 60.0) -> int:
         return 0
     _LAST_STAGING_PRUNE = now
     return _prune_scanner_staging_impl(_scanner_staging_dir, min_interval=0.0)
+
+
+def _archive_scanned_document(**kwargs):
+    """Wrapper: injects the patchable _docid_for_file so tests can monkeypatch it."""
+    return _archive_scanned_document_impl(**kwargs, docid_fn=_docid_for_file)
+
+
+def artifacts_delete(project, artifact_dir, payload, db=None):
+    return _artifacts_delete_impl(_host_db(), project, db, payload)
+
+
+def artifacts_dedupe_rows(project, artifact_dir, payload, db=None):
+    return _artifacts_dedupe_rows_impl(_host_db(), project, db, payload)
+
+
+def artifacts_cleanup_orphan_sidecars(project, artifact_dir, payload, db=None):
+    return _artifacts_cleanup_orphan_sidecars_impl(_host_db(), project, db, payload)
 
 
 def _json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict) -> None:
@@ -3274,8 +3293,6 @@ def task_create(project: str, payload: dict) -> dict:
     return {"ok": True, "ticket": ticket}
 
 
-_CONNECTOR_BINDINGS_GROUP = "urirun.bindings"
-_CONNECTOR_INSTALL_TIMEOUT = 300
 
 
 def _lan_qr_profile() -> dict:
@@ -3285,55 +3302,6 @@ def _lan_qr_profile() -> dict:
     base = (os.environ.get("URIRUN_LAN_QR_BASE") or "http://192.168.188.212:8195").strip().rstrip("/")
     secure = base.replace("http://", "https://", 1) if base.startswith("http://") else base
     return {"base": base, "secureBase": secure}
-
-
-def connector_install(project: str, payload: dict, *, config: str | None = None,
-                      node_urls: list[str] | None = None, token: str | None = None,
-                      identity: str | None = None) -> dict:
-    """Install a URI connector on the host from a chosen source, then refresh discovery so its
-    scheme/routes go live immediately. Real host installs cover the native pip-based sources
-    (PyPI package, GitHub repo, local folder). npm/docker/http connectors are not host
-    pip-installable, so we return the canonical command for their own runtime instead."""
-    import sys
-    payload = payload if isinstance(payload, dict) else {}
-    target = str(payload.get("target") or "host").strip()
-    if target.startswith("node:"):
-        return _connector_install_node(target[len("node:"):], payload, config=config,
-                                       node_urls=node_urls, token=token, identity=identity)
-    source = str(payload.get("source") or "pip").strip().lower()
-    spec = str(payload.get("spec") or "").strip()
-    if not spec:
-        return {"ok": False, "error": "spec is required (package, repo, path or image)"}
-    pip_tail = _connector_pip_tail(source, spec)
-    if pip_tail is None:
-        hints = {
-            "npm": "npm install -g " + spec + "   # expose via a urirun node argv connector",
-            "docker": "docker pull " + spec + "   # run via a docker-exec / docker-run adapter route",
-            "http": "register " + spec + " as an http:// connector route (no host install needed)",
-        }
-        return {"ok": False, "source": source, "spec": spec,
-                "error": "source '" + source + "' is not host pip-installable",
-                "hint": hints.get(source, "unsupported source")}
-    cmd = [sys.executable, "-m", "pip", "install", *pip_tail]
-    try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=_CONNECTOR_INSTALL_TIMEOUT)
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "source": source, "spec": spec, "command": " ".join(cmd),
-                "error": "pip install timed out after " + str(_CONNECTOR_INSTALL_TIMEOUT) + "s"}
-    except Exception as exc:  # noqa: BLE001 - report install launch failures to the UI
-        return {"ok": False, "source": source, "spec": spec, "command": " ".join(cmd), "error": str(exc)}
-    ok = proc.returncode == 0
-    schemes = _refresh_connector_schemes() if ok else []
-
-    def _tail(text: str) -> str:
-        return "\n".join((text or "").strip().splitlines()[-12:])
-
-    return {"ok": ok, "source": source, "spec": spec, "command": " ".join(cmd),
-            "returncode": proc.returncode, "schemes": schemes,
-            "stdout": _tail(proc.stdout), "stderr": _tail(proc.stderr),
-            "error": None if ok else (_tail(proc.stderr) or "pip install failed")}
-
-
 def connector_test(project: str, db: str | None, config: str | None, payload: dict, *,
                    node_urls: list[str] | None = None, token: str | None = None,
                    identity: str | None = None) -> dict:
@@ -3355,43 +3323,6 @@ def connector_test(project: str, db: str | None, config: str | None, payload: di
                           node_urls=node_urls, token=token, identity=identity)
     except Exception as exc:  # noqa: BLE001 - surface route/handler errors to the UI as a failed test
         return {"ok": False, "invokedUri": uri, "error": str(exc)}
-
-
-def _connector_install_node(node: str, payload: dict, *, config: str | None,
-                            node_urls: list[str] | None, token: str | None,
-                            identity: str | None) -> dict:
-    """Install a connector on a remote node by making its scheme live there (NodeClient.ensure_scheme:
-    adopt/discover/install/adopt within node policy). The node's management token is resolved from the
-    keyring set in the Nodes view. `spec`/`scheme` is reduced to a bare scheme token (e.g. 'time')."""
-    raw = str(payload.get("scheme") or payload.get("spec") or "").strip()
-    scheme = raw.split("://", 1)[0].strip().lower()
-    if scheme.startswith("urirun-connector-"):
-        scheme = scheme[len("urirun-connector-"):]
-    if not scheme:
-        return {"ok": False, "error": "scheme is required to install on a node (e.g. 'time')"}
-    node_url = _node_url_from_config(config, node_urls, node)
-    if not node_url:
-        return {"ok": False, "error": "unknown node '" + node + "'"}
-    tok = _node_token_for(node, token)
-    client = _node_client(node_url, token=tok, identity=identity)
-    try:
-        before = sorted(client.schemes())
-    except Exception:  # noqa: BLE001
-        before = []
-    try:
-        res = client.ensure_scheme(scheme, install=True)
-    except Exception as exc:  # noqa: BLE001 - node unreachable / unauthorized / install failure
-        return {"ok": False, "target": "node:" + node, "nodeUrl": node_url, "scheme": scheme, "error": str(exc)}
-    res = res if isinstance(res, dict) else {"ok": bool(res)}
-    try:
-        after = sorted(client.schemes())
-    except Exception:  # noqa: BLE001
-        after = before
-    ok = bool(res.get("ok"))
-    return {"ok": ok, "target": "node:" + node, "nodeUrl": node_url, "scheme": scheme,
-            "already": bool(res.get("already")), "schemes": after,
-            "added": sorted(set(after) - set(before)), "detail": res,
-            "error": None if ok else (res.get("error") or "ensure_scheme failed")}
 def documents_reconcile(project: str, db: str | None, payload: dict | None = None) -> dict:
     """Prune document-index entries whose artifacts are gone from disk.
 
@@ -3658,8 +3589,8 @@ def create_handler(
                     return
                 if parsed.path == "/api/connectors/install":
                     payload = _read_json(self)
-                    _json_response(self, 200, connector_install(project, payload, config=config,
-                                                                node_urls=node_urls, token=token, identity=identity))
+                    _json_response(self, 200, _connector_install_impl(project, payload, config=config, node_urls=node_urls, token=token, identity=identity,
+                                                                    node_url_from_config=_node_url_from_config, node_token_for=_node_token_for, node_client=_node_client))
                     return
                 if parsed.path == "/api/connectors/docker-check":
                     payload = _read_json(self)
