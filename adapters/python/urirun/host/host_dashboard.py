@@ -76,6 +76,8 @@ from .document_sync import (
     file_sha256 as _file_sha256,
     docid_for_file as _docid_for_file,
     find_duplicate_document as _find_duplicate_document,
+    archive_redundant_duplicate as _archive_redundant_duplicate,
+    supersede_archived_document as _supersede_archived_document,
 )
 from .discovery import (
     add_node_aliases as _add_node_aliases_impl,
@@ -889,104 +891,6 @@ def reconcile_document_index() -> dict:
             for p in pruned
         ],
     }
-def _archive_redundant_duplicate(*, duplicate: dict, index_match: dict | None, existing_meta: dict,
-                                 extracted: dict, new_completeness: float, index: dict,
-                                 docid_info: dict, doc_id: str, original_path: Path, display_path: Path,
-                                 source_sha256: str, text_sha256: str,
-                                 fingerprint: Any, dhash: Any, phash: Any) -> dict:
-    """The new scan matches an already-archived document and is NOT more complete: enrich the
-    kept record with any newly-read fields, drop the redundant staged files, log a duplicate
-    event, and return the duplicate result. Called with _DOCUMENT_INDEX_LOCK held."""
-    duplicate_path = duplicate.get("pdfPath") or duplicate.get("path")
-    # The kept document is the better scan, but this re-scan may still have
-    # recognized a field the archived record is missing. Fuse those in
-    # (best-of-both) instead of discarding the re-scan's data outright.
-    enriched_fields: list[str] = []
-    if index_match is not None:
-        fused, enriched_fields = _merge_metadata_fields(
-            existing_meta, extracted,
-            old_weight=float(_metadata_completeness(existing_meta)) + 0.5,
-            new_weight=float(new_completeness),
-        )
-        if enriched_fields:
-            _enrich_archived_record(duplicate, fused, enriched_fields)
-            _save_document_index(index)
-    # The document is already archived; drop the redundant staged scan + crop
-    # so duplicates stop accumulating in the scans folder.
-    removed_scan_files = _cleanup_duplicate_scan_files([original_path, display_path])
-    duplicate_entry = {
-        "version": 1,
-        "event": "duplicate",
-        "scannedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "docId": doc_id,
-        "docIdProvider": docid_info.get("provider"),
-        "docIdSource": docid_info.get("source"),
-        "duplicate": True,
-        "duplicateOf": duplicate.get("docId") or doc_id,
-        "matchReason": duplicate.get("_matchReason") or "exact",
-        "enrichedFields": enriched_fields or None,
-        "pdfPath": duplicate_path,
-        "jsonPath": duplicate.get("jsonPath"),
-        "fileName": Path(str(duplicate_path)).name if duplicate_path else "",
-        "existingFileExists": bool(duplicate_path and Path(str(duplicate_path)).expanduser().is_file()),
-        "originalPath": str(original_path),
-        "cropPath": str(display_path),
-        "removedScanFiles": removed_scan_files,
-        "sourceSha256": source_sha256,
-        "textSha256": text_sha256,
-        "fingerprint": fingerprint,
-        "dhash": dhash,
-        "phash": phash,
-        "metadata": extracted,
-    }
-    _append_scanned_id_log(duplicate_entry)
-    return {
-        "ok": True,
-        "duplicate": True,
-        "docId": doc_id,
-        "docIdProvider": docid_info.get("provider"),
-        "path": duplicate_path,
-        "jsonPath": duplicate.get("jsonPath"),
-        "duplicateOf": duplicate_entry["duplicateOf"],
-        "matchReason": duplicate_entry["matchReason"],
-        "enrichedFields": enriched_fields or None,
-        "existingFileExists": duplicate_entry["existingFileExists"],
-        "removedScanFiles": removed_scan_files,
-        "metadata": extracted,
-        "indexPath": str(_document_index_path()),
-        "scannedIdLogPath": str(_scanned_id_log_path()),
-    }
-
-
-def _supersede_archived_document(*, duplicate: dict, existing_meta: dict, extracted: dict,
-                                 new_completeness: float, root: Path, month: str, doc_id: str,
-                                 index: dict) -> tuple:
-    """Supersede an archived document with a better scan: fuse best-of-both metadata, recompute
-    the destination from the (possibly richer) fields, delete the old files, and drop the old
-    index entry. Returns the updated (extracted, month, archive_dir, filename, superseded_of,
-    merged_fields). Called with _DOCUMENT_INDEX_LOCK held."""
-    extracted, merged_fields = _merge_metadata_fields(
-        existing_meta, extracted,
-        old_weight=float(_metadata_completeness(existing_meta)),
-        new_weight=float(new_completeness),
-    )
-    # Recompute name/month from the fused metadata (it may now be richer).
-    month = str(extracted["date"])[:7] if re.match(r"^20\d{2}-\d{2}", str(extracted.get("date", ""))) else month
-    archive_dir = root / month
-    filename = _document_filename_with_id(_canonical_document_filename(extracted), doc_id)
-    superseded_of = duplicate.get("docId")
-    _cleanup_duplicate_scan_files([duplicate.get("originalPath"), duplicate.get("cropPath")])
-    for stale in (duplicate.get("pdfPath") or duplicate.get("path"), duplicate.get("jsonPath")):
-        try:
-            if stale and Path(str(stale)).expanduser().is_file():
-                Path(str(stale)).expanduser().unlink()
-        except OSError:
-            pass
-    index["documents"] = [
-        item for item in index.get("documents", [])
-        if isinstance(item, dict) and item.get("docId") != superseded_of
-    ]
-    return extracted, month, archive_dir, filename, superseded_of, merged_fields
 def _archive_scanned_document(
     *,
     display_path: Path,
