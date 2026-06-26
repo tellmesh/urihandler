@@ -1075,6 +1075,33 @@ def _try_recall_gate(twin_memory, selected_nodes: list, prompt: str) -> tuple:
     return flow, generator
 
 
+def _flag_remote_capture_inline(flow: dict, discovered: dict, selected_nodes: list[str]) -> None:
+    """Set base64=True on screen/capture steps that target a remote (non-localhost) node.
+
+    A capture run on a remote node leaves its PNG on that machine, unreadable by the host.
+    Requesting inline base64 is the only path that works when the node serves no files.
+    """
+    _sel = set(selected_nodes or [])
+    _is_remote = any(
+        str(n.get("name") or n.get("node") or "") in _sel
+        and "127.0.0.1" not in str(n.get("url") or n.get("nodeUrl") or "")
+        and "localhost" not in str(n.get("url") or n.get("nodeUrl") or "")
+        and str(n.get("url") or n.get("nodeUrl") or "")
+        for n in (discovered.get("nodes") or [])
+    )
+    if _is_remote:
+        for _s in (flow.get("steps") or []):
+            if "/screen/query/capture" in str(_s.get("uri") or ""):
+                _s.setdefault("payload", {})["base64"] = True
+
+
+def _suggest_recall_for_memory(flow: dict, twin_memory: object | None) -> dict | None:
+    if twin_memory is None:
+        return None
+    from urirun.node.flow import suggest_recall as _suggest_recall  # noqa: PLC0415
+    return _suggest_recall(flow, twin_memory)
+
+
 def _chat_ask_general(
     project: str,
     db: str | None,
@@ -1121,25 +1148,10 @@ def _chat_ask_general(
                                                  use_llm=not no_llm, environments=environments)
             selected_nodes, selected_targets = _sync_targets_from_flow(
                 flow, discovered, selected_nodes, selected_targets)
-            # A capture run on a REMOTE node leaves its PNG on that machine, unreadable by the host.
-            # Ask the connector to return the image INLINE (base64) so _enrich_remote_attachments can
-            # save + preview it locally — the only path that works when the node serves no files.
-            _sel = set(selected_nodes or [])
-            if any(str(n.get("name") or n.get("node") or "") in _sel
-                   and "127.0.0.1" not in str(n.get("url") or n.get("nodeUrl") or "")
-                   and "localhost" not in str(n.get("url") or n.get("nodeUrl") or "")
-                   and str(n.get("url") or n.get("nodeUrl") or "")
-                   for n in (discovered.get("nodes") or [])):
-                for _s in (flow.get("steps") or []):
-                    if "/screen/query/capture" in str(_s.get("uri") or ""):
-                        _s.setdefault("payload", {})["base64"] = True
+            _flag_remote_capture_inline(flow, discovered, selected_nodes)
         except Exception as exc:  # noqa: BLE001 - return a recovery contract instead of a raw API failure.
             return _chat_ask_general_planner_failure(exc, db, prompt, execute, selected_nodes, selected_targets, deps)
-        if twin_memory is not None:
-            from urirun.node.flow import suggest_recall as _suggest_recall  # noqa: PLC0415
-            _recall = _suggest_recall(flow, twin_memory)
-        else:
-            _recall = None
+        _recall = _suggest_recall_for_memory(flow, twin_memory)
         _run_mode = "execute" if execute else "dry-run"
         _dispatch = make_local_dispatch_uri(registry, _run_mode)
         execution = mesh.execute_flow(flow, discovered, registry, execute=execute, memory=twin_memory,
