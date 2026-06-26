@@ -320,9 +320,14 @@ try:
 except Exception as _err:  # noqa: BLE001
     _DOCID_DEDUP_IMPORT_ERROR = _err
 
-_SERVICE_LOCK = threading.Lock()
-_SERVICE_SERVERS: dict[str, ThreadingHTTPServer] = {}
-_SERVICE_THREADS: dict[str, threading.Thread] = {}
+from .scanner_service import (
+    _SERVICE_LOCK,
+    _SERVICE_SERVERS,
+    _SERVICE_THREADS,
+    phone_scanner_service_id as _phone_scanner_service_id,
+    ensure_phone_scanner_service as _ensure_phone_scanner_service_impl,
+    restart_phone_scanner_service as _restart_phone_scanner_service_impl,
+)
 # Monkeypatch-friendly aliases (auto-sync moved these to scanner_bridge with _impl suffix)
 _is_phone_scanner_prompt = _is_phone_scanner_prompt_impl  # noqa: F401
 _torch_enabled_from_prompt = _torch_enabled_from_prompt_impl  # noqa: F401
@@ -764,64 +769,13 @@ def ensure_phone_scanner_service(
     tls_cert: str | None = None,
     tls_key: str | None = None,
 ) -> dict:
-    bind_host = host or os.environ.get("URIRUN_PHONE_SCANNER_HOST", "0.0.0.0")
-    scanner_port = int(port or os.environ.get("URIRUN_PHONE_SCANNER_PORT", "8196"))
-    cert = tls_cert or os.environ.get("URIRUN_PHONE_SCANNER_TLS_CERT", "~/.urirun/certs/urirun-dashboard.crt")
-    key = tls_key or os.environ.get("URIRUN_PHONE_SCANNER_TLS_KEY", "~/.urirun/certs/urirun-dashboard.key")
-    cert, key = _ensure_tls_cert(cert, key)
-    scanner_url = _scanner_page_url(f"https://{_url_host(_lan_host())}:{scanner_port}/scanner")
-    service_id = f"https://{bind_host}:{scanner_port}"
-
-    with _SERVICE_LOCK:
-        server = _SERVICE_SERVERS.get(service_id)
-        thread = _SERVICE_THREADS.get(service_id)
-        if server is not None and thread is not None and thread.is_alive():
-            status = "already-running"
-        elif _probe_scanner_url(scanner_url):
-            status = "external-running"
-        else:
-            server = serve(
-                project=project,
-                db=db,
-                config=config,
-                host=bind_host,
-                port=scanner_port,
-                node_urls=node_urls,
-                token=token,
-                identity=identity,
-                tls_cert=cert,
-                tls_key=key,
-                startup_qr=False,
-            )
-            thread = threading.Thread(target=server.serve_forever, name=f"urirun-phone-scanner-{scanner_port}", daemon=True)
-            thread.start()
-            _SERVICE_SERVERS[service_id] = server
-            _SERVICE_THREADS[service_id] = thread
-            status = "started"
-
-    qr = startup_phone_qr(
-        project,
-        db,
-        scheme="https",
-        host=bind_host,
-        port=scanner_port,
-        qr_url=scanner_url,
-        content_prefix="Phone scanner service ready",
+    return _ensure_phone_scanner_service_impl(
+        project, db, config, node_urls, token, identity,
+        host=host, port=port, tls_cert=tls_cert, tls_key=tls_key,
+        serve_fn=serve,
+        startup_phone_qr_fn=startup_phone_qr,
+        host_db_fn=_host_db,
     )
-    meta = {
-        "status": status,
-        "service": "phone-scanner",
-        "url": scanner_url,
-        "bindHost": bind_host,
-        "hostIp": _lan_host(),
-        "port": scanner_port,
-        "tlsCert": cert,
-    }
-    try:
-        _host_db().add_log(db, "service", "phone-scanner", meta)
-    except Exception:  # noqa: BLE001
-        pass
-    return {"ok": True, **meta, "qr": qr, "message": qr.get("message")}
 
 
 def _latest_scanner_page_status(db: str | None) -> dict:
@@ -999,10 +953,6 @@ def restart_chat_service(
     )
 
 
-def _phone_scanner_service_id(bind_host: str, port: int) -> str:
-    return f"https://{bind_host}:{port}"
-
-
 def restart_phone_scanner_service(
     project: str,
     db: str | None,
@@ -1012,95 +962,11 @@ def restart_phone_scanner_service(
     identity: str | None = None,
     payload: dict | None = None,
 ) -> dict:
-    payload = payload or {}
-    force_port_kill = str(payload.get("forcePortKill") or payload.get("force") or "").strip().lower() in {"1", "true", "yes", "on"}
-    argv, meta = _service_restart_argv(
-        payload,
-        service="phone-scanner",
-        env_prefix="URIRUN_PHONE_SCANNER",
-        default_unit="urirun-service-scanner.service",
+    return _restart_phone_scanner_service_impl(
+        project, db, config, node_urls, token, identity, payload=payload,
+        ensure_fn=ensure_phone_scanner_service,
+        free_port_fn=_free_port_from_old_scanner,
     )
-    meta.setdefault("exampleUri", "dashboard://host/service/phone-scanner/command/restart")
-    if argv:
-        return _schedule_restart_command_impl(argv, payload, meta)
-
-    bind_host = str(payload.get("host") or os.environ.get("URIRUN_PHONE_SCANNER_HOST", "0.0.0.0"))
-    scanner_port = int(payload.get("port") or os.environ.get("URIRUN_PHONE_SCANNER_PORT", "8196"))
-    service_id = _phone_scanner_service_id(bind_host, scanner_port)
-    with _SERVICE_LOCK:
-        server = _SERVICE_SERVERS.pop(service_id, None)
-        thread = _SERVICE_THREADS.pop(service_id, None)
-
-    if server is not None and thread is not None and thread.is_alive():
-        def _restart() -> None:
-            try:
-                server.shutdown()
-                server.server_close()
-                thread.join(timeout=3)
-            except Exception:  # noqa: BLE001
-                pass
-            ensure_phone_scanner_service(
-                project,
-                db,
-                config,
-                node_urls=node_urls,
-                token=token,
-                identity=identity,
-                host=bind_host,
-                port=scanner_port,
-            )
-
-        threading.Thread(target=_restart, name=f"urirun-phone-scanner-restart-{scanner_port}", daemon=True).start()
-        return {
-            "ok": True,
-            "scheduled": True,
-            "manager": "in-process",
-            "service": "phone-scanner",
-            "port": scanner_port,
-            "url": _phone_scanner_url(scanner_port),
-        }
-
-    replaced = _free_port_from_old_scanner(scanner_port, force=force_port_kill)
-    if replaced.get("holders"):
-        if not replaced.get("ok") or replaced.get("remaining"):
-            return {
-                "ok": False,
-                **meta,
-                "replace": replaced,
-                "reason": "port is owned by a process that was not safely replaceable; use forcePortKill only in a controlled environment",
-            }
-        started = ensure_phone_scanner_service(
-            project,
-            db,
-            config,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-            host=bind_host,
-            port=scanner_port,
-        )
-        return {"ok": True, "manager": "port-replace", "restart": True, "replace": replaced, **started}
-
-    status = _phone_scanner_external_status(scanner_port)
-    if not status.get("reachable"):
-        started = ensure_phone_scanner_service(
-            project,
-            db,
-            config,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-            host=bind_host,
-            port=scanner_port,
-        )
-        return {"ok": True, "manager": "start-if-stopped", "restart": False, **started}
-
-    return {
-        "ok": False,
-        **meta,
-        "status": status,
-        "reason": "scanner is reachable but is not managed by this dashboard process; configure a supervisor restart command",
-    }
 
 
 def _uri_simulated_result(uri: str, mode: str, action_payload: dict, action: dict | None) -> dict:
@@ -2111,7 +1977,8 @@ def _general_path_complete(
     content = f"{status}: {len(timeline)} URI step(s)"
     if result.get("recovery"):
         content += f", {len(result.get('recovery') or [])} recovery action(s)"
-    _append_twin_widget(execute, flow, attachments, prompt, selected_targets, timeline)
+    _append_twin_widget(execute, flow, attachments, prompt, selected_targets, timeline,
+                        results=result.get("results") or {})
     if attachments:
         content += f", {len(attachments)} attachment(s)"
     _add_chat_message(db, _chat_message(
@@ -2599,6 +2466,33 @@ def _api_twin_flows(project: str, db: str | None, config: str | None, query: dic
     return 200, {"ok": True, "flows": flows[:limit], "total": len(flows)}
 
 
+def _api_twin_state(project: str, db: str | None, config: str | None, query: dict,
+                    node_urls: list[str] | None = None) -> tuple[int, dict]:
+    """Single flat state endpoint for the twin panel — replaces polling SSE + /api/twin/flows.
+
+    Returns known-good environment profiles per node and recent successful flow executions.
+    Frontend polls this at 2 s with AbortController; no SSE required."""
+    from urirun.node.twin_store import durable_memory as _durable_memory  # noqa: PLC0415
+    mem = _durable_memory()
+    limit = int((query.get("limit") or [20])[0])
+    flows = mem.known_good_flows()
+    nodes: dict = {}
+    store = mem.store
+    pairs = store.items() if hasattr(store, "items") else []
+    for node_name, rec in pairs:
+        if isinstance(rec, dict):
+            nodes[node_name] = {
+                "fingerprint": rec.get("fingerprint"),
+                "snapshot": rec.get("snapshot"),
+            }
+    return 200, {
+        "ok": True,
+        "nodes": nodes,
+        "flows": flows[:limit],
+        "total": len(flows),
+    }
+
+
 _API_ROUTES = {
     "/api/summary": _api_summary,
     "/api/objects": _api_objects,
@@ -2611,6 +2505,7 @@ _API_ROUTES = {
     "/api/services/live": _api_services_live,
     "/api/scanner/live": _api_scanner_live,
     "/api/twin/flows": _api_twin_flows,
+    "/api/twin/state": _api_twin_state,
 }
 
 
