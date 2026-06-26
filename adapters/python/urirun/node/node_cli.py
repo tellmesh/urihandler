@@ -1,56 +1,8 @@
 # Integration-layer CLI moved to urirun.host.node_cli (Phase 5).
-# This shim re-exports everything so existing callers (mesh.py, etc.) keep working unchanged.
-from urirun.host.node_cli import (  # noqa: F401
-    DEFAULT_IDENTITY,
-    _DATA_HANDLERS,
-    _HOST_MESH_HANDLERS,
-    _build_implicit_api,
-    _data_artifact_register,
-    _data_artifacts,
-    _data_bindings,
-    _data_check_add,
-    _data_checks,
-    _data_dataset_create,
-    _data_datasets,
-    _data_init,
-    _data_record_upsert,
-    _data_records,
-    _data_sql,
-    _handle_add_node,
-    _handle_add_node_advanced,
-    _host_cmd_agents,
-    _host_cmd_ask,
-    _host_cmd_config,
-    _host_cmd_doctor,
-    _host_cmd_nodes,
-    _host_cmd_routes,
-    _host_delegated_command,
-    _host_mesh_command,
-    _maybe_ensure_scheme,
-    _maybe_load_dotenv,
-    _parse_api_json_args,
-    _print_event,
-    _probe_one_route,
-    _render_probe_report,
-    _resolve_registry_source,
-    _run_streamed,
-    _split_deploy_doc,
-    _warn_dropped_routes,
-    _watch_loop,
-    copy_id_cli,
-    copy_id_command,
-    data_command,
-    deploy_command,
-    ensure_command,
-    fulfill_need,
-    host_command,
-    monitor_command,
-    node_command,
-    node_list_command,
-    node_stop_command,
-    probe_command,
-    run_command,
-    supply_command,
-    watch_command,
-)
-from urirun.node.task_cli import task_command  # noqa: F401 (re-exported for callers)
+# This shim forwards the module identity so monkeypatches on urirun.node.node_cli
+# land on the actual implementation (same sys.modules trick as v2_service.py).
+import sys as _sys
+from urirun.host import node_cli as _moved
+
+if __name__ != "__main__":
+    _sys.modules[__name__] = _moved

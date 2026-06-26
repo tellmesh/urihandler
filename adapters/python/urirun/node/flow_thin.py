@@ -212,59 +212,64 @@ def _thin_rollback(dispatch_uri, envelope: "FlowEnvelope", timeline: list, resul
     return out
 
 
+def _thin_retry_once(sid: str, uri: str, payload: dict, envelope: FlowEnvelope,
+                     dispatch_uri, timeline: list, results: dict,
+                     *, healed: bool = False, extra: dict | None = None) -> "dict | None":
+    """Dispatch uri again; record the retry timeline entry. Returns early-exit dict on failure."""
+    envelope.retries_used += 1
+    if healed:
+        envelope.remediations_used += 1
+    r2 = dispatch_uri(uri, payload)
+    kind2 = _next_kind(r2)
+    envelope.record(uri, "return", ok=r2.get("ok", True), next=kind2, retry=True)
+    entry: dict = {"id": f"{sid}:retry", "uri": uri,
+                   "ok": r2.get("ok", True), "target": route_target(uri)}
+    if extra:
+        entry.update(extra)
+    timeline.append(entry)
+    results[sid] = r2
+    if kind2 not in ("continue", "done"):
+        return _thin_rollback(dispatch_uri, envelope, timeline, results, "failed")
+    return None
+
+
+def _thin_handle_acquire(r: dict, sid: str, uri: str, payload: dict,
+                         envelope: FlowEnvelope, dispatch_uri, timeline: list,
+                         results: dict) -> "tuple[bool, dict | None]":
+    """Handle next.kind='acquire': call ready:// ensure; retry on success; block on failure."""
+    acquire = r.get("acquire") or {}
+    precondition = acquire.get("precondition") or ""
+    node = route_target(uri) or "host"
+    er = dispatch_uri(f"ready://{node}/ready/command/ensure", {"precondition": precondition})
+    if er.get("ok") and (er.get("satisfied") or er.get("acquired")):
+        early = _thin_retry_once(sid, uri, payload, envelope, dispatch_uri, timeline, results,
+                                 healed=True, extra={"precondition": precondition, "target": node})
+        return False, early
+    blocked = er.get("acquire") or acquire
+    err = r.get("error") if isinstance(r.get("error"), dict) else None
+    entry: dict = {"id": f"{sid}:blocked", "uri": uri, "ok": False,
+                   "target": node, "blocked": blocked}
+    if err:
+        entry["error"] = err
+    timeline.append(entry)
+    out: dict = {"ok": False, "timeline": timeline, "results": results,
+                 "blocked": blocked, "next": {"kind": "acquire"}}
+    if err:
+        out["error"] = err
+    return False, out
+
+
 def _thin_handle_non_continue(kind: str, r: dict, step: dict, sid: str, uri: str, payload: dict,
                                envelope: FlowEnvelope, dispatch_uri, timeline: list,
                                results: dict) -> tuple[bool, dict | None]:
     """Process step result kinds other than 'continue'.
     Returns (should_break, early_return).  early_return=None means proceed in loop."""
     if kind == "retry":
-        envelope.retries_used += 1
-        if r.get("healed"):
-            envelope.remediations_used += 1
-        r2 = dispatch_uri(uri, payload)
-        kind2 = _next_kind(r2)
-        envelope.record(uri, "return", ok=r2.get("ok", True), next=kind2, retry=True)
-        timeline.append({"id": f"{sid}:retry", "uri": uri,
-                          "ok": r2.get("ok", True), "target": route_target(uri)})
-        results[sid] = r2
-        if kind2 not in ("continue", "done"):
-            return False, _thin_rollback(dispatch_uri, envelope, timeline, results, "failed")
-        return False, None
+        early = _thin_retry_once(sid, uri, payload, envelope, dispatch_uri, timeline, results,
+                                 healed=bool(r.get("healed")))
+        return False, early
     if kind == "acquire":
-        # Connector signals: "I need a precondition before I can proceed."
-        # Call ready://<node>/ready/command/ensure; if satisfied → retry; else → block.
-        acquire = r.get("acquire") or {}
-        precondition = acquire.get("precondition") or ""
-        node = route_target(uri) or "host"
-        ensure_uri = f"ready://{node}/ready/command/ensure"
-        er = dispatch_uri(ensure_uri, {"precondition": precondition})
-        if er.get("ok") and (er.get("satisfied") or er.get("acquired")):
-            # Precondition now met — retry the original step once.
-            envelope.retries_used += 1
-            envelope.remediations_used += 1
-            r2 = dispatch_uri(uri, payload)
-            kind2 = _next_kind(r2)
-            envelope.record(uri, "return", ok=r2.get("ok", True), next=kind2, retry=True)
-            timeline.append({"id": f"{sid}:retry", "uri": uri,
-                              "ok": r2.get("ok", True), "target": node,
-                              "precondition": precondition})
-            results[sid] = r2
-            if kind2 not in ("continue", "done"):
-                return False, _thin_rollback(dispatch_uri, envelope, timeline, results, "failed")
-            return False, None
-        # Precondition NOT satisfiable automatically — surface one-tap acquire item.
-        blocked = er.get("acquire") or acquire
-        err = r.get("error") if isinstance(r.get("error"), dict) else None
-        entry: dict = {"id": f"{sid}:blocked", "uri": uri, "ok": False,
-                       "target": node, "blocked": blocked}
-        if err:
-            entry["error"] = err
-        timeline.append(entry)
-        out: dict = {"ok": False, "timeline": timeline, "results": results,
-                     "blocked": blocked, "next": {"kind": "acquire"}}
-        if err:
-            out["error"] = err
-        return False, out
+        return _thin_handle_acquire(r, sid, uri, payload, envelope, dispatch_uri, timeline, results)
     if kind == "rollback":
         err = r.get("error") if isinstance(r.get("error"), dict) else None
         # explicit=True when step intentionally returned next.kind="rollback"; False when

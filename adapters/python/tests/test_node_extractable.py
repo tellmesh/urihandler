@@ -7,8 +7,9 @@
 #   H = pure node substrate — full urirun.node.* MINUS the CLI integration files
 #       (node_cli.py and task_cli.py legitimately import host.* and live in the
 #        integration layer, not the liftable node core)
-#   F = full node.* namespace — intentionally RED while CLI files still live under node.*
-#       This test documents the known state; it becomes GREEN once the CLI files move.
+#   F = full node.* namespace — permanently RED: node_cli.py / task_cli.py are shims to
+#       host.* (CLI layer moved to host.node_cli / host.task_cli); mesh.py re-exports them
+#       and is the permanent coupling point between node.* and host.*.
 #
 # All three gates use the same pattern as test_scanner_extractable / test_connector_extractable.
 import importlib.util
@@ -70,9 +71,13 @@ def test_node_substrate_boundary_is_green():
 
 
 def test_node_full_namespace_has_cli_host_edges():
-    """Documents that node_cli.py and task_cli.py still import host.* (integration layer).
-    When these files move to host.*, this test should be removed and Preset F becomes GREEN."""
-    _assert_red("F", expected_min_outward=4)
+    """Documents that node.* is intentionally RED: node_cli.py and task_cli.py are shims
+    pointing to host.* (the CLI integration layer lives in host.node_cli / host.task_cli).
+    mesh.py re-exports those symbols for external callers and is the permanent coupling point.
+    Preset H (pure node substrate, CLIs excluded) is the GREEN extraction gate instead."""
+    # Shims in node_cli.py + task_cli.py now use the sys.modules trick (1 import each),
+    # so the minimum outward count dropped from 4 to 2 when the CLIs moved to host.*.
+    _assert_red("F", expected_min_outward=2)
 
 
 if __name__ == "__main__":
