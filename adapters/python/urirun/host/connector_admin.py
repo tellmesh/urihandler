@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 
 CONNECTOR_DOCKER_TIMEOUT = 600
+_CONNECTOR_BINDINGS_GROUP = "urirun.bindings"
 
 
 def connector_pip_tail(source: str, spec: str) -> list[str] | None:
