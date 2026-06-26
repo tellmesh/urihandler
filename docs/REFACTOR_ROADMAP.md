@@ -220,6 +220,27 @@ genuine drift:
 - `urirun-connector-linkedin/connector.manifest.json`: updated all routes from
   `linkedin://me/` → `linkedin://host/`.
 
+## Landed (2026-06-26): Phase R session 3 — fs_transfer, artifacts_admin, document_sync, connector_admin
+
+**This session (2026-06-26), host_dashboard: 11820 → 4526 L (−7294 total):**
+
+New modules created:
+- `host/connector_admin.py` (147 L): connector_pip_tail, refresh_connector_schemes, env_check_error,
+  docker_install_target, run_docker_check, parse_bindings_output, connector_env_check.
+- `host/artifacts_admin.py` already existed; received iter_orphan_candidates, cleanup_one_sidecar.
+- `host/document_sync.py` received: write_document_pdf, sidecar_text, unique_document_path,
+  existing_document, existing_document_meta, is_blank_metadata, merge_metadata_fields, enrich_archived_record.
+- `host/fs_transfer.py` received: short_value, route_not_found_remedy, envelope_error_message,
+  remote_write_error, remote_read_error, node_client, node_token_for, run_node_uri, compact_remote_run.
+
+Dead shims deleted: _prune_scanner_staging, _chat_service_restart_argv,
+_free_port_from_old_chat, _free_port_from_old_android_node, _uri_event (5 shims).
+Dead imports removed: _short_value, _route_not_found_remedy, _envelope_error_message.
+Style: compressed excess blank lines (−76 L).
+Chat shims inlined: 3 single-caller _chat_phone_scanner_response shims + _dispatch dict.
+
+1225 tests passed, 3 skipped throughout (1 pre-existing mesh test deselected).
+
 ## Landed (2026-06-26): scanner_bridge + object_registry — Phase R session 2
 
 **scanner_bridge.py additions (7 commits):**
