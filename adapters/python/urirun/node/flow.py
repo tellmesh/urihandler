@@ -1431,8 +1431,16 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recov
                  memory: TwinMemory | None = None,
                  dispatch_uri=None,
                  envelope: FlowEnvelope | None = None) -> dict:
-    # Thin-driver path (opt-in via envelope=): all domain branches in step results.
-    # Existing callers pass no envelope → full orchestrator path below.
+    # Thin-driver path: opt-in via envelope= OR auto when dispatch_uri is set.
+    # When dispatch_uri is provided without an explicit envelope, auto-create one
+    # from the flow's task so every dispatched flow goes through the thin driver
+    # (observable events, envelope-aware steps, goal-verify, SAGA rollback).
+    # Callers without dispatch_uri → full orchestrator path below.
+    if envelope is None and dispatch_uri is not None:
+        envelope = FlowEnvelope(
+            flow_id=str(flow.get("task", {}).get("id") or ""),
+            goal=flow.get("task") or {},
+        )
     if envelope is not None and dispatch_uri is not None:
         old_map = _set_service_map(mesh)
         try:
