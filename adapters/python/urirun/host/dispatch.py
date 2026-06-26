@@ -153,7 +153,7 @@ def make_local_dispatch_uri(registry: dict, run_mode: str, fallback=None):
     diag://, fix://, twin://, widget://, artifact://, ...).
 
     Accepts an optional *fallback* override so callers can inject test stubs."""
-    from urirun import v2_service as _v2
+    from urirun.runtime import v2_service as _v2
     return _v2.make_dispatch(
         registry, run_mode,
         fallback=fallback if fallback is not None else inprocess_fallback,

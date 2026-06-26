@@ -151,7 +151,7 @@ def smoke(bindings, *, run_uri: str | None = None, payload: dict | None = None,
             report["ok"] = False
             report["run"]["detail"] = env
 
-    from urirun import v2_mcp
+    from urirun.runtime import v2_mcp
 
     report["mcpTools"] = len(v2_mcp.to_mcp_tools(registry))
     report["a2aSkills"] = len(v2_mcp.to_a2a_card(registry, name=name).get("skills", []))

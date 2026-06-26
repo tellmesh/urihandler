@@ -176,7 +176,7 @@ def action_space(registry: dict) -> list[dict]:
     required}`` per route, including the input schema (unlike ``list_routes``,
     which omits it). Lets callers use the public API instead of reaching into the
     runtime to re-derive an agent's action space."""
-    from urirun import _registry as reglib
+    from urirun.runtime import _registry as reglib
 
     space = []
     for route in reglib.flatten_registry_document(registry):
@@ -645,7 +645,7 @@ class Connector:
         """Project this connector's routes to MCP tools — the same list the runtime
         serves from a registry, but straight from the connector object (B5: one
         definition, every projection)."""
-        from urirun import v2_mcp
+        from urirun.runtime import v2_mcp
 
         return v2_mcp.to_mcp_tools(self.registry())
 
@@ -653,7 +653,7 @@ class Connector:
                  version: str = "0.8.0") -> dict:
         """Project this connector's routes to an A2A agent card (defaults the card
         name to the connector id)."""
-        from urirun import v2_mcp
+        from urirun.runtime import v2_mcp
 
         return v2_mcp.to_a2a_card(self.registry(), name=name or self.id, url=url, version=version)
 
