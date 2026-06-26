@@ -65,6 +65,9 @@ class FlowEnvelope:
     ledger: list[dict] = field(default_factory=list)
     attempts: dict[str, int] = field(default_factory=dict)
     events: list[dict] = field(default_factory=list)
+    # Circuit-breaker counters — driver increments, steps read via envelope
+    retries_used: int = 0
+    remediations_used: int = 0
 
     def record(self, uri: str, phase: str, **kwargs) -> None:
         self.events.append({"uri": uri, "phase": phase, "pos": self.position, **kwargs})
@@ -78,24 +81,98 @@ def _next_kind(result: dict) -> str:
     return (result.get("next") or {}).get("kind") or ("continue" if result.get("ok", True) else "rollback")
 
 
+_THIN_ROLLBACK_URI = "twin://host/flow/command/rollback"
+_THIN_GOAL_URI = "flow://host/goal/query/verify"
+_THIN_PREFLIGHT_URI = "twin://host/flow/command/preflight"
+
+
+def _thin_circuit_break(envelope: FlowEnvelope, timeline: list, results: dict,
+                        max_retries: int, max_remediations: int,
+                        start: float, max_wall_clock: float) -> dict | None:
+    """Return an ABORTED envelope when any safety budget is exceeded, else None.
+
+    Three independent limits: per-flow retries, per-flow remediations (self-heals),
+    and wall-clock seconds — whichever trips first halts the flow."""
+    if envelope.retries_used > max_retries:
+        return _circuit_break(f"flow exceeded {max_retries} retries", timeline, results, [])
+    if envelope.remediations_used > max_remediations:
+        return _circuit_break(f"flow exceeded {max_remediations} self-heals", timeline, results, [])
+    if time.monotonic() - start > max_wall_clock:
+        return _circuit_break(f"flow exceeded {max_wall_clock:.0f}s wall-clock", timeline, results, [])
+    return None
+
+
+def _thin_rollback(dispatch_uri, envelope, timeline, results, kind: str) -> dict:
+    rb = dispatch_uri(_THIN_ROLLBACK_URI, {"ledger": envelope.ledger})
+    envelope.record(_THIN_ROLLBACK_URI, "call")
+    return {"ok": False, "timeline": timeline, "results": results,
+            "rollback": rb, "next": {"kind": kind}}
+
+
+def _thin_handle_non_continue(kind: str, r: dict, step: dict, sid: str, uri: str, payload: dict,
+                               envelope: FlowEnvelope, dispatch_uri, timeline: list,
+                               results: dict) -> tuple[bool, dict | None]:
+    """Process step result kinds other than 'continue'.
+    Returns (should_break, early_return).  early_return=None means proceed in loop."""
+    if kind == "retry":
+        envelope.retries_used += 1
+        if r.get("healed"):
+            envelope.remediations_used += 1
+        r2 = dispatch_uri(uri, payload)
+        kind2 = _next_kind(r2)
+        envelope.record(uri, "return", ok=r2.get("ok", True), next=kind2, retry=True)
+        timeline.append({"id": f"{sid}:retry", "uri": uri,
+                          "ok": r2.get("ok", True), "target": route_target(uri)})
+        results[sid] = r2
+        if kind2 not in ("continue", "done"):
+            return False, _thin_rollback(dispatch_uri, envelope, timeline, results, "failed")
+        return False, None
+    if kind == "rollback":
+        return False, _thin_rollback(dispatch_uri, envelope, timeline, results, "failed")
+    return kind == "done", None  # done → break; unknown → continue
+
+
 def _thin_driver(
     steps: list[dict],
     envelope: FlowEnvelope,
     dispatch_uri,
     registry: dict,
     execute: bool,
+    *,
+    max_retries: int = 8,
+    max_remediations: int = 6,
+    max_wall_clock: float = 180.0,
+    preflight: bool = True,
 ) -> dict:
     """Uniform follow-the-intent loop.  No retry branch, no heal branch, no rollback branch.
     Every decision is made by flow-aware processes and returned as `next.kind` in the result.
 
-    This is what `execute_flow` collapses to when processes carry awareness and capabilities
-    are URIs (diag://, fix://, twin://…/rollback, flow://…/goal/verify)."""
+    Safety: circuit-breaker (retries / remediations / wall-clock) lives here as a loop
+    invariant — the ONLY control-flow concern that cannot be expressed as a step result.
+
+    Preflight: when `preflight=True` and `execute=True`, the driver calls
+    `twin://host/flow/command/preflight` before the main loop so CDP sessions are
+    provisioned up-front instead of failing-then-self-healing reactively."""
+    start = time.monotonic()
     timeline: list[dict] = []
     results: dict = {}
 
+    if execute and preflight:
+        envelope.record(_THIN_PREFLIGHT_URI, "call")
+        pf_r = dispatch_uri(_THIN_PREFLIGHT_URI, {"steps": steps})
+        envelope.record(_THIN_PREFLIGHT_URI, "return", ok=pf_r.get("ok", True))
+        if isinstance(pf_r.get("timeline"), list):
+            timeline.extend(pf_r["timeline"])
+
     for i, step in enumerate(steps):
+        brk = _thin_circuit_break(envelope, timeline, results,
+                                   max_retries, max_remediations, start, max_wall_clock)
+        if brk is not None:
+            return brk
+
         envelope.position = i
         uri = step["uri"]
+        sid = step.get("id") or uri
         payload = step.get("payload") or {}
         envelope.record(uri, "call")
 
@@ -103,51 +180,26 @@ def _thin_driver(
         kind = _next_kind(r)
         envelope.record(uri, "return", ok=r.get("ok", True), next=kind)
 
-        entry = {"id": step.get("id") or uri, "uri": uri, "ok": r.get("ok", True),
-                 "target": route_target(uri)}
+        entry: dict = {"id": sid, "uri": uri, "ok": r.get("ok", True), "target": route_target(uri)}
         if not r.get("ok"):
             entry["error"] = r.get("error")
         timeline.append(entry)
-        results[step.get("id") or uri] = r
+        results[sid] = r
 
-        if kind == "continue":
-            continue
-        elif kind == "retry":
-            # process already updated envelope.attempts; re-run same index
-            envelope.position = i
-            r2 = dispatch_uri(uri, payload)
-            kind2 = _next_kind(r2)
-            envelope.record(uri, "return", ok=r2.get("ok", True), next=kind2, retry=True)
-            entry2 = {"id": f"{step.get('id') or uri}:retry", "uri": uri,
-                      "ok": r2.get("ok", True), "target": route_target(uri)}
-            timeline.append(entry2)
-            results[step.get("id") or uri] = r2
-            if kind2 not in ("continue", "done"):
-                # retry failed too → rollback
-                rb = dispatch_uri(f"twin://host/flow/command/rollback",
-                                  {"ledger": envelope.ledger})
-                envelope.record("twin://host/flow/command/rollback", "call")
-                return {"ok": False, "timeline": timeline, "results": results,
-                        "rollback": rb, "next": {"kind": "failed"}}
-        elif kind == "rollback":
-            rb = dispatch_uri("twin://host/flow/command/rollback",
-                              {"ledger": envelope.ledger})
-            envelope.record("twin://host/flow/command/rollback", "call")
-            return {"ok": False, "timeline": timeline, "results": results,
-                    "rollback": rb, "next": {"kind": "failed"}}
-        elif kind == "done":
-            break
+        if kind != "continue":
+            should_break, early = _thin_handle_non_continue(
+                kind, r, step, sid, uri, payload, envelope, dispatch_uri, timeline, results)
+            if early is not None:
+                return early
+            if should_break:
+                break
 
-    # goal verify — just another URI step
-    _GOAL_URI = "flow://host/goal/query/verify"
-    envelope.record(_GOAL_URI, "call")
-    goal_r = dispatch_uri(_GOAL_URI, {"goal": envelope.goal, "results": results})
-    envelope.record(_GOAL_URI, "return",
+    envelope.record(_THIN_GOAL_URI, "call")
+    goal_r = dispatch_uri(_THIN_GOAL_URI, {"goal": envelope.goal, "results": results})
+    envelope.record(_THIN_GOAL_URI, "return",
                     ok=goal_r.get("ok", True), next=_next_kind(goal_r))
     if not goal_r.get("ok", True):
-        rb = dispatch_uri("twin://host/flow/command/rollback", {"ledger": envelope.ledger})
-        return {"ok": False, "timeline": timeline, "results": results,
-                "rollback": rb, "next": {"kind": "goal-failed"}}
+        return _thin_rollback(dispatch_uri, envelope, timeline, results, "goal-failed")
     return {"ok": True, "timeline": timeline, "results": results,
             "next": {"kind": "done"}, "envelope": envelope}
 
@@ -1232,77 +1284,86 @@ def _abort_envelope(step: dict, step_timeline: list, step_recoveries: list, time
     return out
 
 
+def _set_service_map(mesh: dict) -> str | None:
+    old = os.environ.get("URI_SERVICE_MAP")
+    os.environ["URI_SERVICE_MAP"] = json.dumps(mesh.get("serviceMap") or {})
+    return old
+
+
+def _restore_service_map(old: str | None) -> None:
+    if old is None:
+        os.environ.pop("URI_SERVICE_MAP", None)
+    else:
+        os.environ["URI_SERVICE_MAP"] = old
+
+
+def _orchestrate_steps(flow: dict, registry: dict, execute: bool, recover: bool,
+                       max_retries: int, max_wall_clock: float, max_remediations: int,
+                       rollback_on_failure: bool, memory, dispatch_uri,
+                       routes: list, timeline: list, results: dict,
+                       recoveries: list) -> dict:
+    start = time.monotonic()
+    remediations_used = 0
+    if execute and recover:
+        timeline.extend(_preflight(flow, registry))
+    if memory is not None:
+        _capture_known_good(flow, registry, memory)
+        timeline.extend(_drift_timeline(flow, registry, memory))
+    for step in flow["steps"]:
+        broke = _circuit_break_if_over(start, max_wall_clock, remediations_used,
+                                       max_remediations, timeline, results, recoveries)
+        if broke is not None:
+            return broke
+        payload, fail = _resolve_payload_or_fail(step, results, routes, timeline, recoveries)
+        if fail is not None:
+            return fail
+        env, step_timeline, step_recoveries, aborted = _run_step(
+            step, payload, registry, execute, routes, recover, max_retries,
+            dispatch_uri=dispatch_uri,
+        )
+        timeline.extend(step_timeline)
+        recoveries.extend(step_recoveries)
+        remediations_used += sum(1 for e in step_timeline if e.get("action") == "self-heal")
+        results[step["id"]] = env
+        if aborted:
+            return _abort_envelope(step, step_timeline, step_recoveries, timeline, results,
+                                   recoveries, registry, rollback_on_failure, execute)
+    result = {"ok": True, "timeline": timeline, "results": results}
+    if recoveries:
+        result["recovery"] = recoveries
+    if memory is not None:
+        _update_known_good(flow, registry, memory)
+        _remember_known_good_flow(flow, result, memory)
+    return result
+
+
 def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recover: bool = True,
                  max_retries: int = 1, max_wall_clock: float = 180.0, max_remediations: int = 6,
                  rollback_on_failure: bool = True,
                  memory: TwinMemory | None = None,
                  dispatch_uri=None,
                  envelope: FlowEnvelope | None = None) -> dict:
-    # ── thin-driver path: opt-in via envelope= ──────────────────────────────
-    # When an envelope is supplied, the driver is the uniform follow-the-intent loop.
-    # All domain branches (retry/heal/rollback/verify) are expected in step results.
+    # Thin-driver path (opt-in via envelope=): all domain branches in step results.
     # Existing callers pass no envelope → full orchestrator path below.
     if envelope is not None and dispatch_uri is not None:
-        old_map = os.environ.get("URI_SERVICE_MAP")
-        os.environ["URI_SERVICE_MAP"] = json.dumps(mesh.get("serviceMap") or {})
+        old_map = _set_service_map(mesh)
         try:
             return _thin_driver(flow.get("steps") or [], envelope, dispatch_uri,
                                 registry=registry, execute=execute)
         finally:
-            if old_map is None:
-                os.environ.pop("URI_SERVICE_MAP", None)
-            else:
-                os.environ["URI_SERVICE_MAP"] = old_map
-    old_map = os.environ.get("URI_SERVICE_MAP")
-    os.environ["URI_SERVICE_MAP"] = json.dumps(mesh.get("serviceMap") or {})
-    results = {}
-    timeline = []
-    recoveries = []
-    routes = mesh.get("routes") or []
-    start = time.monotonic()
-    remediations_used = 0
+            _restore_service_map(old_map)
+    old_map = _set_service_map(mesh)
+    results: dict = {}
+    timeline: list = []
+    recoveries: list = []
     try:
-        if execute and recover:
-            timeline.extend(_preflight(flow, registry))   # provision known surfaces up-front
-        if memory is not None:
-            _capture_known_good(flow, registry, memory)
-            drift_entries = _drift_timeline(flow, registry, memory)
-            timeline.extend(drift_entries)
-        for step in flow["steps"]:
-            # circuit-breaker: bound the WHOLE flow for unattended autonomy — a bad plan must not
-            # spin self-healing forever and burn the node.
-            broke = _circuit_break_if_over(start, max_wall_clock, remediations_used,
-                                           max_remediations, timeline, results, recoveries)
-            if broke is not None:
-                return broke
-            payload, fail = _resolve_payload_or_fail(step, results, routes, timeline, recoveries)
-            if fail is not None:
-                return fail
-            env, step_timeline, step_recoveries, aborted = _run_step(
-                step, payload, registry, execute, routes, recover, max_retries,
-                dispatch_uri=dispatch_uri,
-            )
-            timeline.extend(step_timeline)
-            recoveries.extend(step_recoveries)
-            remediations_used += sum(1 for e in step_timeline if e.get("action") == "self-heal")
-            results[step["id"]] = env
-            if aborted:
-                return _abort_envelope(step, step_timeline, step_recoveries, timeline, results,
-                                       recoveries, registry, rollback_on_failure, execute)
-        result = {"ok": True, "timeline": timeline, "results": results}
-        if recoveries:
-            result["recovery"] = recoveries
-        # Post-success: advance the known-good environment fingerprint and record the flow
-        # sequence so the Twin can surface it as a known-good plan for similar future tasks.
-        if memory is not None:
-            _update_known_good(flow, registry, memory)
-            _remember_known_good_flow(flow, result, memory)
-        return result
+        return _orchestrate_steps(
+            flow, registry, execute, recover, max_retries, max_wall_clock,
+            max_remediations, rollback_on_failure, memory, dispatch_uri,
+            mesh.get("routes") or [], timeline, results, recoveries,
+        )
     finally:
-        if old_map is None:
-            os.environ.pop("URI_SERVICE_MAP", None)
-        else:
-            os.environ["URI_SERVICE_MAP"] = old_map
+        _restore_service_map(old_map)
 
 
 def _flow_stdout(envelope: dict) -> str:
