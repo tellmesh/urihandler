@@ -38,7 +38,6 @@ project_file('adapters/python/tests/test_connector_smoke.py', 83, 'python').
 project_file('adapters/python/tests/test_contracts.py', 174, 'python').
 project_file('adapters/python/tests/test_daemon.py', 41, 'python').
 project_file('adapters/python/tests/test_dashboard_api_characterizing.py', 213, 'python').
-project_file('adapters/python/tests/test_declarative.py', 103, 'python').
 project_file('adapters/python/tests/test_diagnostics.py', 1572, 'python').
 project_file('adapters/python/tests/test_discovery.py', 127, 'python').
 project_file('adapters/python/tests/test_dispatch_protocol.py', 303, 'python').
@@ -77,7 +76,6 @@ project_file('adapters/python/tests/test_node_extractable.py', 85, 'python').
 project_file('adapters/python/tests/test_node_extracted.py', 333, 'python').
 project_file('adapters/python/tests/test_node_types.py', 197, 'python').
 project_file('adapters/python/tests/test_object_registry.py', 119, 'python').
-project_file('adapters/python/tests/test_openapi_import.py', 49, 'python').
 project_file('adapters/python/tests/test_param_routing.py', 59, 'python').
 project_file('adapters/python/tests/test_paths.py', 42, 'python').
 project_file('adapters/python/tests/test_planfile_adapter.py', 347, 'python').
@@ -133,18 +131,18 @@ project_file('adapters/python/urirun/connector_scaffold.py', 6, 'python').
 project_file('adapters/python/urirun/connector_sdk.py', 6, 'python').
 project_file('adapters/python/urirun/connector_smoke.py', 6, 'python').
 project_file('adapters/python/urirun/connectors/__init__.py', 2, 'python').
-project_file('adapters/python/urirun/connectors/backend_registry.py', 130, 'python').
-project_file('adapters/python/urirun/connectors/connect_catalog.py', 256, 'python').
-project_file('adapters/python/urirun/connectors/connector_contract.py', 144, 'python').
-project_file('adapters/python/urirun/connectors/connector_lint.py', 715, 'python').
-project_file('adapters/python/urirun/connectors/connector_scaffold.py', 414, 'python').
-project_file('adapters/python/urirun/connectors/connector_sdk.py', 88, 'python').
-project_file('adapters/python/urirun/connectors/connector_smoke.py', 82, 'python').
-project_file('adapters/python/urirun/connectors/declarative.py', 96, 'python').
+project_file('adapters/python/urirun/connectors/backend_registry.py', 5, 'python').
+project_file('adapters/python/urirun/connectors/connect_catalog.py', 5, 'python').
+project_file('adapters/python/urirun/connectors/connector_contract.py', 5, 'python').
+project_file('adapters/python/urirun/connectors/connector_lint.py', 5, 'python').
+project_file('adapters/python/urirun/connectors/connector_scaffold.py', 5, 'python').
+project_file('adapters/python/urirun/connectors/connector_sdk.py', 5, 'python').
+project_file('adapters/python/urirun/connectors/connector_smoke.py', 5, 'python').
+project_file('adapters/python/urirun/connectors/declarative.py', 5, 'python').
 project_file('adapters/python/urirun/connectors/inputs/__init__.py', 6, 'python').
 project_file('adapters/python/urirun/connectors/inputs/uinput.py', 7, 'python').
-project_file('adapters/python/urirun/connectors/openapi_import.py', 96, 'python').
-project_file('adapters/python/urirun/connectors/resolver.py', 170, 'python').
+project_file('adapters/python/urirun/connectors/openapi_import.py', 5, 'python').
+project_file('adapters/python/urirun/connectors/resolver.py', 5, 'python').
 project_file('adapters/python/urirun/connectors/surfaces/__init__.py', 7, 'python').
 project_file('adapters/python/urirun/connectors/surfaces/cdp.py', 7, 'python').
 project_file('adapters/python/urirun/domain_monitor.py', 6, 'python').
@@ -203,7 +201,6 @@ project_file('adapters/python/urirun/node/event_schema.py', 126, 'python').
 project_file('adapters/python/urirun/node/flow.py', 998, 'python').
 project_file('adapters/python/urirun/node/flow_planner.py', 707, 'python').
 project_file('adapters/python/urirun/node/flow_thin.py', 554, 'python').
-project_file('adapters/python/urirun/node/flow_uri.py', 91, 'python').
 project_file('adapters/python/urirun/node/flow_verify.py', 112, 'python').
 project_file('adapters/python/urirun/node/formatting.py', 81, 'python').
 project_file('adapters/python/urirun/node/keyauth.py', 183, 'python').
@@ -213,13 +210,13 @@ project_file('adapters/python/urirun/node/node_cli.py', 9, 'python').
 project_file('adapters/python/urirun/node/paths.py', 39, 'python').
 project_file('adapters/python/urirun/node/preconditions.py', 215, 'python').
 project_file('adapters/python/urirun/node/recovery.py', 374, 'python').
-project_file('adapters/python/urirun/node/reversible.py', 759, 'python').
+project_file('adapters/python/urirun/node/reversible.py', 548, 'python').
 project_file('adapters/python/urirun/node/routing.py', 174, 'python').
 project_file('adapters/python/urirun/node/server.py', 997, 'python').
 project_file('adapters/python/urirun/node/skill.py', 251, 'python').
 project_file('adapters/python/urirun/node/task_cli.py', 9, 'python').
 project_file('adapters/python/urirun/node/transport.py', 541, 'python').
-project_file('adapters/python/urirun/node/twin_store.py', 135, 'python').
+project_file('adapters/python/urirun/node/twin_store.py', 354, 'python').
 project_file('adapters/python/urirun/planfile_adapter.py', 6, 'python').
 project_file('adapters/python/urirun/runtime/__init__.py', 3, 'python').
 project_file('adapters/python/urirun/runtime/_registry.py', 11, 'python').
@@ -269,7 +266,7 @@ project_file('examples/matrix/verify.py', 65, 'python').
 project_file('examples/node-file-transfer/fs_transfer.py', 72, 'python').
 project_file('project.sh', 69, 'shell').
 project_file('scripts/cc_gate.py', 82, 'python').
-project_file('scripts/extraction_audit.py', 378, 'python').
+project_file('scripts/extraction_audit.py', 379, 'python').
 project_file('scripts/lint_connectors.py', 141, 'python').
 project_file('scripts/release-bump.sh', 30, 'shell').
 project_file('scripts/repin_connectors.py', 177, 'python').
@@ -493,10 +490,6 @@ python_function('adapters/python/tests/test_dashboard_api_characterizing.py', 't
 python_function('adapters/python/tests/test_dashboard_api_characterizing.py', 'test_api_twin_flows_shape', 1, 5, 3).
 python_function('adapters/python/tests/test_dashboard_api_characterizing.py', 'test_api_twin_state_shape', 1, 13, 5).
 python_function('adapters/python/tests/test_dashboard_api_characterizing.py', 'test_every_api_route_returns_200_on_empty_query', 2, 3, 8).
-python_function('adapters/python/tests/test_declarative.py', 'test_bindings_from_spec_expands_envs_and_uses_fetch', 0, 5, 2).
-python_function('adapters/python/tests/test_declarative.py', 'test_bindings_from_spec_compiles_and_validates', 0, 3, 5).
-python_function('adapters/python/tests/test_declarative.py', 'test_run_fetch_resolves_env_and_templates', 1, 6, 6).
-python_function('adapters/python/tests/test_declarative.py', 'test_run_fetch_get_sends_no_body', 1, 4, 4).
 python_function('adapters/python/tests/test_diagnostics.py', '_err', 2, 1, 0).
 python_function('adapters/python/tests/test_discovery.py', '_fake_binding', 2, 1, 0).
 python_function('adapters/python/tests/test_discovery.py', 'test_build_index_maps_schemes', 2, 6, 4).
@@ -919,9 +912,6 @@ python_function('adapters/python/tests/test_object_registry.py', 'test_dedupe_ro
 python_function('adapters/python/tests/test_object_registry.py', 'test_dedupe_routes_drops_missing_uri', 0, 3, 2).
 python_function('adapters/python/tests/test_object_registry.py', 'test_dedupe_routes_preserves_order', 0, 2, 1).
 python_function('adapters/python/tests/test_object_registry.py', 'test_phone_scanner_contact_fields', 0, 7, 2).
-python_function('adapters/python/tests/test_openapi_import.py', 'test_import_maps_paths_and_methods', 0, 9, 1).
-python_function('adapters/python/tests/test_openapi_import.py', 'test_import_validates_and_compiles', 0, 4, 5).
-python_function('adapters/python/tests/test_openapi_import.py', 'test_base_url_override', 0, 2, 4).
 python_function('adapters/python/tests/test_paths.py', 'test_node_state_dir_returns_path', 0, 3, 2).
 python_function('adapters/python/tests/test_paths.py', 'test_node_state_dir_creates_directory', 0, 3, 3).
 python_function('adapters/python/tests/test_paths.py', 'test_node_token_path_under_state_dir', 0, 3, 2).
@@ -1359,104 +1349,6 @@ python_function('adapters/python/urirun/__init__.py', 'connector_cli', 1, 1, 1).
 python_function('adapters/python/urirun/__init__.py', 'connector_main', 0, 6, 12).
 python_function('adapters/python/urirun/__init__.py', '_connector_cli_routes', 2, 12, 9).
 python_function('adapters/python/urirun/__init__.py', '_connector_run_command', 3, 9, 6).
-python_function('adapters/python/urirun/connectors/backend_registry.py', 'configure', 0, 2, 0).
-python_function('adapters/python/urirun/connectors/backend_registry.py', 'current_platform', 0, 1, 0).
-python_function('adapters/python/urirun/connectors/backend_registry.py', 'have_bin', 1, 1, 1).
-python_function('adapters/python/urirun/connectors/backend_registry.py', 'have_mod', 1, 2, 1).
-python_function('adapters/python/urirun/connectors/backend_registry.py', 'backend', 2, 1, 5).
-python_function('adapters/python/urirun/connectors/backend_registry.py', 'dispatch', 1, 11, 10).
-python_function('adapters/python/urirun/connectors/backend_registry.py', 'registry_report', 0, 3, 4).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_get_json', 2, 2, 5).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', 'fetch_catalog', 2, 1, 3).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', 'fetch_connector', 3, 1, 3).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_connectors', 1, 2, 3).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_find', 2, 3, 3).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', 'resolve_install', 2, 10, 5).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', 'pip_install_command', 1, 1, 0).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', 'diff_manifest', 2, 1, 3).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_diff_scalar_fields', 3, 5, 2).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_diff_set_fields', 3, 7, 4).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_diff_install', 2, 8, 3).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_emit_json', 1, 1, 2).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_cmd_list', 1, 9, 10).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_cmd_show', 1, 9, 5).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_cmd_install', 1, 13, 7).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', '_cmd_check', 1, 7, 10).
-python_function('adapters/python/urirun/connectors/connect_catalog.py', 'connectors_command', 1, 3, 4).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_connector_py_files', 1, 5, 4).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_connector_call_target', 1, 6, 1).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_connector_assignment', 1, 13, 3).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_connector_objects', 1, 4, 2).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_route_uri', 3, 2, 1).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_decorator_routes', 2, 14, 6).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_cli_subcommands', 1, 10, 6).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_scan_code_routes', 1, 3, 6).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_load_manifest_routes', 1, 8, 4).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_route_placements', 3, 5, 2).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_compute_drift', 4, 3, 1).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_adapter_drift', 2, 5, 4).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_route_kind_counts', 1, 5, 1).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_is_os_name', 1, 2, 1).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_const_str', 1, 3, 1).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_env_read_from_subscript', 1, 4, 3).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_env_read_from_call', 1, 11, 3).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_env_read_name', 1, 3, 3).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_scan_secret_env_reads', 1, 7, 8).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_uses_resolve_secret', 1, 8, 1).
-python_function('adapters/python/urirun/connectors/connector_lint.py', 'lint_connector', 1, 9, 19).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_collect_kernel_imports', 1, 11, 3).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_kernel_attribute_accesses', 2, 5, 3).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_kernel_direct_imports', 1, 6, 3).
-python_function('adapters/python/urirun/connectors/connector_lint.py', 'lint_kernel_symbols', 1, 7, 13).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_desired_machine_fields', 1, 6, 2).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_changed_machine_fields', 2, 5, 1).
-python_function('adapters/python/urirun/connectors/connector_lint.py', 'sync_manifest', 2, 7, 13).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_format_secret_reads', 1, 4, 2).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_format_drift', 1, 6, 1).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_format_duplication', 1, 3, 2).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_format_report', 1, 7, 8).
-python_function('adapters/python/urirun/connectors/connector_lint.py', 'sync_manifest_command', 1, 9, 6).
-python_function('adapters/python/urirun/connectors/connector_lint.py', 'lint_command', 1, 8, 6).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_import_first_bindings', 2, 6, 10).
-python_function('adapters/python/urirun/connectors/connector_lint.py', '_unresolved_handlers', 1, 8, 6).
-python_function('adapters/python/urirun/connectors/connector_lint.py', 'verify_connector', 1, 6, 14).
-python_function('adapters/python/urirun/connectors/connector_lint.py', 'verify_command', 1, 8, 4).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_pkg_module', 1, 1, 1).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_scheme', 2, 2, 1).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_manifest', 4, 1, 3).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_python_manifest', 2, 1, 3).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_write', 2, 2, 5).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_python_files', 3, 1, 2).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_js_files', 3, 1, 2).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_go_files', 3, 1, 1).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', '_php_files', 3, 1, 1).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', 'scaffold', 4, 3, 6).
-python_function('adapters/python/urirun/connectors/connector_scaffold.py', 'new_command', 1, 3, 4).
-python_function('adapters/python/urirun/connectors/connector_sdk.py', 'load_manifest', 2, 2, 6).
-python_function('adapters/python/urirun/connectors/connector_sdk.py', 'emit', 1, 1, 2).
-python_function('adapters/python/urirun/connectors/connector_sdk.py', 'connector_cli', 1, 5, 9).
-python_function('adapters/python/urirun/connectors/connector_smoke.py', '_load', 1, 3, 4).
-python_function('adapters/python/urirun/connectors/connector_smoke.py', 'smoke', 1, 6, 13).
-python_function('adapters/python/urirun/connectors/connector_smoke.py', 'smoke_command', 1, 2, 4).
-python_function('adapters/python/urirun/connectors/declarative.py', 'load_spec', 1, 2, 4).
-python_function('adapters/python/urirun/connectors/declarative.py', 'bindings_from_spec', 1, 14, 6).
-python_function('adapters/python/urirun/connectors/declarative.py', 'from_spec_command', 1, 1, 4).
-python_function('adapters/python/urirun/connectors/openapi_import.py', '_route_uri', 4, 4, 2).
-python_function('adapters/python/urirun/connectors/openapi_import.py', '_operation_schema', 2, 9, 5).
-python_function('adapters/python/urirun/connectors/openapi_import.py', '_operation_binding', 7, 6, 5).
-python_function('adapters/python/urirun/connectors/openapi_import.py', 'import_openapi', 1, 12, 5).
-python_function('adapters/python/urirun/connectors/openapi_import.py', 'load_spec', 1, 2, 7).
-python_function('adapters/python/urirun/connectors/openapi_import.py', 'add_openapi_command', 1, 2, 4).
-python_function('adapters/python/urirun/connectors/resolver.py', '_schemes_from_manifest', 1, 13, 7).
-python_function('adapters/python/urirun/connectors/resolver.py', '_schemes_from_code', 1, 9, 8).
-python_function('adapters/python/urirun/connectors/resolver.py', '_read_manifest', 1, 3, 4).
-python_function('adapters/python/urirun/connectors/resolver.py', '_candidate_dirs', 1, 1, 2).
-python_function('adapters/python/urirun/connectors/resolver.py', 'index_local', 2, 12, 17).
-python_function('adapters/python/urirun/connectors/resolver.py', '_terms', 1, 3, 3).
-python_function('adapters/python/urirun/connectors/resolver.py', 'resolve', 4, 12, 11).
-python_function('adapters/python/urirun/connectors/resolver.py', '_roots_from_args', 1, 2, 2).
-python_function('adapters/python/urirun/connectors/resolver.py', 'index_command', 1, 3, 6).
-python_function('adapters/python/urirun/connectors/resolver.py', 'resolve_command', 1, 6, 7).
 python_function('adapters/python/urirun/exec.py', '_resolve', 1, 3, 4).
 python_function('adapters/python/urirun/exec.py', 'main', 1, 10, 16).
 python_function('adapters/python/urirun/host/android_node.py', 'android_node_service_url', 0, 2, 3).
@@ -2152,13 +2044,6 @@ python_function('adapters/python/urirun/node/flow_thin.py', '_enrich_remember_wi
 python_function('adapters/python/urirun/node/flow_thin.py', '_check_step_deps', 5, 5, 3).
 python_function('adapters/python/urirun/node/flow_thin.py', '_thin_dispatch_step', 5, 14, 13).
 python_function('adapters/python/urirun/node/flow_thin.py', '_thin_driver', 5, 7, 7).
-python_function('adapters/python/urirun/node/flow_uri.py', '_memory', 0, 1, 1).
-python_function('adapters/python/urirun/node/flow_uri.py', '_named_flow', 1, 3, 4).
-python_function('adapters/python/urirun/node/flow_uri.py', '_uri_flow_get', 1, 4, 3).
-python_function('adapters/python/urirun/node/flow_uri.py', '_uri_flow_run', 6, 11, 8).
-python_function('adapters/python/urirun/node/flow_uri.py', '_build_connector', 0, 2, 2).
-python_function('adapters/python/urirun/node/flow_uri.py', 'flow_bindings', 0, 2, 1).
-python_function('adapters/python/urirun/node/flow_uri.py', 'register', 0, 1, 0).
 python_function('adapters/python/urirun/node/flow_verify.py', '_flow_stdout', 1, 6, 2).
 python_function('adapters/python/urirun/node/flow_verify.py', '_run_goal_check', 2, 6, 8).
 python_function('adapters/python/urirun/node/flow_verify.py', '_dig_value', 2, 5, 4).
@@ -2263,7 +2148,6 @@ python_function('adapters/python/urirun/node/reversible.py', 'parse', 1, 1, 2).
 python_function('adapters/python/urirun/node/reversible.py', 'path_of', 1, 1, 1).
 python_function('adapters/python/urirun/node/reversible.py', 'sig', 1, 1, 4).
 python_function('adapters/python/urirun/node/reversible.py', '_step_kind', 1, 2, 0).
-python_function('adapters/python/urirun/node/reversible.py', 'environment_fingerprint', 1, 2, 3).
 python_function('adapters/python/urirun/node/reversible.py', 'plausibility', 1, 14, 7).
 python_function('adapters/python/urirun/node/reversible.py', '_planner_facts', 3, 5, 1).
 python_function('adapters/python/urirun/node/reversible.py', '_best_surface_hint', 1, 3, 0).
@@ -2358,6 +2242,8 @@ python_function('adapters/python/urirun/node/transport.py', '_configured_api_rou
 python_function('adapters/python/urirun/node/transport.py', 'discover_node', 2, 8, 8).
 python_function('adapters/python/urirun/node/transport.py', 'discover_mesh', 1, 10, 13).
 python_function('adapters/python/urirun/node/twin_store.py', 'default_memory_path', 0, 2, 2).
+python_function('adapters/python/urirun/node/twin_store.py', '_sig', 1, 1, 4).
+python_function('adapters/python/urirun/node/twin_store.py', 'environment_fingerprint', 1, 2, 3).
 python_function('adapters/python/urirun/node/twin_store.py', 'durable_memory', 1, 1, 3).
 python_function('adapters/python/urirun/testing.py', 'connector_installed', 1, 3, 5).
 python_function('adapters/python/urirun/testing.py', '_resolve_bindings', 1, 5, 8).
@@ -3373,23 +3259,6 @@ python_method('Connector', '_live_bindings', 0, 4, 4).
 python_method('Connector', 'manifest', 1, 11, 7).
 python_method('Connector', 'mcp_tools', 0, 1, 2).
 python_method('Connector', 'a2a_card', 0, 2, 2).
-python_class('adapters/python/urirun/connectors/backend_registry.py', 'BackendError').
-python_class('adapters/python/urirun/connectors/backend_registry.py', 'Backend').
-python_method('Backend', 'missing', 0, 5, 2).
-python_method('Backend', 'platform_ok', 0, 2, 1).
-python_method('Backend', 'available', 0, 3, 2).
-python_class('adapters/python/urirun/connectors/connector_contract.py', 'ConnectorContractSuite').
-python_method('ConnectorContractSuite', 'compile', 1, 1, 1).
-python_method('ConnectorContractSuite', 'dispatch_dry', 3, 2, 3).
-python_method('ConnectorContractSuite', 'dispatch_execute', 3, 2, 3).
-python_method('ConnectorContractSuite', 'assert_ok', 1, 4, 2).
-python_method('ConnectorContractSuite', 'assert_reply_shape', 1, 3, 1).
-python_method('ConnectorContractSuite', 'test_bindings_validate', 0, 2, 2).
-python_method('ConnectorContractSuite', 'test_bindings_compile', 0, 2, 2).
-python_method('ConnectorContractSuite', 'test_bindings_serializable', 0, 1, 1).
-python_method('ConnectorContractSuite', 'test_dry_run_routes_return_valid_reply_shape', 0, 4, 4).
-python_method('ConnectorContractSuite', 'test_execute_cases', 0, 4, 5).
-python_method('ConnectorContractSuite', 'test_failed_dispatch_carries_error', 0, 4, 4).
 python_class('adapters/python/urirun/host/chat_orchestrator.py', 'ChatDeps').
 python_class('adapters/python/urirun/host/planfile_adapter.py', 'PlanfileUnavailable').
 python_class('adapters/python/urirun/host/task_planner.py', 'PlannedTicket').
@@ -3466,28 +3335,6 @@ python_class('adapters/python/urirun/node/reversible.py', 'ReversibleProcess').
 python_method('ReversibleProcess', 'execute', 3, 8, 8).
 python_method('ReversibleProcess', 'rollback', 2, 4, 5).
 python_method('ReversibleProcess', 'rollback_flow', 3, 6, 5).
-python_class('adapters/python/urirun/node/reversible.py', 'TwinMemory').
-python_method('TwinMemory', 'remember', 2, 1, 1).
-python_method('TwinMemory', 'known_good', 1, 1, 1).
-python_method('TwinMemory', 'drift', 2, 3, 2).
-python_method('TwinMemory', 'remember_flow', 2, 2, 1).
-python_method('TwinMemory', 'recall_flow', 1, 1, 1).
-python_method('TwinMemory', 'known_good_flows', 0, 1, 4).
-python_method('TwinMemory', 'degraded_flows', 0, 4, 6).
-python_method('TwinMemory', 'remember_episode', 1, 3, 1).
-python_method('TwinMemory', 'known_good_episodes', 0, 1, 4).
-python_method('TwinMemory', 'recall_episode', 2, 9, 3).
-python_method('TwinMemory', 'recall_flow_by_intent', 1, 8, 4).
-python_method('TwinMemory', 'remember_proof', 2, 3, 1).
-python_method('TwinMemory', 'recall_proof', 1, 1, 1).
-python_method('TwinMemory', 'remember_skill', 2, 2, 0).
-python_method('TwinMemory', 'recall_skill', 1, 1, 1).
-python_method('TwinMemory', 'skills', 0, 2, 4).
-python_method('TwinMemory', 'session_start', 4, 3, 5).
-python_method('TwinMemory', 'session_append', 2, 3, 4).
-python_method('TwinMemory', 'session_commit', 1, 3, 4).
-python_method('TwinMemory', 'session_steps', 1, 3, 2).
-python_method('TwinMemory', 'session_get', 1, 1, 1).
 python_class('adapters/python/urirun/node/server.py', 'EventHub').
 python_method('EventHub', '__init__', 1, 1, 3).
 python_method('EventHub', 'publish', 1, 3, 4).
@@ -3542,6 +3389,28 @@ python_method('_NamespacedStore', '__setitem__', 2, 2, 3).
 python_method('_NamespacedStore', 'values', 0, 1, 3).
 python_method('_NamespacedStore', 'items', 0, 1, 3).
 python_method('_NamespacedStore', 'keys', 0, 1, 3).
+python_class('adapters/python/urirun/node/twin_store.py', 'TwinMemory').
+python_method('TwinMemory', 'remember', 2, 1, 1).
+python_method('TwinMemory', 'known_good', 1, 1, 1).
+python_method('TwinMemory', 'drift', 2, 3, 2).
+python_method('TwinMemory', 'remember_flow', 2, 2, 1).
+python_method('TwinMemory', 'recall_flow', 1, 1, 1).
+python_method('TwinMemory', 'known_good_flows', 0, 1, 4).
+python_method('TwinMemory', 'degraded_flows', 0, 4, 6).
+python_method('TwinMemory', 'remember_episode', 1, 3, 1).
+python_method('TwinMemory', 'known_good_episodes', 0, 1, 4).
+python_method('TwinMemory', 'recall_episode', 2, 9, 3).
+python_method('TwinMemory', 'recall_flow_by_intent', 1, 8, 4).
+python_method('TwinMemory', 'remember_proof', 2, 3, 1).
+python_method('TwinMemory', 'recall_proof', 1, 1, 1).
+python_method('TwinMemory', 'remember_skill', 2, 2, 0).
+python_method('TwinMemory', 'recall_skill', 1, 1, 1).
+python_method('TwinMemory', 'skills', 0, 2, 4).
+python_method('TwinMemory', 'session_start', 4, 3, 5).
+python_method('TwinMemory', 'session_append', 2, 3, 4).
+python_method('TwinMemory', 'session_commit', 1, 3, 4).
+python_method('TwinMemory', 'session_steps', 1, 3, 2).
+python_method('TwinMemory', 'session_get', 1, 1, 1).
 python_class('scripts/extraction_audit.py', 'Edge').
 python_class('scripts/extraction_audit.py', 'Report').
 python_method('Report', 'green', 0, 2, 0).

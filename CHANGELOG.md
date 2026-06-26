@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.10] - 2026-06-26
 
 ### Fixed
+- Fix unused-imports issues (ticket-e0667267)
+- Fix smart-return-type issues (ticket-35d459b0)
+- Fix string-concat issues (ticket-9d05b809)
+- Fix unused-imports issues (ticket-1716aaed)
+- Fix magic-numbers issues (ticket-9247551f)
+- Fix relative-imports issues (ticket-7e6fa434)
+- Fix duplicate-imports issues (ticket-77588289)
+- Fix unused-imports issues (ticket-baf3d254)
+- Fix magic-numbers issues (ticket-f18cff06)
+
+## [0.1.10] - 2026-06-26
+
+### Fixed
 - Fix wildcard-imports issues (ticket-0e743f4d)
 - Fix unused-imports issues (ticket-d6d66e83)
 - Fix wildcard-imports issues (ticket-134daf72)
@@ -238,6 +251,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expose their schema too. See `examples/28-llm-novnc-desktop` (an LLM drives a noVNC
   Docker desktop from an NL intent; the desktop driver is a *connector*, the schema in
   the action space is the only core change).
+
+## [0.4.173] - 2026-06-26
+
+### Docs
+- Update CHANGELOG.md
+- Update README.md
+- Update SUMD.md
+- Update SUMR.md
+- Update TODO.md
+
+### Other
+- Update adapters/python/pyproject.toml
+- Update adapters/python/urirun/connectors/backend_registry.py
+- Update adapters/python/urirun/connectors/connect_catalog.py
+- Update adapters/python/urirun/connectors/connector_contract.py
+- Update adapters/python/urirun/connectors/connector_lint.py
+- Update adapters/python/urirun/connectors/connector_scaffold.py
+- Update adapters/python/urirun/connectors/connector_sdk.py
+- Update adapters/python/urirun/connectors/connector_smoke.py
+- Update adapters/python/urirun/connectors/declarative.py
+- Update adapters/python/urirun/connectors/openapi_import.py
+- ... and 5 more files
 
 ## [0.4.172] - 2026-06-26
 

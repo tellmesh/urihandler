@@ -4,3 +4,12 @@
 # Surface primitive extracted from urirun — required because urirun.connectors.surfaces.cdp
 # is now a shim to urirun_cdp. Install from the local checkout until published to PyPI.
 -e ../urirun-cdp
+
+# OpenAPI import extracted to standalone package — urirun.connectors.openapi_import is now a shim.
+-e ../urirun-openapi-import
+
+# Connectors toolkit (shim gateway for openapi_import, declarative, and future extracted connectors).
+-e ../urirun-connectors-toolkit
+
+# Declarative connector spec extracted to standalone package.
+-e ../urirun-declarative

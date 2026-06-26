@@ -1,7 +1,4 @@
-# Back-compat shim — moved to the standalone `urirun-openapi-import` package (urirun_openapi_import.openapi_import).
-# Import from there in new code; this re-export keeps `urirun.connectors.openapi_import` working.
-# node/mesh.py imports this LAZILY (only the `add_openapi` CLI command), so the shim loads on demand.
+# Back-compat shim — moved to urirun-connectors-toolkit (urirun_connectors_toolkit.openapi_import).
 import sys as _sys
-from urirun_openapi_import import openapi_import as _moved
-
+from urirun_connectors_toolkit import openapi_import as _moved
 _sys.modules[__name__] = _moved
