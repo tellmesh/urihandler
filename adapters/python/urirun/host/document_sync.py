@@ -878,3 +878,106 @@ def existing_document_meta(duplicate: dict) -> dict:
     return {key: duplicate.get(key) for key in ("type", "date", "contractor", "amount", "currency")}
 
 
+
+
+# --------------------------------------------------------------------------- #
+# Metadata merge helpers (moved from host_dashboard to keep archive logic here) #
+# --------------------------------------------------------------------------- #
+
+try:
+    from docid.visual_fingerprint import FieldSource as _DocidFieldSource
+    from docid.visual_fingerprint import merge_records as _docid_merge_records
+except Exception:  # noqa: BLE001
+    _DocidFieldSource = None
+    _docid_merge_records = None
+
+MERGE_METADATA_FIELDS = ("type", "date", "contractor", "amount", "currency")
+BLANK_METADATA_MARKERS: frozenset[str] = frozenset({
+    "", "kwota-nieznana", "nieznana", "unknown", "n/a", "-", "kontrahent-nieznany"
+})
+
+
+def is_blank_metadata(value: Any) -> bool:
+    return str(value or "").strip().lower() in BLANK_METADATA_MARKERS
+
+
+def merge_metadata_fields(old_meta: dict | None, new_meta: dict, *,
+                          old_weight: float, new_weight: float) -> tuple[dict, list[str]]:
+    """Fuse two scans of the same document into one best-of-both record.
+
+    Picks each field by weighted consensus, so a value one scan misread or left
+    blank ("amount unknown") is filled from the other scan -- together the
+    surviving record carries correct data for every field. Falls back to a
+    simple "prefer the more complete, non-blank value" when docid is absent.
+
+    Returns (merged_metadata, filled_field_names).
+    """
+    old_meta = old_meta or {}
+    try:
+        if _DocidFieldSource is None or _docid_merge_records is None:
+            raise RuntimeError("docid.visual_fingerprint unavailable")
+
+        result = _docid_merge_records(
+            [
+                _DocidFieldSource(fields={k: old_meta.get(k) for k in MERGE_METADATA_FIELDS},
+                                  weight=max(old_weight, 0.0001), label="archived"),
+                _DocidFieldSource(fields={k: new_meta.get(k) for k in MERGE_METADATA_FIELDS},
+                                  weight=max(new_weight, 0.0001), label="rescan"),
+            ],
+            fields=list(MERGE_METADATA_FIELDS),
+        )
+        merged = dict(new_meta)
+        for key in MERGE_METADATA_FIELDS:
+            value = result["fields"].get(key)
+            if not is_blank_metadata(value):
+                merged[key] = value
+        return merged, list(result.get("filledGaps") or [])
+    except Exception:  # noqa: BLE001
+        merged = dict(new_meta)
+        filled: list[str] = []
+        for key in MERGE_METADATA_FIELDS:
+            if is_blank_metadata(merged.get(key)) and not is_blank_metadata(old_meta.get(key)):
+                merged[key] = old_meta.get(key)
+                filled.append(key)
+        return merged, filled
+
+
+def enrich_archived_record(existing: dict, fused: dict, enriched_fields: list[str]) -> None:
+    """Backfill an already-archived record with fields a re-scan recognized.
+
+    Updates the in-memory index entry (``existing``) and its JSON sidecar in
+    place. The PDF/image of the kept (better) scan is left untouched -- only the
+    structured metadata grows. Best-effort; never raises.
+    """
+    for key in enriched_fields:
+        value = fused.get(key)
+        if not is_blank_metadata(value):
+            existing[key] = value
+    existing["enrichedAt"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    history = existing.get("enrichedFields")
+    history = list(history) if isinstance(history, list) else []
+    for key in enriched_fields:
+        if key not in history:
+            history.append(key)
+    existing["enrichedFields"] = history
+
+    json_path = existing.get("jsonPath")
+    if not json_path:
+        return
+    try:
+        jpath = Path(str(json_path)).expanduser()
+        data = json.loads(jpath.read_text(encoding="utf-8")) if jpath.is_file() else {}
+        if not isinstance(data, dict):
+            return
+        for key in enriched_fields:
+            value = fused.get(key)
+            if not is_blank_metadata(value):
+                data[key] = value
+        data["enrichedAt"] = existing["enrichedAt"]
+        data["enrichedFields"] = history
+        jpath.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    except Exception:  # noqa: BLE001
+        pass

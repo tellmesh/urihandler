@@ -69,6 +69,10 @@ from .document_sync import (
     existing_document as _existing_document,
     existing_document_meta as _existing_document_meta,
     sync_documents_to_node as _sync_documents_to_node_impl,
+    is_blank_metadata as _is_blank_metadata,
+    merge_metadata_fields as _merge_metadata_fields,
+    enrich_archived_record as _enrich_archived_record,
+    MERGE_METADATA_FIELDS as _MERGE_METADATA_FIELDS,
 )
 from .discovery import (
     add_node_aliases as _add_node_aliases_impl,
@@ -917,97 +921,6 @@ def _docid_for_file(path: str | Path, ocr_text: str) -> dict:
     if docid_log:
         result["docidLog"] = docid_log[:240]
     return result
-
-
-_MERGE_METADATA_FIELDS = ("type", "date", "contractor", "amount", "currency")
-_BLANK_METADATA_MARKERS = {"", "kwota-nieznana", "nieznana", "unknown", "n/a", "-", "kontrahent-nieznany"}
-
-
-def _is_blank_metadata(value: Any) -> bool:
-    return str(value or "").strip().lower() in _BLANK_METADATA_MARKERS
-
-
-def _merge_metadata_fields(old_meta: dict | None, new_meta: dict, *,
-                           old_weight: float, new_weight: float) -> tuple[dict, list[str]]:
-    """Fuse two scans of the same document into one best-of-both record.
-
-    Picks each field by weighted consensus, so a value one scan misread or left
-    blank ("amount unknown") is filled from the other scan -- together the
-    surviving record carries correct data for every field. Falls back to a
-    simple "prefer the more complete, non-blank value" when docid is absent.
-
-    Returns (merged_metadata, filled_field_names).
-    """
-    old_meta = old_meta or {}
-    try:
-        if _DocidFieldSource is None or _docid_merge_records is None:
-            raise RuntimeError("docid.visual_fingerprint unavailable")
-
-        result = _docid_merge_records(
-            [
-                _DocidFieldSource(fields={k: old_meta.get(k) for k in _MERGE_METADATA_FIELDS},
-                                  weight=max(old_weight, 0.0001), label="archived"),
-                _DocidFieldSource(fields={k: new_meta.get(k) for k in _MERGE_METADATA_FIELDS},
-                                  weight=max(new_weight, 0.0001), label="rescan"),
-            ],
-            fields=list(_MERGE_METADATA_FIELDS),
-        )
-        merged = dict(new_meta)
-        for key in _MERGE_METADATA_FIELDS:
-            value = result["fields"].get(key)
-            if not _is_blank_metadata(value):
-                merged[key] = value
-        return merged, list(result.get("filledGaps") or [])
-    except Exception:  # noqa: BLE001
-        # Fallback: keep the new scan, but backfill any field it left blank.
-        merged = dict(new_meta)
-        filled: list[str] = []
-        for key in _MERGE_METADATA_FIELDS:
-            if _is_blank_metadata(merged.get(key)) and not _is_blank_metadata(old_meta.get(key)):
-                merged[key] = old_meta.get(key)
-                filled.append(key)
-        return merged, filled
-
-
-def _enrich_archived_record(existing: dict, fused: dict, enriched_fields: list[str]) -> None:
-    """Backfill an already-archived record with fields a re-scan recognized.
-
-    Updates the in-memory index entry (``existing``) and its JSON sidecar in
-    place. The PDF/image of the kept (better) scan is left untouched -- only the
-    structured metadata grows. Best-effort; never raises.
-    """
-    for key in enriched_fields:
-        value = fused.get(key)
-        if not _is_blank_metadata(value):
-            existing[key] = value
-    existing["enrichedAt"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    history = existing.get("enrichedFields")
-    history = list(history) if isinstance(history, list) else []
-    for key in enriched_fields:
-        if key not in history:
-            history.append(key)
-    existing["enrichedFields"] = history
-
-    json_path = existing.get("jsonPath")
-    if not json_path:
-        return
-    try:
-        jpath = Path(str(json_path)).expanduser()
-        data = json.loads(jpath.read_text(encoding="utf-8")) if jpath.is_file() else {}
-        if not isinstance(data, dict):
-            return
-        for key in enriched_fields:
-            value = fused.get(key)
-            if not _is_blank_metadata(value):
-                data[key] = value
-        data["enrichedAt"] = existing["enrichedAt"]
-        data["enrichedFields"] = history
-        jpath.write_text(
-            json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-    except Exception:  # noqa: BLE001
-        pass
 def _find_duplicate_document(index: dict, *, doc_id: str, source_sha256: str, text_sha256: str,
                              fingerprint: dict, dhash: str, phash: str = "",
                              metadata: dict | None = None, text: str = "") -> dict | None:
@@ -4513,6 +4426,28 @@ def _free_port_from_old_scanner(port: int, *, force: bool = False, emit: bool = 
         emit=emit,
         is_target=_is_scanner_process,
         event_prefix="urirun.service_scanner",
+    )
+
+
+def _free_port_from_old_chat(port: int, *, force: bool = False, emit: bool = False) -> dict:
+    """Free a chat-dashboard-owned port before rebinding it."""
+    return _free_port_from_matching_processes(
+        port,
+        force=force,
+        emit=emit,
+        is_target=_is_chat_process,
+        event_prefix="urirun.service_chat",
+    )
+
+
+def _free_port_from_old_android_node(port: int, *, force: bool = False, emit: bool = False) -> dict:
+    """Free an android-node-owned port before rebinding it."""
+    return _free_port_from_matching_processes(
+        port,
+        force=force,
+        emit=emit,
+        is_target=_is_android_node_process,
+        event_prefix="urirun.service_android_node",
     )
 
 
