@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 from urirun.node.mesh import EventHub, _sse_initial_cursor, _sse_event_matches, _sse_frame
 from .twin_bridge import TWIN_EVENT_HUB
-from .dashboard_http import _json_response, _html_response, _asset_response, _js_sdk_response, _read_json, _file_response
+from .dashboard_http import _json_response, _html_response, _asset_response, _js_sdk_response, _read_json, _file_response, _remote_file_response
 from urllib.parse import parse_qs, unquote, urlparse
 
 from .document_sync import (
@@ -1530,6 +1530,14 @@ def _handle_get_api(handler, parsed, project, db) -> bool:
             _json_response(handler, 400, {"ok": False, "error": "path is required"})
             return True
         _file_response(handler, unquote(path), project)
+        return True
+    if parsed.path == "/api/file/remote":
+        node_url = unquote(_first(query, "nodeUrl") or "")
+        path = unquote(_first(query, "path") or "")
+        if not node_url or not path:
+            _json_response(handler, 400, {"ok": False, "error": "nodeUrl and path are required"})
+            return True
+        _remote_file_response(handler, node_url, path)
         return True
     return False
 

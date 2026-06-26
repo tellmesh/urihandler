@@ -538,6 +538,41 @@ def _resolve_artifact_value(sr: dict) -> "dict | None":
     return None
 
 
+def _enrich_remote_attachments(attachments: list, results: dict) -> None:
+    """Set filePreviewUrl for attachments whose file lives on a remote node.
+
+    Matches attachment paths to step-result paths.  When a step ran on a remote node
+    (has a ``url`` field pointing to another machine) and the file is not locally
+    accessible, injects a ``/api/file/remote?nodeUrl=…&path=…`` proxy URL so the
+    dashboard can display the screenshot inline without an SSH transfer."""
+    from urllib.parse import quote as _quote  # noqa: PLC0415
+    path_to_node: dict[str, str] = {}
+    for sr in results.values():
+        if not isinstance(sr, dict):
+            continue
+        node_url = str(sr.get("url") or "").removesuffix("/run")
+        if not node_url or "localhost" in node_url or "127.0.0.1" in node_url:
+            continue
+        val = _resolve_artifact_value(sr)
+        if val is None:
+            continue
+        p = str(val.get("path") or "")
+        if p:
+            path_to_node[p] = node_url
+    for att in attachments:
+        if not isinstance(att, dict):
+            continue
+        if att.get("fileExists") or att.get("filePreviewUrl"):
+            continue
+        path = str(att.get("path") or "")
+        node_url = path_to_node.get(path)
+        if node_url and path:
+            att["fileExists"] = True
+            att["filePreviewUrl"] = f"/api/file/remote?nodeUrl={_quote(node_url)}&path={_quote(path)}"
+            if not att.get("previewUrl"):
+                att["previewUrl"] = att["filePreviewUrl"]
+
+
 def _register_step_artifacts(result: dict, db: str | None, host_db) -> int:
     """Catalog frozen-artifact step results so a mesh-routed capture gets a durable artifact
     address, not just a transient chat attachment.
@@ -982,6 +1017,7 @@ def _chat_ask_general_build_result(
         result["nextIntent"] = general_path_next_intent(execution)
     result = compact_chat_result(result, payload)
     attachments = collect_attachments(result, project)
+    _enrich_remote_attachments(attachments, result.get("results") or {})
     result["attachments"] = attachments
     _general_path_complete(result, db, prompt, execute, selected_nodes, selected_targets, generator, flow, attachments, deps)
     return result
