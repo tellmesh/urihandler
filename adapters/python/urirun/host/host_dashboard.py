@@ -30,6 +30,7 @@ TWIN_EVENT_HUB = EventHub(buffer=100)
 from urllib.parse import parse_qs, parse_qsl, quote, unquote, urlencode, urlparse, urlsplit, urlunsplit
 
 from .document_sync import (
+    DOCUMENT_SYNC_URI as _DOCUMENT_SYNC_URI,
     DocumentSyncDeps,
     archive_month as _archive_month,
     boolish as _boolish,
@@ -37,8 +38,11 @@ from .document_sync import (
     document_archive_root as _document_archive_root,
     document_files_exist as _document_files_exist,
     document_index_path as _document_index_path,
+    document_sync_auto_retry_enabled as _document_sync_auto_retry_enabled,
     document_sync_default_dest_root as _document_sync_default_dest_root,
     document_sync_default_node as _document_sync_default_node,
+    document_sync_dest_from_prompt as _document_sync_dest_from_prompt,
+    document_sync_retry_payload_from_urifix as _document_sync_retry_payload_from_urifix,
     document_sync_verification as _document_sync_verification_impl,
     pdf_stream as _pdf_stream,
     pdf_text as _pdf_text,
@@ -5710,32 +5714,15 @@ def _remote_read_error(run: dict, value: Any, *, expected_sha: str, remote_sha: 
     return "remote read failed without a result"
 
 
-def _document_sync_verification(
-    files: list[Path],
-    results: list[dict],
-    *,
-    source_root: Path,
-    read_back: bool,
-) -> dict:
-    return _document_sync_verification_impl(files, results, source_root=source_root, read_back=read_back)
-
-
-def _document_archive_pdfs(root: Path) -> list[Path]:
-    return _document_archive_pdfs_impl(root)
-
-
 def _document_sync_deps() -> DocumentSyncDeps:
     return DocumentSyncDeps(
         document_archive_root=_document_archive_root,
         default_node=_document_sync_default_node,
         default_dest_root=_document_sync_default_dest_root,
         node_url_from_config=_node_url_from_config,
-        archive_pdfs=_document_archive_pdfs,
-        verification=lambda files, results, source_root, read_back: _document_sync_verification(
-            files,
-            results,
-            source_root=source_root,
-            read_back=read_back,
+        archive_pdfs=_document_archive_pdfs_impl,
+        verification=lambda files, results, source_root, read_back: _document_sync_verification_impl(
+            files, results, source_root=source_root, read_back=read_back
         ),
         ensure_node_uri_routes=_ensure_node_uri_routes,
         run_node_uri=_run_node_uri,
@@ -8371,10 +8358,39 @@ def _svc_is_map() -> dict:
     return _SVC_IS_MAP
 
 
+def _svc_start_fn(name: str, project: str, db, config, node_urls, token, identity, payload: dict):
+    """Start a named host service (no-op if already running).
+    Each service has its own start/ensure implementation; this dispatches to it."""
+    if name == "phone-scanner":
+        return ensure_phone_scanner_service(project, db, config,
+                                            node_urls=node_urls, token=token, identity=identity)
+    if name == "chat":
+        return restart_chat_service(payload, project=project, db=db, config=config,
+                                    node_urls=node_urls, token=token, identity=identity)
+    if name == "android-node":
+        return restart_android_node_service(payload)
+    return {"ok": False, "service": name, "error": f"no start handler for service '{name}'"}
+
+
+def _svc_restart_fn(name: str, project: str, db, config, node_urls, token, identity, payload: dict):
+    """Restart a named host service (stop then start, regardless of running state)."""
+    if name == "phone-scanner":
+        return restart_phone_scanner_service(project, db, config,
+                                             node_urls=node_urls, token=token, identity=identity,
+                                             payload=payload)
+    if name == "chat":
+        return restart_chat_service(payload, project=project, db=db, config=config,
+                                    node_urls=node_urls, token=token, identity=identity)
+    if name == "android-node":
+        return restart_android_node_service(payload)
+    return {"ok": False, "service": name, "error": f"no restart handler for service '{name}'"}
+
+
 def _service_lifecycle_dispatch(
     uri: str, project: str, db, config, node_urls, token, identity, payload: dict
 ):
-    """Handle query/status, command/start, command/stop for the three named host services."""
+    """Handle all four standard lifecycle verbs for the three named host services:
+    query/status, command/start, command/stop, command/restart."""
     for svc in _SVC_PORT_MAP:
         if uri == f"dashboard://host/service/{svc}/query/status":
             status = _service_status_impl(_svc_port(svc), _svc_is_map()[svc])
@@ -8387,14 +8403,9 @@ def _service_lifecycle_dispatch(
             if status["running"]:
                 return {"ok": True, "service": svc, "started": False,
                         "detail": f"{svc} is already running", **status}
-    if uri == "dashboard://host/service/phone-scanner/command/start":
-        return ensure_phone_scanner_service(project, db, config,
-                                            node_urls=node_urls, token=token, identity=identity)
-    if uri == "dashboard://host/service/chat/command/start":
-        return restart_chat_service(payload, project=project, db=db, config=config,
-                                    node_urls=node_urls, token=token, identity=identity)
-    if uri == "dashboard://host/service/android-node/command/start":
-        return restart_android_node_service(payload)
+            return _svc_start_fn(svc, project, db, config, node_urls, token, identity, payload)
+        if uri == f"dashboard://host/service/{svc}/command/restart":
+            return _svc_restart_fn(svc, project, db, config, node_urls, token, identity, payload)
     return _UNROUTED
 
 
@@ -8411,37 +8422,9 @@ def _uri_invoke_route(effective_uri: str, *, project: str, db: str | None, confi
         return scanner_best_finish(project, db, action_payload)
     if effective_uri in {"scanner://host/session/command/log", "scanner://host/session"}:
         return scanner_session(db, action_payload)
+    # Legacy alias: dashboard://host/phone-scanner/command/start → canonical start URI
     if effective_uri == "dashboard://host/phone-scanner/command/start":
-        return ensure_phone_scanner_service(
-            project,
-            db,
-            config,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-        )
-    if effective_uri == "dashboard://host/service/phone-scanner/command/restart":
-        return restart_phone_scanner_service(
-            project,
-            db,
-            config,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-            payload=action_payload,
-        )
-    if effective_uri == "dashboard://host/service/chat/command/restart":
-        return restart_chat_service(
-            action_payload,
-            project=project,
-            db=db,
-            config=config,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-        )
-    if effective_uri == "dashboard://host/service/android-node/command/restart":
-        return restart_android_node_service(action_payload)
+        effective_uri = "dashboard://host/service/phone-scanner/command/start"
     lifecycle = _service_lifecycle_dispatch(effective_uri, project, db, config,
                                             node_urls, token, identity, action_payload)
     if lifecycle is not _UNROUTED:
@@ -8677,7 +8660,6 @@ def _compact_chat_result(result: dict, payload: dict) -> dict:
     return compacted
 
 
-_DOCUMENT_SYNC_URI = "document://host/archive/command/sync-to-node"
 
 
 def _mirror_node_to_nodes_file(name: str, url: str) -> None:
@@ -9603,48 +9585,7 @@ def _try_urifix_repair(prompt: str, request: dict, result: dict, *, node_urls: l
     return fixed if isinstance(fixed, dict) else None
 
 
-def _document_sync_auto_retry_enabled(payload: dict) -> bool:
-    for key in ("autoRetry", "auto_retry", "autoRepair", "auto_repair"):
-        if key in payload:
-            return _boolish(payload.get(key), default=True)
-    return _truthy_env("URIRUN_DOCUMENT_SYNC_AUTO_RETRY", "1")
 
-
-def _urifix_auto_retry(urifix: dict) -> bool:
-    """True when a urifix diagnosis authorizes an automatic retry."""
-    diagnosis = urifix.get("diagnosis") if isinstance(urifix.get("diagnosis"), dict) else {}
-    if urifix.get("repaired") or diagnosis.get("canAutoRetry"):
-        return True
-    return any(bool(item.get("automatic")) for item in (urifix.get("recovery") or []) if isinstance(item, dict))
-
-
-def _validated_sync_retry_payload(retry: dict, sync_node: str) -> dict | None:
-    """Validate a urifix `retry` block targets this document-sync node, returning its payload."""
-    if str(retry.get("uri") or "") != _DOCUMENT_SYNC_URI:
-        return None
-    if str(retry.get("mode") or "").casefold() != "execute":
-        return None
-    retry_payload = retry.get("payload")
-    if not isinstance(retry_payload, dict):
-        return None
-    node_url = str(retry_payload.get("node_url") or retry_payload.get("nodeUrl") or "").strip()
-    if not node_url:
-        return None
-    retry_node = str(retry_payload.get("node") or retry_payload.get("targetNode") or sync_node).strip()
-    if sync_node and retry_node and retry_node != sync_node:
-        return None
-    return dict(retry_payload)
-
-
-def _document_sync_retry_payload_from_urifix(urifix: dict | None, *, sync_node: str) -> dict | None:
-    if not isinstance(urifix, dict):
-        return None
-    if not _urifix_auto_retry(urifix):
-        return None
-    retry = urifix.get("retry")
-    if not isinstance(retry, dict):
-        return None
-    return _validated_sync_retry_payload(retry, sync_node)
 
 
 def _needs_screen_document_capture(prompt: str) -> bool:
@@ -9691,11 +9632,7 @@ def _document_sync_node_from_prompt(prompt: str, selected_nodes: list[str],
     return _document_sync_default_node()
 
 
-def _document_sync_dest_from_prompt(prompt: str) -> str:
-    text_value = prompt.casefold()
-    if "download" in text_value or "pobrane" in text_value:
-        return os.environ.get("URIRUN_DOCUMENT_SYNC_DEST", "~/Downloads/urirun-scans")
-    return _document_sync_default_dest_root()
+
 
 
 def _route_in_selected_targets(route: dict, selected_nodes: list[str], selected_targets: list[str]) -> bool:

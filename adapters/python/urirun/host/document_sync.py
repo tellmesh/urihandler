@@ -63,9 +63,64 @@ def document_files_exist(item: dict) -> bool:
             return True
     return False
 
+DOCUMENT_SYNC_URI = "document://host/archive/command/sync-to-node"
+
 _DEFAULT_SYNC_TIMEOUT = 120.0
 _MAX_FILE_BYTES = 25_000_000  # 25 MB read-back verification ceiling
 _UPLOAD_TIMEOUT_S = 30.0      # preflight route-check per-request timeout cap
+
+
+def truthy_env(name: str, default: str = "0") -> bool:
+    return str(os.environ.get(name, default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def document_sync_auto_retry_enabled(payload: dict) -> bool:
+    for key in ("autoRetry", "auto_retry", "autoRepair", "auto_repair"):
+        if key in payload:
+            return boolish(payload.get(key), default=True)
+    return truthy_env("URIRUN_DOCUMENT_SYNC_AUTO_RETRY", "1")
+
+
+def _urifix_auto_retry(urifix: dict) -> bool:
+    diagnosis = urifix.get("diagnosis") if isinstance(urifix.get("diagnosis"), dict) else {}
+    if urifix.get("repaired") or diagnosis.get("canAutoRetry"):
+        return True
+    return any(bool(item.get("automatic")) for item in (urifix.get("recovery") or []) if isinstance(item, dict))
+
+
+def _validated_sync_retry_payload(retry: dict, sync_node: str) -> dict | None:
+    if str(retry.get("uri") or "") != DOCUMENT_SYNC_URI:
+        return None
+    if str(retry.get("mode") or "").casefold() != "execute":
+        return None
+    retry_payload = retry.get("payload")
+    if not isinstance(retry_payload, dict):
+        return None
+    node_url = str(retry_payload.get("node_url") or retry_payload.get("nodeUrl") or "").strip()
+    if not node_url:
+        return None
+    retry_node = str(retry_payload.get("node") or retry_payload.get("targetNode") or sync_node).strip()
+    if sync_node and retry_node and retry_node != sync_node:
+        return None
+    return dict(retry_payload)
+
+
+def document_sync_retry_payload_from_urifix(urifix: dict | None, *, sync_node: str) -> dict | None:
+    if not isinstance(urifix, dict):
+        return None
+    if not _urifix_auto_retry(urifix):
+        return None
+    retry = urifix.get("retry")
+    if not isinstance(retry, dict):
+        return None
+    return _validated_sync_retry_payload(retry, sync_node)
+
+
+def document_sync_dest_from_prompt(prompt: str) -> str:
+    text_value = prompt.casefold()
+    if "download" in text_value or "pobrane" in text_value:
+        return os.environ.get("URIRUN_DOCUMENT_SYNC_DEST", "~/Downloads/urirun-scans")
+    return document_sync_default_dest_root()
 
 
 @dataclass(frozen=True)
