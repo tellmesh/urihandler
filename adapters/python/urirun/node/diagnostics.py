@@ -225,6 +225,90 @@ PLAYBOOK: list[_Rule] = [
         confidence=0.75,
     ),
     _Rule(
+        "auth-required",
+        [r"api key (not set|missing|required)", r"secret(?: not)? (found|resolved|set)",
+         r"secretref.*(not found|missing|unresolvable)",
+         r"\b403\b", r"authentication required", r"unauthorized",
+         r"credentials (not|missing|required)", r"api.?key.*required"],
+        "An API credential (secretRef, API key, token) is missing or unresolvable — "
+        "the secret layer could not find the referenced key in env / dotenv / keyring. "
+        "Configure the credential via secret:// reference or set the env var directly.",
+        lambda t: [
+            {"id": "check-secret-config", "kind": "diagnostic", "automatic": False,
+             "uri": f"secret://{t}/config/query/status",
+             "label": "Inspect the secret configuration — which provider holds this key."},
+            {"id": "set-credential", "kind": "auth", "automatic": False,
+             "label": "Set the missing credential (env var / keyring entry / .env file) and retry."},
+        ],
+        confidence=0.85,
+    ),
+    _Rule(
+        "service-stopped",
+        [r"connection refused", r"service (is )?not running", r"service (is )?stopped",
+         r"failed to connect", r"(host|port) (is )?unreachable",
+         r"econnrefused", r"broken pipe", r"nodename nor servname provided"],
+        "The target service is not running or not reachable on its configured port — "
+        "either the service crashed, was never started, or is listening on a different port. "
+        "Start or restart the service and verify the URL/port.",
+        lambda t: [
+            {"id": "check-service-health", "kind": "diagnostic", "automatic": True,
+             "uri": f"node://{t}/runtime/query/health",
+             "label": "Probe the node's /health endpoint to distinguish down-node from down-service."},
+            {"id": "restart-service", "kind": "provision", "automatic": False,
+             "label": "Start or restart the service (dashboard://host/service/<name>/command/restart)."},
+        ],
+        confidence=0.8,
+    ),
+    _Rule(
+        "port-busy",
+        [r"address already in use", r"port.*already.*bound", r"eaddrinuse",
+         r"port.*occupied", r"bind.*(failed|error).*port"],
+        "The service could not bind its port — another process is already listening there. "
+        "Find and stop the occupying process, or configure a different port.",
+        lambda t: [
+            {"id": "find-port-owner", "kind": "diagnostic", "automatic": False,
+             "label": "Find what holds the port: ss -tlnp | grep :<port>  or  lsof -i :<port>."},
+            {"id": "restart-service-force", "kind": "provision", "automatic": False,
+             "label": "Stop the occupying process and restart the service (port-replace mode)."},
+        ],
+        confidence=0.9,
+    ),
+    _Rule(
+        "verification-failed",
+        [r"verification (failed|contract)", r"expected.*actual.*count",
+         r"(file|doc|document|artifact) count mismatch",
+         r"named check.*failed", r"post-condition.*not met", r"goal check.*failed"],
+        "A side-effecting operation completed its steps but the POST-CONDITION was not met "
+        "— the expected artifact count, file hash, or named check did not match the actual state. "
+        "This is a silent partial-success: the steps ran but the intended outcome was not achieved.",
+        lambda t: [
+            {"id": "verify-state", "kind": "diagnostic", "automatic": True,
+             "uri": f"node://{t}/runtime/query/health",
+             "label": "Re-probe the node's state to understand what was actually written/changed."},
+            {"id": "retry-operation", "kind": "retry", "automatic": False,
+             "label": "Retry the operation — some verification failures are transient (file not synced yet)."},
+            {"id": "inspect-error", "kind": "diagnostic", "automatic": False,
+             "label": "Inspect the verification block in the result for expected vs actual counts."},
+        ],
+        confidence=0.85,
+    ),
+    _Rule(
+        "missing-llm-model",
+        [r"llm.?model.*not (set|configured|found)", r"llm.?model.*missing",
+         r"no model configured", r"openai.*api.?key.*not set",
+         r"no llm provider", r"llm.*unavailable", r"model.*not available"],
+        "The LLM planner cannot generate a flow because no model is configured — "
+        "LLM_MODEL env var is missing or the API key for the provider is absent. "
+        "Set LLM_MODEL and the provider's API key (e.g. OPENROUTER_API_KEY) in the .env file.",
+        lambda t: [
+            {"id": "set-llm-model", "kind": "auth", "automatic": False,
+             "label": "Set LLM_MODEL=<model-id> and the provider API key in the project .env file."},
+            {"id": "retry-no-llm", "kind": "retry", "automatic": False,
+             "label": "Retry with --no-llm to use the rule-based planner (no LLM required)."},
+        ],
+        confidence=0.9,
+    ),
+    _Rule(
         "route-not-served",
         [r"route not found", r"no available backend for"],
         "The URI's route is not live on the node — bindings were deployed without handler code, or the "

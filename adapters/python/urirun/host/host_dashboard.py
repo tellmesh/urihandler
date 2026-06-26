@@ -10392,11 +10392,12 @@ def _restore_run_credentials(old_token: str | None, old_identity: str | None) ->
 
 
 def _fetch_planner_environments_for_nodes(mesh: Any, selected_nodes: list[str], execute: bool,
-                                          registry: Any, discovered: dict) -> list:
-    """Fetch grounded env/surface contexts for reachable selected nodes (only when executing)."""
+                                          registry: Any, discovered: dict, *, memory: Any = None) -> list:
+    """Fetch grounded env/surface contexts for reachable selected nodes (only when executing).
+    ``memory`` threads the durable TwinMemory into planner_context so drift guidance is live."""
     reachable = {n["name"] for n in (discovered.get("nodes") or []) if n.get("reachable")}
     ground = [n for n in (selected_nodes or []) if n in reachable]
-    return mesh.fetch_planner_environments(ground, registry, discovered) if (execute and ground) else []
+    return mesh.fetch_planner_environments(ground, registry, discovered, memory=memory) if (execute and ground) else []
 
 
 def _chat_ask_general(
@@ -10423,13 +10424,16 @@ def _chat_ask_general(
             return _chat_ask_general_capability_gap(
                 db, prompt, execute, selected_nodes, selected_targets, discovered, capability_gap)
         registry = mesh.registry_from_routes(discovered.get("routes") or [])
+        from urirun.node.twin_store import durable_memory as _durable_memory  # noqa: PLC0415
+        twin_memory = _durable_memory() if execute else None
         try:
-            environments = _fetch_planner_environments_for_nodes(mesh, selected_nodes, execute, registry, discovered)
+            environments = _fetch_planner_environments_for_nodes(
+                mesh, selected_nodes, execute, registry, discovered, memory=twin_memory)
             flow, generator = mesh.make_flow(prompt, discovered, selected_nodes=selected_nodes,
                                              use_llm=not no_llm, environments=environments)
         except Exception as exc:  # noqa: BLE001 - return a recovery contract instead of a raw API failure.
             return _chat_ask_general_planner_failure(exc, db, prompt, execute, selected_nodes, selected_targets)
-        execution = mesh.execute_flow(flow, discovered, registry, execute=execute)
+        execution = mesh.execute_flow(flow, discovered, registry, execute=execute, memory=twin_memory)
     finally:
         _restore_run_credentials(old_token, old_identity)
     result = {
@@ -10444,6 +10448,9 @@ def _chat_ask_general(
         "flow": flow,
         **execution,
     }
+    if execute and not result.get("verification"):
+        from urirun.host.contracts import flow_execution_verification as _flow_exec_verify  # noqa: PLC0415
+        result["verification"] = _flow_exec_verify(flow, execution)
     result = _compact_chat_result(result, payload)
     attachments = _collect_attachments(result, project)
     result["attachments"] = attachments

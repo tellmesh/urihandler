@@ -107,6 +107,34 @@ module names cause import mismatch in default `pytest -q`, and socket-opening
 tests fail in the restricted sandbox with `PermissionError: Operation not
 permitted`.
 
+## Landed (2026-06-26): 5 new diagnostics PLAYBOOK rules + CC gate clean
+
+**5 new PLAYBOOK rules in `diagnostics.py`** — placed before `route-not-served` (more specific first):
+- `auth-required` — API key not set, secretRef unresolvable, 403; set-credential human-gated
+- `service-stopped` — connection refused, service not running, failed to connect; health-check auto, restart human-gated
+- `port-busy` — EADDRINUSE, address in use, bind failed; matches BEFORE service-stopped
+- `verification-failed` — verification failed/contract, file/doc count mismatch; verify-state auto
+- `missing-llm-model` — LLM_MODEL not set/missing, no LLM provider; set-llm-model human-gated, retry-no-llm fallback
+
+34 new tests in `test_diagnostics.py`. Bug: `llm.?model.*missing` pattern (was `llm_model.*missing`). Bug: `categories={"UNAVAILABLE"}` filter removed from `service-stopped` (errors arrive with arbitrary categories). CC gate: `contracts.py::flow_execution_verification` (CC=18→4) — extracted 5 helpers. **594 passed, CC gate OK.**
+
+## Landed (2026-06-26): execute_flow↔TwinMemory seam closed + planner drift wired
+
+**Seam closed:** All three wires connecting TwinMemory to live NL→URI flows are now in place:
+1. `execute_flow(memory=durable_memory())` in `_chat_ask_general` — the flow captures known-good
+   before and advances it post-success; a drifted run gets a `twin-drift` timeline entry.
+2. `fetch_planner_environments(..., memory=)` — threads the durable memory into `planner_context`
+   so the LLM planner sees "environment DRIFTED — re-measure" guidance when env shifted since
+   the last successful run.
+3. `_fetch_planner_environments_for_nodes` forwarded `memory=` from `_chat_ask_general`.
+
+**Bug fixed:** Dashboard imported `durable_memory` from `urirun.node.reversible` (doesn't exist
+there); corrected to `urirun.node.twin_store`. Would have caused `ImportError` at the first
+live execute.
+
+**New test:** `test_fetch_planner_environments_threads_memory_into_planner_context` asserts that
+the same memory object reaches `planner_context`. 560 passed, CC gate OK.
+
 ## Landed (2026-06-26): connector_required recovery + CC gate clean + surface contract test
 
 **surfaces.cdp contract test (2026-06-26):** 5 new tests in `test_kernel_adoption.py` guard the
@@ -137,6 +165,59 @@ deploy steps are human-gated. 5 new tests in `test_diagnostics.py`. urirun core 
 capability-gap early-exit to `_chat_ask_general_capability_gap`; `node_command` (CC=16→8) —
 registry source resolution extracted to `_resolve_registry_source`. Gate now reads **CC gate OK**.
 
+## Landed (2026-06-26): kvm connector housekeeping — CC metrics snapshot
+
+**CC metrics (2026-06-26 snapshot):** 3 functions on the limit (CC=15) across 1814 measured;
+all three are in `flow.py`. Every function flagged in prior sprints is gone:
+`fit_to_environment` (CC=32), `execute_flow` (CC=21), `_run_step` (CC=18), `diagnose` (CC=19).
+CC war is won. The gate holds.
+
+**Kernel extraction status (2026-06-26):**
+`urirun.connectors.backend_registry` (129 L), `urirun.connectors.surfaces.cdp` (339 L),
+`urirun.connectors.inputs.uinput` (148 L), `urirun.node.reversible` (386 L, 9 classes),
+`urirun.node.twin_store` (70 L). `test_kernel_adoption.py` + `test_backend_registry.py` guard the
+contracts. Every new connector can import these instead of re-implementing them.
+
+**kvm connector housekeeping (2026-06-26, `urirun-connector-kvm`):**
+Removed `from __future__ import annotations` from all 8 modules (`backends.py`, `cdp.py`,
+`control.py`, `core.py`, `environment.py`, `launch_backends.py`, `strategies.py`, `surface.py`) —
+redundant since `requires-python = ">=3.10"`. Added named constants for inline magic numbers:
+`_CDP_AWAIT_TIMEOUT`, `_CDP_LAUNCH_TIMEOUT` (cdp.py); `_CDP_PRIORITY`, `_ATSPI_PRIORITY`,
+`_VISION_PRIORITY` (strategies.py); `_PRIORITY_LINUX`, `_PRIORITY_OTHER` (launch_backends.py);
+`_CDP_SESSION_TIMEOUT`, `_ACT_BUDGET_SECS`, `_LOCATE_MIN_CONF` (core.py). All 8 files
+`py_compile` clean.
+
+## Phase R: host_dashboard decomposition (the one remaining structural debt)
+
+`host_dashboard.py` is **11 665 L / 356 methods**. CC is clean (no function over 15) — this is
+a **god-module**, not a complexity problem. Smell: `adapters.python fan-out=18 → split needed`.
+The fix is cheap because **the target modules already exist**: host_dashboard duplicates logic that
+its dependencies already own. The refactor is moving clusters *down*, not inventing new modules.
+
+### Cluster → target mapping
+
+| Cluster | Functions | Move to |
+|---|---|---|
+| `_document_archive`, `_document_index`, `reconcile`, `_pdf_*` | ~44 | `host/document_sync.py` (or new `host/document_archive.py`) |
+| `scanner_capture`, `_best_*`, `_crop_*`, `scanner_session` | ~12 | `host/scanner_bridge.py` (or new `host/scanner_capture.py`) |
+| `_node_add/remove`, `_mirror_*`, `_node_api_*`, `_persist_node_*` | ~57 | `host/object_registry.py` + `host/config.py` + `host/discovery.py` |
+| `artifacts_delete`, `dedupe`, `_sidecar_*` | ~35 | new `host/artifacts_admin.py` |
+| `uri_invoke`, `_uri_action_catalog`, `_uri_invoke_*` | ~49 | new `host/uri_invoke.py` |
+| `chat_ask`, `_chat_ask_*` | large | new `host/chat_orchestrator.py` |
+
+**What stays in host_dashboard:** thin HTTP shell — `create_handler`, `serve`, `do_GET/do_POST`,
+path routing. Target: 11 665 L god-module → ~1.5–2 kL web-shell + 5–6 domain modules.
+Each domain module extends an existing sibling — not a greenfield file. This simultaneously
+eliminates `fan-out=18` (you stop importing the whole world into one file).
+
+**Phasing rule:** one cluster per PR, full suite green between moves. Start with `_document*`
+(44 functions, clearest home, smallest blast radius). The module split for `_chat_ask_*` comes
+last — it is the only genuinely host-specific cluster with no existing sibling to absorb it.
+
+**Do not touch:** `mesh` (~1992 L), `runtime/v2` (~2003 L), `runtime/_registry` (718 L).
+CC-clean, no obvious seam. Your own rule applies: split only when a seam appears, not for size.
+`flow.py` trio at CC=15 is at the gate, not over it — optional cleanup, not a campaign.
+
 ## Next tasks: connection/runtime reliability
 
 P0:
@@ -160,16 +241,35 @@ P1:
 - Add authenticated host callback registration for webpage nodes so opening the
   page can persist the node in the host mesh without a manual "save as node"
   click.
+- **Fleet discipline — Phase F (fleet now ~37 connectors, needs different hygiene
+  than a single project):**
+  1. Extend `test_kernel_adoption` across the whole fleet — a contract test that
+     fails in CI when *any* connector calls a symbol absent from
+     `surfaces.cdp`/`backend_registry`/`inputs.uinput`. At 37 connectors, this
+     is not optional; it is the seam-guard against gen-50 style regressions
+     (`cdp._evaluate→cdp.evaluate` class).
+  2. `connector_scaffold` (413 L) generates a connector that *imports* kernel
+     modules, not one that duplicates infrastructure — every new connector starts
+     small by construction.
+  3. `connector_lint` (602 L) wired as fleet-wide CI gate.
 
 P2:
 
 - Extract API node handling, URI invoke routing and node docs/forms from
-  `host_dashboard.py`.
+  `host_dashboard.py` (see **Phase R** cluster map above — start with `_document*`).
 - Add a shared SDK/contract for service/widget/artifact descriptors.
 - Make connectors return artifact descriptors and leave registration to the
   host/service artifact registry.
 - Fix duplicate test module names and mark socket-dependent tests so restricted
   sandboxes can run a meaningful green suite.
+- **Phase D — CDP on real profile (operacyjne, nie kod):** The Wayland text-input
+  wall disappears only with a real-profile CDP session: close the running Chrome →
+  launch real profile with `--remote-debugging-port` → one-time manual login.
+  This is a machine transition, not a URI call — which is why it kept stalling.
+  Once done, `urirun-connector-browser-control` + `urirun-connector-linkedin`
+  (both already in the tree) drive compose+publish through the DOM — OCR-free,
+  focus-resilient. The same CDP endpoint feeds `window/command/close` Twin
+  snapshots with full fidelity. One transition, two long-blocked flows unblocked.
 
 Near-term extraction targets:
 

@@ -69,7 +69,7 @@ class FakeMesh:
     def registry_from_routes(self, routes):
         return {"routes": routes}
 
-    def execute_flow(self, flow, mesh, registry, execute=False):
+    def execute_flow(self, flow, mesh, registry, execute=False, memory=None):
         self.executed = execute
         return {
             "ok": True,
@@ -3361,8 +3361,8 @@ def test_extract_metadata_llm_overrides_regex_and_keeps_blanks(monkeypatch):
 
 
 def test_local_image_ocr_falls_back_to_llm_vision(monkeypatch, tmp_path):
-    import urirun_connector_ocr.core as ocr_core
-    import urirun_connector_llm.core as llm_core
+    ocr_core = pytest.importorskip("urirun_connector_ocr.core")
+    llm_core = pytest.importorskip("urirun_connector_llm.core")
 
     img = tmp_path / "scan.jpg"
     img.write_bytes(b"\xff\xd8\xff\xe0jpeg")
@@ -3387,7 +3387,7 @@ def test_local_image_ocr_falls_back_to_llm_vision(monkeypatch, tmp_path):
 
 
 def test_llm_extract_vision_mode_sends_image(monkeypatch, tmp_path):
-    import urirun_connector_llm.core as llm_core
+    llm_core = pytest.importorskip("urirun_connector_llm.core")
 
     monkeypatch.setenv("URIRUN_SCANNER_LLM_EXTRACT", "1")
     monkeypatch.setenv("URIRUN_SCANNER_LLM_VISION", "1")

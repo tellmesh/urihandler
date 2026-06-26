@@ -506,11 +506,13 @@ def llm_flow(prompt: str, routes: list[dict], nodes: list[dict],
     return json_from_text(response.choices[0].message.content)
 
 
-def fetch_planner_environments(node_names: list[str], registry: dict, mesh: dict | None = None) -> list[dict]:
+def fetch_planner_environments(node_names: list[str], registry: dict, mesh: dict | None = None,
+                               *, memory: "TwinMemory | None" = None) -> list[dict]:
     """Best-effort live capability profile + foreground surface per node, formatted as
     planner_context facts+guidance — so the planner GROUNDS on reality (surface, language,
-    known-good) instead of guessing. Sets the serviceMap from ``mesh`` so the kvm queries route
-    to the node; skips any node that doesn't answer (non-kvm / unreachable); never raises."""
+    known-good, drift) instead of guessing. Sets the serviceMap from ``mesh`` so the kvm queries
+    route to the node; skips any node that doesn't answer (non-kvm / unreachable); never raises.
+    ``memory`` threads the durable TwinMemory into planner_context so drift guidance is included."""
     from urirun.node.reversible import planner_context
     old_map = os.environ.get("URI_SERVICE_MAP")
     if mesh is not None:
@@ -522,7 +524,7 @@ def fetch_planner_environments(node_names: list[str], registry: dict, mesh: dict
             if not prof:
                 continue
             surf = _fetch_kvm_query({"uri": f"kvm://{name}/x"}, registry, "surface/query/current", "kind")
-            out.append(planner_context(name, prof, surf))
+            out.append(planner_context(name, prof, surf, memory=memory))
     finally:
         if mesh is not None:
             if old_map is None:
@@ -829,6 +831,16 @@ def _capture_known_good(flow: dict, registry: dict, memory: TwinMemory) -> None:
             memory.remember(target, prof)
 
 
+def _update_known_good(flow: dict, registry: dict, memory: TwinMemory) -> None:
+    """Advance the known-good to the current environment after a SUCCESSFUL flow.
+    Unlike _capture_known_good (sticky first-run baseline), this unconditionally overwrites
+    so that drift is always measured against the last successfully executed state."""
+    for target in _kvm_targets(flow):
+        prof = _fetch_env_profile({"uri": f"kvm://{target}/_"}, registry)
+        if isinstance(prof, dict):
+            memory.remember(target, prof)
+
+
 def _drift_timeline(flow: dict, registry: dict, memory: TwinMemory) -> list[dict]:
     """Compare each target's LIVE profile to its just-captured known-good and emit a timeline
     entry when they differ. Diagnosis only — does NOT abort, force dry-run, or auto-remeasure;
@@ -939,6 +951,10 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recov
         result = {"ok": True, "timeline": timeline, "results": results}
         if recoveries:
             result["recovery"] = recoveries
+        # Post-success: advance the known-good to the current environment so drift is always
+        # measured against the LAST successfully executed state, not just the first-ever baseline.
+        if memory is not None:
+            _update_known_good(flow, registry, memory)
         return result
     finally:
         if old_map is None:

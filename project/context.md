@@ -1,21 +1,21 @@
 # System Architecture Analysis
-<!-- generated in 0.01s -->
+<!-- generated in 0.00s -->
 
 ## Overview
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 108, json: 13, shell: 10, yaml: 5, csharp: 4
+- **Languages**: python: 111, json: 13, shell: 10, yaml: 5, csharp: 4
 - **Analysis Mode**: static
-- **Total Functions**: 1779
-- **Total Classes**: 43
-- **Modules**: 168
-- **Entry Points**: 592
+- **Total Functions**: 1814
+- **Total Classes**: 44
+- **Modules**: 171
+- **Entry Points**: 605
 
 ## Architecture by Module
 
 ### adapters.python.urirun.host.host_dashboard
-- **Functions**: 348
+- **Functions**: 356
 - **File**: `host_dashboard.py`
 
 ### adapters.python.urirun.runtime.v2
@@ -24,7 +24,7 @@
 - **File**: `v2.py`
 
 ### adapters.python.urirun.node.mesh
-- **Functions**: 102
+- **Functions**: 103
 - **Classes**: 3
 - **File**: `mesh.py`
 
@@ -32,14 +32,14 @@
 - **Functions**: 68
 - **File**: `urirun-v1.js`
 
+### adapters.python.urirun.node.flow
+- **Functions**: 54
+- **File**: `flow.py`
+
 ### adapters.python.urirun
 - **Functions**: 51
 - **Classes**: 1
 - **File**: `__init__.py`
-
-### adapters.python.urirun.node.flow
-- **Functions**: 49
-- **File**: `flow.py`
 
 ### adapters.python.urirun.runtime._registry
 - **Functions**: 43
@@ -84,6 +84,11 @@
 - **Classes**: 1
 - **File**: `planfile_adapter.py`
 
+### adapters.python.urirun.node.reversible
+- **Functions**: 26
+- **Classes**: 9
+- **File**: `reversible.py`
+
 ### adapters.python.urirun.host.domain_monitor
 - **Functions**: 25
 - **Classes**: 1
@@ -97,10 +102,6 @@
 ### adapters.python.urirun.runtime.v1
 - **Functions**: 25
 - **File**: `v1.py`
-
-### adapters.python.urirun.node.task_cli
-- **Functions**: 25
-- **File**: `task_cli.py`
 
 ## Key Entry Points
 
@@ -159,13 +160,6 @@ line
 ### adapters.python.urirun.connectors.connect_catalog._cmd_show
 - **Calls**: adapters.python.urirun.connectors.connect_catalog.fetch_connector, print, print, print, print, print, document.get, adapters.python.urirun.connectors.connect_catalog._emit_json
 
-### adapters.python.urirun.host.document_metadata._local_image_ocr
-> OCR a scanned image for the phone-scanner pipeline.
-
-Prefers the urirun-connector-ocr ``auto`` cascade, whose first backend is PaddleOCR
-(PP-OCRv5/v6 
-- **Calls**: None.lower, adapters.python.urirun.host.document_metadata._ocr_connector_envelope, adapters.python.urirun.host.document_metadata._ocr_text_ok, adapters.python.urirun.host.document_metadata._local_image_ocr_tesseract, adapters.python.urirun.host.document_metadata._ocr_text_ok, adapters.python.urirun.host.document_metadata._local_image_ocr_llm, adapters.python.urirun.host.document_metadata._ocr_text_ok, adapters.python.urirun.host.document_metadata._local_image_ocr_tesseract
-
 ### adapters.python.urirun.runtime.v2.run_local_function_subprocess
 > Run a ``local-function`` handler in a fresh process via the shared
 ``python -m urirun.exec`` runner — for routes that want isolation (untrusted
@@ -176,6 +170,13 @@ code,
 > ``secret://oauth/<provider>/<account>`` — a cached OAuth access token, with
 refresh. The token bundle lives in the keyring under ``oauth:<provider>`` 
 - **Calls**: location.partition, keyring.get_password, json.loads, urllib.request.Request, refreshed.get, keyring.set_password, str, KeyError
+
+### adapters.python.urirun.host.document_metadata._local_image_ocr
+> OCR a scanned image for the phone-scanner pipeline.
+
+Prefers the urirun-connector-ocr ``auto`` cascade, whose first backend is PaddleOCR
+(PP-OCRv5/v6 
+- **Calls**: None.lower, adapters.python.urirun.host.document_metadata._ocr_connector_envelope, adapters.python.urirun.host.document_metadata._ocr_text_ok, adapters.python.urirun.host.document_metadata._local_image_ocr_tesseract, adapters.python.urirun.host.document_metadata._ocr_text_ok, adapters.python.urirun.host.document_metadata._local_image_ocr_llm, adapters.python.urirun.host.document_metadata._ocr_text_ok, adapters.python.urirun.host.document_metadata._local_image_ocr_tesseract
 
 ### adapters.python.urirun.host.document_sync.sync_documents_to_node
 - **Calls**: adapters.python.urirun.host.document_sync._parse_sync_params, deps.archive_pdfs, adapters.python.urirun.host.document_sync._check_preflight, deps.verification, adapters.python.urirun.host.document_sync._log_and_chat_report, adapters.python.urirun.host.document_sync._log_and_chat_report, adapters.python.urirun.host.document_sync._upload_file, item.get
@@ -211,18 +212,17 @@ refresh. The token bundle lives in the keyring under ``oauth:<provider>``
 - a l
 - **Calls**: None.strip, adapters.python.urirun.node.manage._classify_source, adapters.python.urirun.node.manage._install_policy, adapters.python.urirun.node.manage._policy_allows, res.get, payload.get, payload.get, payload.get
 
+### adapters.python.urirun.connectors.inputs.uinput.abs_click
+> Position (and optionally click) at pixel (x,y) via a fresh raw absolute uinput device.
+``sw``/``sh`` default to the injected screen-size resolver; ``c
+- **Calls**: adapters.python.urirun.connectors.inputs.uinput.compute_abs, adapters.python.urirun.connectors.inputs.uinput._create_abs, adapters.python.urirun.connectors.inputs.uinput.uinput_available, BackendError, float, float, os.write, time.sleep
+
 ### adapters.python.urirun.host.fs_transfer.ensure_node_uri_routes
 > Preflight exact URI routes needed by a node-side workflow.
 
 Scheme-level checks are insufficient for split connectors such as fs://:
 a node may expose
 - **Calls**: node_client, client.routes, set, adapters.python.urirun.host.fs_transfer.route_key, attempted_route_keys.add, ensured.append, client.routes, all
-
-### adapters.python.urirun.runtime.discovery.registry_for_uri
-> Compile a registry for just the connector owning ``uri``'s scheme (+ builtins).
-
-Falls back to full discovery (and refreshes the index) when the schem
-- **Calls**: adapters.python.urirun.runtime.discovery._scheme_of, adapters.python.urirun.runtime.discovery.load_index, list, adapters.python.urirun.runtime.discovery.build_index, v2.entry_point_bindings, bindings.extend, v2.compile_registry, None.get
 
 ## Process Flows
 
@@ -324,6 +324,12 @@ returns the plaintext (cal
 - **Methods**: 6
 - **Key Methods**: adapters.python.urirun.runtime.secrets.SecretStr.__init__, adapters.python.urirun.runtime.secrets.SecretStr.reveal, adapters.python.urirun.runtime.secrets.SecretStr.ref, adapters.python.urirun.runtime.secrets.SecretStr.__str__, adapters.python.urirun.runtime.secrets.SecretStr.__repr__, adapters.python.urirun.runtime.secrets.SecretStr.__bool__
 
+### adapters.python.urirun.node.twin_store.JsonFileStore
+> A dict-like store that persists every write to a single JSON file (atomic replace), so a
+TwinMemory 
+- **Methods**: 6
+- **Key Methods**: adapters.python.urirun.node.twin_store.JsonFileStore.__init__, adapters.python.urirun.node.twin_store.JsonFileStore.get, adapters.python.urirun.node.twin_store.JsonFileStore.__getitem__, adapters.python.urirun.node.twin_store.JsonFileStore.__contains__, adapters.python.urirun.node.twin_store.JsonFileStore.__setitem__, adapters.python.urirun.node.twin_store.JsonFileStore._flush
+
 ### adapters.php.Urirun.Urirun.Connector
 - **Methods**: 5
 - **Key Methods**: adapters.php.Urirun.Connector.__construct, adapters.php.Urirun.Connector.target, adapters.php.Urirun.Connector.command, adapters.php.Urirun.Connector.bindings, adapters.php.Urirun.Connector.bindingsJson
@@ -358,13 +364,13 @@ child processes t
 - **Methods**: 4
 - **Key Methods**: adapters.ruby.urirun.Connector.initialize, adapters.ruby.urirun.Connector.command, adapters.ruby.urirun.Connector.bindings, adapters.ruby.urirun.Connector.bindings_json
 
-### adapters.csharp.Urirun.Connector
-- **Methods**: 3
-- **Key Methods**: adapters.csharp.Urirun.Connector.Connector, adapters.csharp.Urirun.Connector.Command, adapters.csharp.Urirun.Connector.BindingsJson
-
 ### adapters.python.urirun.connectors.backend_registry.Backend
 - **Methods**: 3
 - **Key Methods**: adapters.python.urirun.connectors.backend_registry.Backend.missing, adapters.python.urirun.connectors.backend_registry.Backend.platform_ok, adapters.python.urirun.connectors.backend_registry.Backend.available
+
+### adapters.csharp.Urirun.Connector
+- **Methods**: 3
+- **Key Methods**: adapters.csharp.Urirun.Connector.Connector, adapters.csharp.Urirun.Connector.Command, adapters.csharp.Urirun.Connector.BindingsJson
 
 ### adapters.python.urirun.node.reversible.Connector
 > The ADOPTION CONTRACT. A connector enters the engine by providing these three.
@@ -387,12 +393,6 @@ run dete
 ### adapters.python.urirun.node.diagnostics._Rule
 - **Methods**: 2
 - **Key Methods**: adapters.python.urirun.node.diagnostics._Rule.__init__, adapters.python.urirun.node.diagnostics._Rule.matches
-
-### adapters.python.urirun.node.reversible.CallableTransport
-> Adapt any ``fn(uri, payload) -> dict`` into a Transport (e.g. a NodeClient.run bound
-method, or a te
-- **Methods**: 2
-- **Key Methods**: adapters.python.urirun.node.reversible.CallableTransport.__init__, adapters.python.urirun.node.reversible.CallableTransport.call
 
 ## Data Transformation Functions
 
@@ -445,38 +445,42 @@ Key functions that process and transform data:
 ### adapters.python.urirun.host.service_control.free_port_from_matching_processes
 - **Output to**: getpid_fn, holders, targets, adapters.python.urirun.host.service_control._signal_pids, holders
 
-### adapters.python.urirun.host.document_metadata._parse_document_date
-- **Output to**: re.findall, re.findall, time.strftime, None.isoformat, re.search
-
-### adapters.python.urirun.host.document_metadata._parse_amount
-- **Output to**: re.compile, re.compile, re.compile, enumerate, max
-
-### adapters.python.urirun.host.document_metadata._parse_contractor
-- **Output to**: re.compile, re.compile, enumerate, None.strip, terminal_noise.search
-
-### adapters.python.urirun.host.document_metadata._parse_llm_json_object
-> Pull the JSON object out of an LLM completion envelope (strips ```json fences).
-- **Output to**: None.strip, re.search, fenced.group, re.search, json.loads
-
 ### adapters.python.urirun.host.document_sync._parse_sync_params
 - **Output to**: None.resolve, adapters.python.urirun.host.document_sync._resolve_node_params, adapters.python.urirun.host.document_sync._build_sync_params, None.strip, None.expanduser
+
+### adapters.python.urirun.runtime.cli._add_connectors_subparser
+> The `connectors` command tree (list/show/install/index/resolve/check/lint/
+verify/new/smoke/from-spe
+- **Output to**: subparsers.add_parser, connectors_parser.add_subparsers, argparse.ArgumentParser, connectors_common.add_argument, connectors_sub.add_parser
+
+### adapters.python.urirun.runtime.cli._add_node_subparser
+> The `node` command tree (init/config/list/stop/routes/serve). Extracted from _build_parser to cut fa
+- **Output to**: subparsers.add_parser, node_parser.add_subparsers, argparse.ArgumentParser, node_common.add_argument, node_sub.add_parser
+
+### adapters.python.urirun.runtime.cli._add_host_task_subparser
+> The `host task` tree (planfile ticket lifecycle: plan/bindings/schedule/list/show/next/create/claim/
+- **Output to**: host_sub.add_parser, host_task.add_subparsers, argparse.ArgumentParser, task_common.add_argument, argparse.ArgumentParser
+
+### adapters.python.urirun.runtime.cli._add_host_data_subparser
+> `host data` tree (SQLite context: bindings/init/dataset-create/datasets/record-upsert/records).
+- **Output to**: host_sub.add_parser, host_data.add_subparsers, argparse.ArgumentParser, data_common.add_argument, data_sub.add_parser
+
+### adapters.python.urirun.runtime.cli._add_host_monitor_subparser
+> `host monitor` tree (HTTP/DNS/domain monitoring: bindings/http/dns/domain/daily).
+- **Output to**: host_sub.add_parser, host_monitor.add_subparsers, argparse.ArgumentParser, monitor_common.add_argument, monitor_common.add_argument
+
+### adapters.python.urirun.runtime.cli._add_host_subparser
+> The `host` command tree (init/add-node/config/nodes/routes/agents/watch/dashboard/data/monitor/task/
+- **Output to**: subparsers.add_parser, host_parser.add_subparsers, argparse.ArgumentParser, host_common.add_argument, host_common.add_argument
+
+### adapters.python.urirun.runtime.cli._build_parser
+- **Output to**: argparse.ArgumentParser, parser.add_argument, parser.add_subparsers, subparsers.add_parser, doctor_parser.add_argument
 
 ### adapters.python.urirun.runtime.v1._run_process
 - **Output to**: config.get, config.get, subprocess.run, policy.get, progress.active
 
 ### adapters.python.urirun.runtime.v1._run_process_streaming
 - **Output to**: subprocess.Popen, progress.register_proc, threading.Timer, timer.start, enumerate
-
-### adapters.python.urirun.runtime.v2.validate_input
-- **Output to**: adapters.python.urirun.runtime.v2._input_values, adapters.python.urirun.runtime.v2._schema_for, Draft202012Validator.check_schema, set, adapters.python.urirun.runtime.v2._apply_defaults
-
-### adapters.python.urirun.runtime.v2.run_local_function_subprocess
-> Run a ``local-function`` handler in a fresh process via the shared
-``python -m urirun.exec`` runner 
-- **Output to**: subprocess.run, None.get, py.get, py.get, runtime.PolicyError
-
-### adapters.python.urirun.runtime.v2._run_parse
-- **Output to**: reglib.parse_uri, reglib.translate, _RunAbort, str, str
 
 ## Behavioral Patterns
 
@@ -559,7 +563,7 @@ Key functions that process and transform data:
 
 Functions exposed as public API (no underscore prefix):
 
-- `adapters.python.urirun.host.host_dashboard.create_handler` - 133 calls
+- `adapters.python.urirun.host.host_dashboard.create_handler` - 138 calls
 - `adapters.python.urirun.runtime._scan.main` - 59 calls
 - `adapters.python.urirun.runtime._registry.main` - 56 calls
 - `adapters.python.urirun.host.host_dashboard.scanner_best_finish` - 48 calls

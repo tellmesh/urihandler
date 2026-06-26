@@ -325,6 +325,15 @@ def local_transport(by_scheme: dict[str, Connector]) -> CallableTransport:
     return CallableTransport(_route)
 
 
+# Re-export so callers can do `from urirun.node.reversible import durable_memory` without knowing
+# the persistence module. The canonical implementation (with atomic JSON file writes) lives in
+# `urirun.node.twin_store`; importing from there would create a circular dependency in some paths.
+def durable_memory(path: str | None = None) -> "TwinMemory":
+    """Process-level TwinMemory backed by a JSON file (see ``urirun.node.twin_store``)."""
+    from urirun.node.twin_store import durable_memory as _dm
+    return _dm(path)
+
+
 def rollback_partial_flow(timeline: list[dict], results: dict, transport: Transport,
                           twin: Twin | None = None) -> dict | None:
     """Roll back the REVERSIBLE steps a failed flow already executed, so the failure leaves a

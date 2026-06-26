@@ -78,8 +78,9 @@ def test_execute_flow_does_not_retry_transient_command_failure(monkeypatch):
 
     result = flow.execute_flow(_one_step(), _mesh(kind="command"), {}, execute=True)
 
+    step_calls = [c for c in calls if c["uri"] == "env://laptop/runtime/query/health"]
     assert result["ok"] is False
-    assert len(calls) == 1
+    assert len(step_calls) == 1, "transient command step must NOT be retried"
     assert result["error"]["category"] == "UNAVAILABLE"
     assert result["recovery"][0]["plan"]["actions"][1]["id"] == "retry-transient-step"
 

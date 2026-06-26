@@ -312,5 +312,145 @@ class ConnectorHintTests(unittest.TestCase):
         self.assertIn("urirun host deploy", h["deployCommand"])
 
 
+class AuthRequiredDiagnosisTests(unittest.TestCase):
+    def _plan(self, msg):
+        return diagnose({"message": msg}, step={"uri": "llm://host/chat/command/ask"})
+
+    def test_api_key_not_set_matches(self):
+        plan = self._plan("API key not set for provider")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "auth-required")
+
+    def test_secretref_unresolvable_matches(self):
+        plan = self._plan("secretRef 'env:OPENROUTER_API_KEY' unresolvable")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "auth-required")
+
+    def test_unauthorized_403_matches(self):
+        plan = self._plan("HTTP 403 unauthorized")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "auth-required")
+
+    def test_set_credential_action_is_present(self):
+        plan = self._plan("credentials not found")
+        ids = [a["id"] for a in plan["remediation"]]
+        self.assertIn("set-credential", ids)
+
+    def test_set_credential_is_not_automatic(self):
+        plan = self._plan("api key missing")
+        self.assertNotIn("set-credential", plan["autoApplicable"])
+
+
+class ServiceStoppedDiagnosisTests(unittest.TestCase):
+    def _plan(self, msg):
+        return diagnose({"message": msg}, step={"uri": "scanner://host/doc/command/scan"})
+
+    def test_connection_refused_matches(self):
+        plan = self._plan("Connection refused on port 8196")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "service-stopped")
+
+    def test_service_not_running_matches(self):
+        plan = self._plan("service is not running")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "service-stopped")
+
+    def test_restart_service_action_present(self):
+        plan = self._plan("failed to connect to scanner")
+        ids = [a["id"] for a in plan["remediation"]]
+        self.assertIn("restart-service", ids)
+
+    def test_health_check_is_automatic(self):
+        plan = self._plan("connection refused")
+        self.assertIn("check-service-health", plan["autoApplicable"])
+
+    def test_restart_is_human_gated(self):
+        plan = self._plan("service stopped")
+        self.assertNotIn("restart-service", plan["autoApplicable"])
+
+
+class PortBusyDiagnosisTests(unittest.TestCase):
+    def _plan(self, msg):
+        return diagnose({"message": msg}, step={"uri": "dashboard://host/service/command/start"})
+
+    def test_address_already_in_use_matches(self):
+        plan = self._plan("OSError: [Errno 98] Address already in use")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "port-busy")
+
+    def test_eaddrinuse_matches(self):
+        plan = self._plan("EADDRINUSE on port 8765")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "port-busy")
+
+    def test_find_port_owner_action_present(self):
+        plan = self._plan("address already in use")
+        ids = [a["id"] for a in plan["remediation"]]
+        self.assertIn("find-port-owner", ids)
+
+    def test_port_busy_over_service_stopped(self):
+        """port-busy matches BEFORE service-stopped — more specific."""
+        plan = self._plan("bind failed on port 8196: address already in use")
+        self.assertEqual(plan["rule"], "port-busy")
+
+
+class VerificationFailedDiagnosisTests(unittest.TestCase):
+    def _plan(self, msg):
+        return diagnose({"message": msg}, step={"uri": "fs://host/file/command/write-b64"})
+
+    def test_verification_failed_matches(self):
+        plan = self._plan("verification failed: expected 3 files, got 2")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "verification-failed")
+
+    def test_file_count_mismatch_matches(self):
+        plan = self._plan("file count mismatch: expected 5 actual 4")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "verification-failed")
+
+    def test_retry_operation_action_present(self):
+        plan = self._plan("verification contract failed")
+        ids = [a["id"] for a in plan["remediation"]]
+        self.assertIn("retry-operation", ids)
+
+    def test_verify_state_is_automatic(self):
+        plan = self._plan("verification failed: named check document-count failed")
+        self.assertIn("verify-state", plan["autoApplicable"])
+
+
+class MissingLlmModelDiagnosisTests(unittest.TestCase):
+    def _plan(self, msg):
+        return diagnose({"message": msg}, step={"uri": "llm://host/chat/command/ask"})
+
+    def test_llm_model_not_set_matches(self):
+        plan = self._plan("LLM_MODEL not set — no model configured")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "missing-llm-model")
+
+    def test_no_llm_provider_matches(self):
+        plan = self._plan("no llm provider available for this request")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "missing-llm-model")
+
+    def test_model_not_available_matches(self):
+        plan = self._plan("model not available: claude-opus-4 not found")
+        self.assertIsNotNone(plan)
+        self.assertEqual(plan["rule"], "missing-llm-model")
+
+    def test_set_llm_model_action_present(self):
+        plan = self._plan("LLM model not configured")
+        ids = [a["id"] for a in plan["remediation"]]
+        self.assertIn("set-llm-model", ids)
+
+    def test_set_llm_model_is_human_gated(self):
+        plan = self._plan("no model configured")
+        self.assertNotIn("set-llm-model", plan["autoApplicable"])
+
+    def test_retry_no_llm_action_present(self):
+        plan = self._plan("LLM model missing")
+        ids = [a["id"] for a in plan["remediation"]]
+        self.assertIn("retry-no-llm", ids)
+
+
 if __name__ == "__main__":
     unittest.main()

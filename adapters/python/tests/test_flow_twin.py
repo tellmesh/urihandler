@@ -111,6 +111,64 @@ def test_execute_flow_with_memory_does_not_abort_on_drift(monkeypatch):
     assert drifts[0]["drift"]["drifted"] is True
 
 
+def test_update_known_good_overwrites_baseline_unconditionally(monkeypatch):
+    """_update_known_good always writes the new profile — unlike _capture_known_good
+    which is sticky.  This is the post-success advance: drift compares to LAST success."""
+    call_count = {"n": 0}
+    def _call(uri, payload, registry, mode="execute"):
+        if "env/query/profile" in uri:
+            call_count["n"] += 1
+            return {"ok": True, "result": {"value": _profile(best=f"run{call_count['n']}")}}
+        return {"ok": True, "result": {"value": {"ok": True}}}
+    monkeypatch.setattr(F.v2_service, "call", _call)
+    mem = TwinMemory()
+    F._capture_known_good(_flow(), {}, mem)
+    first = mem.known_good("laptop")
+    F._update_known_good(_flow(), {}, mem)
+    second = mem.known_good("laptop")
+    # The baseline was replaced, not kept sticky.
+    assert second["snapshot"]["best"] != first["snapshot"]["best"]
+
+
+def test_execute_flow_with_memory_updates_known_good_on_success(monkeypatch):
+    """After a successful flow, the known-good advances to the post-execution environment."""
+    state = {"best": "run0"}
+    def _call(uri, payload, registry, mode="execute"):
+        if "env/query/profile" in uri:
+            return {"ok": True, "result": {"value": _profile(best=state["best"])}}
+        return {"ok": True, "result": {"value": {"ok": True}}}
+    monkeypatch.setattr(F.v2_service, "call", _call)
+    mem = TwinMemory()
+    state["best"] = "run1"
+    F.execute_flow(_flow(), _mesh(), {}, execute=True, recover=False, memory=mem)
+    baseline_after_first = mem.known_good("laptop")["snapshot"]["best"]
+    state["best"] = "run2"
+    F.execute_flow(_flow(), _mesh(), {}, execute=True, recover=False, memory=mem)
+    baseline_after_second = mem.known_good("laptop")["snapshot"]["best"]
+    # Each successful run advanced the known-good.
+    assert baseline_after_first == "run1"
+    assert baseline_after_second == "run2"
+
+
+def test_execute_flow_with_memory_does_not_update_known_good_on_failure(monkeypatch):
+    """A failed flow must NOT advance the known-good — only success earns the update."""
+    state = {"best": "good"}
+    call_args = {"uri_seen": []}
+    def _call(uri, payload, registry, mode="execute"):
+        call_args["uri_seen"].append(uri)
+        if "env/query/profile" in uri:
+            return {"ok": True, "result": {"value": _profile(best=state["best"])}}
+        return {"ok": False, "error": "injected-failure", "result": {"value": {"ok": False}}}
+    monkeypatch.setattr(F.v2_service, "call", _call)
+    mem = TwinMemory()
+    F._capture_known_good(_flow(), {}, mem)          # establish baseline "good"
+    state["best"] = "bad"                            # simulate changed env before a failed run
+    F.execute_flow(_flow(), _mesh(), {}, execute=True, recover=False, rollback_on_failure=False,
+                   memory=mem)
+    # Baseline must still be "good" — the failed run must not overwrite it.
+    assert mem.known_good("laptop")["snapshot"]["best"] == "good"
+
+
 def test_execute_flow_without_memory_is_a_noop_for_twin(monkeypatch):
     """Backward compatibility: callers that don't pass a memory see no twin machinery at all —
     no extra profile probes, no drift entries, identical behavior to before the wiring existed."""
@@ -124,3 +182,23 @@ def test_execute_flow_without_memory_is_a_noop_for_twin(monkeypatch):
     assert out["ok"] is True
     assert probes == []                               # no doctor probe when memory is None
     assert not any(e.get("action") == "environment-drift" for e in out["timeline"])
+
+
+def test_fetch_planner_environments_threads_memory_into_planner_context(monkeypatch):
+    """fetch_planner_environments passes memory= to planner_context so drift guidance appears."""
+    received_memory = []
+
+    def _fake_planner_context(node, profile, surface, memory=None):
+        received_memory.append(memory)
+        return {"facts": {}, "guidance": [], "confidence": {"level": "auto", "score": 1.0, "reason": ""}}
+
+    monkeypatch.setattr(F, "_fetch_kvm_query", lambda step, reg, route, key: _profile() if route == "env/query/profile" else {"kind": "desktop"})
+    import urirun.node.flow as _flow_mod
+    import urirun.node.reversible as _rev
+    monkeypatch.setattr(_rev, "planner_context", _fake_planner_context)
+    monkeypatch.setattr(_flow_mod, "planner_context", _fake_planner_context, raising=False)
+
+    mem = TwinMemory()
+    F.fetch_planner_environments(["laptop"], {}, memory=mem)
+    assert len(received_memory) == 1
+    assert received_memory[0] is mem          # the same memory object was threaded through
