@@ -52,7 +52,8 @@ KIND_TO_ADAPTER = {"command": "argv-template", "shell": "shell-template", "handl
 # Vendored / generated trees that aren't the connector's own source — skipped so the lint
 # stays fast and correct on a real checkout (a local .venv holds thousands of .py files).
 _SKIP_DIRS = {"__pycache__", ".venv", "venv", "env", ".git", "node_modules",
-              "build", "dist", "site-packages", ".tox", ".mypy_cache", ".pytest_cache"}
+              "build", "dist", "site-packages", ".tox", ".mypy_cache", ".pytest_cache",
+              "computer-use-preview"}
 
 
 def _connector_py_files(root: Path) -> list[Path]:
