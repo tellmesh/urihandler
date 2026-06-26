@@ -5390,6 +5390,10 @@ def _local_image_ocr(path: str, backend: str | None = None) -> dict:
 
 
 
+def _utc_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
 def _node_alias_map_from_context(config: str | None, node_urls: list[str] | None = None) -> dict[str, str]:
     try:
         config_doc = _host_config(config, node_urls)
@@ -5400,10 +5404,6 @@ def _node_alias_map_from_context(config: str | None, node_urls: list[str] | None
         node_urls,
         default_node=_document_sync_default_node(),
     )
-
-
-def _utc_now() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
 def _file_sha256(path: str | Path) -> str:
@@ -6142,7 +6142,7 @@ def _enrich_archived_record(existing: dict, fused: dict, enriched_fields: list[s
         value = fused.get(key)
         if not _is_blank_metadata(value):
             existing[key] = value
-    existing["enrichedAt"] = _utc_now()
+    existing["enrichedAt"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     history = existing.get("enrichedFields")
     history = list(history) if isinstance(history, list) else []
     for key in enriched_fields:
@@ -6239,7 +6239,7 @@ def _archive_redundant_duplicate(*, duplicate: dict, index_match: dict | None, e
     duplicate_entry = {
         "version": 1,
         "event": "duplicate",
-        "scannedAt": _utc_now(),
+        "scannedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "docId": doc_id,
         "docIdProvider": docid_info.get("provider"),
         "docIdSource": docid_info.get("source"),
@@ -6412,7 +6412,7 @@ def _archive_scanned_document(
             # against archived records without re-reading every sidecar on each scan.
             "text": ocr_text,
             "crop": crop,
-            "createdAt": _utc_now(),
+            "createdAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             # Bridge to the urirun-artifacts schema registry: annotate whether the document
             # type is a known schema (None when the registry isn't installed). Non-fatal.
             "schemaKnown": _schema_fields["schemaKnown"],
