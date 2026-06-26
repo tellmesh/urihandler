@@ -382,15 +382,6 @@ def _preflight(flow: dict, registry: dict) -> list[dict]:
     return entries
 
 
-def _rollback_partial(timeline: list, results: dict, registry: dict) -> dict | None:
-    """Undo the REVERSIBLE steps a failed flow already ran (their connector-returned inverses),
-    so a give-up leaves a clean state, not a half-applied mutation. None when nothing was
-    reversible — a no-op for flows whose connectors return no inverse, hence safe by default."""
-    from urirun.node.reversible import CallableTransport, rollback_partial_flow
-    transport = CallableTransport(lambda uri, payload: v2_service.call(uri, payload, registry, mode="execute"))
-    return rollback_partial_flow(timeline, results, transport)
-
-
 def _kvm_targets(flow: dict) -> list[str]:
     """Distinct node targets whose steps interact with a kvm-controlled surface, so the twin
     memory captures one known-good profile per real machine (not per step)."""

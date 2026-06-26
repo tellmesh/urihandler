@@ -8,6 +8,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.10] - 2026-06-26
 
 ### Fixed
+- Fix unused-imports issues (ticket-43f3536d)
+- Fix unused-imports issues (ticket-f5ad69c3)
+- Fix magic-numbers issues (ticket-4aa699db)
+- Fix string-concat issues (ticket-9ff6f162)
+- Fix unused-imports issues (ticket-f13d6efe)
+- Fix magic-numbers issues (ticket-5b73515d)
+- Fix wildcard-imports issues (ticket-f4fd7892)
+- Fix unused-imports issues (ticket-6b2c2bda)
+- Fix relative-imports issues (ticket-b901e990)
+- Fix string-concat issues (ticket-4cdc4843)
+- Fix unused-imports issues (ticket-929e650f)
+- Fix magic-numbers issues (ticket-a5fec477)
+- Fix duplicate-imports issues (ticket-860f1d4e)
+- Fix unused-imports issues (ticket-eaf87b58)
+- Fix magic-numbers issues (ticket-2536f67d)
+- Fix duplicate-imports issues (ticket-55242ae3)
+- Fix string-concat issues (ticket-7b48df0d)
+- Fix unused-imports issues (ticket-03590f8c)
+- Fix magic-numbers issues (ticket-92075c4d)
+- Fix relative-imports issues (ticket-3f4daca4)
+- Fix string-concat issues (ticket-d1fa1ff5)
+- Fix unused-imports issues (ticket-7a53c1d4)
+- Fix magic-numbers issues (ticket-2ee0f6e0)
+- Fix relative-imports issues (ticket-dd1e94be)
+- Fix unused-imports issues (ticket-05413546)
+- Fix unused-imports issues (ticket-537e0298)
+- Fix relative-imports issues (ticket-e07baf7e)
+- Fix unused-imports issues (ticket-b872a8f3)
+- Fix magic-numbers issues (ticket-93c0a31e)
+- Fix magic-numbers issues (ticket-f0ea5755)
+- Fix smart-return-type issues (ticket-a7e28d12)
+- Fix unused-imports issues (ticket-1db97fc1)
+
+## [0.1.10] - 2026-06-26
+
+### Fixed
 - Fix string-concat issues (ticket-3145ffbd)
 
 ## [0.1.10] - 2026-06-24
