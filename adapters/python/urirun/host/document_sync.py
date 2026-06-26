@@ -981,3 +981,123 @@ def enrich_archived_record(existing: dict, fused: dict, enriched_fields: list[st
         )
     except Exception:  # noqa: BLE001
         pass
+
+
+# --------------------------------------------------------------------------- #
+# Dedup dispatch: document identity & matching                                 #
+# --------------------------------------------------------------------------- #
+
+try:
+    from docid.dedup import (
+        business_key as _dedup_business_key,
+        document_id as _dedup_document_id,
+        document_matches as _dedup_document_matches,
+        metadata_completeness as _dedup_metadata_completeness,
+    )
+except Exception:  # noqa: BLE001
+    _dedup_business_key = None
+    _dedup_document_id = None
+    _dedup_document_matches = None
+    _dedup_metadata_completeness = None
+
+if _dedup_document_matches is not None:
+    _document_matches = _dedup_document_matches
+    _business_key = _dedup_business_key
+    _metadata_completeness = _dedup_metadata_completeness
+else:
+    def _document_matches(existing: dict, *, doc_id: str, source_sha256: str, text_sha256: str,
+                          fingerprint: dict, dhash: str, phash: str = "",
+                          metadata: dict | None = None, text: str = "") -> str:
+        if doc_id and existing.get("docId") == doc_id:
+            return "docId"
+        if source_sha256 and existing.get("sourceSha256") == source_sha256:
+            return "sourceSha256"
+        if text_sha256 and existing.get("textSha256") == text_sha256:
+            return "textSha256"
+        return ""
+
+    def _business_key(meta: dict | None):
+        return None
+
+    def _metadata_completeness(meta: dict | None) -> int:
+        return 0
+
+
+def file_sha256(path: "str | Path") -> str:
+    digest = hashlib.sha256()
+    with Path(path).expanduser().resolve().open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def docid_for_file(path: "str | Path", ocr_text: str) -> dict:
+    if _dedup_document_id is not None:
+        try:
+            from .document_metadata import normalized_document_text as _normalized_doc_text
+        except Exception:  # noqa: BLE001
+            _normalized_doc_text = None
+        norm = _normalized_doc_text(ocr_text) if _normalized_doc_text else ocr_text
+        return _dedup_document_id(path, ocr_text, normalized_text=norm)
+
+    docid_error = ""
+    docid_log = ""
+    try:
+        import contextlib
+        import io as _io
+        from docid import get_document_id  # type: ignore
+
+        log_buffer = _io.StringIO()
+        with contextlib.redirect_stdout(log_buffer), contextlib.redirect_stderr(log_buffer):
+            value = str(get_document_id(str(Path(path).expanduser().resolve())) or "").strip()
+        docid_log = log_buffer.getvalue().strip()
+        if value:
+            result = {"id": value, "provider": "docid", "source": "get_document_id"}
+            if docid_log:
+                result["docidLog"] = docid_log[:240]
+            return result
+    except Exception as exc:  # noqa: BLE001
+        docid_error = str(exc)
+
+    try:
+        from .document_metadata import normalized_document_text as _normalized_doc_text2
+        normalized = _normalized_doc_text2(ocr_text)
+    except Exception:  # noqa: BLE001
+        normalized = ocr_text
+    if len(normalized) >= 24:
+        digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+        source = "ocr-text"
+    else:
+        digest = file_sha256(path)
+        source = "file-sha256"
+    result = {"id": f"LOCAL-DOC-{digest[:16].upper()}", "provider": "local-fallback", "source": source}
+    if docid_error:
+        result["docidError"] = docid_error[:240]
+    if docid_log:
+        result["docidLog"] = docid_log[:240]
+    return result
+
+
+def find_duplicate_document(index: dict, *, doc_id: str, source_sha256: str, text_sha256: str,
+                            fingerprint: dict, dhash: str, phash: str = "",
+                            metadata: dict | None = None, text: str = "") -> "dict | None":
+    """Find an already-archived document that is the same as the incoming scan."""
+    match: "dict | None" = None
+    cand_key = _business_key(metadata) if (metadata and _business_key) else None
+    for item in index.get("documents", []):
+        if not isinstance(item, dict):
+            continue
+        existing = item
+        if cand_key is not None and not item.get("text") and _business_key(item) == cand_key:
+            existing = {**item, "text": sidecar_text(item)}
+        reason = _document_matches(
+            existing, doc_id=doc_id, source_sha256=source_sha256, text_sha256=text_sha256,
+            fingerprint=fingerprint, dhash=dhash, phash=phash, metadata=metadata, text=text,
+        )
+        if reason:
+            match = {**item, "_matchReason": reason}
+    return match
+
+
+def metadata_completeness(meta: "dict | None") -> int:
+    return _metadata_completeness(meta)

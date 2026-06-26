@@ -73,6 +73,9 @@ from .document_sync import (
     merge_metadata_fields as _merge_metadata_fields,
     enrich_archived_record as _enrich_archived_record,
     MERGE_METADATA_FIELDS as _MERGE_METADATA_FIELDS,
+    file_sha256 as _file_sha256,
+    docid_for_file as _docid_for_file,
+    find_duplicate_document as _find_duplicate_document,
 )
 from .discovery import (
     add_node_aliases as _add_node_aliases_impl,
@@ -399,6 +402,18 @@ _PAGE_ACTION_QUEUES = _SCANNER_PAGE_ACTION_QUEUES
 _is_phone_scanner_prompt = _is_phone_scanner_prompt_impl  # noqa: F401
 _torch_enabled_from_prompt = _torch_enabled_from_prompt_impl  # noqa: F401
 page_action_poll = _page_action_poll_impl  # noqa: F401
+_LAST_STAGING_PRUNE: float = 0.0
+
+
+def _prune_scanner_staging(*, min_interval: float = 60.0) -> int:
+    """Wrapper: injects _scanner_staging_dir; owns throttle via module-level _LAST_STAGING_PRUNE."""
+    global _LAST_STAGING_PRUNE
+    import time as _time
+    now = _time.time()
+    if now - _LAST_STAGING_PRUNE < min_interval:
+        return 0
+    _LAST_STAGING_PRUNE = now
+    return _prune_scanner_staging_impl(_scanner_staging_dir, min_interval=0.0)
 
 
 def _json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict) -> None:
@@ -761,16 +776,6 @@ def _node_alias_map_from_context(config: str | None, node_urls: list[str] | None
         node_urls,
         default_node=_document_sync_default_node(),
     )
-
-
-def _file_sha256(path: str | Path) -> str:
-    digest = hashlib.sha256()
-    with Path(path).expanduser().resolve().open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _node_url_from_config(config: str | None, node_urls: list[str] | None, node: str) -> str | None:
     try:
         return str(_mesh().node_url(_host_config(config, node_urls), node)).rstrip("/")
@@ -884,67 +889,6 @@ def reconcile_document_index() -> dict:
             for p in pruned
         ],
     }
-
-
-def _docid_for_file(path: str | Path, ocr_text: str) -> dict:
-    if _dedup_document_id is not None:
-        return _dedup_document_id(path, ocr_text, normalized_text=_normalized_document_text(ocr_text))
-
-    docid_error = ""
-    docid_log = ""
-    try:
-        import contextlib
-        from docid import get_document_id  # type: ignore
-
-        log_buffer = io.StringIO()
-        with contextlib.redirect_stdout(log_buffer), contextlib.redirect_stderr(log_buffer):
-            value = str(get_document_id(str(Path(path).expanduser().resolve())) or "").strip()
-        docid_log = log_buffer.getvalue().strip()
-        if value:
-            result = {"id": value, "provider": "docid", "source": "get_document_id"}
-            if docid_log:
-                result["docidLog"] = docid_log[:240]
-            return result
-    except Exception as exc:  # noqa: BLE001
-        docid_error = str(exc)
-
-    normalized = _normalized_document_text(ocr_text)
-    if len(normalized) >= 24:
-        digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
-        source = "ocr-text"
-    else:
-        digest = _file_sha256(path)
-        source = "file-sha256"
-    result = {"id": f"LOCAL-DOC-{digest[:16].upper()}", "provider": "local-fallback", "source": source}
-    if docid_error:
-        result["docidError"] = docid_error[:240]
-    if docid_log:
-        result["docidLog"] = docid_log[:240]
-    return result
-def _find_duplicate_document(index: dict, *, doc_id: str, source_sha256: str, text_sha256: str,
-                             fingerprint: dict, dhash: str, phash: str = "",
-                             metadata: dict | None = None, text: str = "") -> dict | None:
-    """Find an already-archived document that is the same as the incoming scan."""
-    match: dict | None = None
-    cand_key = _business_key(metadata) if (metadata and _business_key) else None
-    for item in index.get("documents", []):
-        if not isinstance(item, dict):
-            continue
-        existing = item
-        # Index entries omit full OCR text. Hydrate it from the sidecar only when the
-        # business key matches (rare: same merchant + date + total), so the monetary-token
-        # corroboration can run without reading every sidecar on every scan.
-        if cand_key is not None and not item.get("text") and _business_key(item) == cand_key:
-            existing = {**item, "text": _sidecar_text(item)}
-        reason = _document_matches(
-            existing, doc_id=doc_id, source_sha256=source_sha256, text_sha256=text_sha256,
-            fingerprint=fingerprint, dhash=dhash, phash=phash, metadata=metadata, text=text,
-        )
-        if reason:
-            match = {**item, "_matchReason": reason}  # last match wins, mirroring _existing_scanned_id
-    return match
-
-
 def _archive_redundant_duplicate(*, duplicate: dict, index_match: dict | None, existing_meta: dict,
                                  extracted: dict, new_completeness: float, index: dict,
                                  docid_info: dict, doc_id: str, original_path: Path, display_path: Path,
