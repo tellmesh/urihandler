@@ -354,12 +354,11 @@ def run_node_uri(
     identity: str | None = None,
     timeout: float = 120.0,
 ) -> dict:
+    """Execute a URI on a remote node and return the raw envelope dict.
+
+    Thin wrapper around NodeClient.run() so callers don't import the client directly."""
     client = node_client(node_url, token=token, identity=identity)
-    envelope = client.run(uri, payload, timeout=timeout)
-    value = client.value(envelope)
-    value_ok = not isinstance(value, dict) or value.get("ok", True)
-    return {
-        "ok": bool(envelope.get("ok") and value_ok),
-        "envelope": envelope,
-        "value": value,
-    }
+    try:
+        return client.run(uri, payload, timeout=timeout)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": str(exc), "uri": uri, "node_url": node_url}

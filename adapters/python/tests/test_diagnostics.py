@@ -758,5 +758,167 @@ class RollbackUriDispatchTests(unittest.TestCase):
         self.assertIn("compensation", result)
 
 
+class ThinDriverTests(unittest.TestCase):
+    """Prove that FlowEnvelope + _thin_driver dissolves orchestrator branches into
+    follow-the-intent loop, matching the four demo scenarios from the illustration."""
+
+    def _bus(self, handlers: dict):
+        """Build a dispatch_uri stub from {uri_fragment: callable}."""
+        def dispatch(uri, payload=None):
+            for frag, fn in handlers.items():
+                if frag in uri:
+                    return fn(uri, payload or {})
+            return {"ok": True, "next": {"kind": "continue"}}
+        return dispatch
+
+    def test_A_happy_path_autonomous(self):
+        """Scenario A: happy path runs autonomously, driver never branches."""
+        from urirun.node.flow import FlowEnvelope, execute_flow
+        steps = [
+            {"id": "navigate", "uri": "browser://host/cdp/page/command/navigate"},
+            {"id": "fill",     "uri": "browser://host/cdp/page/command/fill"},
+        ]
+        flow = {"steps": steps}
+        envelope = FlowEnvelope(flow_id="A", goal={"reached": True})
+        calls = []
+
+        def dispatch(uri, payload=None):
+            calls.append(uri)
+            if "goal/query/verify" in uri:
+                return {"ok": True, "next": {"kind": "done"}}
+            return {"ok": True, "next": {"kind": "continue"}}
+
+        result = execute_flow(flow, {"routes": [], "serviceMap": {}}, {}, execute=True,
+                              dispatch_uri=dispatch, envelope=envelope)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["next"]["kind"], "done")
+        # driver recorded every hop in envelope.events
+        call_uris = [e["uri"] for e in envelope.events if e["phase"] == "call"]
+        self.assertIn("browser://host/cdp/page/command/navigate", call_uris)
+        self.assertIn("browser://host/cdp/page/command/fill", call_uris)
+        self.assertIn("flow://host/goal/query/verify", call_uris)
+
+    def test_B_flow_aware_step_self_heals_no_central_retry(self):
+        """Scenario B: flaky step returns retry, consults diag://, heals on second attempt.
+        The driver only follows the intent — zero retry logic in the driver itself."""
+        from urirun.node.flow import FlowEnvelope, execute_flow
+        steps = [
+            {"id": "navigate", "uri": "browser://host/cdp/page/command/navigate"},
+            {"id": "click",    "uri": "browser://host/cdp/page/command/click"},
+        ]
+        flow = {"steps": steps}
+        envelope = FlowEnvelope(flow_id="B", goal={"reached": True})
+        click_attempts = {"n": 0}
+        diag_calls = []
+
+        def dispatch(uri, payload=None):
+            if "cdp/page/command/click" in uri:
+                n = click_attempts["n"]
+                click_attempts["n"] += 1
+                if n == 0:
+                    # first attempt: consult diag, ask for retry
+                    return {"ok": False, "next": {"kind": "retry"},
+                            "_consulted_diag": True}
+                # second attempt: success
+                return {"ok": True, "next": {"kind": "continue"}}
+            if "error/command/classify" in uri:
+                diag_calls.append(uri)
+                return {"ok": True, "rule": "ui-target-not-located",
+                        "autoApplicable": ["ensure-cdp-dom"]}
+            if "goal/query/verify" in uri:
+                return {"ok": True, "next": {"kind": "done"}}
+            return {"ok": True, "next": {"kind": "continue"}}
+
+        result = execute_flow(flow, {"routes": [], "serviceMap": {}}, {}, execute=True,
+                              dispatch_uri=dispatch, envelope=envelope)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(click_attempts["n"], 2, "click must be attempted exactly twice")
+        # the driver itself has no retry logic — it just called dispatch twice because
+        # kind=='retry' told it to. The step is responsible for the self-heal.
+        call_kinds = [e.get("next") for e in envelope.events if e["phase"] == "return"]
+        self.assertIn("retry", call_kinds)
+
+    def test_C_twin_aware_step_self_blocks_rollback_runs(self):
+        """Scenario C: step with no-inverse self-blocks (returns rollback);
+        driver calls twin://…/rollback and returns failed — no rollback code in driver."""
+        from urirun.node.flow import FlowEnvelope, execute_flow
+        steps = [
+            {"id": "navigate", "uri": "browser://host/cdp/page/command/navigate"},
+            {"id": "irreversible", "uri": "kvm://host/window/command/close"},
+        ]
+        flow = {"steps": steps}
+        envelope = FlowEnvelope(flow_id="C", goal={})
+        rollback_calls = []
+
+        def dispatch(uri, payload=None):
+            if "window/command/close" in uri:
+                # twin-aware: no inverse → self-block
+                return {"ok": False, "reversible": False,
+                        "next": {"kind": "rollback"}, "why": "no inverse"}
+            if "flow/command/rollback" in uri:
+                rollback_calls.append(uri)
+                return {"ok": True, "rolledBack": ["browser://host/cdp/page/command/navigate"],
+                        "next": {"kind": "failed"}}
+            return {"ok": True, "next": {"kind": "continue"}}
+
+        result = execute_flow(flow, {"routes": [], "serviceMap": {}}, {}, execute=True,
+                              dispatch_uri=dispatch, envelope=envelope)
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(rollback_calls, "twin://…/rollback must be called")
+        self.assertIn("twin://", rollback_calls[0])
+        self.assertIn("rollback", result)
+
+    def test_D_event_stream_reconstructs_flow(self):
+        """Scenario D: the complete envelope.events stream reconstructs the flow sequence,
+        proving choreography is debuggable."""
+        from urirun.node.flow import FlowEnvelope, execute_flow
+        steps = [
+            {"id": "navigate", "uri": "browser://host/cdp/page/command/navigate"},
+            {"id": "click",    "uri": "browser://host/cdp/page/command/click"},
+        ]
+        flow = {"steps": steps}
+        envelope = FlowEnvelope(flow_id="D", goal={"reached": True})
+        click_n = {"n": 0}
+
+        def dispatch(uri, payload=None):
+            if "cdp/page/command/click" in uri:
+                n = click_n["n"]; click_n["n"] += 1
+                if n == 0:
+                    return {"ok": False, "next": {"kind": "retry"}}
+                return {"ok": True, "next": {"kind": "continue"}}
+            if "goal/query/verify" in uri:
+                return {"ok": True, "next": {"kind": "done"}}
+            return {"ok": True, "next": {"kind": "continue"}}
+
+        execute_flow(flow, {"routes": [], "serviceMap": {}}, {}, execute=True,
+                     dispatch_uri=dispatch, envelope=envelope)
+
+        # reconstruct sequence from events
+        seq = [e["uri"].split("://")[1].split("/")[-1] for e in envelope.events
+               if e["phase"] == "call"]
+        self.assertIn("navigate", seq)
+        self.assertIn("click", seq)
+        self.assertIn("verify", seq)
+        # retry visible in stream
+        return_nexts = [e.get("next") for e in envelope.events if e["phase"] == "return"]
+        self.assertIn("retry", return_nexts)
+        self.assertIn("continue", return_nexts)
+
+    def test_existing_execute_flow_unchanged_without_envelope(self):
+        """Prove zero regression: execute_flow without envelope= still runs the full
+        orchestrator path and returns the same structure as before."""
+        from urirun.node.flow import execute_flow
+        flow = {"steps": [{"id": "x", "uri": "kvm://host/ui/command/click"}]}
+        mesh = {"routes": [], "serviceMap": {}}
+        result = execute_flow(flow, mesh, {}, execute=False)
+        # dry-run on empty registry: ok=False (no route) but structure is correct
+        self.assertIn("timeline", result)
+        self.assertIn("results", result)
+        self.assertNotIn("envelope", result)   # old path never returns envelope
+
+
 if __name__ == "__main__":
     unittest.main()

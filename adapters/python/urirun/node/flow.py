@@ -43,6 +43,115 @@ from urirun.node.routing import (
 )
 
 
+# ── Flow envelope — carries awareness through every hop ──────────────────────
+# When `execute_flow(…, envelope=FlowEnvelope(…))` is used, each step result
+# must carry `next: {kind: continue|retry|rollback|done}`.  The driver is then
+# a uniform follow-the-intent loop with no domain branches.
+#
+# Existing callers pass no envelope → old code path, zero behaviour change.
+from dataclasses import dataclass, field
+
+
+@dataclass
+class FlowEnvelope:
+    """Carries flow awareness through every `invoke()` hop.
+
+    A step that is flow-aware reads `goal` / `position`, appends to `ledger`,
+    and returns `next: {kind}`.  The thin driver only follows that intent — no
+    retry/heal/rollback branches live in the driver."""
+    flow_id: str = ""
+    goal: dict = field(default_factory=dict)
+    position: int = 0
+    ledger: list[dict] = field(default_factory=list)
+    attempts: dict[str, int] = field(default_factory=dict)
+    events: list[dict] = field(default_factory=list)
+
+    def record(self, uri: str, phase: str, **kwargs) -> None:
+        self.events.append({"uri": uri, "phase": phase, "pos": self.position, **kwargs})
+
+    def push_inverse(self, uri: str, inverse_uri: str, before: str = "", after: str = "") -> None:
+        self.ledger.append({"uri": uri, "inverse": inverse_uri, "before": before, "after": after})
+
+
+def _next_kind(result: dict) -> str:
+    """Extract the next-intent kind from a step result, defaulting to 'continue'."""
+    return (result.get("next") or {}).get("kind") or ("continue" if result.get("ok", True) else "rollback")
+
+
+def _thin_driver(
+    steps: list[dict],
+    envelope: FlowEnvelope,
+    dispatch_uri,
+    registry: dict,
+    execute: bool,
+) -> dict:
+    """Uniform follow-the-intent loop.  No retry branch, no heal branch, no rollback branch.
+    Every decision is made by flow-aware processes and returned as `next.kind` in the result.
+
+    This is what `execute_flow` collapses to when processes carry awareness and capabilities
+    are URIs (diag://, fix://, twin://…/rollback, flow://…/goal/verify)."""
+    timeline: list[dict] = []
+    results: dict = {}
+
+    for i, step in enumerate(steps):
+        envelope.position = i
+        uri = step["uri"]
+        payload = step.get("payload") or {}
+        envelope.record(uri, "call")
+
+        r = dispatch_uri(uri, payload)
+        kind = _next_kind(r)
+        envelope.record(uri, "return", ok=r.get("ok", True), next=kind)
+
+        entry = {"id": step.get("id") or uri, "uri": uri, "ok": r.get("ok", True),
+                 "target": route_target(uri)}
+        if not r.get("ok"):
+            entry["error"] = r.get("error")
+        timeline.append(entry)
+        results[step.get("id") or uri] = r
+
+        if kind == "continue":
+            continue
+        elif kind == "retry":
+            # process already updated envelope.attempts; re-run same index
+            envelope.position = i
+            r2 = dispatch_uri(uri, payload)
+            kind2 = _next_kind(r2)
+            envelope.record(uri, "return", ok=r2.get("ok", True), next=kind2, retry=True)
+            entry2 = {"id": f"{step.get('id') or uri}:retry", "uri": uri,
+                      "ok": r2.get("ok", True), "target": route_target(uri)}
+            timeline.append(entry2)
+            results[step.get("id") or uri] = r2
+            if kind2 not in ("continue", "done"):
+                # retry failed too → rollback
+                rb = dispatch_uri(f"twin://host/flow/command/rollback",
+                                  {"ledger": envelope.ledger})
+                envelope.record("twin://host/flow/command/rollback", "call")
+                return {"ok": False, "timeline": timeline, "results": results,
+                        "rollback": rb, "next": {"kind": "failed"}}
+        elif kind == "rollback":
+            rb = dispatch_uri("twin://host/flow/command/rollback",
+                              {"ledger": envelope.ledger})
+            envelope.record("twin://host/flow/command/rollback", "call")
+            return {"ok": False, "timeline": timeline, "results": results,
+                    "rollback": rb, "next": {"kind": "failed"}}
+        elif kind == "done":
+            break
+
+    # goal verify — just another URI step
+    _GOAL_URI = "flow://host/goal/query/verify"
+    envelope.record(_GOAL_URI, "call")
+    goal_r = dispatch_uri(_GOAL_URI, {"goal": envelope.goal, "results": results})
+    envelope.record(_GOAL_URI, "return",
+                    ok=goal_r.get("ok", True), next=_next_kind(goal_r))
+    if not goal_r.get("ok", True):
+        rb = dispatch_uri("twin://host/flow/command/rollback", {"ledger": envelope.ledger})
+        return {"ok": False, "timeline": timeline, "results": results,
+                "rollback": rb, "next": {"kind": "goal-failed"}}
+    return {"ok": True, "timeline": timeline, "results": results,
+            "next": {"kind": "done"}, "envelope": envelope}
+
+
 def _flow_format(path: str | Path, requested: str | None = None) -> str:
     if requested:
         return requested
@@ -780,6 +889,36 @@ def _fetch_surface(step: dict, registry: dict) -> dict | None:
     return _fetch_kvm_query(step, registry, "surface/query/current", "kind")
 
 
+def _evaluate_step_next(
+    step: dict, entry: dict, routes: list[dict], execute: bool,
+    attempt: int, max_retries: int, healed: bool, dispatch_uri,
+) -> str:
+    """Return 'retry' | 'heal' | 'rollback'.
+
+    When dispatch_uri is set the decision goes through
+    twin://{node}/step/command/evaluate (observable, switchable).
+    When None: identical in-process logic — no behaviour change.
+    """
+    if dispatch_uri is not None:
+        node = route_target(step.get("uri") or "") or "host"
+        r = dispatch_uri(
+            f"twin://{node}/step/command/evaluate",
+            {"step": step, "entry": entry, "routes": routes,
+             "execute": execute, "attempt": attempt,
+             "max_retries": max_retries, "healed": healed},
+        ) or {}
+        return str(r.get("next") or "rollback")
+    error = entry.get("error") or {}
+    if can_retry_step(error, step=step, routes=routes, execute=execute,
+                      attempt=attempt, max_retries=max_retries):
+        return "retry"
+    if execute and not healed:
+        diag = (entry.get("recovery") or {}).get("diagnosis") or {}
+        if diag.get("autoApplicable"):
+            return "heal"
+    return "rollback"
+
+
 def _run_step(
     step: dict,
     payload: dict,
@@ -814,36 +953,32 @@ def _run_step(
         if entry["ok"]:
             return env, timeline_entries, recovery_entries, False
         recovery_entries.append({"stepId": step["id"], "uri": step["uri"], "error": entry["error"], "plan": entry["recovery"]})
-        if recover and can_retry_step(
-            entry["error"],
-            step=step,
-            routes=routes,
-            execute=execute,
-            attempt=attempt,
-            max_retries=max_retries,
-        ):
-            timeline_entries.append({
-                "id": f"{step['id']}:recovery:{attempt + 1}",
-                "uri": step["uri"],
-                "target": route_target(step["uri"]),
-                "ok": True,
-                "type": "recovery",
-                "action": "retry",
-                "reason": entry["error"].get("category"),
-            })
-            attempt += 1
-            continue
-        # SELF-HEAL: a diagnosed failure with auto-applicable remediation gets FIXED once, then
-        # the step retried — so the loop repairs the cause instead of just aborting.
-        if recover and execute and not healed:
-            heal_entry, healed_ok = _attempt_self_heal(step, entry, registry, routes,
-                                                        dispatch_uri=dispatch_uri)
-            if heal_entry is not None:
-                timeline_entries.append(heal_entry)
-                healed = True
-                if healed_ok:
-                    attempt = 0
-                    continue
+        if recover:
+            nxt = _evaluate_step_next(step, entry, routes, execute,
+                                      attempt, max_retries, healed, dispatch_uri)
+            if nxt == "retry":
+                timeline_entries.append({
+                    "id": f"{step['id']}:recovery:{attempt + 1}",
+                    "uri": step["uri"],
+                    "target": route_target(step["uri"]),
+                    "ok": True,
+                    "type": "recovery",
+                    "action": "retry",
+                    "reason": entry["error"].get("category"),
+                })
+                attempt += 1
+                continue
+            # SELF-HEAL: a diagnosed failure with auto-applicable remediation gets FIXED once,
+            # then the step retried — so the loop repairs the cause instead of just aborting.
+            if nxt == "heal":
+                heal_entry, healed_ok = _attempt_self_heal(step, entry, registry, routes,
+                                                            dispatch_uri=dispatch_uri)
+                if heal_entry is not None:
+                    timeline_entries.append(heal_entry)
+                    healed = True
+                    if healed_ok:
+                        attempt = 0
+                        continue
         return env, timeline_entries, recovery_entries, True
 
 
@@ -1101,7 +1236,23 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recov
                  max_retries: int = 1, max_wall_clock: float = 180.0, max_remediations: int = 6,
                  rollback_on_failure: bool = True,
                  memory: TwinMemory | None = None,
-                 dispatch_uri=None) -> dict:
+                 dispatch_uri=None,
+                 envelope: FlowEnvelope | None = None) -> dict:
+    # ── thin-driver path: opt-in via envelope= ──────────────────────────────
+    # When an envelope is supplied, the driver is the uniform follow-the-intent loop.
+    # All domain branches (retry/heal/rollback/verify) are expected in step results.
+    # Existing callers pass no envelope → full orchestrator path below.
+    if envelope is not None and dispatch_uri is not None:
+        old_map = os.environ.get("URI_SERVICE_MAP")
+        os.environ["URI_SERVICE_MAP"] = json.dumps(mesh.get("serviceMap") or {})
+        try:
+            return _thin_driver(flow.get("steps") or [], envelope, dispatch_uri,
+                                registry=registry, execute=execute)
+        finally:
+            if old_map is None:
+                os.environ.pop("URI_SERVICE_MAP", None)
+            else:
+                os.environ["URI_SERVICE_MAP"] = old_map
     old_map = os.environ.get("URI_SERVICE_MAP")
     os.environ["URI_SERVICE_MAP"] = json.dumps(mesh.get("serviceMap") or {})
     results = {}

@@ -78,3 +78,104 @@ def test_reply_fields_projects_each_adapter_shape():
 def test_schemas_are_published():
     assert dp.REQUEST_SCHEMA["required"] == ["uri"]
     assert "ok" in dp.REPLY_SCHEMA["required"]
+
+
+# ---- signing / identity (diagram 1 anchor) ------------------------------------
+
+def test_v2_service_post_signs_with_identity(monkeypatch, tmp_path):
+    """_post() adds Authorization header when URIRUN_RUN_IDENTITY is set.
+
+    The outgoing request must carry the signature so a remote node can verify
+    caller identity — this is the authentication seam for cross-node calls."""
+    import json
+    import urllib.request
+    from urirun.runtime import v2_service
+
+    captured = {}
+
+    def fake_urlopen(req, timeout=None):
+        captured["headers"] = dict(req.headers)
+        captured["url"] = req.full_url
+        # Return a minimal ok envelope
+        body = json.dumps({"ok": True, "result": {"value": {}}}).encode()
+
+        class FakeResp:
+            status = 200
+            def read(self): return body
+            def __enter__(self): return self
+            def __exit__(self, *_): pass
+
+        return FakeResp()
+
+    monkeypatch.setenv("URIRUN_RUN_IDENTITY", str(tmp_path / "fake.key"))
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    # patch keyauth.sign so we don't need a real key
+    from urirun.node import keyauth
+    monkeypatch.setattr(keyauth, "sign",
+                        lambda path, purpose, data: {"authorization": "Bearer test-sig"})
+
+    v2_service._post("http://127.0.0.1:9999/run", {"uri": "x://h/a/b/c"}, timeout=5.0)
+
+    # header must be present (urllib capitalises first letter)
+    auth = captured["headers"].get("Authorization") or captured["headers"].get("authorization")
+    assert auth is not None, f"Authorization header missing; got headers: {captured['headers']}"
+
+
+def test_v2_service_post_token_header_when_no_identity(monkeypatch):
+    """_post() uses X-Urirun-Token when URIRUN_RUN_TOKEN is set and no identity key."""
+    import json
+    import urllib.request
+    from urirun.runtime import v2_service
+
+    captured = {}
+
+    def fake_urlopen(req, timeout=None):
+        captured["headers"] = dict(req.headers)
+
+        class FakeResp:
+            status = 200
+            def read(self): return json.dumps({"ok": True}).encode()
+            def __enter__(self): return self
+            def __exit__(self, *_): pass
+
+        return FakeResp()
+
+    monkeypatch.delenv("URIRUN_RUN_IDENTITY", raising=False)
+    monkeypatch.setenv("URIRUN_RUN_TOKEN", "secret-token")
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    v2_service._post("http://127.0.0.1:9999/run", {"uri": "x://h/a/b/c"}, timeout=5.0)
+
+    token = captured["headers"].get("X-urirun-token") or captured["headers"].get("X-Urirun-Token")
+    assert token == "secret-token"
+
+
+def test_v2_service_post_no_auth_header_without_env(monkeypatch):
+    """_post() sends NO auth headers when neither identity nor token env vars are set
+    — open-node compatibility: adding headers would break unauthenticated setups."""
+    import json
+    import urllib.request
+    from urirun.runtime import v2_service
+
+    captured = {}
+
+    def fake_urlopen(req, timeout=None):
+        captured["headers"] = dict(req.headers)
+
+        class FakeResp:
+            status = 200
+            def read(self): return json.dumps({"ok": True}).encode()
+            def __enter__(self): return self
+            def __exit__(self, *_): pass
+
+        return FakeResp()
+
+    monkeypatch.delenv("URIRUN_RUN_IDENTITY", raising=False)
+    monkeypatch.delenv("URIRUN_RUN_TOKEN", raising=False)
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    v2_service._post("http://127.0.0.1:9999/run", {"uri": "x://h/a/b/c"}, timeout=5.0)
+
+    auth = captured["headers"].get("Authorization") or captured["headers"].get("authorization")
+    token = captured["headers"].get("X-urirun-token") or captured["headers"].get("X-Urirun-Token")
+    assert auth is None and token is None
