@@ -6614,34 +6614,6 @@ def _scanner_bridge_deps() -> ScannerBridgeDeps:
     )
 
 
-def _crop_overlay_attachment(uri: str, project: str, overlay_path: str, crop: dict,
-                             meta: dict, original_path: Path) -> dict:
-    return _crop_overlay_attachment_impl(
-        _scanner_bridge_deps(),
-        uri=uri,
-        project=project,
-        overlay_path=overlay_path,
-        crop=crop,
-        meta=meta,
-        original_path=original_path,
-    )
-
-
-def _register_document_artifact(db: str | None, project: str, *, uri: str, display_path: Path,
-                                original_path: Path, meta: dict, ocr: dict, document: dict) -> tuple[Any, dict]:
-    return _register_document_artifact_impl(
-        _scanner_bridge_deps(),
-        db,
-        project,
-        uri=uri,
-        display_path=display_path,
-        original_path=original_path,
-        meta=meta,
-        ocr=ocr,
-        document=document,
-    )
-
-
 def _register_scanner_result(
     project: str,
     db: str | None,
@@ -10053,12 +10025,6 @@ def create_handler(
     return Handler
 
 
-def _is_dashboard_process(pid: int) -> bool:
-    """True only if `pid` is a urirun host dashboard serve process (cmdline check). The guard
-    that keeps auto-replace from ever killing an unrelated service that owns the port."""
-    return _is_dashboard_process_impl(pid, process_cmdline_fn=_process_cmdline_impl)
-
-
 def _free_port_from_matching_processes(
     port: int,
     *,
@@ -10132,7 +10098,7 @@ def _free_port_from_old_dashboard(port: int) -> None:
     dashboard serve — never an unrelated service that happens to own the port."""
     _free_port_from_old_dashboard_impl(
         port,
-        is_dashboard_process_fn=_is_dashboard_process,
+        is_dashboard_process_fn=lambda pid: _is_dashboard_process_impl(pid, process_cmdline_fn=_process_cmdline_impl),
         port_holder_pids_fn=_port_holder_pids,
         kill_fn=os.kill,
         getpid_fn=os.getpid,
