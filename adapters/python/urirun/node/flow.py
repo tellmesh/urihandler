@@ -114,7 +114,7 @@ def _resolve_inverse_uri(forward_uri: str, inv: dict) -> str | None:
     return None
 
 
-_THIN_GOAL_URI = "flow://host/goal/query/verify"
+_THIN_GOAL_URI = "twin://host/flow/goal/query/verify"
 _THIN_PREFLIGHT_URI = "twin://host/flow/command/preflight"
 
 
@@ -179,6 +179,23 @@ def _thin_handle_non_continue(kind: str, r: dict, step: dict, sid: str, uri: str
     return kind == "done", None  # done → break; unknown → continue
 
 
+def _thin_update_ledger(envelope: "FlowEnvelope", uri: str, r: dict) -> None:
+    """If a step result carries an inverse, push it into envelope.ledger for SAGA rollback.
+    Schema-free: reads inverse from the connector result, not from route metadata.
+    A query or irreversible step simply omits inverse and the ledger stays silent."""
+    if not r.get("ok", True):
+        return
+    inv = _extract_inverse(r)
+    if not inv:
+        return
+    inv_uri = _resolve_inverse_uri(uri, inv)
+    if inv_uri:
+        envelope.push_inverse(uri, inv_uri,
+                              before=str(r.get("stateBefore") or ""),
+                              after=str(r.get("stateAfter") or ""),
+                              inverse_args=inv.get("args") or {})
+
+
 def _thin_driver(
     steps: list[dict],
     envelope: FlowEnvelope,
@@ -227,19 +244,7 @@ def _thin_driver(
         kind = _next_kind(r)
         envelope.record(uri, "return", ok=r.get("ok", True), next=kind)
 
-        # ── Fill ledger: if the step returned an inverse, record it for SAGA rollback.
-        # We read it from the result here — not from a route schema — so the driver stays
-        # schema-free. A step that mutates and is reversible returns `inverse: {uri, args}`;
-        # a query or irreversible step simply doesn't, and the ledger stays silent about it.
-        if r.get("ok", True):
-            _inv = _extract_inverse(r)
-            if _inv:
-                _inv_uri = _resolve_inverse_uri(uri, _inv)
-                if _inv_uri:
-                    envelope.push_inverse(uri, _inv_uri,
-                                          before=str(r.get("stateBefore") or ""),
-                                          after=str(r.get("stateAfter") or ""),
-                                          inverse_args=_inv.get("args") or {})
+        _thin_update_ledger(envelope, uri, r)
 
         entry: dict = {"id": sid, "uri": uri, "ok": r.get("ok", True), "target": route_target(uri)}
         if not r.get("ok"):
@@ -256,10 +261,10 @@ def _thin_driver(
                 break
 
     envelope.record(_THIN_GOAL_URI, "call")
-    goal_r = dispatch_uri(_THIN_GOAL_URI, {"goal": envelope.goal, "results": results})
-    envelope.record(_THIN_GOAL_URI, "return",
-                    ok=goal_r.get("ok", True), next=_next_kind(goal_r))
-    if not goal_r.get("ok", True):
+    goal_r = dispatch_uri(_THIN_GOAL_URI, {"goal": envelope.goal, "results": results}) or {}
+    goal_ok = goal_r.get("ok", True)
+    envelope.record(_THIN_GOAL_URI, "return", ok=goal_ok, next=_next_kind(goal_r))
+    if not goal_ok:
         return _thin_rollback(dispatch_uri, envelope, timeline, results, "goal-failed")
     return {"ok": True, "timeline": timeline, "results": results,
             "next": {"kind": "done"}, "envelope": envelope}
@@ -1330,18 +1335,39 @@ def _step_fail_envelope(step: dict, exc: BaseException, routes: list, timeline: 
 
 def _abort_envelope(step: dict, step_timeline: list, step_recoveries: list, timeline: list,
                     results: dict, recoveries: list, registry: dict, rollback_on_failure: bool,
-                    execute: bool) -> dict:
+                    execute: bool, dispatch_uri=None) -> dict:
     """Build the failure envelope for an aborted step and, when reversible mutations were already
-    made, ROLL THEM BACK so the give-up leaves a clean state (catch->diagnose->heal->rollback)."""
+    made, ROLL THEM BACK so the give-up leaves a clean state (catch->diagnose->heal->rollback).
+
+    When dispatch_uri is set the rollback goes through twin://host/flow/command/rollback-ledger
+    (observable, switchable). Otherwise uses the direct in-process path."""
     err = next((e["error"] for e in reversed(step_timeline) if "error" in e),
                step_recoveries[-1]["error"] if step_recoveries else {"message": "step failed"})
     out = {"ok": False, "timeline": timeline, "results": results, "error": err, "recovery": recoveries}
     if rollback_on_failure and execute:
-        rb = _rollback_partial(timeline, results, registry)
-        if rb is not None:
-            timeline.append({"id": "flow:rollback", "uri": step["uri"], "type": "recovery",
-                             "action": "rollback", "ok": bool(rb.get("ok")), "undone": len(rb.get("undone") or [])})
-            out["rollback"] = rb
+        if dispatch_uri is not None:
+            # URI path: build a minimal ledger from inverses the steps returned, then
+            # dispatch to twin://host/flow/command/rollback-ledger (same data model as
+            # FlowEnvelope.ledger used by _thin_driver).
+            ledger_items = [
+                {"uri": str(t.forward.uri), "inverse": str(t.inverse.uri),
+                 "args": t.inverse.args or {}}
+                for t in ledger_from_execution({"timeline": timeline, "results": results})
+            ]
+            if ledger_items:
+                rb = dispatch_uri("twin://host/flow/command/rollback-ledger",
+                                  {"ledger": ledger_items}) or {}
+                timeline.append({"id": "flow:rollback", "uri": step["uri"], "type": "recovery",
+                                 "action": "rollback", "ok": bool(rb.get("ok")),
+                                 "undone": len(rb.get("undone") or [])})
+                out["rollback"] = rb
+        else:
+            rb = _rollback_partial(timeline, results, registry)
+            if rb is not None:
+                timeline.append({"id": "flow:rollback", "uri": step["uri"], "type": "recovery",
+                                 "action": "rollback", "ok": bool(rb.get("ok")),
+                                 "undone": len(rb.get("undone") or [])})
+                out["rollback"] = rb
     return out
 
 
@@ -1388,7 +1414,8 @@ def _orchestrate_steps(flow: dict, registry: dict, execute: bool, recover: bool,
         results[step["id"]] = env
         if aborted:
             return _abort_envelope(step, step_timeline, step_recoveries, timeline, results,
-                                   recoveries, registry, rollback_on_failure, execute)
+                                   recoveries, registry, rollback_on_failure, execute,
+                                   dispatch_uri=dispatch_uri)
     result = {"ok": True, "timeline": timeline, "results": results}
     if recoveries:
         result["recovery"] = recoveries
@@ -1410,7 +1437,10 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recov
         old_map = _set_service_map(mesh)
         try:
             return _thin_driver(flow.get("steps") or [], envelope, dispatch_uri,
-                                registry=registry, execute=execute)
+                                registry=registry, execute=execute,
+                                max_retries=max_retries,
+                                max_remediations=max_remediations,
+                                max_wall_clock=max_wall_clock)
         finally:
             _restore_service_map(old_map)
     old_map = _set_service_map(mesh)
