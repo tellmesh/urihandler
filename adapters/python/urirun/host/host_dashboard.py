@@ -159,6 +159,8 @@ from .scanner_bridge import (
     decode_capture_image as _decode_capture_image,
     resolve_best_candidate as _resolve_best_candidate,
     store_best_finish as _store_best_finish,
+    capture_candidate_result as _capture_candidate_result_impl,
+    capture_reject_result as _capture_reject_result_impl,
 )
 from .service_control import (
     chat_service_restart_argv as _chat_service_restart_argv_impl,
@@ -7025,71 +7027,6 @@ def _register_scanner_result(
     )
 
 
-def _capture_reject_result(*, uri: str, min_score: float, quality: dict, ocr: dict, crop: dict,
-                           overlay: dict, detected_document: dict, paths: list) -> dict:
-    """Clean up a low-confidence capture's staged files and build the rejection response."""
-    removed_scan_files = _cleanup_duplicate_scan_files(paths)
-    reject_reason = str(quality.get("cropReason") or "")
-    if not reject_reason and not quality.get("documentLike"):
-        reject_reason = "not document-like"
-    if not reject_reason:
-        reject_reason = "low-quality scan"
-    return {
-        "ok": True,
-        "rejected": True,
-        "uri": uri,
-        "reason": reject_reason,
-        "minScore": min_score,
-        "quality": quality,
-        "ocr": ocr,
-        "crop": crop,
-        "overlay": overlay,
-        "detectedDocument": detected_document,
-        "removedScanFiles": removed_scan_files,
-    }
-
-
-def _capture_candidate_result(project: str, payload: dict, *, uri: str, mime: str, digest: str,
-                              raw_len: int, path: Path, display_path: Path, overlay_path: str,
-                              overlay: dict, crop: dict, ocr: dict, detected_document: dict,
-                              quality: dict) -> dict:
-    """Stage a transient best-frame candidate (no archive) and return the live-stream response."""
-    candidate = {
-        "seriesId": str(payload.get("seriesId") or ""),
-        "frameIndex": payload.get("frameIndex"),
-        "uri": uri,
-        "mime": mime,
-        "sha256": digest,
-        "bytes": raw_len,
-        "originalPath": str(path),
-        "displayPath": str(display_path),
-        "overlayPath": overlay_path,
-        "overlay": overlay,
-        "crop": crop,
-        "ocr": ocr,
-        "detectedDocument": detected_document,
-        "quality": quality,
-        "capturedAt": payload.get("capturedAt"),
-        "userAgent": payload.get("userAgent", ""),
-        "width": payload.get("width"),
-        "height": payload.get("height"),
-    }
-    series = None
-    if candidate["seriesId"]:
-        series = _scanner_best_update(candidate["seriesId"], candidate)
-    return {
-        "ok": True,
-        "uri": uri,
-        "candidate": _scanner_public_candidate_for_live(candidate, project),
-        "series": series,
-        "ocr": ocr,
-        "crop": crop,
-        "overlay": overlay,
-        "quality": quality,
-        "detectedDocument": detected_document,
-    }
-
-
 def _capture_ocr_and_detect(path: Path, display_path: Path, payload: dict, archive: bool) -> tuple[dict, dict]:
     """OCR the frame and extract document metadata for a capture.
 
@@ -7132,7 +7069,7 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
     # longer fills the archive with mis-scanned receipts. Pass force=true to override.
     min_score = float(os.environ.get("URIRUN_PHONE_SCANNER_MIN_SCORE", "45"))
     if archive and not _capture_quality_ok(payload, quality, min_score):
-        return _capture_reject_result(
+        return _capture_reject_result_impl(
             uri=uri, min_score=min_score, quality=quality, ocr=ocr, crop=crop, overlay=overlay,
             detected_document=detected_document, paths=[path, display_path, overlay_path],
         )
@@ -7150,10 +7087,11 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
         except Exception as exc:  # noqa: BLE001
             document = {"ok": False, "error": str(exc), "metadata": detected_document}
     if not archive:
-        return _capture_candidate_result(
+        return _capture_candidate_result_impl(
             project, payload, uri=uri, mime=mime, digest=digest, raw_len=len(raw), path=path,
             display_path=display_path, overlay_path=overlay_path, overlay=overlay, crop=crop,
             ocr=ocr, detected_document=detected_document, quality=quality,
+            preview_url=_preview_url,
         )
     meta = {
         "source": payload.get("source") or "phone",

@@ -1040,3 +1040,89 @@ def best_finish_store_failure(
     if extra:
         result.update(extra)
     return result
+
+
+def capture_reject_result(
+    *,
+    uri: str,
+    min_score: float,
+    quality: dict,
+    ocr: dict,
+    crop: dict,
+    overlay: dict,
+    detected_document: dict,
+    paths: list,
+) -> dict:
+    removed_scan_files = cleanup_duplicate_scan_files(paths)
+    reject_reason = str(quality.get("cropReason") or "")
+    if not reject_reason and not quality.get("documentLike"):
+        reject_reason = "not document-like"
+    if not reject_reason:
+        reject_reason = "low-quality scan"
+    return {
+        "ok": True,
+        "rejected": True,
+        "uri": uri,
+        "reason": reject_reason,
+        "minScore": min_score,
+        "quality": quality,
+        "ocr": ocr,
+        "crop": crop,
+        "overlay": overlay,
+        "detectedDocument": detected_document,
+        "removedScanFiles": removed_scan_files,
+    }
+
+
+def capture_candidate_result(
+    project: str,
+    payload: dict,
+    *,
+    uri: str,
+    mime: str,
+    digest: str,
+    raw_len: int,
+    path: Path,
+    display_path: Path,
+    overlay_path: str,
+    overlay: dict,
+    crop: dict,
+    ocr: dict,
+    detected_document: dict,
+    quality: dict,
+    preview_url: Callable[[str, str], str | None] | None = None,
+) -> dict:
+    candidate = {
+        "seriesId": str(payload.get("seriesId") or ""),
+        "frameIndex": payload.get("frameIndex"),
+        "uri": uri,
+        "mime": mime,
+        "sha256": digest,
+        "bytes": raw_len,
+        "originalPath": str(path),
+        "displayPath": str(display_path),
+        "overlayPath": overlay_path,
+        "overlay": overlay,
+        "crop": crop,
+        "ocr": ocr,
+        "detectedDocument": detected_document,
+        "quality": quality,
+        "capturedAt": payload.get("capturedAt"),
+        "userAgent": payload.get("userAgent", ""),
+        "width": payload.get("width"),
+        "height": payload.get("height"),
+    }
+    series = None
+    if candidate["seriesId"]:
+        series = scanner_best_update(candidate["seriesId"], candidate)
+    return {
+        "ok": True,
+        "uri": uri,
+        "candidate": scanner_public_candidate_for_live(candidate, project, preview_url=preview_url) if preview_url else public_scanner_candidate(candidate),
+        "series": series,
+        "ocr": ocr,
+        "crop": crop,
+        "overlay": overlay,
+        "quality": quality,
+        "detectedDocument": detected_document,
+    }
