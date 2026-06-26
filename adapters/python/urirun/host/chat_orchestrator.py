@@ -683,11 +683,14 @@ def _chat_ask_general_capability_gap(
         "results": {},
         "error": capability_gap,
     }
+    hint = (capability_gap or {}).get("connectorHint") or {}
+    install_cmd = hint.get("installCommand") or "urirun host ensure <node> kvm"
     deps.add_chat_message_fn(db, chat_message(
         "system",
-        "failed: missing screen-capture URI route for requested screenshot-to-document workflow",
+        f"Brak trasy zrzutu ekranu. Napraw: {install_cmd}",
         detail={"prompt": prompt, "execute": execute, "ok": False, "selectedTargets": selected_targets,
-                "generator": generator, "flow": flow, "timeline": [], "results": {}, "error": capability_gap},
+                "generator": generator, "flow": flow, "timeline": [], "results": {}, "error": capability_gap,
+                "connectorHint": hint},
     ))
     try:
         deps.host_db_fn().add_log(db, "chat", "ask", {

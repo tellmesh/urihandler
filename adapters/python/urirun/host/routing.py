@@ -2,6 +2,33 @@ from __future__ import annotations
 
 from .document_sync import needs_screen_document_capture as _needs_screen_document_capture
 
+_SCREEN_WORDS = ("zrzut", "screenshot", "screen capture", "zrzuty ekranu", "screenshoot")
+
+
+def _needs_screen_capture_any(prompt: str) -> bool:
+    """True when the prompt requests ANY screen capture — document output is optional."""
+    text = prompt.casefold()
+    return any(w in text for w in _SCREEN_WORDS)
+
+
+def _connector_hint_for_nodes(selected_nodes: list[str]) -> dict:
+    """Return a connectorHint that tells the user exactly how to enable screen capture."""
+    if selected_nodes:
+        node = selected_nodes[0]
+        return {
+            "scheme": "kvm",
+            "package": "urirun-connector-kvm",
+            "installCommand": f"urirun host ensure {node} kvm",
+            "deployCommand": f"urirun host deploy {node}",
+            "description": f"KVM/Wayland screen-capture connector for node '{node}'",
+        }
+    return {
+        "scheme": "kvm",
+        "package": "urirun-connector-kvm",
+        "installCommand": "urirun host ensure <node> kvm",
+        "description": "KVM/Wayland screen-capture connector",
+    }
+
 
 def selected_nodes_from_targets(selected_nodes: list[str], selected_targets: list[str]) -> list[str]:
     """Keep API callers and the browser form consistent: node targets imply selected nodes."""
@@ -56,7 +83,12 @@ def has_screen_capture_route(routes: list[dict], selected_nodes: list[str], sele
 
 
 def screen_document_capability_gap(prompt: str, discovered: dict, selected_nodes: list[str], selected_targets: list[str]) -> dict | None:
-    if not _needs_screen_document_capture(prompt):
+    """Return a CapabilityGap when the prompt needs screen capture but no route is available.
+
+    Triggers for ANY screenshot prompt (not just screenshot+document) so the caller can
+    surface an actionable connectorHint instead of falling through to an LLM that logs a
+    limitation message with no fix guidance."""
+    if not _needs_screen_capture_any(prompt) and not _needs_screen_document_capture(prompt):
         return None
     routes = discovered.get("routes") or []
     if has_screen_capture_route(routes, selected_nodes, selected_targets):
@@ -65,10 +97,16 @@ def screen_document_capability_gap(prompt: str, discovered: dict, selected_nodes
         route.get("uri") for route in routes
         if any(token in str(route.get("uri") or "") for token in ("camera://", "ocr://", "fs://", "browser://", "screen://", "kvm://"))
     ][:20]
+    nodes = selected_nodes or [t.removeprefix("node:") for t in selected_targets if t.startswith("node:")]
     return {
         "type": "CapabilityGap",
         "missing": "screen-capture",
-        "message": "Brakuje route'u URI do zrzutow ekranu node'a. Dostepne sa camera/ocr/fs, ale nie screen/kvm/browser screenshot.",
+        "message": (
+            f"Node '{nodes[0]}' nie ma trasy zrzutu ekranu (kvm://, screen://, browser://). "
+            f"Zainstaluj connector: urirun host ensure {nodes[0]} kvm"
+            if nodes else
+            "Brakuje trasy URI do zrzutow ekranu. Zainstaluj connector kvm: urirun host ensure <node> kvm"
+        ),
         "selectedNodes": selected_nodes,
         "selectedTargets": selected_targets,
         "requiredAnyOf": [
@@ -77,4 +115,5 @@ def screen_document_capability_gap(prompt: str, discovered: dict, selected_nodes
             "browser://<node>/page/command/screenshot",
         ],
         "availableRelatedRoutes": related,
+        "connectorHint": _connector_hint_for_nodes(nodes),
     }

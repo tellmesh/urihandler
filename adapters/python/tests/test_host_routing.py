@@ -119,13 +119,25 @@ def test_node_filter_restricts_routes():
 # ── screen_document_capability_gap ────────────────────────────────────────────
 
 _SCREEN_DOC_PROMPT = "screenshot of the invoice document"   # triggers needs_screen_document_capture
+_SCREEN_ONLY_PROMPT = "take a screenshot"  # screenshot without document — now also triggers gap
 
 
 def test_no_gap_when_prompt_doesnt_need_capture():
-    """Prompts without both 'screen/screenshot' AND a document keyword return None."""
+    """Prompts with no screen/screenshot keyword at all return None."""
     assert screen_document_capability_gap("book a flight to Warsaw", {"routes": []}, [], []) is None
-    assert screen_document_capability_gap("take a screenshot", {"routes": []}, [], []) is None
     assert screen_document_capability_gap("show me the document", {"routes": []}, [], []) is None
+
+
+def test_gap_returned_for_screenshot_only_prompt():
+    """A pure screenshot prompt (no document keyword) now ALSO returns a gap with connectorHint."""
+    result = screen_document_capability_gap(_SCREEN_ONLY_PROMPT, {"routes": []}, [], [])
+    assert result is not None
+    assert result["type"] == "CapabilityGap"
+    assert result["missing"] == "screen-capture"
+    assert "connectorHint" in result
+    hint = result["connectorHint"]
+    assert "kvm" in hint["package"]
+    assert "installCommand" in hint
 
 
 def test_no_gap_when_capture_route_present():
@@ -135,7 +147,7 @@ def test_no_gap_when_capture_route_present():
 
 
 def test_gap_returned_when_capture_missing():
-    """No screen/kvm/browser route → gap dict with type and requiredAnyOf."""
+    """No screen/kvm/browser route → gap dict with type, requiredAnyOf, and connectorHint."""
     result = screen_document_capability_gap(
         _SCREEN_DOC_PROMPT,
         {"routes": [{"uri": "fs://host/file/command/write"}]},
@@ -145,6 +157,20 @@ def test_gap_returned_when_capture_missing():
     assert result["type"] == "CapabilityGap"
     assert result["missing"] == "screen-capture"
     assert any("screen://" in r for r in result["requiredAnyOf"])
+    assert "connectorHint" in result
+
+
+def test_gap_connector_hint_includes_node_name():
+    """When selected_nodes is provided, connectorHint.installCommand names the node."""
+    result = screen_document_capability_gap(
+        _SCREEN_ONLY_PROMPT,
+        {"routes": []},
+        ["lenovo"], [],
+    )
+    assert result is not None
+    hint = result["connectorHint"]
+    assert "lenovo" in hint["installCommand"]
+    assert hint["installCommand"] == "urirun host ensure lenovo kvm"
 
 
 def test_gap_includes_related_routes():
