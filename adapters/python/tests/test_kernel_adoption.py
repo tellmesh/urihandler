@@ -11,14 +11,19 @@ import struct
 import pytest
 
 from urirun.connectors import backend_registry as registry
-from urirun.connectors.inputs import uinput
+try:
+    from urirun.connectors.inputs import uinput
+except ImportError:  # uinput surface extracted to the standalone urirun-uinput package
+    uinput = None
 try:
     from urirun.connectors.surfaces import cdp
 except ImportError:  # cdp surface extracted to the standalone urirun-cdp package
     cdp = None
-# This file's checks span the cdp surface; skip them when urirun-cdp isn't installed (e.g. a
-# urirun-only CI checkout). cdp's OWN tests live in urirun-cdp/tests/.
-pytestmark = pytest.mark.skipif(cdp is None, reason="urirun-cdp (cdp surface) not installed")
+# This file's checks span the cdp + uinput surfaces; skip them when either extracted package isn't
+# installed (e.g. a urirun-only CI checkout). Each surface's OWN tests live in its own package's
+# tests/ dir (urirun-cdp/tests/, urirun-uinput/tests/).
+pytestmark = pytest.mark.skipif(
+    cdp is None or uinput is None, reason="urirun-cdp / urirun-uinput surfaces not installed")
 
 
 # ─── a whole "mini desktop connector", built ONLY by adopting the kernels ──────────────

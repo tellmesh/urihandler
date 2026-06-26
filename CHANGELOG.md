@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.10] - 2026-06-26
 
 ### Fixed
+- Fix wildcard-imports issues (ticket-0e743f4d)
+- Fix unused-imports issues (ticket-d6d66e83)
+- Fix wildcard-imports issues (ticket-134daf72)
+
+## [0.1.10] - 2026-06-26
+
+### Fixed
 - Fix unused-imports issues (ticket-43f3536d)
 - Fix unused-imports issues (ticket-f5ad69c3)
 - Fix magic-numbers issues (ticket-4aa699db)

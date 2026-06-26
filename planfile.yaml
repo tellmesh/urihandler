@@ -758,32 +758,6 @@ sprints:
     model_hints:
       planning: balanced
       implementation: balanced
-  - id: ticket-42cc2189
-    name: Fix unused-imports issues
-    description: Resolve 2 unused-imports issues in adapters/python/urirun/node/manage.py
-    task_type: prefactor
-    priority: medium
-    estimate: 1d
-    files:
-    - adapters/python/urirun/node/manage.py
-    rule_id: unused-imports
-    count: 2
-    model_hints:
-      planning: balanced
-      implementation: balanced
-  - id: ticket-975f2cdd
-    name: Fix magic-numbers issues
-    description: Resolve 4 magic-numbers issues in adapters/python/urirun/node/manage.py
-    task_type: prefactor
-    priority: medium
-    estimate: 2d
-    files:
-    - adapters/python/urirun/node/manage.py
-    rule_id: magic-numbers
-    count: 4
-    model_hints:
-      planning: balanced
-      implementation: balanced
   - id: ticket-1ed4ffa6
     name: Fix string-concat issues
     description: Resolve 1 string-concat issues in adapters/python/urirun/connectors/resolver.py
@@ -820,19 +794,6 @@ sprints:
     - adapters/python/urirun/connectors/resolver.py
     rule_id: magic-numbers
     count: 1
-    model_hints:
-      planning: balanced
-      implementation: balanced
-  - id: ticket-73f83818
-    name: Fix unused-imports issues
-    description: Resolve 2 unused-imports issues in adapters/python/urirun/node/_artifacts.py
-    task_type: prefactor
-    priority: medium
-    estimate: 1d
-    files:
-    - adapters/python/urirun/node/_artifacts.py
-    rule_id: unused-imports
-    count: 2
     model_hints:
       planning: balanced
       implementation: balanced
@@ -1313,6 +1274,45 @@ sprints:
     files:
     - adapters/python/urirun/host/dispatch.py
     rule_id: unused-imports
+    count: 2
+    model_hints:
+      planning: balanced
+      implementation: balanced
+  - id: ticket-0e743f4d
+    name: Fix wildcard-imports issues
+    description: Resolve 2 wildcard-imports issues in adapters/python/urirun/host/document_metadata.py
+    task_type: prefactor
+    priority: medium
+    estimate: 1d
+    files:
+    - adapters/python/urirun/host/document_metadata.py
+    rule_id: wildcard-imports
+    count: 2
+    model_hints:
+      planning: balanced
+      implementation: balanced
+  - id: ticket-d6d66e83
+    name: Fix unused-imports issues
+    description: Resolve 48 unused-imports issues in adapters/python/urirun/host/document_metadata.py
+    task_type: prefactor
+    priority: high
+    estimate: 3d
+    files:
+    - adapters/python/urirun/host/document_metadata.py
+    rule_id: unused-imports
+    count: 48
+    model_hints:
+      planning: balanced
+      implementation: balanced
+  - id: ticket-134daf72
+    name: Fix wildcard-imports issues
+    description: Resolve 2 wildcard-imports issues in adapters/python/urirun/host/document_sync.py
+    task_type: prefactor
+    priority: medium
+    estimate: 1d
+    files:
+    - adapters/python/urirun/host/document_sync.py
+    rule_id: wildcard-imports
     count: 2
     model_hints:
       planning: balanced
