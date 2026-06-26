@@ -161,6 +161,7 @@ from .scanner_bridge import (
     store_best_finish as _store_best_finish,
     capture_candidate_result as _capture_candidate_result_impl,
     capture_reject_result as _capture_reject_result_impl,
+    scanner_live_state as _scanner_live_state_impl,
 )
 from .service_control import (
     chat_service_restart_argv as _chat_service_restart_argv_impl,
@@ -1152,6 +1153,7 @@ INDEX_HTML = r"""<!doctype html>
                   <div class="subtle" id="chatTargetSummary">urirun host</div>
                   <div class="actions">
                     <span class="subtle" id="chatSelectionSummary">0 selected</span>
+                    <button type="button" id="chatTwinBtn" title="Otwórz Digital Twin Monitor">&#128190; Twin</button>
                     <button type="button" id="chatScrollBottomBtn">Latest</button>
                     <button type="button" id="chatCopyVisibleBtn">Copy chat</button>
                     <button type="button" id="chatSelectVisibleBtn">Select visible</button>
@@ -3883,6 +3885,19 @@ INDEX_HTML = r"""<!doctype html>
       loadServiceViews().catch((error) => alert(error.message));
     });
     $('chatFullscreenBtn').addEventListener('click', () => setChatFullscreen(!state.chatFullscreen));
+    $('chatTwinBtn').addEventListener('click', () => {
+      const el = $('chatTwinEmbed');
+      if (el) { el.remove(); return; }
+      const wrap = document.createElement('div');
+      wrap.id = 'chatTwinEmbed';
+      wrap.style.cssText = 'width:100%;margin:8px 0;border:1px solid var(--border-color);border-radius:4px;overflow:hidden;';
+      const fr = document.createElement('iframe');
+      fr.src = '/twin?source=live';
+      fr.style.cssText = 'width:100%;height:340px;border:none;display:block;';
+      fr.title = 'Digital Twin Monitor';
+      wrap.appendChild(fr);
+      $('chatResult').parentNode.insertBefore(wrap, $('chatResult'));
+    });
     $('chatScrollBottomBtn').addEventListener('click', () => {
       $('chatResult').scrollTop = $('chatResult').scrollHeight;
       writeUrlState({ action: 'chat:latest' }, { replace: true });
@@ -6899,18 +6914,6 @@ def _auto_crop_receipt(path: Path) -> dict:
 
 
 
-def scanner_live_state(project: str, limit: int = 8) -> dict:
-    with _SCANNER_BEST_LOCK:
-        streams = [dict(item) for item in _SCANNER_LIVE_STREAMS.values()]
-    return _scanner_live_state_from_streams_impl(
-        streams,
-        project,
-        limit=limit,
-        preview_url=_preview_url,
-        utc_now=_utc_now,
-    )
-
-
 def _latest_scanner_page_status(db: str | None) -> dict:
     try:
         logs = _host_db().recent_logs(db, stream="page-action", limit=80)
@@ -6943,7 +6946,7 @@ def _recent_scanner_artifacts(db: str | None, project: str, limit: int = 6) -> l
 
 
 def service_live_views(project: str, db: str | None = None, limit: int = 8) -> dict:
-    scanner = scanner_live_state(project, limit=limit)
+    scanner = _scanner_live_state_impl(project, limit=limit, preview_url=_preview_url)
     service = next((item for item in _service_contacts() if item.get("id") == "service:phone-scanner"), {})
     recent_artifacts = _recent_scanner_artifacts(db, project, limit=6)
     camera_status = _latest_scanner_page_status(db)
@@ -9705,18 +9708,25 @@ def _flow_has_desktop_step(flow: dict) -> bool:
 
 def _append_twin_widget(execute: bool, flow: dict, attachments: list,
                         prompt: str, selected_targets: list[str], timeline: list) -> None:
-    """Append a twin-monitor widget attachment when the flow touches a desktop node."""
-    if not execute or not _flow_has_desktop_step(flow):
+    """Append a twin-monitor widget when the flow touches a desktop node.
+
+    Shows in dry-run (source=demo, no timeline events) and live (source=live, events
+    published to TWIN_EVENT_HUB). Callers pass execute=False for dry-run — the widget
+    still loads so the user can see the monitor layout before committing to execute."""
+    if not _flow_has_desktop_step(flow):
         return
     import time
     import urllib.parse
+    source = "live" if execute else "demo"
     qs = urllib.parse.urlencode({
-        "source": "live",
-        "execute": "1",
+        "source": source,
+        "execute": "1" if execute else "0",
         "prompt": prompt,
         "targets": ",".join(selected_targets),
     })
     attachments.append({"kind": "twin-monitor", "uri": f"/twin?{qs}", "path": "Digital Twin Widget"})
+    if not execute:
+        return
     for step in timeline:
         if step.get("type") == "preflight":
             continue
@@ -10718,7 +10728,7 @@ def _api_services_live(project: str, db: str | None, config: str | None, query: 
 
 
 def _api_scanner_live(project: str, db: str | None, config: str | None, query: dict, node_urls: list[str] | None) -> tuple[int, dict]:
-    return 200, scanner_live_state(project, limit=int(_first(query, "limit", "8") or 8))
+    return 200, _scanner_live_state_impl(project, limit=int(_first(query, "limit", "8") or 8), preview_url=_preview_url)
 
 
 def _api_nodes_or_routes(path: str, config: str | None, node_urls: list[str] | None) -> tuple[int, dict]:

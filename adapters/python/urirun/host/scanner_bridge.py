@@ -1126,3 +1126,21 @@ def capture_candidate_result(
         "quality": quality,
         "detectedDocument": detected_document,
     }
+
+
+def scanner_live_state(
+    project: str,
+    limit: int = 8,
+    *,
+    preview_url: Callable[[str, str], str | None] | None = None,
+) -> dict:
+    with SCANNER_BEST_LOCK:
+        streams = [dict(item) for item in SCANNER_LIVE_STREAMS.values()]
+    utc_now = lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())  # noqa: E731
+    return scanner_live_state_from_streams(
+        streams,
+        project,
+        limit=limit,
+        preview_url=preview_url or (lambda p, pr: None),
+        utc_now=utc_now,
+    )
