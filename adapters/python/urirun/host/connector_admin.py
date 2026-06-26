@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from typing import Any
 
 CONNECTOR_DOCKER_TIMEOUT = 600
 _CONNECTOR_BINDINGS_GROUP = "urirun.bindings"
