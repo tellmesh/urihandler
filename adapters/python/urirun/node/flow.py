@@ -566,49 +566,6 @@ def _restore_service_map(old: str | None) -> None:
         os.environ["URI_SERVICE_MAP"] = old
 
 
-def _orchestrate_steps(flow: dict, registry: dict, execute: bool, recover: bool,
-                       max_retries: int, max_wall_clock: float, max_remediations: int,
-                       rollback_on_failure: bool, memory, dispatch_uri,
-                       routes: list, timeline: list, results: dict,
-                       recoveries: list) -> dict:
-    # DEPRECATED (Faza 4): execute_flow no longer calls this function.
-    # _thin_driver is now the sole engine for all callers.
-    # Kept here so any out-of-tree callers get a deprecation period before removal.
-    start = time.monotonic()
-    remediations_used = 0
-    if execute and recover:
-        timeline.extend(_preflight(flow, registry))
-    if memory is not None:
-        _capture_known_good(flow, registry, memory)
-        timeline.extend(_drift_timeline(flow, registry, memory))
-    for step in flow["steps"]:
-        broke = _circuit_break_if_over(start, max_wall_clock, remediations_used,
-                                       max_remediations, timeline, results, recoveries)
-        if broke is not None:
-            return broke
-        payload, fail = _resolve_payload_or_fail(step, results, routes, timeline, recoveries)
-        if fail is not None:
-            return fail
-        env, step_timeline, step_recoveries, aborted = _run_step(
-            step, payload, registry, execute, routes, recover, max_retries,
-            dispatch_uri=dispatch_uri,
-        )
-        timeline.extend(step_timeline)
-        recoveries.extend(step_recoveries)
-        remediations_used += sum(1 for e in step_timeline if e.get("action") == "self-heal")
-        results[step["id"]] = env
-        if aborted:
-            return _abort_envelope(step, step_timeline, step_recoveries, timeline, results,
-                                   recoveries, registry, rollback_on_failure, execute,
-                                   dispatch_uri=dispatch_uri)
-    result = {"ok": True, "timeline": timeline, "results": results}
-    if recoveries:
-        result["recovery"] = recoveries
-    if memory is not None:
-        _update_known_good(flow, registry, memory)
-        _remember_known_good_flow(flow, result, memory)
-    return result
-
 
 def _make_memory_dispatch(base_dispatch, memory: TwinMemory, flow: dict, registry: dict):
     """Wrap dispatch_uri to handle Twin memory operations in-process.
@@ -695,7 +652,7 @@ def _thin_remember_record(flow: dict, nodes: list[str]) -> dict:
     prompt = str((flow.get("task") or {}).get("title") or "")
     return {"steps": flow.get("steps") or [], "prompt": prompt,
             "intent_sig": intent_signature(prompt) if prompt else "",
-            "nodes": list(nodes)}
+            "nodes": list(nodes), "ok": True}
 
 
 def _build_thin_plan(steps: list[dict], flow: dict, *, execute: bool,

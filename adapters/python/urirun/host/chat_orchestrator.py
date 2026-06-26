@@ -584,7 +584,7 @@ def _general_path_complete(
                         intent_sig=_ep_ids.get("intent_sig", ""),
                         outcome_status=_ep_ids.get("outcome_status", status),
                         next_intent=_ep_ids.get("next_intent", ""))
-    if execute and db is not None:
+    if execute:
         _register_step_artifacts(result, db, deps.host_db_fn())
     if attachments:
         content += f", {len(attachments)} attachment(s)"

@@ -39,6 +39,11 @@ class JsonFileStore:
     def get(self, key: str, default: Any = None) -> Any:
         return self._data.get(key, default)
 
+    def items(self) -> list:
+        """Top-level (key, value) pairs — node→profile entries plus the ``_``-prefixed namespace
+        buckets. Callers wanting only node profiles filter out the ``_`` keys (see api_twin_state)."""
+        return list(self._data.items())
+
     def __getitem__(self, key: str) -> Any:
         return self._data[key]
 

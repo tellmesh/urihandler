@@ -34,7 +34,8 @@ def test_v2_service_post_signs_with_identity(monkeypatch):
     monkeypatch.setenv("URIRUN_RUN_IDENTITY", "/tmp/id_ed25519")
     monkeypatch.delenv("URIRUN_RUN_TOKEN", raising=False)
     monkeypatch.setattr(v2_service.urllib.request, "urlopen", fake_urlopen)
-    monkeypatch.setattr(v2_service.keyauth, "sign", fake_sign)
+    # v2_service uses _signer (injected via register_signer), not a keyauth module attribute
+    monkeypatch.setattr(v2_service, "_signer", fake_sign)
 
     data, status = v2_service._post("http://node/run", {"uri": "env://node/runtime/query/health"}, 3)
 

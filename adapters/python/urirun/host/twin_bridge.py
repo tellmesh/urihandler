@@ -362,8 +362,11 @@ def _nodes_from_store(store) -> dict:
     nodes: dict = {}
     pairs = store.items() if hasattr(store, "items") else []
     for node_name, rec in pairs:
-        if isinstance(rec, dict):
-            nodes[node_name] = {"fingerprint": rec.get("fingerprint"), "snapshot": rec.get("snapshot")}
+        # Skip the _-prefixed namespace buckets (_flows/_episodes/_proofs/…) and anything that
+        # isn't a node profile (a dict carrying an env fingerprint).
+        if str(node_name).startswith("_") or not isinstance(rec, dict) or "fingerprint" not in rec:
+            continue
+        nodes[node_name] = {"fingerprint": rec.get("fingerprint"), "snapshot": rec.get("snapshot")}
     return nodes
 
 

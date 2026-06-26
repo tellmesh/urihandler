@@ -912,6 +912,11 @@
                     // aggregate panels (flows/episodes/proofs) filled.
                     const _latestEvent = (data.events || []).filter(e => e && e.transition).slice(-1)[0];
                     if (_latestEvent) applyEvent(_latestEvent);
+                    // FINGERPRINT shows the ENVIRONMENT identity (the stable env-… the twin
+                    // tracks), not the per-step state-sig that applyEvent set above.
+                    const _node = Object.values(data.nodes || {})[0];
+                    if (_node && _node.fingerprint)
+                        document.getElementById('fingerprintVal').innerText = _node.fingerprint;
                     document.getElementById('sayLead').innerText =
                         `Zsynchronizowano ${new Date().toLocaleTimeString()} · ${data.total ?? 0} znanych przepływów`;
                 } catch (err) {

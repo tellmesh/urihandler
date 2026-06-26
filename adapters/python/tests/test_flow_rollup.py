@@ -69,47 +69,38 @@ def test_execute_flow_aborts_on_inner_action_failure(monkeypatch) -> None:
     monkeypatch.setattr(flow.v2_service, "call", fake_call)
     res = flow.execute_flow(flow_doc, mesh={}, registry={}, execute=True, recover=False)
 
+    kvm = [u for u in dispatched if u.startswith("kvm://")]  # filter out twin:// infra steps
     assert res["ok"] is False                                   # no more false green
-    assert dispatched == ["kvm://laptop/ui/command/click"]      # dependent step never ran
+    assert kvm == ["kvm://laptop/ui/command/click"]             # dependent step never ran
     assert "type" not in res["results"]
     assert res["error"]["message"] == "no target located"
 
 
 def test_execute_flow_self_heals_then_succeeds(monkeypatch) -> None:
-    """A diagnosed failure (ui target not located) triggers auto-remediation (ensure CDP,
-    wait ready, ...) and a retry — and the step then succeeds. The flow ends GREEN, having
-    actually FIXED the cause, and the timeline records the self-heal step."""
+    """Thin-driver retry: when the dispatcher returns next.kind='retry' (healed=True) the
+    flow retries the step and the second attempt succeeds.  The timeline records click:retry."""
     flow_doc = {"steps": [
         {"id": "click", "uri": "kvm://laptop/ui/command/click", "payload": {"text": "Start a post"}},
     ]}
-    calls = {"action": 0, "remediation": []}
+    kvm_calls = {"n": 0}
 
     def fake_call(uri, payload, registry, mode):
-        # the self-heal fetches the node's env profile to fit the fix to the machine
-        if "/env/query/profile" in uri:
-            return {"uri": uri, "ok": True, "result": {"value": {
-                "controlStrategies": {"cdp": True, "atspi": True, "vision": True},
-                "cdpFeasible": True, "controllable": True, "best": "cdp"}}}
-        if "/surface/query/current" in uri:                    # non-login surface -> no upgrade
-            return {"uri": uri, "ok": True, "result": {"value": {
-                "kind": "browser", "app": "chrome", "browser": {"url": "https://example.com", "title": "x"}}}}
-        # remediation URIs (cdp/session/ensure, cdp/page/ready, ui/command/act) -> ok
-        if "/cdp/" in uri or "/ui/command/act" in uri:
-            calls["remediation"].append(uri)
+        if not uri.startswith("kvm://"):
             return {"uri": uri, "ok": True, "result": {"value": {"ok": True}}}
-        calls["action"] += 1                              # the real action
-        inner_ok = calls["action"] >= 2                   # fails first, succeeds after heal+retry
-        return {"uri": uri, "ok": True, "result": {"value": {"ok": inner_ok,
-                "error": None if inner_ok else "ui-click: target not located"}}}
+        kvm_calls["n"] += 1
+        if kvm_calls["n"] == 1:
+            # First attempt: fail and ask the driver to retry after healing.
+            return {"uri": uri, "ok": False,
+                    "error": {"message": "ui-click: target not located", "category": "ACTION_FAILED"},
+                    "next": {"kind": "retry"}, "healed": True}
+        return {"uri": uri, "ok": True, "result": {"value": {"ok": True}}}
 
     monkeypatch.setattr(flow.v2_service, "call", fake_call)
     res = flow.execute_flow(flow_doc, mesh={}, registry={}, execute=True)
 
     assert res["ok"] is True                              # fixed, not aborted
-    assert calls["action"] == 2                           # ran, healed, retried
-    assert any("/cdp/session/command/ensure" in u for u in calls["remediation"])
-    heal = [e for e in res["timeline"] if e.get("action") == "self-heal"]
-    assert heal and heal[0]["rule"] == "ui-target-not-located"
+    assert kvm_calls["n"] == 2                            # failed → retry → succeeded
+    assert any(e.get("id") == "click:retry" for e in res["timeline"])
 
 
 def test_execute_flow_rolls_back_reversible_steps_on_failure(monkeypatch) -> None:
@@ -151,9 +142,10 @@ def test_failed_flow_without_inverses_does_not_rollback(monkeypatch) -> None:
     monkeypatch.setattr(flow.v2_service, "call", fake_call)
     res = flow.execute_flow({"steps": [{"id": "a", "uri": "kvm://n/ui/command/click", "payload": {}}]},
                             mesh={}, registry={}, execute=True, recover=False)
+    kvm = [u for u in calls if u.startswith("kvm://")]  # filter out twin:// infra steps
     assert res["ok"] is False
     assert "rollback" not in res                               # no-op, no extra calls
-    assert calls == ["kvm://n/ui/command/click"]
+    assert kvm == ["kvm://n/ui/command/click"]
 
 
 def test_execute_flow_green_when_every_action_succeeds(monkeypatch) -> None:
@@ -167,7 +159,8 @@ def test_execute_flow_green_when_every_action_succeeds(monkeypatch) -> None:
 
     monkeypatch.setattr(flow.v2_service, "call", fake_call)
     res = flow.execute_flow(flow_doc, mesh={}, registry={}, execute=True, recover=False)
-    assert res["ok"] is True and set(res["results"]) == {"a", "b"}
+    # thin-driver adds drift/remember step IDs; check the action steps are present
+    assert res["ok"] is True and {"a", "b"} <= set(res["results"])
 
 
 def test_llm_flow_injects_environment_facts_into_planner(monkeypatch) -> None:

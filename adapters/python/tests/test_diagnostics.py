@@ -1514,7 +1514,7 @@ class TwinMemoryUriTests(unittest.TestCase):
     # ── _build_thin_plan injection ─────────────────────────────────────────────
 
     def test_build_thin_plan_injects_drift_and_remember_for_kvm_flow(self):
-        """_build_thin_plan injects drift+remember for kvm flows without memory= parameter."""
+        """_build_thin_plan injects drift+remember for kvm flows (always, memory-independent)."""
         from urirun.node.flow import _build_thin_plan, _THIN_DRIFT_SUFFIX, _THIN_REMEMBER_URI
         steps = [{"id": "click", "uri": "kvm://laptop/ui/command/click"}]
         plan = _build_thin_plan(steps, {"steps": steps}, execute=True, routes=[])
@@ -1546,7 +1546,7 @@ class TwinMemoryUriTests(unittest.TestCase):
         self.assertEqual(plan, steps)
 
     def test_execute_flow_calls_drift_and_remember_for_kvm_flow(self):
-        """execute_flow with a kvm step and dispatch_uri routes drift and remember URIs."""
+        """execute_flow with a kvm step always routes drift and remember through dispatch."""
         from urirun.node.flow import execute_flow, FlowEnvelope, _THIN_DRIFT_SUFFIX, _THIN_REMEMBER_URI
         envelope = FlowEnvelope(flow_id="mem-test")
         calls = []

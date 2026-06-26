@@ -434,6 +434,20 @@ def _thin_driver(
         envelope.position = i
         uri = step["uri"]
         sid = step.get("id") or uri
+        missing = [d for d in (step.get("depends_on") or []) if d not in results]
+        if missing:
+            err = {"category": "FAILED_PRECONDITION",
+                   "message": f"{sid} missing dependencies: {missing}"}
+            entry = {"id": sid, "uri": uri, "ok": False, "error": err,
+                     "target": route_target(uri),
+                     "recovery": {"recoverable": True, "category": "FAILED_PRECONDITION",
+                                  "actions": [{"id": "prepare-precondition", "kind": "precondition",
+                                               "automatic": False,
+                                               "label": "Prepare the missing dependency."}]}}
+            timeline.append(entry)
+            return {"ok": False, "timeline": timeline, "results": results, "error": err,
+                    "recovery": [{"stepId": sid, "uri": uri, "error": err,
+                                  "plan": entry["recovery"]}]}
         payload = resolve_step_payload(step.get("payload") or {}, results)
         if "/memory/command/remember" in uri:
             # The remember step runs last; stamp it with the run's degraded outcome and
