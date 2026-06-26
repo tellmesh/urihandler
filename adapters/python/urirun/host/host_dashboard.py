@@ -117,6 +117,22 @@ from .object_registry import (
     build_node_entry as _build_node_entry,
     persist_node_to_config as _persist_node_to_config,
     node_remove_from_mirror as _node_remove_from_mirror,
+    configured_node_api_parts as _configured_node_api_parts,
+    configured_node_api_lookup as _configured_node_api_lookup_impl,
+    configured_api_secret as _configured_api_secret,
+    apply_auth_header as _apply_auth_header,
+    configured_api_headers as _configured_api_headers,
+    join_api_url as _join_api_url,
+    configured_api_response_body as _configured_api_response_body,
+    build_request_body as _build_request_body,
+    execute_http_request as _execute_http_request,
+    resolve_http_method_and_url as _resolve_http_method_and_url,
+    connector_hint as _connector_hint,
+    connector_required_response as _connector_required_response,
+    configured_api_call as _configured_api_call,
+    apply_uri_overrides as _apply_uri_overrides,
+    resolve_node_api_identifiers as _resolve_node_api_identifiers,
+    _SCHEME_CONNECTOR_PACKAGES,
     node_kinds_path as _node_kinds_path,
     node_kinds as _node_kinds,
     set_node_kind as _set_node_kind,
@@ -8173,242 +8189,6 @@ def node_add(config: str | None, payload: dict) -> dict:
     return {"ok": True, "node": _build_node_entry(name, url, kind, apis, capabilities), "nodes": updated.get("nodes", [])}
 
 
-def _configured_node_api_parts(uri: str) -> tuple[str, str, str, str]:
-    scheme, rest = str(uri).split("://", 1)
-    parts = [part for part in rest.split("/") if part]
-    if scheme == "configured":
-        return scheme, str(parts[0] if len(parts) > 0 else ""), str(parts[1] if len(parts) > 1 else ""), "/".join(parts[2:])
-    return scheme, str(parts[0] if len(parts) > 0 else ""), str(parts[1] if len(parts) > 1 else ""), "/".join(parts[2:])
-
-
-def _configured_node_api_lookup(config: str | None, node_urls: list[str] | None, *,
-                                node_name: str, api_id: str) -> tuple[dict | None, dict | None, str | None]:
-    host_config = _host_config(config, node_urls)
-    for node in host_config.get("nodes") or []:
-        if not isinstance(node, dict) or str(node.get("name") or "") != node_name:
-            continue
-        apis = node.get("apis") if isinstance(node.get("apis"), list) else []
-        for api in apis:
-            if isinstance(api, dict) and str(api.get("id") or "") == api_id:
-                return node, api, None
-        return node, None, f"api interface {api_id!r} not found on node {node_name!r}"
-    return None, None, f"node {node_name!r} not found in host config"
-
-
-def _configured_api_secret(auth: dict, *, allow: list[str] | None = None) -> str:
-    secret_ref = str(auth.get("secretRef") or auth.get("credentialRef") or "")
-    if not secret_ref:
-        return ""
-    import urirun
-
-    return urirun.resolve_secret(secret_ref, secret_allow=allow or [secret_ref])
-
-
-def _apply_auth_header(headers: dict, auth: dict, auth_type: str, secret: str) -> str | None:
-    """Inject an Authorization (or equivalent) header for *auth_type* using *secret*.
-    Returns an error string on unsupported types, None on success."""
-    if auth_type in {"bearer", "oauth", "token"}:
-        headers.setdefault("Authorization", f"Bearer {secret}")
-    elif auth_type in {"api-key", "apikey", "key"}:
-        headers.setdefault(str(auth.get("headerName") or auth.get("header") or "X-API-Key"), secret)
-    elif auth_type in {"header", "custom-header"}:
-        headers.setdefault(str(auth.get("headerName") or auth.get("header") or "Authorization"), secret)
-    elif auth_type == "basic":
-        user = str(auth.get("username") or "")
-        token = base64.b64encode(f"{user}:{secret}".encode("utf-8")).decode("ascii")
-        headers.setdefault("Authorization", f"Basic {token}")
-    else:
-        return f"unsupported auth type {auth_type!r}"
-    return None
-
-
-def _configured_api_headers(api: dict, payload: dict) -> tuple[dict, str | None]:
-    headers = {str(k): str(v) for k, v in (api.get("headers") or {}).items()} if isinstance(api.get("headers"), dict) else {}
-    headers.update({str(k): str(v) for k, v in (payload.get("headers") or {}).items()} if isinstance(payload.get("headers"), dict) else {})
-    auth = api.get("auth") if isinstance(api.get("auth"), dict) else {}
-    auth_type = str(auth.get("type") or "").strip().lower()
-    if not auth_type or auth_type in {"none", "no", "false"}:
-        return headers, None
-    try:
-        secret = _configured_api_secret(auth)
-    except Exception as exc:  # noqa: BLE001
-        return headers, str(exc)
-    if not secret:
-        return headers, None
-    error = _apply_auth_header(headers, auth, auth_type, secret)
-    return headers, error
-
-
-def _join_api_url(base: str, extra_path: str = "", query: dict | None = None) -> str:
-    if extra_path.startswith(("http://", "https://")):
-        url = extra_path
-    else:
-        left = str(base or "").rstrip("/")
-        right = str(extra_path or "").lstrip("/")
-        url = f"{left}/{right}" if right else left
-    if query:
-        parts = urlsplit(url)
-        current = dict(parse_qsl(parts.query, keep_blank_values=True))
-        current.update({str(k): str(v) for k, v in query.items() if v is not None})
-        url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(current), parts.fragment))
-    return url
-
-
-def _configured_api_response_body(raw: bytes, content_type: str) -> Any:
-    text = raw.decode("utf-8", errors="replace")
-    if "json" in content_type.lower():
-        try:
-            return json.loads(text or "{}")
-        except json.JSONDecodeError:
-            return text
-    return text
-
-
-def _build_request_body(payload: dict, headers: dict) -> bytes | None:
-    """Encode the request body from payload['json'] or payload['body'], setting Content-Type if JSON."""
-    body_value = payload.get("json") if "json" in payload else payload.get("body")
-    if body_value is None:
-        return None
-    if isinstance(body_value, (dict, list)):
-        headers.setdefault("Content-Type", "application/json")
-        return json.dumps(body_value).encode("utf-8")
-    return str(body_value).encode("utf-8")
-
-
-def _execute_http_request(node: dict, api: dict, method: str, url: str,
-                          raw_body: bytes | None, headers: dict, timeout: float) -> dict:
-    """Fire the HTTP request and return a normalised result dict (handles HTTPError too)."""
-    request = urllib.request.Request(url, data=raw_body, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            raw = response.read()
-            content_type = response.headers.get("Content-Type", "")
-            return {
-                "ok": 200 <= int(response.status) < 400,
-                "node": node.get("name"),
-                "apiId": api.get("id"),
-                "method": method,
-                "url": url,
-                "status": int(response.status),
-                "contentType": content_type,
-                "data": _configured_api_response_body(raw, content_type),
-            }
-    except urllib.error.HTTPError as exc:
-        raw = exc.read()
-        content_type = exc.headers.get("Content-Type", "") if exc.headers else ""
-        return {
-            "ok": False,
-            "node": node.get("name"),
-            "apiId": api.get("id"),
-            "method": method,
-            "url": url,
-            "status": int(exc.code),
-            "contentType": content_type,
-            "data": _configured_api_response_body(raw, content_type),
-        }
-
-
-def _resolve_http_method_and_url(node: dict, api: dict, payload: dict) -> tuple[str | None, str, str | None]:
-    """Return (method, url, error).  method is None and error is set when the method is unsupported."""
-    method = str(payload.get("method") or ("POST" if "body" in payload or "json" in payload else "GET")).upper()
-    if method not in {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"}:
-        return None, "", f"unsupported HTTP method {method!r}"
-    query = payload.get("query") if isinstance(payload.get("query"), dict) else None
-    url = _join_api_url(str(api.get("url") or node.get("url") or ""), str(payload.get("path") or payload.get("url") or ""), query)
-    return method, url, None
-
-
-def _configured_api_call(node: dict, api: dict, payload: dict) -> dict:
-    api_kind = str(api.get("kind") or "").strip().lower()
-    if api_kind not in {"http", "https", "rest", "openapi", "web", "panel"}:
-        return {
-            "ok": False,
-            "error": "connector_required",
-            "message": f"{api_kind or 'unknown'} interfaces require a dedicated connector/service",
-            "api": {k: v for k, v in api.items() if k != "auth"},
-            "connectorHint": _connector_hint(api_kind),
-        }
-    method, url, method_error = _resolve_http_method_and_url(node, api, payload)
-    if method_error:
-        return {"ok": False, "error": method_error}
-    headers, auth_error = _configured_api_headers(api, payload)
-    if auth_error:
-        return {"ok": False, "error": auth_error}
-    raw_body = _build_request_body(payload, headers)
-    timeout = float(payload.get("timeout") or 20)
-    return _execute_http_request(node, api, method, url, raw_body, headers, timeout)
-
-
-def _apply_uri_overrides(payload: dict, uri: str,
-                         node_name: str, api_id: str) -> tuple[str, str, str, bool]:
-    """Parse *uri* and update node_name / api_id from its path components.
-    Returns (scheme, node_name, api_id, status_only)."""
-    scheme, uri_node, uri_api, operation = _configured_node_api_parts(uri)
-    if uri_node and uri_node != "host":
-        node_name = uri_node
-    if uri_api and uri_node != "host":
-        api_id = uri_api
-    status_only = operation.endswith("query/status")
-    if scheme == "configured":
-        node_name = str(payload.get("node") or payload.get("name") or node_name)
-        api_id = str(payload.get("apiId") or payload.get("api") or api_id)
-    return scheme, node_name, api_id, status_only
-
-
-def _resolve_node_api_identifiers(payload: dict, uri: str | None) -> tuple[str, str, str, bool]:
-    """Derive (scheme, node_name, api_id, status_only) from the URI and payload.
-    URI path components take precedence; payload overrides are applied for 'configured' scheme."""
-    node_name = str(payload.get("node") or payload.get("name") or "")
-    api_id = str(payload.get("apiId") or payload.get("api") or payload.get("interface") or "default")
-    if uri and "://" in uri:
-        return _apply_uri_overrides(payload, uri, node_name, api_id)
-    return "", node_name, api_id, False
-
-
-_SCHEME_CONNECTOR_PACKAGES: dict[str, str] = {
-    "media": "urirun-connector-media",
-    "camera": "urirun-connector-camera",
-    "ssh": "urirun-connector-ssh",
-    "rtsp": "urirun-connector-rtsp",
-    "smb": "urirun-connector-smb",
-    "nfs": "urirun-connector-nfs",
-    "serial": "urirun-connector-serial",
-    "modbus": "urirun-connector-modbus",
-    "mqtt": "urirun-connector-mqtt",
-    "websocket": "urirun-connector-websocket",
-    "ws": "urirun-connector-websocket",
-}
-
-
-def _connector_hint(scheme: str) -> dict:
-    known = scheme in _SCHEME_CONNECTOR_PACKAGES
-    package = _SCHEME_CONNECTOR_PACKAGES.get(scheme) or f"urirun-connector-{scheme}"
-    hint: dict = {
-        "scheme": scheme,
-        "package": package,
-        "installCommand": f"pip install {package}",
-        "deployCommand": "urirun host deploy --merge <node_url>",
-        "reason": (f"The {scheme}:// scheme requires a dedicated connector that implements its protocol. "
-                   "Install the connector package, deploy it to the node, then the route goes live."),
-    }
-    if not known:
-        hint["speculative"] = True
-    return hint
-
-
-def _connector_required_response(scheme: str, node_name: str, safe_api: dict) -> dict:
-    """Build the standard 'connector_required' error with install/deploy hints."""
-    return {
-        "ok": False,
-        "error": "connector_required",
-        "message": f"{scheme}:// execution needs a dedicated connector; configured API metadata is available",
-        "scheme": scheme,
-        "node": node_name,
-        "api": safe_api,
-        "connectorHint": _connector_hint(scheme),
-    }
-
-
 def configured_node_api_request(config: str | None, node_urls: list[str] | None, payload: dict,
                                 *, uri: str | None = None, status_only: bool = False) -> dict:
     payload = payload if isinstance(payload, dict) else {}
@@ -8416,7 +8196,8 @@ def configured_node_api_request(config: str | None, node_urls: list[str] | None,
     status_only = status_only or uri_status_only
     if not node_name:
         return {"ok": False, "error": "node is required"}
-    node, api, error = _configured_node_api_lookup(config, node_urls, node_name=node_name, api_id=api_id)
+    _hc = _host_config(config, node_urls)
+    node, api, error = _configured_node_api_lookup_impl(_hc, node_name=node_name, api_id=api_id)
     if error or node is None or api is None:
         return {"ok": False, "error": error or "configured API not found"}
     safe_api = {k: v for k, v in api.items() if k != "auth"}
