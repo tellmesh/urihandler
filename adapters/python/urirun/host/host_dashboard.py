@@ -390,12 +390,6 @@ _torch_enabled_from_prompt = _torch_enabled_from_prompt_impl  # noqa: F401
 page_action_poll = _page_action_poll_impl  # noqa: F401
 
 
-
-
-
-
-
-
 def _json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict) -> None:
     body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
     handler.send_response(status)
@@ -742,15 +736,6 @@ def _local_image_ocr(path: str, backend: str | None = None) -> dict:
     return _document_metadata._local_image_ocr(path, backend=backend)
 
 
-
-
-
-
-
-
-
-
-
 def _utc_now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -865,8 +850,6 @@ def sync_documents_to_node(
     )
 
 
-
-
 def reconcile_document_index() -> dict:
     """Reconcile the document index with the filesystem by pruning orphaned entries.
 
@@ -927,34 +910,6 @@ def _docid_for_file(path: str | Path, ocr_text: str) -> dict:
     if docid_log:
         result["docidLog"] = docid_log[:240]
     return result
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def _is_blank_metadata(value: Any) -> bool:
@@ -1316,8 +1271,6 @@ def _archive_scanned_document(
     }
 
 
-
-
 from .scanner_net import (  # noqa: F401,E402 - re-export shim placed where the funcs were
     _ensure_tls_cert,
     _lan_host,
@@ -1330,16 +1283,6 @@ from .scanner_net import (  # noqa: F401,E402 - re-export shim placed where the 
     _url_host,
     _write_qr_png,
 )
-
-
-
-
-
-
-
-
-
-
 
 
 def startup_phone_qr(project: str, db: str | None, *, scheme: str, host: str, port: int,
@@ -1390,14 +1333,6 @@ def startup_phone_qr(project: str, db: str | None, *, scheme: str, host: str, po
     )
     _add_chat_message(db, message)
     return {"ok": True, "uri": uri, "url": scanner_url, "artifact": artifact, "message": message}
-
-
-
-
-
-
-
-
 
 
 def ensure_phone_scanner_service(
@@ -1751,7 +1686,6 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
         "document": document,
         "message": registered["message"],
     }
-
 
 
 def page_action_enqueue(
@@ -2375,8 +2309,6 @@ def _compact_chat_result(result: dict, payload: dict) -> dict:
     return compacted
 
 
-
-
 def node_add(config: str | None, payload: dict) -> dict:
     """Persist a node (name + URL) to the host config so the host resolves it for real runs, and
     mirror it to ~/.urirun/nodes.json so urifix can auto-repair node_url. Reuses the canonical
@@ -2778,9 +2710,6 @@ def _try_urifix_repair(prompt: str, request: dict, result: dict, *, node_urls: l
     return fixed if isinstance(fixed, dict) else None
 
 
-
-
-
 def _is_document_sync_prompt(prompt: str, selected_nodes: list[str] | None = None,
                              selected_targets: list[str] | None = None, config: str | None = None,
                              node_urls: list[str] | None = None) -> bool:
@@ -2816,9 +2745,6 @@ def _document_sync_node_from_prompt(prompt: str, selected_nodes: list[str],
     if matched:
         return matched
     return _document_sync_default_node()
-
-
-
 
 
 def _route_in_selected_targets(route: dict, selected_nodes: list[str], selected_targets: list[str]) -> bool:
@@ -2992,7 +2918,6 @@ def _decision_loop_for_document_sync(prompt: str, *, execute: bool, sync_node: s
         ),
         "nextIntent": next_intent,
     }
-
 
 
 def _chat_ask_phone_scanner(
@@ -3909,7 +3834,6 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
         return _chat_document_sync_response(**_dispatch)
     _chat_insert_twin_preview(db, prompt, selected_nodes, selected_targets)
     return _chat_generic_response(**_dispatch)
-
 
 
 def task_action(project: str, ticket_id: str, action: str, payload: dict) -> dict:
