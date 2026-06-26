@@ -92,14 +92,15 @@
             flex-direction: column;
             padding: 20px;
             gap: 20px;
-            overflow: hidden;
+            overflow-y: auto;   /* scroll instead of clipping the data panels (chat iframe) */
         }
 
         .scenes-container {
             display: flex;
-            flex: 1;
+            flex: 0 0 auto;                     /* don't fill — the NOW/NEXT maps are empty for screen captures */
+            height: clamp(200px, 34vh, 340px);  /* a glanceable transition view, not a screen-filling void */
             gap: 40px;
-            align-items: center;
+            align-items: stretch;
             justify-content: center;
             min-height: 0;
         }
