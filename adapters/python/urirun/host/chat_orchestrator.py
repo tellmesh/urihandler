@@ -1121,6 +1121,18 @@ def _chat_ask_general(
                                                  use_llm=not no_llm, environments=environments)
             selected_nodes, selected_targets = _sync_targets_from_flow(
                 flow, discovered, selected_nodes, selected_targets)
+            # A capture run on a REMOTE node leaves its PNG on that machine, unreadable by the host.
+            # Ask the connector to return the image INLINE (base64) so _enrich_remote_attachments can
+            # save + preview it locally — the only path that works when the node serves no files.
+            _sel = set(selected_nodes or [])
+            if any(str(n.get("name") or n.get("node") or "") in _sel
+                   and "127.0.0.1" not in str(n.get("url") or n.get("nodeUrl") or "")
+                   and "localhost" not in str(n.get("url") or n.get("nodeUrl") or "")
+                   and str(n.get("url") or n.get("nodeUrl") or "")
+                   for n in (discovered.get("nodes") or [])):
+                for _s in (flow.get("steps") or []):
+                    if "/screen/query/capture" in str(_s.get("uri") or ""):
+                        _s.setdefault("payload", {})["base64"] = True
         except Exception as exc:  # noqa: BLE001 - return a recovery contract instead of a raw API failure.
             return _chat_ask_general_planner_failure(exc, db, prompt, execute, selected_nodes, selected_targets, deps)
         if twin_memory is not None:
