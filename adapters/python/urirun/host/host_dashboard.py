@@ -7234,21 +7234,22 @@ def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
         return _best_series_not_found(series_id)
     best = _resolve_best_candidate(series)
     if not isinstance(best, dict):
-        return _best_finish_store_failure(series_id, series, status="failed",
-                                          error="scanner best series has no candidates")
+        return _best_finish_store_failure_impl(series_id, series, status="failed",
+                                               error="scanner best series has no candidates")
     quality = best.get("quality") if isinstance(best.get("quality"), dict) else {}
     quality_rejected, min_score = _best_quality_rejected(payload, quality)
     if quality_rejected:
-        return _best_finish_store_failure(
+        return _best_finish_store_failure_impl(
             series_id, series, status="rejected",
             error="no reliable receipt or invoice candidate found",
             best=best, project=project, extra={"minScore": min_score},
+            preview_url=_preview_url,
         )
     original_path, display_path = _best_candidate_paths(best)
     if not original_path.is_file() or not display_path.is_file():
-        return _best_finish_store_failure(series_id, series, status="failed",
-                                          error="best candidate file is missing",
-                                          best=best, project=project)
+        return _best_finish_store_failure_impl(series_id, series, status="failed",
+                                               error="best candidate file is missing",
+                                               best=best, project=project, preview_url=_preview_url)
     crop, ocr = _best_crop_and_ocr(best)
     # Candidates were scored with the cheap OCR backend; pay for the accurate full read
     # (paddle full-frame) once, on the single frame we are about to keep. Falls back to the
