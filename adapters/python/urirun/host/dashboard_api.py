@@ -252,3 +252,37 @@ def _dashboard_api_response(
     if path in {"/api/nodes", "/api/routes"}:
         return _api_nodes_or_routes(path, config, node_urls)
     return 404, {"ok": False, "error": "not found"}
+
+
+def chat_delete_messages(db: "str | None", payload: dict) -> dict:
+    raw_ids = payload.get("ids")
+    if raw_ids is None and payload.get("id"):
+        raw_ids = [payload.get("id")]
+    if not isinstance(raw_ids, list):
+        raise ValueError("ids must be a list")
+    ids = [str(item).strip() for item in raw_ids if str(item).strip()]
+    deleted = _host_db().delete_logs(db, ids, stream="chat", event="message")
+    return {"ok": True, "deleted": deleted, "ids": ids}
+
+
+def task_create(project: str, payload: dict) -> dict:
+    from typing import Any as _Any  # noqa: PLC0415
+    planfile_adapter = _planfile_adapter()
+    payload = payload if isinstance(payload, dict) else {}
+    name = str(payload.get("name") or payload.get("title") or "").strip()
+    prompt = str(payload.get("prompt") or "").strip()
+    description = str(payload.get("description") or "").strip()
+    if not name and prompt:
+        name = prompt.splitlines()[0].strip()[:120]
+        description = description or prompt
+    if not name:
+        return {"ok": False, "error": "ticket name (or chat prompt) is required"}
+    data: dict[str, _Any] = {"name": name, "source_tool": payload.get("source_tool") or "urirun-host-dashboard"}
+    if description:
+        data["description"] = description
+    for key in ("priority", "queue", "labels", "prompt"):
+        value = payload.get(key)
+        if value not in (None, ""):
+            data[key] = value
+    ticket = planfile_adapter.create_ticket(project, data)
+    return {"ok": True, "ticket": ticket}

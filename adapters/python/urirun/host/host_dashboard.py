@@ -490,15 +490,7 @@ def _add_chat_message(db: str | None, message: dict) -> dict | None:
         return None
 
 
-def chat_delete_messages(db: str | None, payload: dict) -> dict:
-    raw_ids = payload.get("ids")
-    if raw_ids is None and payload.get("id"):
-        raw_ids = [payload.get("id")]
-    if not isinstance(raw_ids, list):
-        raise ValueError("ids must be a list")
-    ids = [str(item).strip() for item in raw_ids if str(item).strip()]
-    deleted = _host_db().delete_logs(db, ids, stream="chat", event="message")
-    return {"ok": True, "deleted": deleted, "ids": ids}
+
 
 
 from . import document_metadata as _document_metadata
@@ -1210,6 +1202,8 @@ from .dashboard_api import (  # noqa: E402,F401
     _task_counts,
     _lan_qr_profile,
     chat_history,
+    chat_delete_messages,
+    task_create,
     _api_summary,
     _api_objects,
     _api_node_types,
@@ -1421,31 +1415,7 @@ def task_action(project: str, ticket_id: str, action: str, payload: dict) -> dic
     return {"ok": True, "ticket": ticket}
 
 
-def task_create(project: str, payload: dict) -> dict:
-    """Create a planfile ticket from the dashboard — the manual "new ticket" form or a chat
-    prompt. Reuses planfile_adapter.create_ticket (same path as `urirun host` ticket creation),
-    so infrastructure tickets entered here behave exactly like CLI/agent-created ones."""
-    planfile_adapter = _planfile_adapter()
-    payload = payload if isinstance(payload, dict) else {}
-    name = str(payload.get("name") or payload.get("title") or "").strip()
-    prompt = str(payload.get("prompt") or "").strip()
-    description = str(payload.get("description") or "").strip()
-    # "Add from chat": when only a prompt is given, its first line becomes the title and the
-    # full prompt the description, so a natural-language request turns into a real ticket.
-    if not name and prompt:
-        name = prompt.splitlines()[0].strip()[:120]
-        description = description or prompt
-    if not name:
-        return {"ok": False, "error": "ticket name (or chat prompt) is required"}
-    data: dict[str, Any] = {"name": name, "source_tool": payload.get("source_tool") or "urirun-host-dashboard"}
-    if description:
-        data["description"] = description
-    for key in ("priority", "queue", "labels", "prompt"):
-        value = payload.get(key)
-        if value not in (None, ""):
-            data[key] = value
-    ticket = planfile_adapter.create_ticket(project, data)
-    return {"ok": True, "ticket": ticket}
+
 
 
 
