@@ -213,6 +213,8 @@ from .scanner_bridge import (
     scanner_best_take as _scanner_best_take,
     scanner_best_update as _scanner_best_update,
     scanner_staging_dir as _scanner_staging_dir,
+    staging_keep_paths as _staging_keep_paths,
+    prune_scanner_staging as _prune_scanner_staging_impl,
     visual_quality_score as _visual_quality_score,
     scanner_live_state_from_streams as _scanner_live_state_from_streams_impl,
     scanner_live_store_locked as _scanner_live_store_locked,
@@ -312,6 +314,53 @@ else:
     _DOCID_DEDUP_IMPORT_ERROR = None
 
 
+_FINGERPRINT_DISTINCT_FIELDS = _DOCID_FINGERPRINT_DISTINCT_FIELDS
+_VISUAL_NEAR_DISTANCE = _DOCID_VISUAL_NEAR_DISTANCE
+_VISUAL_STRONG_DISTANCE = _DOCID_VISUAL_STRONG_DISTANCE
+
+if _dedup_transaction_fingerprint is not None:
+    _transaction_fingerprint = _dedup_transaction_fingerprint
+    _fingerprint_match_count = _dedup_fingerprint_match_count
+    _image_dhash = _dedup_image_dhash
+    _image_phash = _dedup_image_phash
+    _dhash_distance = _dedup_dhash_distance
+    _metadata_completeness = _dedup_metadata_completeness
+    _document_matches = _dedup_document_matches
+    _business_key = _dedup_business_key
+else:
+    def _transaction_fingerprint(text: str) -> dict:
+        return {}
+
+    def _fingerprint_match_count(a: dict | None, b: dict | None) -> int:
+        return 0
+
+    def _image_dhash(path: str | Path) -> str:
+        return ""
+
+    def _image_phash(path: str | Path) -> str:
+        return ""
+
+    def _dhash_distance(a: str, b: str) -> int:
+        return 999
+
+    def _metadata_completeness(meta: dict | None) -> int:
+        return 0
+
+    def _document_matches(existing: dict, *, doc_id: str, source_sha256: str, text_sha256: str,
+                          fingerprint: dict, dhash: str, phash: str = "",
+                          metadata: dict | None = None, text: str = "") -> str:
+        if doc_id and existing.get("docId") == doc_id:
+            return "docId"
+        if source_sha256 and existing.get("sourceSha256") == source_sha256:
+            return "sourceSha256"
+        if text_sha256 and existing.get("textSha256") == text_sha256:
+            return "textSha256"
+        return ""
+
+    def _business_key(meta: dict | None):
+        return None
+
+
 _SERVICE_LOCK = threading.Lock()
 _SERVICE_SERVERS: dict[str, ThreadingHTTPServer] = {}
 _SERVICE_THREADS: dict[str, threading.Thread] = {}
@@ -322,7 +371,6 @@ _PAGE_ACTION_QUEUES = _SCANNER_PAGE_ACTION_QUEUES
 _is_phone_scanner_prompt = _is_phone_scanner_prompt_impl  # noqa: F401
 _torch_enabled_from_prompt = _torch_enabled_from_prompt_impl  # noqa: F401
 page_action_poll = _page_action_poll_impl  # noqa: F401
-_LAST_STAGING_PRUNE: float = 0.0  # module-level float; updated by _prune_scanner_staging
 
 
 
@@ -1170,140 +1218,6 @@ def _existing_document(index: dict, *, doc_id: str, source_sha256: str, text_sha
 
 
 
-def _staging_keep_paths() -> set[str]:
-    """Resolved paths that pruning must never remove: files of an archived document and of any
-    active (not-yet-finished) best-frame series. Best-effort; a read failure just keeps less."""
-    keep: set[str] = set()
-    try:
-        for doc in _load_document_index().get("documents", []):
-            if isinstance(doc, dict):
-                for key in ("originalPath", "cropPath"):
-                    if doc.get(key):
-                        keep.add(str(Path(str(doc[key])).expanduser().resolve()))
-    except Exception:  # noqa: BLE001
-        pass
-    try:
-        with _SCANNER_BEST_LOCK:
-            sessions = list(_SCANNER_BEST_SESSIONS.values())
-        for session in sessions:
-            for cand in (session.get("candidates") or []):
-                if isinstance(cand, dict):
-                    for key in ("originalPath", "displayPath", "overlayPath"):
-                        if cand.get(key):
-                            keep.add(str(Path(str(cand[key])).expanduser().resolve()))
-    except Exception:  # noqa: BLE001
-        pass
-    return keep
-
-
-def _prune_scanner_staging(*, min_interval: float = 60.0) -> int:
-    """Drop stale candidate frames from the staging dir, keeping a safety window.
-
-    The autonomous/best-frame scanner stages ~6 frames per capture and archives
-    only the chosen one, so the staging dir grows unboundedly. This prunes
-    orphaned frames, but NEVER touches:
-
-    - files of an archived document (referenced by the index),
-    - files of an active, not-yet-finished best series,
-    - any file younger than ``URIRUN_SCANNER_KEEP_RECENT`` seconds (default 90).
-
-    The recent-file window matters during scanning: a frame may still be needed
-    if image manipulation/capture errors and the user retries within the minute.
-    Throttled to once per ``min_interval`` seconds; best-effort, never raises.
-    """
-    global _LAST_STAGING_PRUNE
-    now = time.time()
-    if now - _LAST_STAGING_PRUNE < min_interval:
-        return 0
-    _LAST_STAGING_PRUNE = now
-    keep_recent = float(os.environ.get("URIRUN_SCANNER_KEEP_RECENT", "90"))
-    if keep_recent <= 0:
-        return 0
-    try:
-        staging = _scanner_staging_dir()
-    except Exception:  # noqa: BLE001
-        return 0
-    if not staging.is_dir():
-        return 0
-
-    keep = _staging_keep_paths()
-    cutoff = now - keep_recent
-    removed = 0
-    try:
-        entries = list(staging.iterdir())
-    except OSError:
-        return 0
-    for entry in entries:
-        try:
-            if not entry.is_file():
-                continue
-            if str(entry.resolve()) in keep:
-                continue
-            if entry.stat().st_mtime > cutoff:  # safety window for in-progress scans
-                continue
-            entry.unlink()
-            removed += 1
-        except OSError:
-            continue
-    return removed
-
-
-# --- Robust "same document" detection -----------------------------------------------
-# The document identity brain lives in docid.dedup. The dashboard aliases it here
-# so scanner/archive code does not duplicate token extraction, perceptual hashes
-# or match thresholds.
-
-_FINGERPRINT_DISTINCT_FIELDS = _DOCID_FINGERPRINT_DISTINCT_FIELDS
-_VISUAL_NEAR_DISTANCE = _DOCID_VISUAL_NEAR_DISTANCE
-_VISUAL_STRONG_DISTANCE = _DOCID_VISUAL_STRONG_DISTANCE
-
-if _dedup_transaction_fingerprint is not None:
-    _transaction_fingerprint = _dedup_transaction_fingerprint
-    _fingerprint_match_count = _dedup_fingerprint_match_count
-    _image_dhash = _dedup_image_dhash
-    _image_phash = _dedup_image_phash
-    _dhash_distance = _dedup_dhash_distance
-    _metadata_completeness = _dedup_metadata_completeness
-    _document_matches = _dedup_document_matches
-    _business_key = _dedup_business_key
-else:
-    def _transaction_fingerprint(text: str) -> dict:
-        return {}
-
-    def _fingerprint_match_count(a: dict | None, b: dict | None) -> int:
-        return 0
-
-    def _image_dhash(path: str | Path) -> str:
-        return ""
-
-    def _image_phash(path: str | Path) -> str:
-        return ""
-
-    def _dhash_distance(a: str, b: str) -> int:
-        return 999
-
-    def _metadata_completeness(meta: dict | None) -> int:
-        return 0
-
-    def _document_matches(existing: dict, *, doc_id: str, source_sha256: str, text_sha256: str,
-                          fingerprint: dict, dhash: str, phash: str = "",
-                          metadata: dict | None = None, text: str = "") -> str:
-        if doc_id and existing.get("docId") == doc_id:
-            return "docId"
-        if source_sha256 and existing.get("sourceSha256") == source_sha256:
-            return "sourceSha256"
-        if text_sha256 and existing.get("textSha256") == text_sha256:
-            return "textSha256"
-        return ""
-
-    def _business_key(meta: dict | None):
-        return None
-
-
-_MERGE_METADATA_FIELDS = ("type", "date", "contractor", "amount", "currency")
-_BLANK_METADATA_MARKERS = {"", "kwota-nieznana", "nieznana", "unknown", "n/a", "-", "kontrahent-nieznany"}
-
-
 def _is_blank_metadata(value: Any) -> bool:
     return str(value or "").strip().lower() in _BLANK_METADATA_MARKERS
 
@@ -1937,7 +1851,7 @@ def _register_scanner_result(
 
 
 def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
-    _prune_scanner_staging()
+    _prune_scanner_staging_impl(_scanner_staging_dir)
     mode = str(payload.get("mode") or "").lower()
     archive = not (payload.get("archive") is False or mode in {"candidate", "best-candidate", "analyze", "analysis"})
     mime, raw, digest, ext = _decode_capture_image(str(payload.get("image") or ""))
@@ -2032,7 +1946,7 @@ def scanner_capture(project: str, db: str | None, payload: dict) -> dict:
 
 
 def scanner_best_finish(project: str, db: str | None, payload: dict) -> dict:
-    _prune_scanner_staging()
+    _prune_scanner_staging_impl(_scanner_staging_dir)
     series_id = str(payload.get("seriesId") or "").strip()
     if not series_id:
         raise ValueError("seriesId is required")

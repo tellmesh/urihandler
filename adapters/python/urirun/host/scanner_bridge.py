@@ -14,6 +14,7 @@ from typing import Any, Callable
 from urllib.parse import quote
 
 from .widgets import query_value
+from .document_sync import load_document_index as _load_document_index
 
 
 PAGE_ACTION_LOCK = threading.Lock()
@@ -1263,3 +1264,70 @@ def ensure_best_overlay(best: dict, crop: dict, quality: dict, original_path: Pa
         best["overlay"] = overlay
         best["overlayPath"] = overlay_path
     return overlay, overlay_path
+
+
+_LAST_STAGING_PRUNE: float = 0.0
+
+
+def staging_keep_paths() -> set[str]:
+    """Resolved paths that pruning must never remove: files of an archived document and of any
+    active (not-yet-finished) best-frame series. Best-effort; a read failure just keeps less."""
+    keep: set[str] = set()
+    try:
+        for doc in _load_document_index().get("documents", []):
+            if isinstance(doc, dict):
+                for key in ("originalPath", "cropPath"):
+                    if doc.get(key):
+                        keep.add(str(Path(str(doc[key])).expanduser().resolve()))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        with SCANNER_BEST_LOCK:
+            sessions = list(SCANNER_BEST_SESSIONS.values())
+        for session in sessions:
+            for cand in (session.get("candidates") or []):
+                if isinstance(cand, dict):
+                    for key in ("originalPath", "displayPath", "overlayPath"):
+                        if cand.get(key):
+                            keep.add(str(Path(str(cand[key])).expanduser().resolve()))
+    except Exception:  # noqa: BLE001
+        pass
+    return keep
+
+
+def prune_scanner_staging(staging_dir_fn: Any, *, min_interval: float = 60.0) -> int:
+    """Drop stale candidate frames from the staging dir, keeping a safety window."""
+    global _LAST_STAGING_PRUNE
+    now = time.time()
+    if now - _LAST_STAGING_PRUNE < min_interval:
+        return 0
+    _LAST_STAGING_PRUNE = now
+    keep_recent = float(os.environ.get("URIRUN_SCANNER_KEEP_RECENT", "90"))
+    if keep_recent <= 0:
+        return 0
+    try:
+        staging = staging_dir_fn()
+    except Exception:  # noqa: BLE001
+        return 0
+    if not staging.is_dir():
+        return 0
+    keep = staging_keep_paths()
+    cutoff = now - keep_recent
+    removed = 0
+    try:
+        entries = list(staging.iterdir())
+    except OSError:
+        return 0
+    for entry in entries:
+        try:
+            if not entry.is_file():
+                continue
+            if str(entry.resolve()) in keep:
+                continue
+            if entry.stat().st_mtime > cutoff:
+                continue
+            entry.unlink()
+            removed += 1
+        except OSError:
+            continue
+    return removed
