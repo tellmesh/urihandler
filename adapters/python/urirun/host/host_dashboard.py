@@ -388,10 +388,6 @@ _PAGE_ACTION_QUEUES = _SCANNER_PAGE_ACTION_QUEUES
 _is_phone_scanner_prompt = _is_phone_scanner_prompt_impl  # noqa: F401
 _torch_enabled_from_prompt = _torch_enabled_from_prompt_impl  # noqa: F401
 page_action_poll = _page_action_poll_impl  # noqa: F401
-def _prune_scanner_staging(*, min_interval: float = 60.0) -> int:
-    """Wrapper: injects _scanner_staging_dir for monkeypatch-friendly calls."""
-    return _prune_scanner_staging_impl(_scanner_staging_dir, min_interval=min_interval)
-_LAST_STAGING_PRUNE: float = 0.0
 
 
 def _json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict) -> None:
@@ -1764,18 +1760,6 @@ def _service_restart_argv(payload: dict, *, service: str, env_prefix: str, defau
         env_prefix=env_prefix,
         default_unit=default_unit,
     )
-
-
-def _chat_service_restart_argv(
-    project: str,
-    db: str | None,
-    config: str | None,
-    node_urls: list[str] | None,
-    token: str | None,
-    identity: str | None,
-    payload: dict,
-) -> tuple[list[str] | None, dict]:
-    return _chat_service_restart_argv_impl(project, db, config, node_urls, token, identity, payload)
 
 
 def restart_chat_service(
@@ -4652,28 +4636,6 @@ def _free_port_from_old_scanner(port: int, *, force: bool = False, emit: bool = 
         emit=emit,
         is_target=_is_scanner_process,
         event_prefix="urirun.service_scanner",
-    )
-
-
-def _free_port_from_old_chat(port: int, *, force: bool = False, emit: bool = False) -> dict:
-    """Free a chat-dashboard-owned port before rebinding it."""
-    return _free_port_from_matching_processes(
-        port,
-        force=force,
-        emit=emit,
-        is_target=_is_chat_process,
-        event_prefix="urirun.service_chat",
-    )
-
-
-def _free_port_from_old_android_node(port: int, *, force: bool = False, emit: bool = False) -> dict:
-    """Free an android-node-owned port before rebinding it."""
-    return _free_port_from_matching_processes(
-        port,
-        force=force,
-        emit=emit,
-        is_target=_is_android_node_process,
-        event_prefix="urirun.service_android_node",
     )
 
 
