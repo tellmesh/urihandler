@@ -546,7 +546,9 @@ def _enrich_remote_attachments(attachments: list, results: dict) -> None:
     accessible, injects a ``/api/file/remote?nodeUrl=…&path=…`` proxy URL so the
     dashboard can display the screenshot inline without an SSH transfer."""
     from urllib.parse import quote as _quote  # noqa: PLC0415
+    import base64 as _b64, os as _os  # noqa: PLC0415
     path_to_node: dict[str, str] = {}
+    path_inline: dict[str, str] = {}   # remote path -> pngBase64 the node returned INLINE in /run
     for sr in results.values():
         if not isinstance(sr, dict):
             continue
@@ -559,14 +561,37 @@ def _enrich_remote_attachments(attachments: list, results: dict) -> None:
         p = str(val.get("path") or "")
         if p:
             path_to_node[p] = node_url
+            if val.get("pngBase64"):
+                path_inline[p] = str(val.get("pngBase64"))
+    _shot_dir = _os.path.join(
+        _os.path.expanduser(_os.environ.get("URIRUN_ARTIFACT_DIR", "~/.urirun/artifacts")), "screenshots")
     for att in attachments:
         if not isinstance(att, dict):
             continue
         if att.get("fileExists") or att.get("filePreviewUrl"):
             continue
         path = str(att.get("path") or "")
+        if not path:
+            continue
+        # Preferred: the node returned the image INLINE (base64) in the /run result — save it to the
+        # host artifact dir and point at the LOCAL file. Works even for nodes without an fs read
+        # route (the only path that succeeds when the remote can't serve files), and avoids the
+        # proxy roundtrip. Falls through to the proxy when no inline bytes are present.
+        b64 = path_inline.get(path)
+        if b64:
+            try:
+                _os.makedirs(_shot_dir, exist_ok=True)
+                local = _os.path.join(_shot_dir, _os.path.basename(path))
+                with open(local, "wb") as _fh:
+                    _fh.write(_b64.b64decode(b64))
+                att["path"] = local
+                att["fileExists"] = True
+                att["filePreviewUrl"] = att["previewUrl"] = f"/api/file?path={_quote(local)}"
+                continue
+            except Exception:  # noqa: BLE001 - fall back to the remote proxy below
+                pass
         node_url = path_to_node.get(path)
-        if node_url and path:
+        if node_url:
             att["fileExists"] = True
             att["filePreviewUrl"] = f"/api/file/remote?nodeUrl={_quote(node_url)}&path={_quote(path)}"
             if not att.get("previewUrl"):
