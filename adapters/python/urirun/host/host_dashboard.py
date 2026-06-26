@@ -103,6 +103,13 @@ from .fs_transfer import (
     fs_file_transfer_fallback_bindings as _fs_file_transfer_fallback_bindings_impl,
     node_has_route as _node_has_route_impl,
     route_key as _route_key_impl,
+
+    short_value as _short_value,
+    compact_remote_run as _compact_remote_run,
+    route_not_found_remedy as _route_not_found_remedy,
+    envelope_error_message as _envelope_error_message,
+    remote_write_error as _remote_write_error,
+    remote_read_error as _remote_read_error,
 )
 from .node_types import (
     annotate_node_types as _annotate_node_types_impl,
@@ -847,114 +854,6 @@ def _ensure_node_uri_routes(
         timeout=timeout,
         roots=roots,
     )
-
-
-def _short_value(value: Any, *, limit: int = 600) -> Any:
-    if isinstance(value, str):
-        return value if len(value) <= limit else value[:limit] + "..."
-    if isinstance(value, dict):
-        return {str(k): _short_value(v, limit=limit) for k, v in value.items() if k not in {"bytes_b64", "dataUri"}}
-    if isinstance(value, list):
-        return [_short_value(item, limit=limit) for item in value[:20]]
-    return value
-
-
-def _compact_remote_run(run: dict) -> dict:
-    envelope = run.get("envelope") if isinstance(run.get("envelope"), dict) else {}
-    result = envelope.get("result") if isinstance(envelope.get("result"), dict) else {}
-    compact = {
-        "ok": bool(run.get("ok")),
-        "envelopeOk": envelope.get("ok"),
-    }
-    if envelope.get("error"):
-        compact["error"] = _short_value(envelope.get("error"))
-    if result:
-        compact["result"] = _short_value({
-            key: result.get(key)
-            for key in ("kind", "status", "ok", "error", "value", "stdout", "stderr")
-            if key in result
-        })
-    value = run.get("value")
-    if value not in ({}, None):
-        compact["value"] = _short_value(value)
-    return {k: v for k, v in compact.items() if v not in ({}, None, "")}
-
-
-def _route_not_found_remedy(error: Any) -> str:
-    """Actionable message when the remote node lacks the fs write route (its connector is
-    outdated): a NOT_FOUND / "route not found" on write-b64 means urirun-connector-fs on the
-    target node predates the route, so every file fails identically. Empty when not that case."""
-    if not isinstance(error, dict):
-        return ""
-    message = str(error.get("message") or "")
-    if (
-        str(error.get("category") or "") == "NOT_FOUND"
-        or str(error.get("type") or "").casefold() == "route"
-        or "route not found" in message.lower()
-    ):
-        return ("remote node is missing an fs file-transfer route "
-                "(fs://host/file/command/write-b64 or fs://host/file/query/read-b64) — "
-                f"update urirun-connector-fs on the target node; node said: {message or error}")
-    return ""
-
-
-def _envelope_error_message(error: Any) -> str | None:
-    """Render an error field to a message string, or None when there is no error."""
-    if isinstance(error, dict):
-        return str(error.get("message") or error)
-    if error:
-        return str(error)
-    return None
-
-
-def _remote_write_error(run: dict, value: Any, *, expected_sha: str, remote_sha: str | None) -> str:
-    envelope = run.get("envelope") if isinstance(run.get("envelope"), dict) else {}
-    # A route/transport NOT_FOUND means the call never reached the write handler, so `value` is
-    # empty and "no sha256" would be misleading — surface the connector-outdated remedy first.
-    remedy = _route_not_found_remedy(envelope.get("error")) or _route_not_found_remedy(
-        value.get("error") if isinstance(value, dict) else None) or _route_not_found_remedy(
-        value if isinstance(value, dict) else None)
-    if remedy:
-        return remedy
-    if isinstance(value, dict):
-        msg = _envelope_error_message(value.get("error"))
-        if msg is not None:
-            return msg
-        if value.get("ok") is False:
-            return "remote write returned ok=false"
-        if not remote_sha:
-            return "remote write returned no sha256"
-        if remote_sha != expected_sha:
-            return f"sha256 mismatch: expected {expected_sha}, got {remote_sha}"
-    msg = _envelope_error_message(envelope.get("error"))
-    if msg is not None:
-        return msg
-    if value:
-        return f"remote write returned non-object result: {_short_value(value)!r}"
-    return "remote write failed without a result"
-
-
-def _remote_read_error(run: dict, value: Any, *, expected_sha: str, remote_sha: str | None) -> str:
-    remedy = _route_not_found_remedy(value if isinstance(value, dict) else None)
-    if remedy:
-        return remedy
-    if isinstance(value, dict):
-        msg = _envelope_error_message(value.get("error"))
-        if msg is not None:
-            return msg
-        if value.get("ok") is False:
-            return "remote read returned ok=false"
-        if not remote_sha:
-            return "remote read returned no sha256"
-        if remote_sha != expected_sha:
-            return f"read-back sha256 mismatch: expected {expected_sha}, got {remote_sha}"
-    envelope = run.get("envelope") if isinstance(run.get("envelope"), dict) else {}
-    msg = _envelope_error_message(envelope.get("error"))
-    if msg is not None:
-        return msg
-    if value:
-        return f"remote read returned non-object result: {_short_value(value)!r}"
-    return "remote read failed without a result"
 
 
 def _document_sync_deps() -> DocumentSyncDeps:
