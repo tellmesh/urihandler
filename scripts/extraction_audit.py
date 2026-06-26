@@ -117,6 +117,24 @@ PRESETS: dict[str, dict] = {
         "allow_outward": ("urirun.runtime.", "urirun.connectors."),
         "allow_exact": ("urirun", "urirun.runtime"),
     },
+    "I": {
+        "name": "twin (episodic memory + reversible engine)",
+        # Candidate for urirun-twin: the reversible-process engine + episodic memory store.
+        # twin_store + episode are pure-Python (no urirun.* imports).
+        # reversible re-exports TwinMemory/environment_fingerprint from twin_store.
+        # twin_bridge is the host-side integration shim — it imports from host.* so it
+        # stays behind; the candidate is only the three node-layer modules.
+        "package": {
+            "urirun.node.twin_store",
+            "urirun.node.episode",
+            "urirun.node.reversible",
+        },
+        "package_prefixes": (),
+        # reversible may reference urirun.node.* data-layer utilities (routing, recovery);
+        # allow the full node substrate as a downward dep.
+        "allow_outward": ("urirun.runtime.", "urirun.node.", "urirun.connectors."),
+        "allow_exact": ("urirun", "urirun.runtime"),
+    },
 }
 
 

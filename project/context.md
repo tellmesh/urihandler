@@ -1,5 +1,5 @@
 # System Architecture Analysis
-<!-- generated in 0.01s -->
+<!-- generated in 0.00s -->
 
 ## Overview
 
@@ -7,10 +7,10 @@
 - **Primary Language**: python
 - **Languages**: python: 157, json: 13, shell: 10, yaml: 5, csharp: 4
 - **Analysis Mode**: static
-- **Total Functions**: 1837
+- **Total Functions**: 1856
 - **Total Classes**: 57
 - **Modules**: 217
-- **Entry Points**: 675
+- **Entry Points**: 677
 
 ## Architecture by Module
 
@@ -20,7 +20,7 @@
 - **File**: `v2.py`
 
 ### adapters.python.urirun.host.host_dashboard
-- **Functions**: 92
+- **Functions**: 102
 - **File**: `host_dashboard.py`
 
 ### v1.js.urirun-v1
@@ -41,13 +41,13 @@
 - **Functions**: 50
 - **File**: `node_cli.py`
 
+### adapters.python.urirun.node.flow
+- **Functions**: 49
+- **File**: `flow.py`
+
 ### adapters.python.urirun.host.object_registry
 - **Functions**: 46
 - **File**: `object_registry.py`
-
-### adapters.python.urirun.node.flow
-- **Functions**: 45
-- **File**: `flow.py`
 
 ### adapters.python.urirun_runtime._registry
 - **Functions**: 43
@@ -85,7 +85,7 @@
 - **File**: `discovery.py`
 
 ### adapters.python.urirun.host.chat_orchestrator
-- **Functions**: 28
+- **Functions**: 29
 - **Classes**: 1
 - **File**: `chat_orchestrator.py`
 
@@ -620,7 +620,7 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.host.node_cli.probe_command` - 21 calls
 - `adapters.python.urirun.host.dashboard_api.chat_history` - 21 calls
 - `adapters.python.urirun.node.manage.connector_install` - 21 calls
-- `adapters.python.urirun.host.host_dashboard.uri_invoke` - 21 calls
+- `examples.matrix.verify.main` - 20 calls
 
 ## System Interactions
 

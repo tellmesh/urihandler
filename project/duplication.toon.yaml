@@ -1,31 +1,31 @@
-# redup/duplication | 12 groups | 129f 26157L | 2026-06-26
+# redup/duplication | 13 groups | 129f 26227L | 2026-06-26
 
 SUMMARY:
   files_scanned: 129
-  total_lines:   26157
-  dup_groups:    12
-  dup_fragments: 28
-  saved_lines:   103
-  scan_ms:       659
+  total_lines:   26227
+  dup_groups:    13
+  dup_fragments: 30
+  saved_lines:   106
+  scan_ms:       664
 
 HOTSPOTS[7] (files with most duplication):
+  host/host_dashboard.py  dup=40L  groups=3  frags=6  (0.2%)
   __init__.py  dup=38L  groups=1  frags=3  (0.1%)
-  host/host_dashboard.py  dup=34L  groups=2  frags=4  (0.1%)
   host/dashboard_api.py  dup=25L  groups=2  frags=5  (0.1%)
   host/service_control.py  dup=20L  groups=1  frags=2  (0.1%)
   host/planfile_adapter.py  dup=10L  groups=2  frags=3  (0.0%)
   host/chat_orchestrator.py  dup=7L  groups=1  frags=1  (0.0%)
   node/skill.py  dup=6L  groups=1  frags=2  (0.0%)
 
-DUPLICATES[12] (ranked by impact):
+DUPLICATES[13] (ranked by impact):
   [a58866334f01e99a] ! STRU  command  L=16 N=3 saved=32 sim=1.00
       __init__.py:47-62  (command)
       __init__.py:65-69  (shell)
       __init__.py:72-88  (handler)
   [8d9b83d2bd35fb5d]   STRU  _free_port_from_old_scanner  L=9 N=3 saved=18 sim=1.00
-      host/host_dashboard.py:1744-1752  (_free_port_from_old_scanner)
-      host/host_dashboard.py:1755-1763  (_free_port_from_old_chat)
-      host/host_dashboard.py:1766-1774  (_free_port_from_old_android_node)
+      host/host_dashboard.py:1786-1794  (_free_port_from_old_scanner)
+      host/host_dashboard.py:1797-1805  (_free_port_from_old_chat)
+      host/host_dashboard.py:1808-1816  (_free_port_from_old_android_node)
   [19899f9cfc86ca65]   STRU  is_scanner_process  L=10 N=2 saved=10 sim=1.00
       host/service_control.py:213-222  (is_scanner_process)
       host/service_control.py:236-245  (is_android_node_process)
@@ -46,6 +46,9 @@ DUPLICATES[12] (ranked by impact):
   [6fb5c445bd927117]   STRU  _register_ticket_creator  L=4 N=2 saved=4 sim=1.00
       host/planfile_adapter.py:284-287  (_register_ticket_creator)
       node/keyauth.py:176-179  (_register_signer)
+  [b553f56ee7ce3380]   STRU  _artifact_meta_dict  L=3 N=2 saved=3 sim=1.00
+      host/host_dashboard.py:622-624  (_artifact_meta_dict)
+      host/host_dashboard.py:1079-1081  (_uri_action_payload)
   [540268ba351b0419]   STRU  _data_artifact_register  L=3 N=2 saved=3 sim=1.00
       host/node_cli.py:97-99  (_data_artifact_register)
       host/node_cli.py:106-108  (_data_check_add)
@@ -59,7 +62,7 @@ DUPLICATES[12] (ranked by impact):
       node/doctor.py:74-76  (_api_id)
       node/transport.py:407-409  (_configured_api_id)
 
-REFACTOR[12] (ranked by priority):
+REFACTOR[13] (ranked by priority):
   [1] ○ extract_function   → utils/command.py
       WHY: 3 occurrences of 16-line block across 1 files — saves 32 lines
       FILES: __init__.py
@@ -84,16 +87,19 @@ REFACTOR[12] (ranked by priority):
   [8] ○ extract_function   → utils/_register_ticket_creator.py
       WHY: 2 occurrences of 4-line block across 2 files — saves 4 lines
       FILES: host/planfile_adapter.py, node/keyauth.py
-  [9] ○ extract_function   → host/utils/_data_artifact_register.py
+  [9] ○ extract_function   → host/utils/_artifact_meta_dict.py
+      WHY: 2 occurrences of 3-line block across 1 files — saves 3 lines
+      FILES: host/host_dashboard.py
+  [10] ○ extract_function   → host/utils/_data_artifact_register.py
       WHY: 2 occurrences of 3-line block across 1 files — saves 3 lines
       FILES: host/node_cli.py
-  [10] ○ extract_function   → host/utils/start_ticket.py
+  [11] ○ extract_function   → host/utils/start_ticket.py
       WHY: 2 occurrences of 3-line block across 1 files — saves 3 lines
       FILES: host/planfile_adapter.py
-  [11] ○ extract_function   → node/utils/save_host_config.py
+  [12] ○ extract_function   → node/utils/save_host_config.py
       WHY: 2 occurrences of 3-line block across 1 files — saves 3 lines
       FILES: node/config.py
-  [12] ○ extract_function   → node/utils/_api_id.py
+  [13] ○ extract_function   → node/utils/_api_id.py
       WHY: 2 occurrences of 3-line block across 2 files — saves 3 lines
       FILES: node/doctor.py, node/transport.py
 
@@ -118,7 +124,7 @@ DEPENDENCY_RISK[1] (duplicates spanning multiple packages):
       host/planfile_adapter.py
       node/keyauth.py
 
-EFFORT_ESTIMATE (total ≈ 3.6h):
+EFFORT_ESTIMATE (total ≈ 3.7h):
   medium command                             saved=32L  ~64min
   medium _free_port_from_old_scanner         saved=18L  ~36min
   easy   is_scanner_process                  saved=10L  ~20min
@@ -127,10 +133,10 @@ EFFORT_ESTIMATE (total ≈ 3.6h):
   easy   _host_db                            saved=6L  ~12min
   easy   ready_bindings                      saved=6L  ~12min
   easy   _register_ticket_creator            saved=4L  ~16min
+  easy   _artifact_meta_dict                 saved=3L  ~6min
   easy   _data_artifact_register             saved=3L  ~6min
-  easy   start_ticket                        saved=3L  ~6min
-  ... +2 more (~12min)
+  ... +3 more (~18min)
 
 METRICS-TARGET:
-  dup_groups:  12 → 0
-  saved_lines: 103 lines recoverable
+  dup_groups:  13 → 0
+  saved_lines: 106 lines recoverable

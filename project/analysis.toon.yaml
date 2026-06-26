@@ -1,17 +1,19 @@
-# code2llm | 218f 36977L | python:157,json:13,shell:10,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-26
-# generated in 0.12s
-# CC̅=4.6 | critical:2/1837 | dups:0 | cycles:0
+# code2llm | 218f 37047L | python:157,json:13,shell:10,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-26
+# generated in 0.10s
+# CC̅=4.6 | critical:4/1856 | dups:0 | cycles:0
 
-HEALTH[3]:
+HEALTH[5]:
   🔴 GOD   adapters/python/urirun/node/reversible.py = 547L, 8 classes, 33m, max CC=14
   🟡 CC    run CC=16 (limit:15)
+  🟡 CC    _infer_node_from_flow CC=16 (limit:15)
+  🟡 CC    _sync_targets_from_flow CC=24 (limit:15)
   🟡 CC    chat_ask CC=18 (limit:15)
 
 REFACTOR[2]:
   1. split adapters/python/urirun/node/reversible.py  (god module)
-  2. split 2 high-CC methods  (CC>15)
+  2. split 4 high-CC methods  (CC>15)
 
-PIPELINES[617]:
+PIPELINES[619]:
   [1] Src [http]: http
       PURITY: 100% pure
   [2] Src [_attacker_key]: _attacker_key
@@ -123,29 +125,29 @@ LAYERS:
   │ release-bump.sh             29L  0C    0m  CC=0.0    ←0
   │ sync-versions.sh            25L  0C    0m  CC=0.0    ←0
   │
-  adapters/                       CC̄=4.7    ←in:18  →out:0
+  adapters/                       CC̄=4.6    ←in:18  →out:0
   │ !! html_templates            4921L  0C    3m  CC=6      ←0
   │ !! v2                        2033L  2C  120m  CC=14     ←5
-  │ !! host_dashboard            1849L  0C   92m  CC=13     ←1
-  │ !! chat_orchestrator         1127L  1C   28m  CC=18     ←0
-  │ !! flow                      1011L  0C   45m  CC=12     ←6
+  │ !! host_dashboard            1891L  0C  102m  CC=10     ←1
+  │ !! chat_orchestrator         1175L  1C   29m  CC=24     ←0
   │ !! server                     996L  3C   55m  CC=14     ←3
   │ !! object_registry            981L  0C   46m  CC=14     ←0
+  │ !! flow                       939L  0C   49m  CC=10     ←6
   │ !! node_cli                   914L  0C   50m  CC=14     ←1
-  │ !! __init__                   766L  1C   53m  CC=14     ←14
+  │ !! __init__                   766L  1C   53m  CC=14     ←13
   │ !! _registry                  718L  0C   43m  CC=14     ←1
   │ !! flow_planner               706L  0C   31m  CC=14     ←3
   │ !! manage                     599L  0C   36m  CC=13     ←0
-  │ !! diagnostics                578L  1C   18m  CC=11     ←2
+  │ !! diagnostics                583L  1C   19m  CC=8      ←2
   │ !! client                     558L  1C   35m  CC=12     ←0
   │ !! flow_thin                  553L  1C   26m  CC=14     ←1
   │ !! reversible                 547L  8C   33m  CC=14     ←5
   │ !! transport                  540L  0C   24m  CC=14     ←3
   │ !! host_db                    527L  0C   33m  CC=11     ←0
-  │ !! twin_bridge                513L  0C   25m  CC=14     ←1
+  │ !! twin_bridge                519L  0C   25m  CC=16     ←1
   │ service_control            462L  0C   23m  CC=11     ←0
   │ connector_scaffold         413L  0C   11m  CC=3      ←0
-  │ recovery                   391L  0C   22m  CC=12     ←2
+  │ recovery                   393L  0C   23m  CC=10     ←2
   │ host_integrations          374L  0C   16m  CC=8      ←0
   │ discovery                  372L  0C   29m  CC=14     ←2
   │ fs_transfer                364L  0C   15m  CC=14     ←3
@@ -182,13 +184,13 @@ LAYERS:
   │ backend_registry           129L  2C   10m  CC=11     ←0
   │ event_schema               125L  3C    2m  CC=5      ←1
   │ contracts                  119L  0C    8m  CC=5      ←0
+  │ routing                    119L  0C    6m  CC=14     ←1
   │ _artifacts                 111L  0C    5m  CC=9      ←2
   │ flow_verify                111L  0C    7m  CC=10     ←1
   │ dashboard_http             104L  0C    6m  CC=8      ←1
   │ progress                    89L  1C   11m  CC=3      ←0
   │ connector_sdk               87L  0C    3m  CC=5      ←1
   │ urirun.go                   80L  3C    5m  CC=3      ←0
-  │ routing                     80L  0C    4m  CC=14     ←1
   │ formatting                  80L  0C    4m  CC=8      ←2
   │ _version                    76L  0C    5m  CC=5      ←1
   │ Urirun.php                  73L  1C    5m  CC=3      ←0
@@ -361,8 +363,8 @@ COUPLING:
   examples.matrix                1                                                                                   ──                 
           scripts                1                                                                                                    ──
   CYCLES: none
-  HUB: adapters/ (fan-in=18)
   HUB: v1.js/ (fan-in=6)
+  HUB: adapters/ (fan-in=18)
   SMELL: adapters.python/ fan-out=26 → split needed
 
 EXTERNAL:
