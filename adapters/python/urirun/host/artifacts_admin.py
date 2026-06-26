@@ -333,3 +333,47 @@ def collect_attachments(value: Any, project: str, *, limit: int = 24) -> list[di
 
     walk(value)
     return attachments
+
+
+def iter_orphan_candidates(roots: list, seen: set, global_metadata: set):
+    """Yield resolved ``*.json`` sidecar paths under roots, skipping the index and known metadata."""
+    for root in roots:
+        try:
+            resolved_root = root.resolve()
+        except OSError:
+            continue
+        if not resolved_root.is_dir():
+            continue
+        for candidate in resolved_root.rglob("*.json"):
+            try:
+                target = candidate.resolve()
+            except OSError:
+                continue
+            if target in seen or target in global_metadata or target.name == "index.json":
+                continue
+            seen.add(target)
+            yield target
+
+
+
+
+def cleanup_one_sidecar(target: Path, project: str, *, delete_files: bool, sibling_suffixes: tuple) -> dict | None:
+    """Return a delete-info record for an orphan sidecar, or None when it still has a real sibling."""
+    if not artifact_file_delete_allowed(str(target), project):
+        return {"path": str(target), "role": "orphan-sidecar", "deleted": False, "skipped": True, "error": "path is outside allowed artifact roots"}
+    siblings = [target.with_suffix(suffix) for suffix in sibling_suffixes]
+    if any(path.is_file() for path in siblings):
+        return None
+    info = {"path": str(target), "role": "orphan-sidecar", "deleted": False, "skipped": False, "error": ""}
+    if delete_files:
+        try:
+            target.unlink()
+            info["deleted"] = True
+        except OSError as exc:
+            info["error"] = str(exc)
+    else:
+        info["skipped"] = True
+        info["error"] = "dry run"
+    return info
+
+
