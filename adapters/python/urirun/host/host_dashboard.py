@@ -89,6 +89,7 @@ from .document_sync import (
     archive_scanned_document as _archive_scanned_document_impl,
     _transaction_fingerprint,
     _fingerprint_match_count,
+    _DOCUMENT_INDEX_LOCK,
 )
 from .discovery import (
     add_node_aliases as _add_node_aliases_impl,
@@ -334,7 +335,6 @@ except Exception as _err:  # noqa: BLE001
 _SERVICE_LOCK = threading.Lock()
 _SERVICE_SERVERS: dict[str, ThreadingHTTPServer] = {}
 _SERVICE_THREADS: dict[str, threading.Thread] = {}
-_DOCUMENT_INDEX_LOCK = threading.Lock()
 _PAGE_ACTION_LOCK = _SCANNER_PAGE_ACTION_LOCK
 _PAGE_ACTION_QUEUES = _SCANNER_PAGE_ACTION_QUEUES
 # Monkeypatch-friendly aliases (auto-sync moved these to scanner_bridge with _impl suffix)
@@ -2934,6 +2934,12 @@ def _chat_ask_general_build_result(
     db: str | None,
 ) -> dict:
     """Assemble, annotate, compact, and record the chat result after a successful flow run."""
+    # Strip non-JSON-serializable internals before spreading execution into the result.
+    # FlowEnvelope (returned by the thin driver) is a dataclass — convert to dict if present.
+    _env = execution.get("envelope")
+    if _env is not None and hasattr(_env, "__dataclass_fields__"):
+        import dataclasses as _dc  # noqa: PLC0415
+        execution = {**execution, "envelope": _dc.asdict(_env)}
     result = {
         "ok": bool(execution.get("ok")),
         "prompt": prompt,

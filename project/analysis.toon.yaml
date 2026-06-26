@@ -1,11 +1,11 @@
-# code2llm | 179f 43939L | python:118,json:13,shell:10,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-26
+# code2llm | 181f 44124L | python:120,json:13,shell:10,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-26
 # generated in 0.09s
-# CC̅=4.8 | critical:4/1858 | dups:0 | cycles:0
+# CC̅=4.8 | critical:4/1868 | dups:0 | cycles:0
 
 HEALTH[5]:
   🔴 GOD   adapters/python/urirun/node/reversible.py = 565L, 9 classes, 36m, max CC=15
   🟡 CC    _uri_rollback CC=15 (limit:15)
-  🟡 CC    _thin_driver CC=16 (limit:15)
+  🟡 CC    archive_scanned_document CC=15 (limit:15)
   🟡 CC    _normalize_flow_step CC=15 (limit:15)
   🟡 CC    _preflight CC=15 (limit:15)
 
@@ -13,7 +13,7 @@ REFACTOR[2]:
   1. split adapters/python/urirun/node/reversible.py  (god module)
   2. split 4 high-CC methods  (CC>15)
 
-PIPELINES[599]:
+PIPELINES[605]:
   [1] Src [http]: http
       PURITY: 100% pure
   [2] Src [_attacker_key]: _attacker_key
@@ -125,13 +125,13 @@ LAYERS:
   │
   adapters/                       CC̄=4.8    ←in:10  →out:0
   │ !! html_templates            4723L  0C    0m  CC=0.0    ←0
-  │ !! host_dashboard            4163L  0C  150m  CC=14     ←0
+  │ !! host_dashboard            3723L  0C  139m  CC=14     ←0
   │ !! v2                        2003L  1C  122m  CC=14     ←4
-  │ !! flow                      1825L  1C   86m  CC=16     ←3
-  │ !! document_sync             1382L  2C   58m  CC=14     ←2
+  │ !! flow                      1931L  1C   89m  CC=15     ←3
+  │ !! document_sync             1387L  2C   58m  CC=15     ←2
   │ !! scanner_bridge            1333L  1C   63m  CC=13     ←1
+  │ !! object_registry           1044L  0C   54m  CC=14     ←0
   │ !! server                     991L  3C   56m  CC=14     ←4
-  │ !! object_registry            971L  0C   51m  CC=14     ←0
   │ !! node_cli                   896L  0C   48m  CC=14     ←1
   │ !! __init__                   737L  1C   51m  CC=14     ←15
   │ !! _registry                  718L  0C   43m  CC=14     ←1
@@ -145,17 +145,17 @@ LAYERS:
   │ !! diagnostics                550L  1C   16m  CC=14     ←2
   │ !! transport                  540L  0C   24m  CC=14     ←3
   │ !! host_db                    527L  0C   33m  CC=11     ←0
-  │ !! document_metadata          515L  0C   21m  CC=14     ←1
+  │ !! document_metadata          519L  0C   21m  CC=14     ←1
   │ domain_monitor             487L  1C   25m  CC=11     ←1
+  │ artifacts_admin            484L  0C   29m  CC=14     ←1
   │ v1                         471L  0C   25m  CC=14     ←1
   │ service_control            462L  0C   23m  CC=11     ←0
   │ manage                     443L  0C   29m  CC=12     ←0
   │ codegen                    438L  0C   19m  CC=14     ←0
   │ connector_scaffold         413L  0C   11m  CC=3      ←0
-  │ artifacts_admin            379L  0C   26m  CC=12     ←1
   │ recovery                   372L  0C   18m  CC=14     ←2
   │ task_planner               366L  2C   16m  CC=12     ←3
-  │ fs_transfer                364L  0C   15m  CC=14     ←2
+  │ fs_transfer                364L  0C   15m  CC=14     ←3
   │ discovery                  362L  0C   29m  CC=14     ←0
   │ host_integrations          356L  0C   15m  CC=8      ←0
   │ task_cli                   344L  0C   25m  CC=12     ←1
@@ -167,6 +167,7 @@ LAYERS:
   │ secrets                    263L  1C   18m  CC=9      ←1
   │ connect_catalog            255L  0C   17m  CC=13     ←0
   │ adopt_pack                 245L  0C   12m  CC=13     ←0
+  │ connector_admin            240L  0C    9m  CC=14     ←1
   │ config                     226L  0C   17m  CC=9      ←3
   │ doctor                     217L  0C   13m  CC=9      ←1
   │ v2_mcp                     209L  0C   11m  CC=9      ←0
@@ -184,9 +185,9 @@ LAYERS:
   │ capability                 160L  0C    6m  CC=12     ←0
   │ agent                      151L  0C    6m  CC=10     ←0
   │ uinput                     148L  0C    9m  CC=10     ←0
-  │ connector_admin            147L  0C    7m  CC=14     ←1
   │ scanner_net                140L  0C   10m  CC=8      ←1
   │ scheduler                  135L  0C    6m  CC=4      ←0
+  │ decision_loop              134L  0C    5m  CC=13     ←0
   │ backend_registry           129L  2C   10m  CC=11     ←0
   │ contracts                  119L  0C    8m  CC=5      ←1
   │ daemon                     117L  0C    3m  CC=14     ←0
@@ -194,6 +195,7 @@ LAYERS:
   │ v2_service                 115L  0C    3m  CC=9      ←2
   │ introspect                 112L  0C    4m  CC=9      ←1
   │ _artifacts                 111L  0C    5m  CC=9      ←2
+  │ twin_bridge                105L  0C    5m  CC=11     ←0
   │ openapi_import              95L  0C    6m  CC=12     ←0
   │ declarative                 95L  0C    3m  CC=14     ←0
   │ tree                        91L  0C    4m  CC=11     ←0
@@ -324,8 +326,8 @@ COUPLING:
   examples.matrix                1                                                                                   ──                 
           scripts                1                                                                                                    ──
   CYCLES: none
-  HUB: adapters/ (fan-in=10)
   HUB: v1.js/ (fan-in=6)
+  HUB: adapters/ (fan-in=10)
   SMELL: adapters.python/ fan-out=18 → split needed
 
 EXTERNAL:

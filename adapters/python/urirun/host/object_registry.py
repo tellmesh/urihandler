@@ -971,15 +971,31 @@ def uri_action_catalog() -> list[dict]:
 
 
 
+def _node_add_parse_payload(
+    payload: dict,
+    normalize_node_type: "Any",
+    node_type_tags: "Any",
+) -> "tuple[str, str, Any, Any, Any]":
+    """Extract and normalise scalar fields from a node-add payload.
+
+    Returns (name, raw_url, kind, meta, tags) — all validation happens in the caller."""
+    name = str(payload.get("name") or "").strip()
+    raw_url = str(payload.get("url") or "").strip()
+    kind_raw = payload.get("kind") or payload.get("type") or payload.get("nodeType")
+    kind = normalize_node_type(kind_raw) if normalize_node_type else None
+    meta_val = payload.get("meta")
+    meta = meta_val if isinstance(meta_val, dict) else None
+    tags = node_type_tags(kind, payload.get("tags")) if (node_type_tags and kind) else None
+    return name, raw_url, kind, meta, tags
+
+
 def node_add(config: "str | None", payload: dict, *, normalize_node_type: "Any" = None,
              node_type_tags: "Any" = None) -> dict:
     """Persist a node (name + URL) to the host config so the host resolves it for real runs, and
     mirror it to ~/.urirun/nodes.json so urifix can auto-repair node_url."""
     from urirun.node import config as node_config  # noqa: PLC0415
     payload = payload if isinstance(payload, dict) else {}
-    name = str(payload.get("name") or "").strip()
-    raw_url = str(payload.get("url") or "").strip()
-    kind = normalize_node_type(payload.get("kind") or payload.get("type") or payload.get("nodeType")) if normalize_node_type else None
+    name, raw_url, kind, meta, tags = _node_add_parse_payload(payload, normalize_node_type, node_type_tags)
     if not name or not raw_url:
         return {"ok": False, "error": "name and url are required"}
     try:
@@ -990,8 +1006,6 @@ def node_add(config: "str | None", payload: dict, *, normalize_node_type: "Any" 
     if api_error:
         return {"ok": False, "error": api_error}
     capabilities = derive_node_capabilities(payload, apis)
-    meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else None
-    tags = node_type_tags(kind, payload.get("tags")) if (node_type_tags and kind) else None
     updated, persist_error = persist_node_to_config(
         node_config, config, name, url, tags=tags, apis=apis, capabilities=capabilities, meta=meta,
     )

@@ -1395,5 +1395,177 @@ class FlowUriHandlerTests(unittest.TestCase):
         self.assertTrue(preflight_calls, "preflight must be called for CDP flows")
 
 
+class TwinMemoryUriTests(unittest.TestCase):
+    """Regression suite for the twin://…/env/query/drift and twin://…/memory/command/remember
+    URI handlers.  Both handlers use durable_memory() for persistence — tests patch that
+    function to get an isolated in-memory TwinMemory and never touch the real JSON store."""
+
+    def _make_memory(self):
+        from urirun.node.reversible import TwinMemory
+        return TwinMemory()
+
+    # ── env/query/drift ────────────────────────────────────────────────────────
+
+    def test_drift_no_profile_returns_skipped(self):
+        """When kvm route returns nothing, drift returns skipped:no-profile, kind=continue."""
+        from urirun.node.flow import _uri_env_drift
+        from unittest.mock import patch
+        mem = self._make_memory()
+        with patch("urirun.node.twin_store.durable_memory", return_value=mem):
+            with patch("urirun.node.flow.v2_service") as mock_svc:
+                mock_svc.call.return_value = {}
+                result = _uri_env_drift({"node": "laptop", "routes": []})
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["next"]["kind"], "continue")
+        self.assertIn("skipped", result)
+
+    def test_drift_first_call_captures_sticky_baseline(self):
+        """First call with a live profile captures the known-good baseline (sticky)."""
+        from urirun.node.flow import _uri_env_drift
+        from unittest.mock import patch
+        mem = self._make_memory()
+        profile = {"display": "1920x1080", "session": "wayland"}
+        with patch("urirun.node.twin_store.durable_memory", return_value=mem):
+            with patch("urirun.node.flow.v2_service") as mock_svc:
+                mock_svc.call.return_value = {"result": {"value": profile}}
+                result = _uri_env_drift({"node": "laptop", "routes": []})
+        self.assertTrue(result["ok"])
+        self.assertFalse(result.get("drifted", False))
+        self.assertIsNotNone(mem.known_good("laptop"))
+
+    def test_drift_detects_change_after_baseline(self):
+        """Second call with a different profile reports drifted=True, kind=continue."""
+        from urirun.node.flow import _uri_env_drift
+        from unittest.mock import patch
+        mem = self._make_memory()
+        profile_a = {"display": "1920x1080", "session": "wayland"}
+        profile_b = {"display": "2560x1440", "session": "wayland"}
+        with patch("urirun.node.twin_store.durable_memory", return_value=mem):
+            with patch("urirun.node.flow.v2_service") as mock_svc:
+                mock_svc.call.return_value = {"result": {"value": profile_a}}
+                _uri_env_drift({"node": "laptop", "routes": []})
+                mock_svc.call.return_value = {"result": {"value": profile_b}}
+                result = _uri_env_drift({"node": "laptop", "routes": []})
+        self.assertTrue(result.get("drifted"))
+        self.assertEqual(result["next"]["kind"], "continue")   # advisory — never abort
+
+    def test_drift_no_change_reports_clean(self):
+        """Same profile twice → drifted=False."""
+        from urirun.node.flow import _uri_env_drift
+        from unittest.mock import patch
+        mem = self._make_memory()
+        profile = {"display": "1920x1080", "session": "x11"}
+        with patch("urirun.node.twin_store.durable_memory", return_value=mem):
+            with patch("urirun.node.flow.v2_service") as mock_svc:
+                mock_svc.call.return_value = {"result": {"value": profile}}
+                _uri_env_drift({"node": "laptop", "routes": []})
+                result = _uri_env_drift({"node": "laptop", "routes": []})
+        self.assertFalse(result.get("drifted"))
+
+    # ── memory/command/remember ────────────────────────────────────────────────
+
+    def test_remember_stores_flow_record_under_flow_key(self):
+        """remember stores the flow record under flow_key in the flow_store."""
+        from urirun.node.flow import _uri_memory_remember
+        from unittest.mock import patch
+        mem = self._make_memory()
+        steps = [{"id": "click", "uri": "kvm://laptop/ui/command/click"}]
+        with patch("urirun.node.twin_store.durable_memory", return_value=mem):
+            with patch("urirun.node.flow.v2_service") as mock_svc:
+                mock_svc.call.return_value = {}
+                result = _uri_memory_remember({
+                    "nodes": ["laptop"],
+                    "routes": [],
+                    "flow_key": "test-abc123",
+                    "record": {"steps": steps},
+                })
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["remembered"])
+        self.assertEqual(result["flowKey"], "test-abc123")
+        recalled = mem.recall_flow("test-abc123")
+        self.assertIsNotNone(recalled)
+        self.assertEqual(recalled["flowKey"], "test-abc123")
+
+    def test_remember_no_flow_key_skips_flow_store(self):
+        """remember without flow_key doesn't write to flow_store."""
+        from urirun.node.flow import _uri_memory_remember
+        from unittest.mock import patch
+        mem = self._make_memory()
+        with patch("urirun.node.twin_store.durable_memory", return_value=mem):
+            with patch("urirun.node.flow.v2_service") as mock_svc:
+                mock_svc.call.return_value = {}
+                result = _uri_memory_remember({"nodes": [], "routes": [], "record": {}})
+        self.assertFalse(result["remembered"])
+        self.assertIsNone(result["flowKey"])
+
+    def test_remember_updates_node_env_profile(self):
+        """remember writes the live env profile to memory.remember(node, profile)."""
+        from urirun.node.flow import _uri_memory_remember
+        from unittest.mock import patch
+        mem = self._make_memory()
+        profile = {"display": "1920x1080", "session": "wayland"}
+        with patch("urirun.node.twin_store.durable_memory", return_value=mem):
+            with patch("urirun.node.flow.v2_service") as mock_svc:
+                mock_svc.call.return_value = {"result": {"value": profile}}
+                _uri_memory_remember({
+                    "nodes": ["laptop"], "routes": [], "flow_key": "k1", "record": {}})
+        self.assertIsNotNone(mem.known_good("laptop"))
+
+    # ── _build_thin_plan injection ─────────────────────────────────────────────
+
+    def test_build_thin_plan_injects_drift_and_remember_for_kvm_flow(self):
+        """_build_thin_plan injects drift+remember for kvm flows without memory= parameter."""
+        from urirun.node.flow import _build_thin_plan, _THIN_DRIFT_SUFFIX, _THIN_REMEMBER_URI
+        steps = [{"id": "click", "uri": "kvm://laptop/ui/command/click"}]
+        plan = _build_thin_plan(steps, {"steps": steps}, execute=True, routes=[])
+        ids = [s["id"] for s in plan]
+        self.assertIn("twin:drift:laptop", ids)
+        self.assertIn("memory:remember", ids)
+        drift_step = next(s for s in plan if s["id"] == "twin:drift:laptop")
+        self.assertIn(_THIN_DRIFT_SUFFIX, drift_step["uri"])
+        self.assertIn("routes", drift_step["payload"])
+        remember_step = next(s for s in plan if s["id"] == "memory:remember")
+        self.assertEqual(remember_step["uri"], _THIN_REMEMBER_URI)
+        self.assertIn("flow_key", remember_step["payload"])
+        self.assertIn("routes", remember_step["payload"])
+
+    def test_build_thin_plan_no_kvm_targets_skips_memory_steps(self):
+        """No kvm:// steps → no drift or remember injected."""
+        from urirun.node.flow import _build_thin_plan
+        steps = [{"id": "write", "uri": "fs://host/file/command/write"}]
+        plan = _build_thin_plan(steps, {"steps": steps}, execute=True, routes=[])
+        ids = [s["id"] for s in plan]
+        self.assertNotIn("memory:remember", ids)
+        self.assertFalse(any("drift" in i for i in ids))
+
+    def test_build_thin_plan_dry_run_skips_all_injection(self):
+        """execute=False → no preflight, drift, or remember, even for kvm steps."""
+        from urirun.node.flow import _build_thin_plan
+        steps = [{"id": "click", "uri": "kvm://laptop/ui/command/click"}]
+        plan = _build_thin_plan(steps, {"steps": steps}, execute=False, routes=[])
+        self.assertEqual(plan, steps)
+
+    def test_execute_flow_calls_drift_and_remember_for_kvm_flow(self):
+        """execute_flow with a kvm step and dispatch_uri routes drift and remember URIs."""
+        from urirun.node.flow import execute_flow, FlowEnvelope, _THIN_DRIFT_SUFFIX, _THIN_REMEMBER_URI
+        envelope = FlowEnvelope(flow_id="mem-test")
+        calls = []
+
+        def dispatch(uri, payload=None):
+            calls.append(uri)
+            if "goal/query/verify" in uri:
+                return {"ok": True, "next": {"kind": "done"}}
+            return {"ok": True, "next": {"kind": "continue"}}
+
+        flow = {"steps": [{"id": "click", "uri": "kvm://laptop/ui/command/click"}]}
+        result = execute_flow(flow, {"routes": []}, {}, execute=True,
+                              dispatch_uri=dispatch, envelope=envelope)
+        self.assertTrue(result["ok"])
+        self.assertTrue(any(_THIN_DRIFT_SUFFIX in u for u in calls),
+                        f"drift URI not called; calls={calls}")
+        self.assertTrue(any(_THIN_REMEMBER_URI in u for u in calls),
+                        f"remember URI not called; calls={calls}")
+
+
 if __name__ == "__main__":
     unittest.main()

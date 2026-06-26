@@ -152,6 +152,10 @@ def _normalized_document_text(text: str) -> str:
     folded = re.sub(r"[^a-zA-Z0-9.,:/@+\- ]+", " ", folded.lower())
     return re.sub(r"\s+", " ", folded).strip()
 
+
+normalized_document_text = _normalized_document_text  # public alias used by document_sync
+
+
 def _parse_document_date(text: str, fallback: str | None = None) -> str:
     candidates: list[date] = []
     # Guard ends with "not a digit" rather than \b: receipt OCR often glues the date to the

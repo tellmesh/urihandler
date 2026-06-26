@@ -1,49 +1,49 @@
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.22s
-# nodes: 447 | edges: 500 | modules: 42
+# generated in 0.21s
+# nodes: 433 | edges: 500 | modules: 43
 # CC̄=4.8
 
 HUBS[20]:
+  adapters.python.urirun.runtime.daemon.serve
+    CC=14  in:1  out:41  total:42
   adapters.python.urirun.host.scanner_bridge.frame_visual_metrics
     CC=7  in:1  out:40  total:41
   adapters.python.urirun.host.host_integrations._write_planfile_action
     CC=8  in:1  out:39  total:40
-  adapters.python.urirun.host.artifacts_admin.collect_attachments
-    CC=1  in:0  out:35  total:35
   adapters.python.urirun.host.scanner_bridge.scanner_crop_overlay
     CC=8  in:1  out:33  total:34
   adapters.python.urirun.host.artifacts_admin.preview_url
     CC=6  in:11  out:18  total:29
-  adapters.python.urirun.host.document_metadata._normalize_llm_doc_fields
-    CC=14  in:1  out:28  total:29
-  adapters.python.urirun.host.host_db._run_query_route
-    CC=7  in:1  out:26  total:27
+  adapters.python.urirun.runtime.errors.info
+    CC=13  in:2  out:27  total:29
+  adapters.python.urirun.runtime.codegen.proto_from_registry
+    CC=13  in:2  out:25  total:27
   adapters.python.urirun.connectors.connector_lint.lint_connector
     CC=9  in:3  out:24  total:27
   adapters.python.urirun.host.discovery.node_alias_map_from_env
     CC=14  in:1  out:26  total:27
-  adapters.python.urirun.testing.smoke
-    CC=9  in:1  out:23  total:24
-  adapters.python.urirun.host.object_registry.configured_api_headers
-    CC=13  in:1  out:23  total:24
+  adapters.python.urirun.host.host_db._run_query_route
+    CC=7  in:1  out:26  total:27
+  adapters.python.urirun.runtime.v2.validate_binding_document
+    CC=12  in:2  out:24  total:26
   adapters.python.urirun.runtime.v1.run
     CC=14  in:1  out:23  total:24
-  adapters.python.urirun.host.document_metadata._local_image_ocr
-    CC=12  in:0  out:24  total:24
-  adapters.python.urirun.host.artifacts_admin.artifact_delete_candidate_paths
-    CC=11  in:1  out:22  total:23
+  adapters.python.urirun.testing.smoke
+    CC=9  in:1  out:23  total:24
   adapters.python.urirun.host.scanner_bridge.staging_keep_paths
     CC=13  in:1  out:22  total:23
-  adapters.python.urirun.host.artifacts_admin.merge_artifact_group
-    CC=12  in:1  out:21  total:22
   adapters.python.urirun.host.scanner_bridge.scanner_live_store_locked
     CC=10  in:3  out:19  total:22
-  adapters.python.urirun.host.document_metadata._parse_contractor
-    CC=13  in:1  out:21  total:22
+  adapters.python.urirun.runtime.errors.problem
+    CC=10  in:0  out:22  total:22
   adapters.python.urirun.host.host_db.search_records
     CC=6  in:1  out:21  total:22
+  adapters.python.urirun.host.scanner_bridge.scanner_live_state_from_streams
+    CC=12  in:1  out:20  total:21
   adapters.python.urirun.runtime.v1._run_process_streaming
     CC=7  in:1  out:20  total:21
+  adapters.python.urirun.host.host_db.init_db
+    CC=2  in:15  out:6  total:21
 
 MODULES:
   adapters.c.urirun  [4 funcs]
@@ -92,17 +92,8 @@ MODULES:
   adapters.python.urirun.exec  [2 funcs]
     _resolve  CC=3  out:4
     main  CC=10  out:16
-  adapters.python.urirun.host.artifacts_admin  [23 funcs]
-    apply_attachment_file_fields  CC=3  out:1
-    apply_attachment_visual_fields  CC=3  out:1
-    artifact_dedupe_key  CC=7  out:13
-    artifact_delete_candidate_paths  CC=11  out:22
-    artifact_delete_roots  CC=3  out:10
-    artifact_file_delete_allowed  CC=5  out:5
-    artifact_file_exists  CC=3  out:4
-    artifact_visual_path  CC=8  out:12
-    attachment_visual_path  CC=5  out:5
-    cleanup_one_sidecar  CC=7  out:9
+  adapters.python.urirun.host.artifacts_admin  [1 funcs]
+    preview_url  CC=6  out:18
   adapters.python.urirun.host.capability  [6 funcs]
     _capability_check_for_api  CC=8  out:12
     _check_auth  CC=8  out:6
@@ -110,12 +101,6 @@ MODULES:
     _check_reachability  CC=9  out:6
     _protocol_owner  CC=1  out:1
     api_node_doctor  CC=12  out:10
-  adapters.python.urirun.host.connector_admin  [5 funcs]
-    connector_env_check  CC=14  out:20
-    connector_pip_tail  CC=12  out:12
-    docker_install_target  CC=6  out:7
-    parse_bindings_output  CC=9  out:6
-    run_docker_check  CC=4  out:5
   adapters.python.urirun.host.contracts  [8 funcs]
     _completed_count  CC=3  out:2
     _flow_checks  CC=2  out:5
@@ -136,20 +121,7 @@ MODULES:
     alias_map_from_list  CC=5  out:8
     classify_route_run  CC=13  out:15
     host_config  CC=2  out:3
-  adapters.python.urirun.host.document_metadata  [20 funcs]
-    _coerce_amount  CC=7  out:12
-    _document_type  CC=12  out:2
-    _extract_document_metadata  CC=14  out:16
-    _llm_api_key_ref  CC=5  out:5
-    _llm_complete_metadata  CC=6  out:3
-    _llm_env_file  CC=5  out:11
-    _llm_extract_metadata  CC=11  out:14
-    _llm_model  CC=7  out:10
-    _load_env_file  CC=8  out:11
-    _local_image_ocr  CC=12  out:24
-  adapters.python.urirun.host.document_sync  [3 funcs]
-    document_index_path  CC=2  out:5
-    scanned_id_log_path  CC=2  out:5
+  adapters.python.urirun.host.document_sync  [1 funcs]
     truthy_env  CC=1  out:4
   adapters.python.urirun.host.domain_monitor  [25 funcs]
     _db  CC=3  out:3
@@ -203,17 +175,6 @@ MODULES:
     node_type_profile  CC=4  out:3
     node_type_tags  CC=8  out:8
     normalize_node_type  CC=5  out:5
-  adapters.python.urirun.host.object_registry  [44 funcs]
-    _node_own_routes  CC=7  out:7
-    _node_owner_dict  CC=12  out:17
-    _route_core_fields  CC=14  out:15
-    _uri_target  CC=2  out:2
-    annotate_node_kinds  CC=9  out:10
-    annotate_node_tokens  CC=4  out:4
-    api_item_fields  CC=9  out:15
-    apply_auth_header  CC=10  out:15
-    apply_uri_overrides  CC=10  out:8
-    build_auth_extra_fields  CC=4  out:2
   adapters.python.urirun.host.planfile_adapter  [21 funcs]
     _imports  CC=2  out:1
     _model_dict  CC=1  out:1
@@ -277,27 +238,61 @@ MODULES:
     query_value  CC=2  out:1
     scanner_stream_summary  CC=10  out:17
     service_widget_summary  CC=12  out:16
+  adapters.python.urirun.node.server  [1 funcs]
+    _pool_executors  CC=1  out:8
   adapters.python.urirun.runtime._runtime  [1 funcs]
     build_policy  CC=13  out:13
-  adapters.python.urirun.runtime.errors  [1 funcs]
+  adapters.python.urirun.runtime.codegen  [19 funcs]
+    _disambiguate_rpc_name  CC=8  out:9
+    _field_snake  CC=1  out:5
+    _field_type  CC=14  out:14
+    _handler_signature  CC=7  out:10
+    _message_fields  CC=9  out:15
+    _msg_pascal  CC=3  out:3
+    _pascal  CC=3  out:3
+    _routes  CC=7  out:9
+    _rpc_name  CC=5  out:2
+    _snake  CC=2  out:3
+  adapters.python.urirun.runtime.daemon  [2 funcs]
+    _main  CC=9  out:7
+    serve  CC=14  out:41
+  adapters.python.urirun.runtime.errors  [31 funcs]
+    _aggregate  CC=4  out:13
+    _append  CC=3  out:13
+    _cmd_bindings  CC=2  out:2
+    _cmd_categories  CC=2  out:2
+    _cmd_info  CC=2  out:3
+    _cmd_recent  CC=2  out:3
+    _cmd_search  CC=2  out:4
+    _cmd_ticket  CC=3  out:4
     _emit  CC=1  out:2
-  adapters.python.urirun.runtime.v1  [17 funcs]
+    _errno_category  CC=6  out:3
+  adapters.python.urirun.runtime.introspect  [3 funcs]
+    _introspect_binding  CC=7  out:11
+    _introspect_list  CC=9  out:10
+    run_registry_introspect  CC=7  out:11
+  adapters.python.urirun.runtime.v1  [20 funcs]
+    _binding_pairs  CC=8  out:11
     _env_flags  CC=3  out:5
     _has_placeholders  CC=2  out:3
     _params_spec  CC=4  out:3
     _proc_env  CC=3  out:6
     _run_process  CC=3  out:10
     _run_process_streaming  CC=7  out:20
+    compile_registry  CC=1  out:2
     expand_binding  CC=7  out:6
     expand_bindings  CC=2  out:2
-    render_command  CC=2  out:1
-    render_value  CC=1  out:5
-  adapters.python.urirun.runtime.v2  [5 funcs]
+  adapters.python.urirun.runtime.v2  [26 funcs]
+    _collision_index  CC=7  out:12
+    _document_binding_from_expanded  CC=4  out:5
+    _entry_point_script_issues  CC=5  out:7
+    _handler_kwargs  CC=7  out:5
+    _input_values  CC=4  out:8
+    _load_entry_point_bindings  CC=4  out:9
     _load_manifest  CC=1  out:2
-    decorated_bindings  CC=2  out:1
-    uri_command  CC=1  out:6
-    uri_handler  CC=1  out:8
-    uri_shell  CC=1  out:1
+    _placeholder_kwargs  CC=2  out:1
+    _schema_for  CC=3  out:3
+    _select_entry_points  CC=5  out:6
   adapters.python.urirun.runtime.v2_service  [3 funcs]
     _post  CC=5  out:15
     call  CC=9  out:10

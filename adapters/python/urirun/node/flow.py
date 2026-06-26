@@ -49,6 +49,7 @@ from urirun.node.routing import (
 # a uniform follow-the-intent loop with no domain branches.
 #
 # Existing callers pass no envelope → old code path, zero behaviour change.
+import dataclasses
 from dataclasses import dataclass, field
 
 
@@ -272,19 +273,11 @@ def _thin_driver(
             if should_break:
                 break
 
-    envelope.record(_THIN_GOAL_URI, "call")
-    goal_r = dispatch_uri(_THIN_GOAL_URI, {"goal": envelope.goal, "results": results}) or {}
-    # Treat "route not found" (registry error) as pass — the goal-verify handler is optional;
-    # when the twin connector isn't loaded the flow still completes normally.
-    _goal_err_type = (goal_r.get("error") or {}).get("type")
-    if not goal_r.get("ok", True) and _goal_err_type == "registry":
-        goal_r = {"ok": True, "goalMet": True, "skipped": "no-verify-handler"}
-    goal_ok = goal_r.get("ok", True)
-    envelope.record(_THIN_GOAL_URI, "return", ok=goal_ok, next=_next_kind(goal_r))
-    if not goal_ok:
-        return _thin_rollback(dispatch_uri, envelope, timeline, results, "goal-failed")
+    rb = _thin_goal_verify(dispatch_uri, envelope, timeline, results)
+    if rb is not None:
+        return rb
     return {"ok": True, "timeline": timeline, "results": results,
-            "next": {"kind": "done"}, "envelope": envelope}
+            "next": {"kind": "done"}, "envelope": dataclasses.asdict(envelope)}
 
 
 def _flow_format(path: str | Path, requested: str | None = None) -> str:
@@ -1513,29 +1506,44 @@ def _plan_with_preflight(steps: list[dict], *, execute: bool) -> list[dict]:
 
 
 def _build_thin_plan(steps: list[dict], flow: dict, *, execute: bool,
-                     memory: TwinMemory | None = None) -> list[dict]:
+                     memory: "TwinMemory | None" = None,
+                     routes: list[dict] | None = None) -> list[dict]:
     """Build the complete step plan for _thin_driver.
 
-    Order: preflight (CDP) → drift checks (memory) → original steps → remember (memory).
-    Each augmentation is skipped when not applicable: no CDP → no preflight,
-    no memory → no drift/remember, dry-run → original steps only."""
+    Order: drift checks → preflight (CDP) → original steps → remember.
+
+    Memory steps are injected whenever execute=True and the flow has kvm:// targets —
+    no longer gated on a ``memory=`` object being passed.  The drift/remember handlers
+    read from and write to the durable JsonFileStore (twin_store.durable_memory()) so
+    known-good snapshots persist across process restarts with zero extra infra.
+
+    When an explicit ``memory=`` object IS passed, _make_memory_dispatch wraps dispatch
+    so the drift/remember URIs are intercepted in-process (backward compat for callers
+    and tests that inject a TwinMemory directly).
+
+    ``routes`` is forwarded into the drift/remember step payloads so the URI handlers
+    can build a registry and call ``kvm://{node}/environment/query/profile`` without
+    an ambient global registry."""
     plan = _plan_with_preflight(steps, execute=execute)
-    if not execute or memory is None:
+    if not execute:
         return plan
     kvm_targets = sorted({route_target(str(s.get("uri") or ""))
                           for s in steps if str(s.get("uri") or "").startswith("kvm://")})
     kvm_targets = [t for t in kvm_targets if t]
     if not kvm_targets:
         return plan
+    routes_list = routes or []
+    flow_key = _flow_key(flow)
     drift_steps = [
         {"id": f"twin:drift:{t}", "uri": f"twin://{t}{_THIN_DRIFT_SUFFIX}",
-         "payload": {"node": t}, "depends_on": []}
+         "payload": {"node": t, "routes": routes_list}, "depends_on": []}
         for t in kvm_targets
     ]
     remember_step = {
         "id": "memory:remember",
         "uri": _THIN_REMEMBER_URI,
-        "payload": {"nodes": kvm_targets,
+        "payload": {"nodes": kvm_targets, "routes": routes_list,
+                    "flow_key": flow_key,
                     "record": {"steps": flow.get("steps") or []}},
         "depends_on": [],
     }
@@ -1565,8 +1573,9 @@ def execute_flow(flow: dict, mesh: dict, registry: dict, execute: bool, *, recov
                 _make_memory_dispatch(dispatch_uri, memory, flow, registry)
                 if memory is not None else dispatch_uri
             )
+            routes = (mesh or {}).get("routes") or []
             steps = _build_thin_plan(flow.get("steps") or [], flow,
-                                     execute=execute, memory=memory)
+                                     execute=execute, memory=memory, routes=routes)
             return _thin_driver(steps, envelope, _dispatch,
                                 registry=registry, execute=execute,
                                 max_retries=max_retries,
@@ -1831,6 +1840,82 @@ def _uri_preflight(payload: dict) -> dict:
     return {**urirun.ok(ok=all_ok), "timeline": entries, "count": len(entries)}
 
 
+def _uri_env_drift(payload: dict) -> dict:
+    """Handler for twin://<node>/env/query/drift.
+
+    Payload: {node, routes?: [{…}]}
+    Returns: {ok, next: {kind: continue}, drifted?, known?, reason?}
+
+    On the first call for a node: captures the live environment profile as the
+    sticky known-good baseline (snapshot-on-success equivalent).
+    On subsequent calls: compares live profile to the baseline and reports drift.
+    Always returns next: {kind: continue} — drift is advisory, never abort.
+
+    Uses twin_store.durable_memory() so the baseline persists across restarts."""
+    import urirun  # noqa: PLC0415
+    from urirun.node.twin_store import durable_memory  # noqa: PLC0415
+    node = payload.get("node") or "host"
+    routes = payload.get("routes") or []
+    registry = registry_from_routes(routes)
+    try:
+        prof_r = v2_service.call(f"kvm://{node}/environment/query/profile",
+                                 {}, registry, mode="execute")
+        val = (prof_r.get("result") or {}).get("value")
+        profile = val if isinstance(val, dict) else {}
+    except Exception:  # noqa: BLE001 - a missing kvm route is not a drift error
+        profile = {}
+    if not profile:
+        return urirun.ok(known=False, drifted=False,
+                         skipped="no-profile", next={"kind": "continue"})
+    memory = durable_memory()
+    if memory.known_good(node) is None:
+        memory.remember(node, profile)          # sticky first-run baseline
+    dr = memory.drift(node, profile)
+    result = {**urirun.ok(), **dr, "next": {"kind": "continue"}}
+    if dr.get("drifted") or not dr.get("known"):
+        result["type"] = "twin-drift"
+        result["action"] = "environment-drift"
+    return result
+
+
+def _uri_memory_remember(payload: dict) -> dict:
+    """Handler for twin://host/memory/command/remember.
+
+    Payload: {nodes: [str], routes?: [{…}], flow_key?: str,
+              record: {steps: […], …}}
+    Returns: {ok, remembered: bool, nodes: […], flowKey?: str}
+
+    Updates the known-good environment profile for each node (unconditional
+    overwrite — advances the baseline to the just-completed successful state),
+    then stores the flow record keyed by flow_key for recall/replay.
+
+    Uses twin_store.durable_memory() for durable persistence."""
+    import urirun  # noqa: PLC0415
+    from urirun.node.twin_store import durable_memory  # noqa: PLC0415
+    nodes = payload.get("nodes") or []
+    routes = payload.get("routes") or []
+    registry = registry_from_routes(routes)
+    flow_key = str(payload.get("flow_key") or payload.get("flowKey") or "")
+    memory = durable_memory()
+    for node in nodes:
+        try:
+            prof_r = v2_service.call(f"kvm://{node}/environment/query/profile",
+                                     {}, registry, mode="execute")
+            val = (prof_r.get("result") or {}).get("value")
+            if isinstance(val, dict) and val:
+                memory.remember(node, val)
+        except Exception:  # noqa: BLE001 - best-effort; a missing route is not fatal
+            pass
+    record = dict(payload.get("record") or {})
+    remembered = False
+    if flow_key:
+        record["flowKey"] = flow_key
+        memory.remember_flow(flow_key, record)
+        remembered = True
+    return urirun.ok(remembered=remembered, nodes=nodes,
+                     flowKey=flow_key if flow_key else None)
+
+
 try:
     import urirun as _urirun  # noqa: PLC0415
     _flow_conn = _urirun.connector("flow", scheme="twin")
@@ -1838,5 +1923,9 @@ try:
                        meta={"label": "Verify flow goal state post-execution"})(_uri_goal_verify)
     _flow_conn.handler("flow/command/preflight",
                        meta={"label": "Provision surfaces before the main flow loop"})(_uri_preflight)
+    _flow_conn.handler("env/query/drift",
+                       meta={"label": "Twin drift detection — compare live env to known-good baseline"})(_uri_env_drift)
+    _flow_conn.handler("memory/command/remember",
+                       meta={"label": "Record known-good execution and advance env baseline"})(_uri_memory_remember)
 except Exception:  # noqa: BLE001 - connector registration is optional
     pass

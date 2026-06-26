@@ -8,13 +8,17 @@ import json
 import hashlib
 import os
 import re
+import threading
 import time
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import quote
 
 from .contracts import file_transfer_verification
+
+_DOCUMENT_INDEX_LOCK = threading.Lock()
 
 
 # --------------------------------------------------------------------------- #
@@ -1245,12 +1249,13 @@ def archive_scanned_document(
     source_sha256: str,
     captured_at: "str | None",
     metadata: "dict | None" = None,
+    docid_fn: "Callable | None" = None,
 ) -> dict:
     from .document_metadata import _extract_document_metadata  # noqa: PLC0415 — lazy (circular)
     ocr_text = str(ocr.get("text") or "")
     extracted = metadata if metadata is not None else _extract_document_metadata(
         ocr_text, captured_at=captured_at, image_path=str(original_path))
-    docid_info = docid_for_file(display_path, ocr_text)
+    docid_info = (docid_fn or docid_for_file)(display_path, ocr_text)
     doc_id = str(docid_info["id"])
     from .document_metadata import normalized_document_text as _normalized_doc_text3  # noqa: PLC0415
     normalized_text = _normalized_doc_text3(ocr_text)
