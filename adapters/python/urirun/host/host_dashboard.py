@@ -798,29 +798,7 @@ def sync_documents_to_node(
     )
 
 
-def reconcile_document_index() -> dict:
-    """Reconcile the document index with the filesystem by pruning orphaned entries.
-
-    Safe and non-destructive: only index entries whose PDF *and* JSON sidecar are both
-    missing are removed; existing files are never touched. Returns a summary report.
-    """
-    with _DOCUMENT_INDEX_LOCK:
-        index = _load_document_index()
-        before = len(index.get("documents", []))
-        pruned = _prune_orphaned_documents(index)
-        if pruned:
-            _save_document_index(index)
-    return {
-        "ok": True,
-        "indexPath": str(_document_index_path()),
-        "before": before,
-        "after": before - len(pruned),
-        "prunedCount": len(pruned),
-        "pruned": [
-            {"docId": p.get("docId"), "pdfPath": p.get("pdfPath"), "jsonPath": p.get("jsonPath")}
-            for p in pruned
-        ],
-    }
+from .document_sync import reconcile_document_index  # noqa: F401 - re-export
 
 from .decision_loop import (
     decision_loop_status as _decision_loop_status,

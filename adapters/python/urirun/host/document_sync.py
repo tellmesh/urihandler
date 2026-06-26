@@ -1385,3 +1385,28 @@ def archive_scanned_document(
         "indexPath": str(document_index_path()),
         "scannedIdLogPath": str(scanned_id_log_path()),
     }
+
+
+def reconcile_document_index() -> dict:
+    """Reconcile the document index with the filesystem by pruning orphaned entries.
+
+    Safe and non-destructive: only index entries whose PDF *and* JSON sidecar are both
+    missing are removed; existing files are never touched. Returns a summary report.
+    """
+    with _DOCUMENT_INDEX_LOCK:
+        index = load_document_index()
+        before = len(index.get("documents", []))
+        pruned = prune_orphaned_documents(index)
+        if pruned:
+            save_document_index(index)
+    return {
+        "ok": True,
+        "indexPath": str(document_index_path()),
+        "before": before,
+        "after": before - len(pruned),
+        "prunedCount": len(pruned),
+        "pruned": [
+            {"docId": p.get("docId"), "pdfPath": p.get("pdfPath"), "jsonPath": p.get("jsonPath")}
+            for p in pruned
+        ],
+    }
