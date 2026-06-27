@@ -1,10 +1,10 @@
 flowchart TD
-%% generated in 0.04s
+%% generated in 0.22s
     adapters__conformance["adapters.conformance<br/>7 funcs"]
     adapters__java["adapters.java<br/>4 funcs"]
     adapters__js["adapters.js<br/>12 funcs"]
     adapters__perl["adapters.perl<br/>4 funcs"]
-    adapters__python["adapters.python<br/>1766 funcs"]
+    adapters__python["adapters.python<br/>2153 funcs"]
     examples__matrix["examples.matrix<br/>3 funcs"]
     scripts__cc_gate["scripts.cc_gate<br/>3 funcs"]
     scripts__extraction_audit["scripts.extraction_audit<br/>12 funcs"]
@@ -24,8 +24,11 @@ flowchart TD
     scripts__lint_connectors ==>|6| scripts__test_pypi_install
     adapters__python ==>|6| v1__js
     scripts__cc_gate ==>|4| scripts__test_pypi_install
+    examples__matrix -->|3| adapters__python
+    security__mesh_probe -->|1| adapters__python
     security__mesh_probe -->|1| scripts__test_pypi_install
-    examples__matrix -->|1| adapters__python
     scripts__lint_connectors -->|1| adapters__python
+    scripts__extraction_audit -->|1| adapters__python
+    adapters__conformance -->|1| adapters__python
     adapters__python -->|1| adapters__perl
     adapters__python -->|1| adapters__java

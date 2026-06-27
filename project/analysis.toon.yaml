@@ -1,15 +1,36 @@
-# code2llm | 247f 40036L | python:185,json:13,shell:11,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-27
-# generated in 0.10s
-# CC̅=4.6 | critical:0/1935 | dups:0 | cycles:0
+# code2llm | 248f 40153L | python:185,json:13,shell:11,yaml:5,javascript:4,csharp:4,txt:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-27
+# generated in 0.20s
+# CC̅=4.7 | critical:32/2322 | dups:0 | cycles:0
 
-HEALTH[0]: ok
+HEALTH[20]:
+  🟡 CC    applyControlsFromUrl CC=22 (limit:15)
+  🟡 CC    createTicket CC=25 (limit:15)
+  🟡 CC    installConnector CC=26 (limit:15)
+  🟡 CC    testConnector CC=21 (limit:15)
+  🟡 CC    renderNodes CC=16 (limit:15)
+  🟡 CC    renderHost CC=30 (limit:15)
+  🟡 CC    showAddPhoneNodeQR CC=16 (limit:15)
+  🟡 CC    savePhoneNode CC=15 (limit:15)
+  🟡 CC    saveTypedNode CC=20 (limit:15)
+  🟡 CC    saveApiNode CC=29 (limit:15)
+  🟡 CC    saveDeviceNode CC=23 (limit:15)
+  🟡 CC    saveNodeToken CC=16 (limit:15)
+  🟡 CC    saveNodeTokenFor CC=16 (limit:15)
+  🟡 CC    contactCard CC=17 (limit:15)
+  🟡 CC    chatContacts CC=18 (limit:15)
+  🟡 CC    discoveryObjects CC=21 (limit:15)
+  🟡 CC    renderDiscovery CC=17 (limit:15)
+  🟡 CC    renderArtifactFileRow CC=19 (limit:15)
+  🟡 CC    renderTwinPlanCard CC=43 (limit:15)
+  🟡 CC    renderAttachment CC=26 (limit:15)
 
-REFACTOR[0]: none needed
+REFACTOR[1]:
+  1. split 20 high-CC methods  (CC>15)
 
-PIPELINES[645]:
+PIPELINES[822]:
   [1] Src [http]: http
       PURITY: 100% pure
-  [2] Src [_attacker_key]: _attacker_key
+  [2] Src [_attacker_key]: _attacker_key → open → esc → text
       PURITY: 100% pure
   [3] Src [record]: record → print
       PURITY: 100% pure
@@ -27,9 +48,9 @@ PIPELINES[645]:
       PURITY: 100% pure
   [10] Src [main]: main → find_offenders → _iter_py
       PURITY: 100% pure
-  [11] Src [main]: main → lint_fleet → lint_connector → _connector_py_files
+  [11] Src [main]: main → lint_fleet → lint_connector → list → ...(3 more)
       PURITY: 100% pure
-  [12] Src [main]: main → audit → discover_modules → module_name
+  [12] Src [main]: main → audit → discover_modules → module_name → ...(4 more)
       PURITY: 100% pure
   [13] Src [main]: main → find_root
       PURITY: 100% pure
@@ -91,7 +112,7 @@ PIPELINES[645]:
       PURITY: 100% pure
   [42] Src [connector_install]: connector_install → _classify_source
       PURITY: 100% pure
-  [43] Src [connector_discover]: connector_discover → _scan_local_connectors → _read_connector_manifest → _read_tellmesh_manifest
+  [43] Src [connector_discover]: connector_discover → _scan_local_connectors → _read_connector_manifest → _read_tellmesh_manifest → ...(3 more)
       PURITY: 100% pure
   [44] Src [registry_installed]: registry_installed
       PURITY: 100% pure
@@ -109,7 +130,7 @@ PIPELINES[645]:
       PURITY: 100% pure
 
 LAYERS:
-  scripts/                        CC̄=5.2    ←in:158  →out:1
+  scripts/                        CC̄=5.2    ←in:158  →out:2
   │ extraction_audit           423L  2C   12m  CC=12     ←0
   │ test_pypi_install.sh       264L  0C    2m  CC=0.0    ←34
   │ repin_connectors           176L  0C    7m  CC=11     ←0
@@ -119,13 +140,14 @@ LAYERS:
   │ release-bump.sh             29L  0C    0m  CC=0.0    ←0
   │ sync-versions.sh            25L  0C    0m  CC=0.0    ←0
   │
-  adapters/                       CC̄=4.6    ←in:18  →out:11  !! split
-  │ !! html_templates            4921L  0C    3m  CC=6      ←0
+  adapters/                       CC̄=4.8    ←in:18  →out:12  !! split
+  │ !! dashboard.js              2693L  0C  384m  CC=43     ←55
+  │ !! html_templates            2227L  0C    3m  CC=6      ←0
   │ !! v2                        2033L  2C  120m  CC=14     ←5
-  │ !! host_dashboard            1924L  0C  102m  CC=14     ←1
+  │ !! host_dashboard            1930L  0C  102m  CC=14     ←1
   │ !! scanner_bridge            1548L  0C    0m  CC=0.0    ←0
   │ !! document_sync             1422L  0C    0m  CC=0.0    ←0
-  │ !! chat_orchestrator         1400L  1C   45m  CC=14     ←0
+  │ !! chat_orchestrator         1415L  1C   45m  CC=14     ←0
   │ !! server                     996L  3C   55m  CC=14     ←3
   │ !! object_registry            981L  0C   46m  CC=14     ←0
   │ !! flow                       939L  0C   49m  CC=10     ←6
@@ -150,19 +172,19 @@ LAYERS:
   │ task_cli                   346L  0C   25m  CC=12     ←0
   │ scanner_service            342L  0C    0m  CC=0.0    ←0
   │ cdp                        339L  1C   24m  CC=8      ←0
-  │ node_dispatch              315L  0C    7m  CC=14     ←2
+  │ node_dispatch              315L  0C    7m  CC=14     ←3
   │ mesh                       308L  0C    3m  CC=4      ←0
   │ planfile_adapter           290L  1C   27m  CC=9      ←0
   │ worker                     289L  3C   21m  CC=13     ←2
   │ dashboard_api              288L  0C   25m  CC=14     ←1
   │ node_types                 265L  0C    8m  CC=8      ←1
   │ secrets                    263L  1C   18m  CC=9      ←1
+  │ node_api                   260L  0C   12m  CC=13     ←0
   │ connector_admin            240L  0C    9m  CC=14     ←1
   │ run                        236L  0C   12m  CC=14     ←1
   │ config                     226L  0C   17m  CC=9      ←3
   │ node_health                224L  0C    9m  CC=13     ←0
   │ __init__                   216L  3C   12m  CC=13     ←0
-  │ node_api                   211L  0C   11m  CC=13     ←0
   │ v2_grpc                    207L  0C   11m  CC=9      ←0
   │ discovery                  202L  0C    9m  CC=9      ←0
   │ compat                     199L  0C    6m  CC=10     ←0
@@ -174,13 +196,13 @@ LAYERS:
   │ new-connector.sh           168L  0C    1m  CC=0.0    ←0
   │ conformance                167L  0C    7m  CC=7      ←0
   │ android_node               162L  0C    7m  CC=14     ←1
+  │ !! routing                    161L  0C    8m  CC=17     ←1
   │ dispatch                   160L  0C    7m  CC=12     ←1
   │ capability                 160L  0C    6m  CC=12     ←0
   │ scanner_net                153L  0C    0m  CC=0.0    ←0
   │ scheduler                  135L  0C    6m  CC=4      ←0
   │ decision_loop              134L  0C    5m  CC=13     ←1
   │ backend_registry           129L  2C   10m  CC=11     ←0
-  │ routing                    119L  0C    6m  CC=14     ←1
   │ contracts                  119L  0C    8m  CC=5      ←0
   │ _artifacts                 111L  0C    5m  CC=9      ←2
   │ progress                    89L  1C   11m  CC=3      ←0
@@ -190,9 +212,9 @@ LAYERS:
   │ formatting                  80L  0C    4m  CC=8      ←2
   │ __init__                    76L  2C    1m  CC=1      ←0
   │ _version                    76L  0C    5m  CC=5      ←1
+  │ pyproject.toml              76L  0C    0m  CC=0.0    ←0
   │ Urirun.php                  73L  1C    5m  CC=3      ←0
   │ project.assets.json         71L  0C    0m  CC=0.0    ←0
-  │ pyproject.toml              70L  0C    0m  CC=0.0    ←0
   │ urirun-connector.csproj.nuget.dgspec.json    66L  0C    0m  CC=0.0    ←0
   │ cli                         65L  0C    3m  CC=12     ←0
   │ widgets                     64L  0C    4m  CC=12     ←0
@@ -212,9 +234,9 @@ LAYERS:
   │ urirun_test.c               18L  0C    2m  CC=2      ←0
   │ urirun.sh                   17L  0C    2m  CC=0.0    ←0
   │ urirun-connector.csproj.FileListAbsolute.txt    15L  0C    0m  CC=0.0    ←0
+  │ package.json                14L  0C    0m  CC=0.0    ←0
   │ hash_connector.pl           14L  0C    0m  CC=0.0    ←0
   │ hash-connector.php          14L  0C    0m  CC=0.0    ←0
-  │ package.json                14L  0C    0m  CC=0.0    ←0
   │ urirun.h                    13L  0C    1m  CC=1      ←0
   │ hash_connector.rs           12L  0C    1m  CC=1      ←0
   │ HashConnector.java          11L  1C    1m  CC=1      ←0
@@ -376,22 +398,23 @@ LAYERS:
      adapters/c/urirun.c                       0L
 
 COUPLING:
-                           adapters.python              scripts             adapters      examples.matrix                v1.js        adapters.java        adapters.perl  security.mesh-probe
-      adapters.python                   ──                  139                   18                   ←1                    6                    1                    1                       !! fan-out
-              scripts                    1                   ──                  ←11                   ←7                                                                                  ←1  hub
-             adapters                  ←18                   11                   ──                                                                                                           hub
-      examples.matrix                    1                    7                                        ──                                                                                      !! fan-out
+                           adapters.python              scripts             adapters      examples.matrix                v1.js  security.mesh-probe        adapters.java        adapters.perl
+      adapters.python                   ──                  139                   18                   ←3                    6                   ←1                    1                    1  hub
+              scripts                    2                   ──                  ←11                   ←7                                        ←1                                            hub
+             adapters                    1                   11                   ──                                                                                                           hub
+      examples.matrix                    3                    7                                        ──                                                                                      !! fan-out
                 v1.js                   ←6                                                                                  ──                                                                 hub
-        adapters.java                   ←1                                                                                                       ──                                          
-        adapters.perl                   ←1                                                                                                                            ──                     
-  security.mesh-probe                                         1                                                                                                                            ──
+  security.mesh-probe                    1                    1                                                                                  ──                                          
+        adapters.java                   ←1                                                                                                                            ──                     
+        adapters.perl                   ←1                                                                                                                                                 ──
   CYCLES: none
-  HUB: v1.js/ (fan-in=6)
   HUB: adapters/ (fan-in=18)
+  HUB: adapters.python/ (fan-in=7)
   HUB: scripts/ (fan-in=158)
-  SMELL: examples.matrix/ fan-out=8 → split needed
+  HUB: v1.js/ (fan-in=6)
+  SMELL: adapters/ fan-out=12 → split needed
   SMELL: adapters.python/ fan-out=165 → split needed
-  SMELL: adapters/ fan-out=11 → split needed
+  SMELL: examples.matrix/ fan-out=10 → split needed
 
 EXTERNAL:
   validation: run `vallm batch .` → validation.toon

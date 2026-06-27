@@ -133,7 +133,11 @@ def need_from_backend_error(message: str, precondition: str = "capture-backend")
     human = any(k in low for k in _HUMAN_KEYWORDS)
     installs = [s.strip() for grp in re.findall(r"install:\s*([^)]+)", msg)
                for s in grp.split(",") if s.strip()]
-    if not (human or installs or "no available backend" in low or "all backends failed" in low):
+    # Actionable-only: a need is real ONLY when a person can grant it (human-gated) or it carries an
+    # install hint (`install: grim`). A bare "no available backend … options: none" / "all backends
+    # failed" with nothing to install or grant is NOT actionable — return None so the caller keeps its
+    # honest error (a hard fail), rather than masking it as an acquire that the user can't act on.
+    if not (human or installs):
         return None
     return {"ok": False, "satisfied": False, "precondition": precondition,
             "next": {"kind": "acquire"},

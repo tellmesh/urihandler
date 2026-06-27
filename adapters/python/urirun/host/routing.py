@@ -101,6 +101,31 @@ def escalation_dashboard_url(node: str, fix: str) -> str:
     return f"{base}/?node={node}&fix={fix}" if node else ""
 
 
+_CAPTURE_RELATED_SCHEMES = ("camera://", "ocr://", "fs://", "browser://", "screen://", "kvm://")
+
+
+def _related_capture_routes(routes: list) -> list:
+    """Up to 20 capture-adjacent route URIs, to show what IS available alongside the gap."""
+    return [
+        route.get("uri") for route in routes
+        if any(s in str(route.get("uri") or "") for s in _CAPTURE_RELATED_SCHEMES)
+    ][:20]
+
+
+def _capability_gap_message(nodes: list[str], offline: list[str]) -> tuple[str, str]:
+    """(message, missing) for a screen-capture gap: offline node vs no-route node vs no node."""
+    if offline:
+        n = offline[0]
+        return (f"Node '{n}' jest offline. Uruchom: urirun node serve --name {n} "
+                f"(a następnie: urirun host ensure {n} kvm)"), "node-offline"
+    if nodes:
+        n = nodes[0]
+        return (f"Node '{n}' nie ma trasy zrzutu ekranu (kvm://, screen://, browser://). "
+                f"Zainstaluj connector: urirun host ensure {n} kvm"), "screen-capture"
+    return ("Brakuje trasy URI do zrzutow ekranu. Zainstaluj connector kvm: urirun host ensure <node> kvm",
+            "screen-capture")
+
+
 def screen_document_capability_gap(prompt: str, discovered: dict, selected_nodes: list[str], selected_targets: list[str]) -> dict | None:
     """Return a CapabilityGap when the prompt needs screen capture but no route is available.
 
@@ -112,29 +137,10 @@ def screen_document_capability_gap(prompt: str, discovered: dict, selected_nodes
     routes = discovered.get("routes") or []
     if has_screen_capture_route(routes, selected_nodes, selected_targets):
         return None
-    related = [
-        route.get("uri") for route in routes
-        if any(token in str(route.get("uri") or "") for token in ("camera://", "ocr://", "fs://", "browser://", "screen://", "kvm://"))
-    ][:20]
     nodes = selected_nodes or [t.removeprefix("node:") for t in selected_targets if t.startswith("node:")]
     offline = _offline_selected_nodes(discovered, nodes)
-    if offline:
-        node = offline[0]
-        message = (
-            f"Node '{node}' jest offline. Uruchom: urirun node serve --name {node} "
-            f"(a następnie: urirun host ensure {node} kvm)"
-        )
-        missing = "node-offline"
-    elif nodes:
-        node = nodes[0]
-        message = (
-            f"Node '{node}' nie ma trasy zrzutu ekranu (kvm://, screen://, browser://). "
-            f"Zainstaluj connector: urirun host ensure {node} kvm"
-        )
-        missing = "screen-capture"
-    else:
-        message = "Brakuje trasy URI do zrzutow ekranu. Zainstaluj connector kvm: urirun host ensure <node> kvm"
-        missing = "screen-capture"
+    message, missing = _capability_gap_message(nodes, offline)
+    remediation = "unreachable" if missing == "node-offline" else "route-missing"
     return {
         "type": "CapabilityGap",
         "missing": missing,
@@ -147,15 +153,12 @@ def screen_document_capability_gap(prompt: str, discovered: dict, selected_nodes
             "kvm://<node>/.../screenshot",
             "browser://<node>/page/command/screenshot",
         ],
-        "availableRelatedRoutes": related,
+        "availableRelatedRoutes": _related_capture_routes(routes),
         "connectorHint": _connector_hint_for_nodes(nodes),
         # Human-escalation hand-off (user directive): surface this on the node panel of the deployed
         # dashboard with a clickable deep-link + the exact fix command, instead of a dead-end error.
         "humanEscalation": True,
-        "remediationClass": "unreachable" if missing == "node-offline" else "route-missing",
+        "remediationClass": remediation,
         "humanAction": message,
-        "dashboardUrl": escalation_dashboard_url(
-            nodes[0] if nodes else "",
-            "unreachable" if missing == "node-offline" else "route-missing",
-        ),
+        "dashboardUrl": escalation_dashboard_url(nodes[0] if nodes else "", remediation),
     }

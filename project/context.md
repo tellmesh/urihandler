@@ -1,18 +1,22 @@
 # System Architecture Analysis
-<!-- generated in 0.00s -->
+<!-- generated in 0.01s -->
 
 ## Overview
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 185, json: 13, shell: 11, yaml: 5, csharp: 4
+- **Languages**: python: 185, json: 13, shell: 11, yaml: 5, javascript: 4
 - **Analysis Mode**: static
-- **Total Functions**: 1935
+- **Total Functions**: 2322
 - **Total Classes**: 62
-- **Modules**: 246
-- **Entry Points**: 705
+- **Modules**: 247
+- **Entry Points**: 956
 
 ## Architecture by Module
+
+### adapters.python.urirun.host.dashboard
+- **Functions**: 556
+- **File**: `dashboard.js`
 
 ### adapters.python.urirun_runtime.v2
 - **Functions**: 120
@@ -98,22 +102,18 @@
 - **Functions**: 25
 - **File**: `task_cli.py`
 
-### adapters.python.urirun_node.transport
-- **Functions**: 24
-- **File**: `transport.py`
-
 ## Key Entry Points
 
 Main execution flows into the system:
 
 ### adapters.python.urirun.runtime._scan.main
-- **Calls**: list, argparse.ArgumentParser, parser.add_subparsers, subparsers.add_parser, scan.add_argument, scan.add_argument, scan.add_argument, scan.add_argument
+- **Calls**: adapters.python.urirun.host.dashboard.list, argparse.ArgumentParser, parser.add_subparsers, subparsers.add_parser, scan.add_argument, scan.add_argument, scan.add_argument, scan.add_argument
 
 ### adapters.python.urirun_runtime._registry.main
 - **Calls**: argparse.ArgumentParser, parser.add_subparsers, subparsers.add_parser, discover.add_subparsers, discover_sub.add_parser, p_manifest.add_argument, p_manifest.add_argument, p_manifest.add_argument
 
 ### adapters.python.urirun.runtime.v1.main
-- **Calls**: list, argparse.ArgumentParser, parser.add_subparsers, subparsers.add_parser, add_source, run_parser.add_argument, run_parser.add_argument, run_parser.add_argument
+- **Calls**: adapters.python.urirun.host.dashboard.list, argparse.ArgumentParser, parser.add_subparsers, subparsers.add_parser, add_source, run_parser.add_argument, run_parser.add_argument, run_parser.add_argument
 
 ### adapters.python.urirun_flow.cli.main
 - **Calls**: argparse.ArgumentParser, parser.add_subparsers, sub.add_parser, v.add_argument, sub.add_parser, t.add_argument, sub.add_parser, f.add_argument
@@ -122,7 +122,7 @@ Main execution flows into the system:
 - **Calls**: adapters.python.urirun.host.dashboard_api._safe_tickets, adapters.python.urirun.host.dashboard_api._host_db, adapters.python.urirun.host.dashboard_api._mesh, host_db.recent_checks, _public_artifacts, host_db.recent_logs, _annotate_node_tokens_impl, _annotate_node_kinds
 
 ### adapters.python.urirun_runtime._runtime.main
-- **Calls**: list, argparse.ArgumentParser, parser.add_subparsers, subparsers.add_parser, add_source, run_parser.add_argument, run_parser.add_argument, run_parser.add_argument
+- **Calls**: adapters.python.urirun.host.dashboard.list, argparse.ArgumentParser, parser.add_subparsers, subparsers.add_parser, add_source, run_parser.add_argument, run_parser.add_argument, run_parser.add_argument
 
 ### adapters.python.urirun_node.server.NodeHandler._stream_events
 - **Calls**: self.path.partition, adapters.python.urirun_node.server._parse_sse_query, adapters.python.urirun_node.server._sse_initial_cursor, c.hub.subscribe, adapters.python.urirun_node.server.send_json, self.send_response, self.send_header, self.send_header
@@ -229,6 +229,8 @@ Key execution flows identified:
 ### Flow 1: main
 ```
 main [adapters.python.urirun.runtime._scan]
+  └─ →> list
+      └─> routesForNode
 ```
 
 ### Flow 2: summary
@@ -270,7 +272,9 @@ _handle_run [adapters.python.urirun_node.server.NodeHandler]
 ```
 _cmd_upgrade [adapters.python.urirun_runtime.v2]
   └─> _resolve_pip_targets
-      └─ →> fn
+      └─ →> list
+          └─> routesForNode
+      └─ →> list
 ```
 
 ### Flow 8: _handler_worker_main
@@ -540,15 +544,15 @@ concurrency (If-Registry-
 - **Confidence**: 0.90
 - **Functions**: adapters.python.urirun.Connector.handler
 
-### recursion__uri_action_lookup
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun.host.host_dashboard._uri_action_lookup
-
 ### recursion_short_value
 - **Type**: recursion
 - **Confidence**: 0.90
 - **Functions**: adapters.python.urirun.host.fs_transfer.short_value
+
+### recursion__uri_action_lookup
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun.host.host_dashboard._uri_action_lookup
 
 ### state_machine_Urirun
 - **Type**: state_machine
@@ -587,6 +591,7 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.runtime.errors.info` - 27 calls
 - `adapters.python.urirun_node.client.NodeClient.resolve_refs` - 26 calls
 - `adapters.python.urirun.host.discovery.node_alias_map_from_env` - 26 calls
+- `adapters.python.urirun.host.node_api.execute_http_request` - 26 calls
 - `adapters.python.urirun_node.server.apply_deploy` - 25 calls
 - `adapters.python.urirun.runtime.codegen.proto_from_registry` - 25 calls
 - `adapters.python.urirun_runtime.v2_grpc.main` - 25 calls
@@ -598,17 +603,16 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.host.object_registry.probe_node_token` - 24 calls
 - `adapters.python.urirun.runtime.v1.run` - 23 calls
 - `adapters.python.urirun.testing.smoke` - 23 calls
-- `adapters.python.urirun.host.node_api.configured_api_headers` - 23 calls
 - `adapters.python.urirun.host.node_health.node_doctor` - 23 calls
+- `adapters.python.urirun.host.node_api.configured_api_headers` - 23 calls
 - `adapters.python.urirun.node.doctor.format_doctor_report` - 22 calls
 - `adapters.python.urirun_connectors_toolkit.resolver.index_local` - 22 calls
 - `adapters.python.urirun.runtime.errors.problem` - 22 calls
 - `adapters.python.urirun_runtime._runtime.run` - 22 calls
 - `adapters.python.urirun.host.host_dashboard.serve` - 22 calls
 - `adapters.python.urirun.node.manage.connector_install` - 21 calls
+- `adapters.python.urirun_flow.run.resolve_step` - 21 calls
 - `adapters.python.urirun.host.host_db.search_records` - 21 calls
-- `adapters.python.urirun.host.dashboard_api.chat_history` - 21 calls
-- `adapters.python.urirun.host.chat_orchestrator.chat_ask` - 21 calls
 
 ## System Interactions
 

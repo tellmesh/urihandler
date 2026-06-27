@@ -226,30 +226,32 @@ environment[name="local"] {
 
 ## Call Graph
 
-*478 nodes · 500 edges · 56 modules · CC̄=4.6*
+*463 nodes · 500 edges · 56 modules · CC̄=4.7*
 
 ### Hubs (by degree)
 
 | Function | CC | in | out | total |
 |----------|----|----|-----|-------|
 | `print` *(in scripts.test_pypi_install)* | 0 | 209 | 0 | **209** |
+| `list` *(in adapters.python.urirun.host.dashboard)* | 8 | 105 | 4 | **109** |
 | `send_json` *(in adapters.python.urirun_node.server)* | 1 | 44 | 12 | **56** |
 | `print_report` *(in scripts.extraction_audit)* | 12 ⚠ | 1 | 36 | **37** |
 | `normalize_error` *(in adapters.python.urirun_flow.recovery)* | 10 ⚠ | 2 | 30 | **32** |
 | `_stream_events` *(in adapters.python.urirun_node.server.NodeHandler)* | 14 ⚠ | 0 | 31 | **31** |
 | `main` *(in scripts.transport_swap_proof)* | 5 | 0 | 29 | **29** |
-| `_handle_deploy` *(in adapters.python.urirun_node.server.NodeHandler)* | 11 ⚠ | 0 | 29 | **29** |
-| `verify_connector` *(in adapters.python.urirun.connectors.connector_lint)* | 6 | 1 | 27 | **28** |
+| `open` *(in adapters.python.urirun.host.dashboard)* | 1 | 28 | 1 | **29** |
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.23s
-# nodes: 478 | edges: 500 | modules: 56
-# CC̄=4.6
+# generated in 0.24s
+# nodes: 463 | edges: 500 | modules: 56
+# CC̄=4.7
 
 HUBS[20]:
   scripts.test_pypi_install.print
     CC=0  in:209  out:0  total:209
+  adapters.python.urirun.host.dashboard.list
+    CC=8  in:105  out:4  total:109
   adapters.python.urirun_node.server.send_json
     CC=1  in:44  out:12  total:56
   scripts.extraction_audit.print_report
@@ -260,16 +262,16 @@ HUBS[20]:
     CC=14  in:0  out:31  total:31
   scripts.transport_swap_proof.main
     CC=5  in:0  out:29  total:29
+  adapters.python.urirun.host.dashboard.open
+    CC=1  in:28  out:1  total:29
   adapters.python.urirun_node.server.NodeHandler._handle_deploy
     CC=11  in:0  out:29  total:29
   adapters.python.urirun.connectors.connector_lint.verify_connector
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.node.flow_planner._append_target_steps
-    CC=14  in:1  out:26  total:27
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
   adapters.python.urirun_node.server.apply_deploy
     CC=12  in:2  out:25  total:27
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
   adapters.python.urirun_runtime.v2.validate_binding_document
     CC=12  in:3  out:24  total:27
   adapters.python.urirun_node.server.NodeHandler._handle_run
@@ -280,12 +282,10 @@ HUBS[20]:
     CC=9  in:0  out:25  total:25
   adapters.python.urirun_connectors_toolkit.resolver.index_local
     CC=12  in:2  out:22  total:24
-  adapters.python.urirun.node.flow_thin._thin_dispatch_step
-    CC=14  in:1  out:23  total:24
+  adapters.python.urirun.host.dashboard.type
+    CC=2  in:22  out:1  total:23
   adapters.python.urirun_node.server.NodeHandler._get
     CC=12  in:4  out:19  total:23
-  adapters.python.urirun_node.server.NodeHandler._handle_enroll
-    CC=11  in:0  out:22  total:22
   adapters.python.urirun_node.server._serve_opts_merged
     CC=14  in:1  out:21  total:22
 
@@ -343,7 +343,7 @@ MODULES:
     dispatch_execute  CC=2  out:3
     test_execute_cases  CC=4  out:5
     test_failed_dispatch_carries_error  CC=4  out:4
-  adapters.python.urirun.connectors.connector_lint  [33 funcs]
+  adapters.python.urirun.connectors.connector_lint  [34 funcs]
     _adapter_drift  CC=5  out:7
     _changed_machine_fields  CC=5  out:1
     _cli_subcommands  CC=10  out:9
@@ -358,10 +358,13 @@ MODULES:
     _load  CC=3  out:4
     smoke  CC=6  out:20
     smoke_command  CC=2  out:4
-  adapters.python.urirun.node._util  [4 funcs]
+  adapters.python.urirun.host.dashboard  [3 funcs]
+    list  CC=8  out:4
+    open  CC=1  out:1
+    type  CC=2  out:1
+  adapters.python.urirun.node._util  [3 funcs]
     json_load  CC=1  out:3
     json_write  CC=1  out:4
-    quiet_completion  CC=1  out:2
     slug  CC=2  out:3
   adapters.python.urirun.node.diagnostics  [17 funcs]
     _build  CC=3  out:3
@@ -398,28 +401,6 @@ MODULES:
   adapters.python.urirun.node.event_schema  [2 funcs]
     _step_inverse  CC=5  out:1
     step_category  CC=3  out:1
-  adapters.python.urirun.node.flow_planner  [12 funcs]
-    _append_target_steps  CC=14  out:26
-    _flow_intents  CC=6  out:3
-    _flow_intents_llm  CC=6  out:8
-    _unique_step_id  CC=3  out:4
-    _uri_is_available  CC=4  out:2
-    _uri_matches_template  CC=6  out:8
-    _uri_segments  CC=1  out:3
-    append_if_available  CC=5  out:6
-    first_url  CC=2  out:2
-    heuristic_flow  CC=13  out:17
-  adapters.python.urirun.node.flow_thin  [24 funcs]
-    _action_error  CC=2  out:3
-    _action_ok  CC=3  out:4
-    _capture_proof_from_result  CC=14  out:14
-    _capture_proofs_from_results  CC=4  out:3
-    _check_step_deps  CC=5  out:3
-    _circuit_break  CC=2  out:0
-    _dig_path  CC=4  out:5
-    _enrich_remember_with_degraded  CC=8  out:8
-    _extract_inverse  CC=6  out:10
-    _next_kind  CC=4  out:3
   adapters.python.urirun.node.flow_verify  [7 funcs]
     _dig_value  CC=5  out:4
     _flow_stdout  CC=6  out:7
@@ -452,7 +433,7 @@ MODULES:
     ensure  CC=12  out:9
     report  CC=4  out:5
     status  CC=5  out:3
-  adapters.python.urirun.node.routing  [11 funcs]
+  adapters.python.urirun.node.routing  [10 funcs]
     binding_for_remote_route  CC=3  out:5
     registry_fingerprint  CC=2  out:7
     registry_from_routes  CC=3  out:3
@@ -462,7 +443,7 @@ MODULES:
     route_targets_for_nodes  CC=14  out:10
     routes_from_registry  CC=8  out:15
     safe_route  CC=1  out:4
-    target_nodes  CC=10  out:3
+    uri_is_denied  CC=2  out:1
   adapters.python.urirun.node.skill  [14 funcs]
     _episode_for  CC=8  out:6
     _memory  CC=1  out:1
@@ -474,25 +455,28 @@ MODULES:
     _uri_session_promote  CC=7  out:8
     _uri_session_replay  CC=7  out:10
     _uri_session_start  CC=8  out:11
-  adapters.python.urirun.node.twin_store  [8 funcs]
+  adapters.python.urirun.node.twin_store  [14 funcs]
     __init__  CC=5  out:5
+    items  CC=1  out:2
     drift  CC=3  out:2
     recall_episode  CC=9  out:8
     recall_flow_by_intent  CC=8  out:8
     remember  CC=1  out:1
-    _sig  CC=1  out:4
-    default_memory_path  CC=2  out:2
-    environment_fingerprint  CC=2  out:8
+    session_append  CC=3  out:5
+    session_steps  CC=3  out:3
+    items  CC=1  out:3
+    keys  CC=1  out:3
   adapters.python.urirun.runtime.dispatch_protocol  [2 funcs]
     reply_fields  CC=9  out:10
     validate_reply  CC=6  out:8
-  adapters.python.urirun_connectors_toolkit.backend_registry  [6 funcs]
+  adapters.python.urirun_connectors_toolkit.backend_registry  [7 funcs]
     missing  CC=5  out:2
     platform_ok  CC=2  out:1
     current_platform  CC=1  out:0
     dispatch  CC=11  out:17
     have_bin  CC=1  out:1
     have_mod  CC=2  out:1
+    registry_report  CC=3  out:4
   adapters.python.urirun_connectors_toolkit.connector_scaffold  [11 funcs]
     _go_files  CC=1  out:1
     _js_files  CC=1  out:2
@@ -516,7 +500,8 @@ MODULES:
     index_local  CC=12  out:22
     resolve  CC=12  out:24
     resolve_command  CC=6  out:14
-  adapters.python.urirun_flow  [1 funcs]
+  adapters.python.urirun_flow  [2 funcs]
+    _validate_graph  CC=11  out:13
     order  CC=3  out:6
   adapters.python.urirun_flow.cli  [2 funcs]
     _load_flow  CC=3  out:8
@@ -535,6 +520,14 @@ MODULES:
     _llm_model_actions  CC=1  out:0
     _not_found_actions  CC=5  out:3
     _transient_actions  CC=2  out:3
+  adapters.python.urirun_flow.run  [7 funcs]
+    _prereq_skip  CC=5  out:3
+    _resolve_payload  CC=3  out:2
+    _result_value  CC=3  out:4
+    _skip_envelope  CC=1  out:0
+    _skip_step  CC=1  out:1
+    envelope_ok  CC=6  out:5
+    flow_summary  CC=8  out:13
   adapters.python.urirun_node._artifacts  [5 funcs]
     _artifact_extension  CC=9  out:5
     _decode_base64_artifact  CC=6  out:6
@@ -547,8 +540,10 @@ MODULES:
     latest_version  CC=5  out:16
     version_line  CC=3  out:1
     version_status  CC=5  out:4
-  adapters.python.urirun_node.client  [6 funcs]
+  adapters.python.urirun_node.client  [8 funcs]
     __init__  CC=1  out:5
+    _load_module_source  CC=6  out:5
+    _read_folder_files  CC=5  out:8
     deploy  CC=9  out:8
     get  CC=1  out:3
     routes  CC=1  out:3
@@ -581,7 +576,8 @@ MODULES:
     load_authorized  CC=5  out:7
     sign  CC=2  out:13
     verify  CC=3  out:9
-  adapters.python.urirun_node.server  [38 funcs]
+  adapters.python.urirun_node.server  [39 funcs]
+    publish  CC=3  out:4
     _get  CC=12  out:19
     _get_errors  CC=8  out:15
     _guarded  CC=3  out:3
@@ -591,7 +587,6 @@ MODULES:
     _handle_need  CC=9  out:14
     _handle_run  CC=14  out:27
     _handle_run_control  CC=8  out:7
-    _health_payload  CC=4  out:15
   adapters.python.urirun_node.transport  [22 funcs]
     _annotate_deploy_allow_compat  CC=11  out:9
     _configured_api_id  CC=8  out:9
@@ -670,11 +665,14 @@ MODULES:
   scripts.transport_swap_proof  [2 funcs]
     main  CC=5  out:29
     timed  CC=2  out:5
-  security.mesh-probe.probe  [1 funcs]
+  security.mesh-probe.probe  [2 funcs]
+    _attacker_key  CC=1  out:5
     record  CC=2  out:2
 
 EDGES:
+  security.mesh-probe.probe._attacker_key → adapters.python.urirun.host.dashboard.open
   security.mesh-probe.probe.record → scripts.test_pypi_install.print
+  examples.matrix.verify.essential → adapters.python.urirun.host.dashboard.list
   examples.matrix.verify.main → adapters.python.urirun_runtime.v2.validate_binding_document
   examples.matrix.verify.main → examples.matrix.verify.essential
   examples.matrix.verify.main → scripts.test_pypi_install.print
@@ -695,6 +693,7 @@ EDGES:
   scripts.lint_connectors.main → scripts.lint_connectors._lint_exit_code
   scripts.lint_connectors.main → scripts.test_pypi_install.print
   scripts.lint_connectors.main → scripts.lint_connectors._print_fleet_report
+  scripts.extraction_audit.module_name → adapters.python.urirun.host.dashboard.list
   scripts.extraction_audit.discover_modules → scripts.extraction_audit.module_name
   scripts.extraction_audit.edges_in_file → scripts.extraction_audit._resolve_from
   scripts.extraction_audit.classify → scripts.extraction_audit._allowed_down
@@ -717,13 +716,10 @@ EDGES:
   scripts.repin_connectors._repin_one → scripts.test_pypi_install.print
   scripts.repin_connectors.main → scripts.repin_connectors.find_root
   scripts.repin_connectors.main → scripts.test_pypi_install.print
+  adapters.conformance.essential → adapters.python.urirun.host.dashboard.list
   adapters.conformance._collect_outputs → adapters.conformance.python_reference
   adapters.conformance._collect_outputs → scripts.test_pypi_install.print
   adapters.conformance._validate_contracts → adapters.conformance.essential
-  adapters.conformance._validate_contracts → scripts.test_pypi_install.print
-  adapters.conformance._compare_to_python → scripts.test_pypi_install.print
-  adapters.conformance._exec_check → scripts.test_pypi_install.print
-  adapters.conformance.main → adapters.conformance._collect_outputs
 ```
 
 ## Test Contracts
@@ -742,13 +738,15 @@ EDGES:
 
 ```toon markpact:analysis path=project/calls.toon.yaml
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.23s
-# nodes: 478 | edges: 500 | modules: 56
-# CC̄=4.6
+# generated in 0.24s
+# nodes: 463 | edges: 500 | modules: 56
+# CC̄=4.7
 
 HUBS[20]:
   scripts.test_pypi_install.print
     CC=0  in:209  out:0  total:209
+  adapters.python.urirun.host.dashboard.list
+    CC=8  in:105  out:4  total:109
   adapters.python.urirun_node.server.send_json
     CC=1  in:44  out:12  total:56
   scripts.extraction_audit.print_report
@@ -759,16 +757,16 @@ HUBS[20]:
     CC=14  in:0  out:31  total:31
   scripts.transport_swap_proof.main
     CC=5  in:0  out:29  total:29
+  adapters.python.urirun.host.dashboard.open
+    CC=1  in:28  out:1  total:29
   adapters.python.urirun_node.server.NodeHandler._handle_deploy
     CC=11  in:0  out:29  total:29
   adapters.python.urirun.connectors.connector_lint.verify_connector
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.node.flow_planner._append_target_steps
-    CC=14  in:1  out:26  total:27
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
   adapters.python.urirun_node.server.apply_deploy
     CC=12  in:2  out:25  total:27
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
   adapters.python.urirun_runtime.v2.validate_binding_document
     CC=12  in:3  out:24  total:27
   adapters.python.urirun_node.server.NodeHandler._handle_run
@@ -779,12 +777,10 @@ HUBS[20]:
     CC=9  in:0  out:25  total:25
   adapters.python.urirun_connectors_toolkit.resolver.index_local
     CC=12  in:2  out:22  total:24
-  adapters.python.urirun.node.flow_thin._thin_dispatch_step
-    CC=14  in:1  out:23  total:24
+  adapters.python.urirun.host.dashboard.type
+    CC=2  in:22  out:1  total:23
   adapters.python.urirun_node.server.NodeHandler._get
     CC=12  in:4  out:19  total:23
-  adapters.python.urirun_node.server.NodeHandler._handle_enroll
-    CC=11  in:0  out:22  total:22
   adapters.python.urirun_node.server._serve_opts_merged
     CC=14  in:1  out:21  total:22
 
@@ -842,7 +838,7 @@ MODULES:
     dispatch_execute  CC=2  out:3
     test_execute_cases  CC=4  out:5
     test_failed_dispatch_carries_error  CC=4  out:4
-  adapters.python.urirun.connectors.connector_lint  [33 funcs]
+  adapters.python.urirun.connectors.connector_lint  [34 funcs]
     _adapter_drift  CC=5  out:7
     _changed_machine_fields  CC=5  out:1
     _cli_subcommands  CC=10  out:9
@@ -857,10 +853,13 @@ MODULES:
     _load  CC=3  out:4
     smoke  CC=6  out:20
     smoke_command  CC=2  out:4
-  adapters.python.urirun.node._util  [4 funcs]
+  adapters.python.urirun.host.dashboard  [3 funcs]
+    list  CC=8  out:4
+    open  CC=1  out:1
+    type  CC=2  out:1
+  adapters.python.urirun.node._util  [3 funcs]
     json_load  CC=1  out:3
     json_write  CC=1  out:4
-    quiet_completion  CC=1  out:2
     slug  CC=2  out:3
   adapters.python.urirun.node.diagnostics  [17 funcs]
     _build  CC=3  out:3
@@ -897,28 +896,6 @@ MODULES:
   adapters.python.urirun.node.event_schema  [2 funcs]
     _step_inverse  CC=5  out:1
     step_category  CC=3  out:1
-  adapters.python.urirun.node.flow_planner  [12 funcs]
-    _append_target_steps  CC=14  out:26
-    _flow_intents  CC=6  out:3
-    _flow_intents_llm  CC=6  out:8
-    _unique_step_id  CC=3  out:4
-    _uri_is_available  CC=4  out:2
-    _uri_matches_template  CC=6  out:8
-    _uri_segments  CC=1  out:3
-    append_if_available  CC=5  out:6
-    first_url  CC=2  out:2
-    heuristic_flow  CC=13  out:17
-  adapters.python.urirun.node.flow_thin  [24 funcs]
-    _action_error  CC=2  out:3
-    _action_ok  CC=3  out:4
-    _capture_proof_from_result  CC=14  out:14
-    _capture_proofs_from_results  CC=4  out:3
-    _check_step_deps  CC=5  out:3
-    _circuit_break  CC=2  out:0
-    _dig_path  CC=4  out:5
-    _enrich_remember_with_degraded  CC=8  out:8
-    _extract_inverse  CC=6  out:10
-    _next_kind  CC=4  out:3
   adapters.python.urirun.node.flow_verify  [7 funcs]
     _dig_value  CC=5  out:4
     _flow_stdout  CC=6  out:7
@@ -951,7 +928,7 @@ MODULES:
     ensure  CC=12  out:9
     report  CC=4  out:5
     status  CC=5  out:3
-  adapters.python.urirun.node.routing  [11 funcs]
+  adapters.python.urirun.node.routing  [10 funcs]
     binding_for_remote_route  CC=3  out:5
     registry_fingerprint  CC=2  out:7
     registry_from_routes  CC=3  out:3
@@ -961,7 +938,7 @@ MODULES:
     route_targets_for_nodes  CC=14  out:10
     routes_from_registry  CC=8  out:15
     safe_route  CC=1  out:4
-    target_nodes  CC=10  out:3
+    uri_is_denied  CC=2  out:1
   adapters.python.urirun.node.skill  [14 funcs]
     _episode_for  CC=8  out:6
     _memory  CC=1  out:1
@@ -973,25 +950,28 @@ MODULES:
     _uri_session_promote  CC=7  out:8
     _uri_session_replay  CC=7  out:10
     _uri_session_start  CC=8  out:11
-  adapters.python.urirun.node.twin_store  [8 funcs]
+  adapters.python.urirun.node.twin_store  [14 funcs]
     __init__  CC=5  out:5
+    items  CC=1  out:2
     drift  CC=3  out:2
     recall_episode  CC=9  out:8
     recall_flow_by_intent  CC=8  out:8
     remember  CC=1  out:1
-    _sig  CC=1  out:4
-    default_memory_path  CC=2  out:2
-    environment_fingerprint  CC=2  out:8
+    session_append  CC=3  out:5
+    session_steps  CC=3  out:3
+    items  CC=1  out:3
+    keys  CC=1  out:3
   adapters.python.urirun.runtime.dispatch_protocol  [2 funcs]
     reply_fields  CC=9  out:10
     validate_reply  CC=6  out:8
-  adapters.python.urirun_connectors_toolkit.backend_registry  [6 funcs]
+  adapters.python.urirun_connectors_toolkit.backend_registry  [7 funcs]
     missing  CC=5  out:2
     platform_ok  CC=2  out:1
     current_platform  CC=1  out:0
     dispatch  CC=11  out:17
     have_bin  CC=1  out:1
     have_mod  CC=2  out:1
+    registry_report  CC=3  out:4
   adapters.python.urirun_connectors_toolkit.connector_scaffold  [11 funcs]
     _go_files  CC=1  out:1
     _js_files  CC=1  out:2
@@ -1015,7 +995,8 @@ MODULES:
     index_local  CC=12  out:22
     resolve  CC=12  out:24
     resolve_command  CC=6  out:14
-  adapters.python.urirun_flow  [1 funcs]
+  adapters.python.urirun_flow  [2 funcs]
+    _validate_graph  CC=11  out:13
     order  CC=3  out:6
   adapters.python.urirun_flow.cli  [2 funcs]
     _load_flow  CC=3  out:8
@@ -1034,6 +1015,14 @@ MODULES:
     _llm_model_actions  CC=1  out:0
     _not_found_actions  CC=5  out:3
     _transient_actions  CC=2  out:3
+  adapters.python.urirun_flow.run  [7 funcs]
+    _prereq_skip  CC=5  out:3
+    _resolve_payload  CC=3  out:2
+    _result_value  CC=3  out:4
+    _skip_envelope  CC=1  out:0
+    _skip_step  CC=1  out:1
+    envelope_ok  CC=6  out:5
+    flow_summary  CC=8  out:13
   adapters.python.urirun_node._artifacts  [5 funcs]
     _artifact_extension  CC=9  out:5
     _decode_base64_artifact  CC=6  out:6
@@ -1046,8 +1035,10 @@ MODULES:
     latest_version  CC=5  out:16
     version_line  CC=3  out:1
     version_status  CC=5  out:4
-  adapters.python.urirun_node.client  [6 funcs]
+  adapters.python.urirun_node.client  [8 funcs]
     __init__  CC=1  out:5
+    _load_module_source  CC=6  out:5
+    _read_folder_files  CC=5  out:8
     deploy  CC=9  out:8
     get  CC=1  out:3
     routes  CC=1  out:3
@@ -1080,7 +1071,8 @@ MODULES:
     load_authorized  CC=5  out:7
     sign  CC=2  out:13
     verify  CC=3  out:9
-  adapters.python.urirun_node.server  [38 funcs]
+  adapters.python.urirun_node.server  [39 funcs]
+    publish  CC=3  out:4
     _get  CC=12  out:19
     _get_errors  CC=8  out:15
     _guarded  CC=3  out:3
@@ -1090,7 +1082,6 @@ MODULES:
     _handle_need  CC=9  out:14
     _handle_run  CC=14  out:27
     _handle_run_control  CC=8  out:7
-    _health_payload  CC=4  out:15
   adapters.python.urirun_node.transport  [22 funcs]
     _annotate_deploy_allow_compat  CC=11  out:9
     _configured_api_id  CC=8  out:9
@@ -1169,11 +1160,14 @@ MODULES:
   scripts.transport_swap_proof  [2 funcs]
     main  CC=5  out:29
     timed  CC=2  out:5
-  security.mesh-probe.probe  [1 funcs]
+  security.mesh-probe.probe  [2 funcs]
+    _attacker_key  CC=1  out:5
     record  CC=2  out:2
 
 EDGES:
+  security.mesh-probe.probe._attacker_key → adapters.python.urirun.host.dashboard.open
   security.mesh-probe.probe.record → scripts.test_pypi_install.print
+  examples.matrix.verify.essential → adapters.python.urirun.host.dashboard.list
   examples.matrix.verify.main → adapters.python.urirun_runtime.v2.validate_binding_document
   examples.matrix.verify.main → examples.matrix.verify.essential
   examples.matrix.verify.main → scripts.test_pypi_install.print
@@ -1194,6 +1188,7 @@ EDGES:
   scripts.lint_connectors.main → scripts.lint_connectors._lint_exit_code
   scripts.lint_connectors.main → scripts.test_pypi_install.print
   scripts.lint_connectors.main → scripts.lint_connectors._print_fleet_report
+  scripts.extraction_audit.module_name → adapters.python.urirun.host.dashboard.list
   scripts.extraction_audit.discover_modules → scripts.extraction_audit.module_name
   scripts.extraction_audit.edges_in_file → scripts.extraction_audit._resolve_from
   scripts.extraction_audit.classify → scripts.extraction_audit._allowed_down
@@ -1216,30 +1211,48 @@ EDGES:
   scripts.repin_connectors._repin_one → scripts.test_pypi_install.print
   scripts.repin_connectors.main → scripts.repin_connectors.find_root
   scripts.repin_connectors.main → scripts.test_pypi_install.print
+  adapters.conformance.essential → adapters.python.urirun.host.dashboard.list
   adapters.conformance._collect_outputs → adapters.conformance.python_reference
   adapters.conformance._collect_outputs → scripts.test_pypi_install.print
   adapters.conformance._validate_contracts → adapters.conformance.essential
-  adapters.conformance._validate_contracts → scripts.test_pypi_install.print
-  adapters.conformance._compare_to_python → scripts.test_pypi_install.print
-  adapters.conformance._exec_check → scripts.test_pypi_install.print
-  adapters.conformance.main → adapters.conformance._collect_outputs
 ```
 
 ### Code Analysis (`project/analysis.toon.yaml`)
 
 ```toon markpact:analysis path=project/analysis.toon.yaml
-# code2llm | 247f 40036L | python:185,json:13,shell:11,yaml:5,csharp:4,txt:3,javascript:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-27
-# generated in 0.10s
-# CC̅=4.6 | critical:0/1935 | dups:0 | cycles:0
+# code2llm | 248f 40153L | python:185,json:13,shell:11,yaml:5,javascript:4,csharp:4,txt:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-27
+# generated in 0.20s
+# CC̅=4.7 | critical:32/2322 | dups:0 | cycles:0
 
-HEALTH[0]: ok
+HEALTH[20]:
+  🟡 CC    applyControlsFromUrl CC=22 (limit:15)
+  🟡 CC    createTicket CC=25 (limit:15)
+  🟡 CC    installConnector CC=26 (limit:15)
+  🟡 CC    testConnector CC=21 (limit:15)
+  🟡 CC    renderNodes CC=16 (limit:15)
+  🟡 CC    renderHost CC=30 (limit:15)
+  🟡 CC    showAddPhoneNodeQR CC=16 (limit:15)
+  🟡 CC    savePhoneNode CC=15 (limit:15)
+  🟡 CC    saveTypedNode CC=20 (limit:15)
+  🟡 CC    saveApiNode CC=29 (limit:15)
+  🟡 CC    saveDeviceNode CC=23 (limit:15)
+  🟡 CC    saveNodeToken CC=16 (limit:15)
+  🟡 CC    saveNodeTokenFor CC=16 (limit:15)
+  🟡 CC    contactCard CC=17 (limit:15)
+  🟡 CC    chatContacts CC=18 (limit:15)
+  🟡 CC    discoveryObjects CC=21 (limit:15)
+  🟡 CC    renderDiscovery CC=17 (limit:15)
+  🟡 CC    renderArtifactFileRow CC=19 (limit:15)
+  🟡 CC    renderTwinPlanCard CC=43 (limit:15)
+  🟡 CC    renderAttachment CC=26 (limit:15)
 
-REFACTOR[0]: none needed
+REFACTOR[1]:
+  1. split 20 high-CC methods  (CC>15)
 
-PIPELINES[645]:
+PIPELINES[822]:
   [1] Src [http]: http
       PURITY: 100% pure
-  [2] Src [_attacker_key]: _attacker_key
+  [2] Src [_attacker_key]: _attacker_key → open → esc → text
       PURITY: 100% pure
   [3] Src [record]: record → print
       PURITY: 100% pure
@@ -1257,9 +1270,9 @@ PIPELINES[645]:
       PURITY: 100% pure
   [10] Src [main]: main → find_offenders → _iter_py
       PURITY: 100% pure
-  [11] Src [main]: main → lint_fleet → lint_connector → _connector_py_files
+  [11] Src [main]: main → lint_fleet → lint_connector → list → ...(3 more)
       PURITY: 100% pure
-  [12] Src [main]: main → audit → discover_modules → module_name
+  [12] Src [main]: main → audit → discover_modules → module_name → ...(4 more)
       PURITY: 100% pure
   [13] Src [main]: main → find_root
       PURITY: 100% pure
@@ -1321,7 +1334,7 @@ PIPELINES[645]:
       PURITY: 100% pure
   [42] Src [connector_install]: connector_install → _classify_source
       PURITY: 100% pure
-  [43] Src [connector_discover]: connector_discover → _scan_local_connectors → _read_connector_manifest → _read_tellmesh_manifest
+  [43] Src [connector_discover]: connector_discover → _scan_local_connectors → _read_connector_manifest → _read_tellmesh_manifest → ...(3 more)
       PURITY: 100% pure
   [44] Src [registry_installed]: registry_installed
       PURITY: 100% pure
@@ -1339,7 +1352,7 @@ PIPELINES[645]:
       PURITY: 100% pure
 
 LAYERS:
-  scripts/                        CC̄=5.2    ←in:158  →out:1
+  scripts/                        CC̄=5.2    ←in:158  →out:2
   │ extraction_audit           423L  2C   12m  CC=12     ←0
   │ test_pypi_install.sh       264L  0C    2m  CC=0.0    ←34
   │ repin_connectors           176L  0C    7m  CC=11     ←0
@@ -1349,13 +1362,14 @@ LAYERS:
   │ release-bump.sh             29L  0C    0m  CC=0.0    ←0
   │ sync-versions.sh            25L  0C    0m  CC=0.0    ←0
   │
-  adapters/                       CC̄=4.6    ←in:18  →out:11  !! split
-  │ !! html_templates            4921L  0C    3m  CC=6      ←0
+  adapters/                       CC̄=4.8    ←in:18  →out:12  !! split
+  │ !! dashboard.js              2693L  0C  384m  CC=43     ←55
+  │ !! html_templates            2227L  0C    3m  CC=6      ←0
   │ !! v2                        2033L  2C  120m  CC=14     ←5
-  │ !! host_dashboard            1924L  0C  102m  CC=14     ←1
+  │ !! host_dashboard            1930L  0C  102m  CC=14     ←1
   │ !! scanner_bridge            1548L  0C    0m  CC=0.0    ←0
   │ !! document_sync             1422L  0C    0m  CC=0.0    ←0
-  │ !! chat_orchestrator         1400L  1C   45m  CC=14     ←0
+  │ !! chat_orchestrator         1415L  1C   45m  CC=14     ←0
   │ !! server                     996L  3C   55m  CC=14     ←3
   │ !! object_registry            981L  0C   46m  CC=14     ←0
   │ !! flow                       939L  0C   49m  CC=10     ←6
@@ -1380,19 +1394,19 @@ LAYERS:
   │ task_cli                   346L  0C   25m  CC=12     ←0
   │ scanner_service            342L  0C    0m  CC=0.0    ←0
   │ cdp                        339L  1C   24m  CC=8      ←0
-  │ node_dispatch              315L  0C    7m  CC=14     ←2
+  │ node_dispatch              315L  0C    7m  CC=14     ←3
   │ mesh                       308L  0C    3m  CC=4      ←0
   │ planfile_adapter           290L  1C   27m  CC=9      ←0
   │ worker                     289L  3C   21m  CC=13     ←2
   │ dashboard_api              288L  0C   25m  CC=14     ←1
   │ node_types                 265L  0C    8m  CC=8      ←1
   │ secrets                    263L  1C   18m  CC=9      ←1
+  │ node_api                   260L  0C   12m  CC=13     ←0
   │ connector_admin            240L  0C    9m  CC=14     ←1
   │ run                        236L  0C   12m  CC=14     ←1
   │ config                     226L  0C   17m  CC=9      ←3
   │ node_health                224L  0C    9m  CC=13     ←0
   │ __init__                   216L  3C   12m  CC=13     ←0
-  │ node_api                   211L  0C   11m  CC=13     ←0
   │ v2_grpc                    207L  0C   11m  CC=9      ←0
   │ discovery                  202L  0C    9m  CC=9      ←0
   │ compat                     199L  0C    6m  CC=10     ←0
@@ -1404,13 +1418,13 @@ LAYERS:
   │ new-connector.sh           168L  0C    1m  CC=0.0    ←0
   │ conformance                167L  0C    7m  CC=7      ←0
   │ android_node               162L  0C    7m  CC=14     ←1
+  │ !! routing                    161L  0C    8m  CC=17     ←1
   │ dispatch                   160L  0C    7m  CC=12     ←1
   │ capability                 160L  0C    6m  CC=12     ←0
   │ scanner_net                153L  0C    0m  CC=0.0    ←0
   │ scheduler                  135L  0C    6m  CC=4      ←0
   │ decision_loop              134L  0C    5m  CC=13     ←1
   │ backend_registry           129L  2C   10m  CC=11     ←0
-  │ routing                    119L  0C    6m  CC=14     ←1
   │ contracts                  119L  0C    8m  CC=5      ←0
   │ _artifacts                 111L  0C    5m  CC=9      ←2
   │ progress                    89L  1C   11m  CC=3      ←0
@@ -1420,9 +1434,9 @@ LAYERS:
   │ formatting                  80L  0C    4m  CC=8      ←2
   │ __init__                    76L  2C    1m  CC=1      ←0
   │ _version                    76L  0C    5m  CC=5      ←1
+  │ pyproject.toml              76L  0C    0m  CC=0.0    ←0
   │ Urirun.php                  73L  1C    5m  CC=3      ←0
   │ project.assets.json         71L  0C    0m  CC=0.0    ←0
-  │ pyproject.toml              70L  0C    0m  CC=0.0    ←0
   │ urirun-connector.csproj.nuget.dgspec.json    66L  0C    0m  CC=0.0    ←0
   │ cli                         65L  0C    3m  CC=12     ←0
   │ widgets                     64L  0C    4m  CC=12     ←0
@@ -1442,9 +1456,9 @@ LAYERS:
   │ urirun_test.c               18L  0C    2m  CC=2      ←0
   │ urirun.sh                   17L  0C    2m  CC=0.0    ←0
   │ urirun-connector.csproj.FileListAbsolute.txt    15L  0C    0m  CC=0.0    ←0
+  │ package.json                14L  0C    0m  CC=0.0    ←0
   │ hash_connector.pl           14L  0C    0m  CC=0.0    ←0
   │ hash-connector.php          14L  0C    0m  CC=0.0    ←0
-  │ package.json                14L  0C    0m  CC=0.0    ←0
   │ urirun.h                    13L  0C    1m  CC=1      ←0
   │ hash_connector.rs           12L  0C    1m  CC=1      ←0
   │ HashConnector.java          11L  1C    1m  CC=1      ←0
@@ -1606,22 +1620,23 @@ LAYERS:
      adapters/c/urirun.c                       0L
 
 COUPLING:
-                           adapters.python              scripts             adapters      examples.matrix                v1.js        adapters.java        adapters.perl  security.mesh-probe
-      adapters.python                   ──                  139                   18                   ←1                    6                    1                    1                       !! fan-out
-              scripts                    1                   ──                  ←11                   ←7                                                                                  ←1  hub
-             adapters                  ←18                   11                   ──                                                                                                           hub
-      examples.matrix                    1                    7                                        ──                                                                                      !! fan-out
+                           adapters.python              scripts             adapters      examples.matrix                v1.js  security.mesh-probe        adapters.java        adapters.perl
+      adapters.python                   ──                  139                   18                   ←3                    6                   ←1                    1                    1  hub
+              scripts                    2                   ──                  ←11                   ←7                                        ←1                                            hub
+             adapters                    1                   11                   ──                                                                                                           hub
+      examples.matrix                    3                    7                                        ──                                                                                      !! fan-out
                 v1.js                   ←6                                                                                  ──                                                                 hub
-        adapters.java                   ←1                                                                                                       ──                                          
-        adapters.perl                   ←1                                                                                                                            ──                     
-  security.mesh-probe                                         1                                                                                                                            ──
+  security.mesh-probe                    1                    1                                                                                  ──                                          
+        adapters.java                   ←1                                                                                                                            ──                     
+        adapters.perl                   ←1                                                                                                                                                 ──
   CYCLES: none
-  HUB: v1.js/ (fan-in=6)
   HUB: adapters/ (fan-in=18)
+  HUB: adapters.python/ (fan-in=7)
   HUB: scripts/ (fan-in=158)
-  SMELL: examples.matrix/ fan-out=8 → split needed
+  HUB: v1.js/ (fan-in=6)
+  SMELL: adapters/ fan-out=12 → split needed
   SMELL: adapters.python/ fan-out=165 → split needed
-  SMELL: adapters/ fan-out=11 → split needed
+  SMELL: examples.matrix/ fan-out=10 → split needed
 
 EXTERNAL:
   validation: run `vallm batch .` → validation.toon
@@ -1631,20 +1646,20 @@ EXTERNAL:
 ### Duplication (`project/duplication.toon.yaml`)
 
 ```toon markpact:analysis path=project/duplication.toon.yaml
-# redup/duplication | 9 groups | 131f 18018L | 2026-06-27
+# redup/duplication | 9 groups | 131f 15436L | 2026-06-27
 
 SUMMARY:
   files_scanned: 131
-  total_lines:   18018
+  total_lines:   15436
   dup_groups:    9
   dup_fragments: 21
   saved_lines:   90
-  scan_ms:       428
+  scan_ms:       571
 
 HOTSPOTS[7] (files with most duplication):
-  host/host_dashboard.py  dup=40L  groups=3  frags=6  (0.2%)
+  host/host_dashboard.py  dup=40L  groups=3  frags=6  (0.3%)
   __init__.py  dup=38L  groups=1  frags=3  (0.2%)
-  host/dashboard_api.py  dup=25L  groups=2  frags=5  (0.1%)
+  host/dashboard_api.py  dup=25L  groups=2  frags=5  (0.2%)
   host/service_control.py  dup=20L  groups=1  frags=2  (0.1%)
   host/chat_orchestrator.py  dup=7L  groups=1  frags=1  (0.0%)
   host/node_cli.py  dup=6L  groups=1  frags=2  (0.0%)
@@ -1656,9 +1671,9 @@ DUPLICATES[9] (ranked by impact):
       __init__.py:65-69  (shell)
       __init__.py:72-88  (handler)
   [8d9b83d2bd35fb5d]   STRU  _free_port_from_old_scanner  L=9 N=3 saved=18 sim=1.00
-      host/host_dashboard.py:1819-1827  (_free_port_from_old_scanner)
-      host/host_dashboard.py:1830-1838  (_free_port_from_old_chat)
-      host/host_dashboard.py:1841-1849  (_free_port_from_old_android_node)
+      host/host_dashboard.py:1825-1833  (_free_port_from_old_scanner)
+      host/host_dashboard.py:1836-1844  (_free_port_from_old_chat)
+      host/host_dashboard.py:1847-1855  (_free_port_from_old_android_node)
   [19899f9cfc86ca65]   STRU  is_scanner_process  L=10 N=2 saved=10 sim=1.00
       host/service_control.py:213-222  (is_scanner_process)
       host/service_control.py:236-245  (is_android_node_process)
@@ -1744,33 +1759,61 @@ METRICS-TARGET:
 ### Evolution / Churn (`project/evolution.toon.yaml`)
 
 ```toon markpact:analysis path=project/evolution.toon.yaml
-# code2llm/evolution | 1889 func | 117f | 2026-06-27
+# code2llm/evolution | 2276 func | 118f | 2026-06-27
 # generated in 0.01s
 
-NEXT[3] (ranked by impact):
-  [1] !! SPLIT           adapters/python/urirun/host/html_templates.py
-      WHY: 4921L, 0 classes, max CC=6
-      EFFORT: ~4h  IMPACT: 29526
+NEXT[10] (ranked by impact):
+  [1] !! SPLIT           adapters/python/urirun/host/dashboard.js
+      WHY: 2693L, 0 classes, max CC=43
+      EFFORT: ~4h  IMPACT: 115799
 
   [2] !! SPLIT           adapters/python/urirun_runtime/v2.py
       WHY: 2033L, 2 classes, max CC=14
       EFFORT: ~4h  IMPACT: 28462
 
-  [3] !! SPLIT           adapters/python/urirun/host/host_dashboard.py
-      WHY: 1924L, 0 classes, max CC=14
-      EFFORT: ~4h  IMPACT: 26936
+  [3] !! SPLIT           adapters/python/urirun/host/html_templates.py
+      WHY: 2227L, 0 classes, max CC=6
+      EFFORT: ~4h  IMPACT: 13362
+
+  [4] !! SPLIT-FUNC      renderHost  CC=30  fan=14
+      WHY: CC=30 exceeds 15
+      EFFORT: ~1h  IMPACT: 420
+
+  [5] !! SPLIT-FUNC      renderChatMessage  CC=26  fan=16
+      WHY: CC=26 exceeds 15
+      EFFORT: ~1h  IMPACT: 416
+
+  [6] !! SPLIT-FUNC      renderTwinPlanCard  CC=43  fan=8
+      WHY: CC=43 exceeds 15
+      EFFORT: ~1h  IMPACT: 344
+
+  [7] !  SPLIT-FUNC      renderNodes  CC=16  fan=16
+      WHY: CC=16 exceeds 15
+      EFFORT: ~1h  IMPACT: 256
+
+  [8] !  SPLIT-FUNC      applyControlsFromUrl  CC=22  fan=11
+      WHY: CC=22 exceeds 15
+      EFFORT: ~1h  IMPACT: 242
+
+  [9] !  SPLIT-FUNC      renderWidgetDashboard  CC=19  fan=12
+      WHY: CC=19 exceeds 15
+      EFFORT: ~1h  IMPACT: 228
+
+  [10] !  SPLIT-FUNC      loadWidgetBundleViaUri  CC=19  fan=12
+      WHY: CC=19 exceeds 15
+      EFFORT: ~1h  IMPACT: 228
 
 
 RISKS[3]:
+  ⚠ Splitting adapters/python/urirun/host/dashboard.js may break 384 import paths
   ⚠ Splitting adapters/python/urirun/host/html_templates.py may break 3 import paths
   ⚠ Splitting adapters/python/urirun_runtime/v2.py may break 120 import paths
-  ⚠ Splitting adapters/python/urirun/host/host_dashboard.py may break 102 import paths
 
 METRICS-TARGET:
-  CC̄:          4.6 → ≤3.2
-  max-CC:      14 → ≤7
-  god-modules: 19 → 0
-  high-CC(≥15): 0 → ≤0
+  CC̄:          4.7 → ≤3.3
+  max-CC:      43 → ≤20
+  god-modules: 20 → 0
+  high-CC(≥15): 32 → ≤16
   hub-types:   0 → ≤0
 
 PATTERNS (language parser shared logic):
@@ -1798,7 +1841,7 @@ PATTERNS (language parser shared logic):
     - Standardized FunctionInfo/ClassInfo models
 
 HISTORY:
-  prev CC̄=4.6 → now CC̄=4.6
+  prev CC̄=4.6 → now CC̄=4.7
 ```
 
 ## Intent

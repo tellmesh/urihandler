@@ -1,28 +1,29 @@
-# urirun | 1935 func | 128f | 40036L | python | 2026-06-27
+# urirun | 2322 func | 129f | 40153L | python | 2026-06-27
 # generated in 0.00s
 
 HEALTH:
-  CC̄=4.6  critical=225 (limit:10)  dup=2  cycles=0
+  CC̄=4.7  critical=291 (limit:10)  dup=2  cycles=0
 
 ALERTS[20]:
+  !!! cc_exceeded      renderTwinPlanCard = 43 (limit:15)
+  !!! cc_exceeded      renderHost = 30 (limit:15)
   !!! high_fan_out     _add_host_subparser = 30 (limit:10)
   !!! high_fan_out     serve = 30 (limit:10)
   !!! high_fan_out     summary = 30 (limit:10)
-  !!! high_fan_out     main = 26 (limit:10)
-  !!! high_fan_out     _build_parser = 25 (limit:10)
-  !!! high_fan_out     main = 25 (limit:10)
-  !!! high_fan_out     NodeHandler._handle_run = 24 (limit:10)
-  !!! high_fan_out     main = 24 (limit:10)
-  !!! high_fan_out     _chat_ask_general = 24 (limit:10)
-  !!! high_fan_out     _add_host_task_subparser = 23 (limit:10)
+  !!! cc_exceeded      saveApiNode = 29 (limit:15)
+  !!! cc_exceeded      installConnector = 26 (limit:15)
+  !!! cc_exceeded      renderAttachment = 26 (limit:15)
+  !!! cc_exceeded      renderWidgetCard = 26 (limit:15)
+  !!! cc_exceeded      renderChatMessage = 26 (limit:15)
 
-MODULES[247] (top by size):
-  M[adapters/python/urirun/host/html_templates.py] 4921L C:0 F:3 CC↑6 D:0 (python)
+MODULES[248] (top by size):
+  M[adapters/python/urirun/host/dashboard.js] 2693L C:0 F:384 CC↑43 D:55 (javascript)
+  M[adapters/python/urirun/host/html_templates.py] 2227L C:0 F:3 CC↑6 D:0 (python)
   M[adapters/python/urirun_runtime/v2.py] 2033L C:2 F:120 CC↑14 D:5 (python)
-  M[adapters/python/urirun/host/host_dashboard.py] 1924L C:0 F:102 CC↑14 D:1 (python)
+  M[adapters/python/urirun/host/host_dashboard.py] 1930L C:0 F:102 CC↑14 D:1 (python)
   M[adapters/python/urirun_scanner/scanner_bridge.py] 1548L C:0 F:0 CC↑0 D:0 (python)
   M[adapters/python/urirun_scanner/document_sync.py] 1422L C:0 F:0 CC↑0 D:0 (python)
-  M[adapters/python/urirun/host/chat_orchestrator.py] 1400L C:1 F:45 CC↑14 D:0 (python)
+  M[adapters/python/urirun/host/chat_orchestrator.py] 1415L C:1 F:45 CC↑14 D:0 (python)
   M[planfile.yaml] 1319L C:0 F:0 CC↑0 D:0 (yaml)
   M[adapters/python/urirun_node/server.py] 996L C:3 F:55 CC↑14 D:3 (python)
   M[adapters/python/urirun/host/object_registry.py] 981L C:0 F:46 CC↑14 D:0 (python)
@@ -31,8 +32,7 @@ MODULES[247] (top by size):
   M[adapters/python/urirun/__init__.py] 766L C:1 F:53 CC↑14 D:13 (python)
   M[adapters/python/urirun_runtime/_registry.py] 718L C:0 F:43 CC↑14 D:1 (python)
   M[adapters/python/urirun_runtime/_runtime.py] 597L C:1 F:30 CC↑13 D:2 (python)
-  M[adapters/python/urirun_node/client.py] 558L C:1 F:35 CC↑12 D:1 (python)
-  LANGS: python:185/json:13/shell:11/yaml:5/csharp:4/javascript:3/c:3/txt:3/ruby:2/typescript:2/go:2/php:2/java:2/rust:2/other:2/toml:2/yml:2/pm:1/perl:1
+  LANGS: python:185/json:13/shell:11/yaml:5/javascript:4/csharp:4/c:3/txt:3/ruby:2/typescript:2/go:2/php:2/java:2/rust:2/other:2/toml:2/yml:2/pm:1/perl:1
 
 HOTSPOTS[10]:
   ★ _add_host_subparser fan=30  // The `host` command tree (init/add-node/config/nodes/routes/agents/watch/dashboar
@@ -42,11 +42,11 @@ HOTSPOTS[10]:
   ★ _build_parser fan=25  // Orchestrates 25 calls
 
 REFACTOR[15]:
-  [1] H/H Split god module adapters/python/urirun/__init__.py (766L, 1 classes)
-  [2] H/H Split god module adapters/python/urirun/host/chat_orchestrator.py (1400L, 1 classes)
-  [3] H/H Split god module adapters/python/urirun/host/host_dashboard.py (1924L, 0 classes)
-  [4] H/H Split god module adapters/python/urirun/host/object_registry.py (981L, 0 classes)
-  [5] H/H Split god module adapters/python/urirun_node/server.py (996L, 3 classes)
+  [1] H/L Split createTicket (CC=25)
+  [2] H/L Split installConnector (CC=26)
+  [3] H/L Split renderHost (CC=30)
+  [4] H/L Split saveApiNode (CC=29)
+  [5] H/L Split renderTwinPlanCard (CC=43)
 
 EVOLUTION:
-  2026-06-27 CC̄=4.6 crit=225 40036L // Automated analysis
+  2026-06-27 CC̄=4.7 crit=291 40153L // Automated analysis

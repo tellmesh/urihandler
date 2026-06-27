@@ -60,7 +60,7 @@ project_file('adapters/python/tests/test_flow_twin.py', 512, 'python').
 project_file('adapters/python/tests/test_formatting.py', 130, 'python').
 project_file('adapters/python/tests/test_fs_transfer.py', 105, 'python').
 project_file('adapters/python/tests/test_gap5_authoring.py', 105, 'python').
-project_file('adapters/python/tests/test_host_dashboard.py', 479, 'python').
+project_file('adapters/python/tests/test_host_dashboard.py', 483, 'python').
 project_file('adapters/python/tests/test_host_db.py', 114, 'python').
 project_file('adapters/python/tests/test_host_integrations.py', 108, 'python').
 project_file('adapters/python/tests/test_host_routing.py', 196, 'python').
@@ -157,9 +157,10 @@ project_file('adapters/python/urirun/host/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/host/android_node.py', 163, 'python').
 project_file('adapters/python/urirun/host/artifacts_admin.py', 5, 'python').
 project_file('adapters/python/urirun/host/capability.py', 161, 'python').
-project_file('adapters/python/urirun/host/chat_orchestrator.py', 1406, 'python').
+project_file('adapters/python/urirun/host/chat_orchestrator.py', 1416, 'python').
 project_file('adapters/python/urirun/host/connector_admin.py', 241, 'python').
 project_file('adapters/python/urirun/host/contracts.py', 120, 'python').
+project_file('adapters/python/urirun/host/dashboard.js', 2694, 'javascript').
 project_file('adapters/python/urirun/host/dashboard_api.py', 289, 'python').
 project_file('adapters/python/urirun/host/dashboard_http.py', 182, 'python').
 project_file('adapters/python/urirun/host/decision_loop.py', 135, 'python').
@@ -169,18 +170,19 @@ project_file('adapters/python/urirun/host/document_metadata.py', 5, 'python').
 project_file('adapters/python/urirun/host/document_sync.py', 5, 'python').
 project_file('adapters/python/urirun/host/domain_monitor.py', 6, 'python').
 project_file('adapters/python/urirun/host/fs_transfer.py', 363, 'python').
-project_file('adapters/python/urirun/host/host_dashboard.py', 1925, 'python').
+project_file('adapters/python/urirun/host/host_dashboard.py', 1931, 'python').
 project_file('adapters/python/urirun/host/host_db.py', 528, 'python').
 project_file('adapters/python/urirun/host/host_integrations.py', 375, 'python').
-project_file('adapters/python/urirun/host/html_templates.py', 4922, 'python').
-project_file('adapters/python/urirun/host/node_api.py', 212, 'python').
+project_file('adapters/python/urirun/host/html_templates.py', 1563, 'python').
+project_file('adapters/python/urirun/host/node_api.py', 261, 'python').
 project_file('adapters/python/urirun/host/node_cli.py', 911, 'python').
 project_file('adapters/python/urirun/host/node_dispatch.py', 316, 'python').
 project_file('adapters/python/urirun/host/node_health.py', 225, 'python').
 project_file('adapters/python/urirun/host/node_types.py', 266, 'python').
 project_file('adapters/python/urirun/host/object_registry.py', 982, 'python').
 project_file('adapters/python/urirun/host/planfile_adapter.py', 291, 'python').
-project_file('adapters/python/urirun/host/routing.py', 120, 'python').
+project_file('adapters/python/urirun/host/routing.py', 162, 'python').
+project_file('adapters/python/urirun/host/scanner.js', 665, 'javascript').
 project_file('adapters/python/urirun/host/scanner_bridge.py', 5, 'python').
 project_file('adapters/python/urirun/host/scanner_net.py', 5, 'python').
 project_file('adapters/python/urirun/host/scanner_service.py', 5, 'python').
@@ -1491,7 +1493,7 @@ python_function('adapters/python/urirun/host/chat_orchestrator.py', '_sync_ok_an
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_apply_urifix_recovery', 2, 14, 11).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_chat_ask_document_sync', 13, 12, 15).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_classify_exc_remediation', 2, 4, 5).
-python_function('adapters/python/urirun/host/chat_orchestrator.py', '_build_escalation_block', 3, 4, 1).
+python_function('adapters/python/urirun/host/chat_orchestrator.py', '_build_escalation_block', 3, 7, 4).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_chat_ask_general_planner_failure', 7, 10, 9).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_timeline_steps_all_ok', 2, 5, 2).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_resolve_artifact_value', 1, 7, 2).
@@ -1715,7 +1717,7 @@ python_function('adapters/python/urirun/host/host_dashboard.py', '_sse_parse_fil
 python_function('adapters/python/urirun/host/host_dashboard.py', '_sse_replay_history', 5, 3, 4).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_sse_drive_stream', 4, 4, 5).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_handle_events_sse', 2, 4, 13).
-python_function('adapters/python/urirun/host/host_dashboard.py', '_handle_get_static', 3, 9, 10).
+python_function('adapters/python/urirun/host/host_dashboard.py', '_handle_get_static', 3, 10, 10).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_handle_get_nodes_qr', 2, 5, 14).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_handle_get_services', 3, 4, 7).
 python_function('adapters/python/urirun/host/host_dashboard.py', '_handle_get_api', 4, 14, 12).
@@ -1796,10 +1798,11 @@ python_function('adapters/python/urirun/host/node_api.py', 'join_api_url', 3, 8,
 python_function('adapters/python/urirun/host/node_api.py', 'configured_api_response_body', 2, 4, 3).
 python_function('adapters/python/urirun/host/node_api.py', 'build_request_body', 2, 4, 6).
 python_function('adapters/python/urirun/host/node_api.py', 'resolve_http_method_and_url', 3, 10, 5).
-python_function('adapters/python/urirun/host/node_api.py', 'execute_http_request', 7, 3, 6).
+python_function('adapters/python/urirun/host/node_api.py', '_with_remediation', 1, 10, 7).
+python_function('adapters/python/urirun/host/node_api.py', 'execute_http_request', 7, 5, 10).
 python_function('adapters/python/urirun/host/node_api.py', 'connector_hint', 1, 3, 1).
-python_function('adapters/python/urirun/host/node_api.py', 'connector_required_response', 3, 1, 1).
-python_function('adapters/python/urirun/host/node_api.py', 'configured_api_call', 3, 9, 11).
+python_function('adapters/python/urirun/host/node_api.py', 'connector_required_response', 3, 1, 2).
+python_function('adapters/python/urirun/host/node_api.py', 'configured_api_call', 3, 9, 12).
 python_function('adapters/python/urirun/host/node_cli.py', '_data_bindings', 2, 2, 4).
 python_function('adapters/python/urirun/host/node_cli.py', '_data_init', 2, 1, 2).
 python_function('adapters/python/urirun/host/node_cli.py', '_data_dataset_create', 2, 2, 3).
@@ -1960,7 +1963,8 @@ python_function('adapters/python/urirun/host/routing.py', 'selected_nodes_from_t
 python_function('adapters/python/urirun/host/routing.py', 'route_in_selected_targets', 3, 14, 7).
 python_function('adapters/python/urirun/host/routing.py', 'has_screen_capture_route', 3, 8, 5).
 python_function('adapters/python/urirun/host/routing.py', '_offline_selected_nodes', 2, 5, 2).
-python_function('adapters/python/urirun/host/routing.py', 'screen_document_capability_gap', 4, 14, 10).
+python_function('adapters/python/urirun/host/routing.py', 'escalation_dashboard_url', 2, 3, 3).
+python_function('adapters/python/urirun/host/routing.py', 'screen_document_capability_gap', 4, 17, 11).
 python_function('adapters/python/urirun/host/scheduler.py', 'build_loop_command', 0, 4, 3).
 python_function('adapters/python/urirun/host/scheduler.py', 'shell_join', 1, 2, 2).
 python_function('adapters/python/urirun/host/scheduler.py', 'systemd_units', 0, 2, 1).
@@ -4302,6 +4306,8 @@ makefile_target('test-v1', '').
 makefile_target('test-v2', '').
 makefile_target('build', '').
 makefile_target('publish', '').
+makefile_target('META_PKGS', '').
+makefile_target('publish-meta', '').
 makefile_target('release', '').
 makefile_target('test-published', '').
 makefile_target('test-local', '').

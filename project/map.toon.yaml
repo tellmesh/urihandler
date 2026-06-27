@@ -1,10 +1,10 @@
-# urirun | 375f 71587L | python:352,shell:11,javascript:4,go:3,rust:2,typescript:2,less:1 | 2026-06-27
-# stats: 2857 func | 166 cls | 375 mod | CC̄=4.3 | critical:238 | cycles:0
+# urirun | 377f 71698L | python:352,shell:11,javascript:6,go:3,rust:2,typescript:2,less:1 | 2026-06-27
+# stats: 2860 func | 166 cls | 377 mod | CC̄=4.3 | critical:240 | cycles:0
 # alerts[5]: CC test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen=125; CC test_archive_scanned_document_writes_pdf_json_index_and_detects_duplicate=26; CC test_sync_documents_to_node_copies_pdfs_and_logs_chat=23; CC test_chat_ask_plans_document_sync_without_llm=22; CC _top_level_packages=19
 # hotspots[5]: summary fan=29; serve fan=28; _chat_ask_general fan=23; main fan=23; main fan=20
 # evolution: baseline
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
-M[375]:
+M[377]:
   adapters/bash/example/hash-connector.sh,10
   adapters/bash/urirun.sh,18
   adapters/conformance.py,168
@@ -63,7 +63,7 @@ M[375]:
   adapters/python/tests/test_formatting.py,130
   adapters/python/tests/test_fs_transfer.py,105
   adapters/python/tests/test_gap5_authoring.py,105
-  adapters/python/tests/test_host_dashboard.py,479
+  adapters/python/tests/test_host_dashboard.py,483
   adapters/python/tests/test_host_db.py,114
   adapters/python/tests/test_host_integrations.py,108
   adapters/python/tests/test_host_routing.py,196
@@ -160,9 +160,10 @@ M[375]:
   adapters/python/urirun/host/android_node.py,163
   adapters/python/urirun/host/artifacts_admin.py,5
   adapters/python/urirun/host/capability.py,161
-  adapters/python/urirun/host/chat_orchestrator.py,1406
+  adapters/python/urirun/host/chat_orchestrator.py,1416
   adapters/python/urirun/host/connector_admin.py,241
   adapters/python/urirun/host/contracts.py,120
+  adapters/python/urirun/host/dashboard.js,2694
   adapters/python/urirun/host/dashboard_api.py,289
   adapters/python/urirun/host/dashboard_http.py,182
   adapters/python/urirun/host/decision_loop.py,135
@@ -172,18 +173,19 @@ M[375]:
   adapters/python/urirun/host/document_sync.py,5
   adapters/python/urirun/host/domain_monitor.py,6
   adapters/python/urirun/host/fs_transfer.py,363
-  adapters/python/urirun/host/host_dashboard.py,1925
+  adapters/python/urirun/host/host_dashboard.py,1931
   adapters/python/urirun/host/host_db.py,528
   adapters/python/urirun/host/host_integrations.py,375
-  adapters/python/urirun/host/html_templates.py,4922
-  adapters/python/urirun/host/node_api.py,212
+  adapters/python/urirun/host/html_templates.py,1563
+  adapters/python/urirun/host/node_api.py,261
   adapters/python/urirun/host/node_cli.py,911
   adapters/python/urirun/host/node_dispatch.py,316
   adapters/python/urirun/host/node_health.py,225
   adapters/python/urirun/host/node_types.py,266
   adapters/python/urirun/host/object_registry.py,982
   adapters/python/urirun/host/planfile_adapter.py,291
-  adapters/python/urirun/host/routing.py,120
+  adapters/python/urirun/host/routing.py,162
+  adapters/python/urirun/host/scanner.js,665
   adapters/python/urirun/host/scanner_bridge.py,5
   adapters/python/urirun/host/scanner_net.py,5
   adapters/python/urirun/host/scanner_service.py,5
@@ -2201,7 +2203,7 @@ D:
     service_widget_html(view)
     service_widget_svg(view;summary;width;height)
   adapters/python/urirun/host/node_api.py:
-    e: configured_api_secret,apply_auth_header,configured_api_headers,join_api_url,configured_api_response_body,build_request_body,resolve_http_method_and_url,execute_http_request,connector_hint,connector_required_response,configured_api_call
+    e: configured_api_secret,apply_auth_header,configured_api_headers,join_api_url,configured_api_response_body,build_request_body,resolve_http_method_and_url,_with_remediation,execute_http_request,connector_hint,connector_required_response,configured_api_call
     configured_api_secret(auth)
     apply_auth_header(headers;auth;auth_type;secret)
     configured_api_headers(api;payload)
@@ -2209,6 +2211,7 @@ D:
     configured_api_response_body(raw;content_type)
     build_request_body(payload;headers)
     resolve_http_method_and_url(node;api;payload)
+    _with_remediation(env)
     execute_http_request(node;api;method;url;raw_body;headers;timeout)
     connector_hint(scheme)
     connector_required_response(scheme;node_name;safe_api)
@@ -2381,12 +2384,14 @@ D:
     loads_json(value;default)
     _register_ticket_creator()
   adapters/python/urirun/host/routing.py:
-    e: _needs_screen_capture_any,_connector_hint_for_nodes,selected_nodes_from_targets,route_in_selected_targets,has_screen_capture_route,screen_document_capability_gap
+    e: _needs_screen_capture_any,_connector_hint_for_nodes,selected_nodes_from_targets,route_in_selected_targets,has_screen_capture_route,_offline_selected_nodes,escalation_dashboard_url,screen_document_capability_gap
     _needs_screen_capture_any(prompt)
     _connector_hint_for_nodes(selected_nodes)
     selected_nodes_from_targets(selected_nodes;selected_targets)
     route_in_selected_targets(route;selected_nodes;selected_targets)
     has_screen_capture_route(routes;selected_nodes;selected_targets)
+    _offline_selected_nodes(discovered;nodes)
+    escalation_dashboard_url(node;fix)
     screen_document_capability_gap(prompt;discovered;selected_nodes;selected_targets)
   adapters/python/urirun/host/scanner_bridge.py:
   adapters/python/urirun/host/scanner_net.py:
