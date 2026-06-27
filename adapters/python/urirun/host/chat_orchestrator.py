@@ -1298,6 +1298,38 @@ def _screen_capability_gap_or_recall(prompt, discovered, selected_nodes, selecte
 _LOCAL_NL_KWS = ("lokalnym", "lokalny", "lokalnie", "lokalnego", "lokalnej",
                  "local computer", "my computer", "this computer", "this machine")
 
+_REMOTE_NL_KWS = ("zdalny", "zdalnym", "zdalnego", "zdalne", "zdalnej", "zdalnie",
+                   "remote", "zewnętrznym", "zewnetrznym", "external",
+                   "on node", "na nodzie", "na node")
+
+
+def _prompt_names_remote(prompt: str, alias_map: dict) -> bool:
+    """Return True when the prompt explicitly mentions a remote node by name or remote keyword."""
+    low = prompt.lower()
+    if any(kw in low for kw in _REMOTE_NL_KWS):
+        return True
+    node = prompt_node_match(prompt, alias_map)
+    return bool(node and node != "host")
+
+
+def _apply_host_default_when_no_node_in_prompt(
+    prompt: str, selected_nodes: list[str], selected_targets: list[str],
+    config: str | None, node_urls: list[str] | None, deps: "ChatDeps",
+) -> tuple[list[str], list[str]]:
+    """Strip remote targets when the prompt doesn't name any node.
+
+    User rule: 'if it's not written which node to execute on, assume host.'
+    The UI selection is respected only when the prompt explicitly mentions a
+    remote node name (e.g. 'lenovo') or a remote keyword ('zdalny', 'remote').
+    """
+    has_remote = any(t != "host" for t in (selected_targets or []))
+    if not has_remote:
+        return selected_nodes, selected_targets
+    alias_map = deps.node_alias_map_fn(config, node_urls)
+    if _prompt_names_remote(prompt, alias_map):
+        return selected_nodes, selected_targets
+    return [], ["host"]
+
 
 def _apply_explicit_target_sync(payload, flow, discovered, selected_nodes, selected_targets):
     """Sync targets from flow when the user did not explicitly choose them; flag remote capture."""
@@ -1478,6 +1510,9 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
     selected_nodes = selected_nodes_from_targets(list(requested_nodes), selected_targets)
     execute = bool(payload.get("execute"))
     no_llm = bool(payload.get("no_llm") or payload.get("noLlm"))
+    # Rule: if the prompt doesn't mention which node to use, default to host.
+    selected_nodes, selected_targets = _apply_host_default_when_no_node_in_prompt(
+        prompt, selected_nodes, selected_targets, config, node_urls, deps)
     _add_chat_user_message(
         db, prompt, config, node_urls, execute=execute, no_llm=no_llm,
         requested_nodes=requested_nodes, requested_targets=requested_targets,
