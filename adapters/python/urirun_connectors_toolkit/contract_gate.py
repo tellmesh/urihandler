@@ -52,6 +52,21 @@ class Contract:
     examples: tuple[dict, ...] = ()             # golden {payload, result} — conformance fixtures + few-shot
 
 
+@dataclass(frozen=True)
+class Wire:
+    """A composition edge: the output of ``producer`` feeds the input of ``consumer``.
+
+    ``mapping``: {consumer_input_field: "dotted.path.in.producer.output"}. Checked statically
+    (type compatibility, field availability across all oneOf branches) and verified via JSON
+    round-trip across process boundaries — so composition is guaranteed before runtime.
+    """
+
+    producer: str
+    consumer: str
+    mapping: dict
+    note: str = ""
+
+
 # ── schema-subset validator ──────────────────────────────────────────────────
 
 def _parse_const(token: str) -> Any:
@@ -102,6 +117,13 @@ def check(schema: Any, value: Any, where: str) -> None:
                     continue
                 raise AssertionError(f"{where}: missing required key {key!r}")
             check(spec, value[key], f"{where}.{key}")
+        return
+    if isinstance(schema, list):
+        assert isinstance(value, list), \
+            f"{where}: expected list, got {type(value).__name__}"
+        if schema:  # homogeneous list: schema[0] describes every element
+            for i, item in enumerate(value):
+                check(schema[0], item, f"{where}[{i}]")
         return
     assert _leaf_ok(schema, value), f"{where}: {value!r} does not satisfy {schema!r}"
 
@@ -253,3 +275,166 @@ def enforce(conn, contracts: dict, *, validate: bool):
 
     conn.handler = handler
     return conn
+
+
+# ── contract composition: static wire checking + IPC round-trip ──────────────
+
+_NUMERIC = {"int", "num"}
+
+
+def _walk_out(schema: Any, segs: list) -> "tuple[str | None, bool]":
+    """Return (type_token | None, guaranteed: bool) for ``segs`` path in an output schema.
+
+    guaranteed=False when the path is optional (?), behind a list index (length unknown),
+    or present only in SOME oneOf branches — meaning the pipeline may break on the leaner shape.
+    """
+    if not segs:
+        if isinstance(schema, str):
+            opt = schema.startswith("?")
+            return (schema[1:] if opt else schema), not opt
+        return ("obj" if isinstance(schema, dict) else "list" if isinstance(schema, list) else "any"), True
+    seg, rest = segs[0], segs[1:]
+    if isinstance(schema, dict) and set(schema) == {"oneOf"}:
+        resolved: list[tuple] = []
+        for branch in schema["oneOf"]:
+            try:
+                resolved.append(_walk_out(branch, segs))
+            except KeyError:
+                resolved.append((None, False))
+        present = [r for r in resolved if r[0] is not None]
+        if not present:
+            return None, False
+        guaranteed = all(r[0] is not None for r in resolved) and all(r[1] for r in resolved)
+        return present[0][0], guaranteed
+    if isinstance(schema, dict):
+        if seg not in schema:
+            raise KeyError(seg)
+        sub = schema[seg]
+        opt = isinstance(sub, str) and sub.startswith("?")
+        tok, guar = _walk_out(sub[1:] if opt else sub, rest)
+        return tok, guar and not opt
+    if isinstance(schema, list) and schema and seg.isdigit():
+        tok, _ = _walk_out(schema[0], rest)
+        return tok, False  # list length not encoded in schema → element not guaranteed
+    raise KeyError(seg)
+
+
+def resolve_out_type(out_schema: dict, dotted: str) -> "tuple[str | None, bool]":
+    """(type_token | None, guaranteed) for a dotted path in a producer's output schema."""
+    return _walk_out(out_schema, dotted.split("."))
+
+
+def assignable(producer_tok: str, consumer_tok: str) -> bool:
+    """True when a value of producer type can be assigned to a consumer field of consumer type."""
+    if "any" in (producer_tok, consumer_tok):
+        return True
+    if producer_tok == consumer_tok:
+        return True
+    return consumer_tok == "num" and producer_tok in _NUMERIC
+
+
+def check_wire(wire: Wire, contracts: dict) -> list:
+    """Statically validate a composition edge. Returns a list of problems ([] = clean).
+
+    Catches before runtime: missing field, type mismatch, and the subtlest one — a binding
+    from a CONDITIONAL output (e.g. only in the success branch of a oneOf) to a REQUIRED
+    consumer input, which would break the pipeline when the producer returns the leaner shape.
+    """
+    prod, cons = contracts[wire.producer], contracts[wire.consumer]
+    problems: list[str] = []
+    for cons_field, prod_path in wire.mapping.items():
+        c_sub = cons.inp.get(cons_field)
+        if c_sub is None:
+            problems.append(f"{wire.consumer}.inp nie ma pola {cons_field!r}")
+            continue
+        c_opt = isinstance(c_sub, str) and c_sub.startswith("?")
+        c_tok = c_sub[1:] if c_opt else c_sub
+        try:
+            p_tok, p_guar = resolve_out_type(prod.out, prod_path)
+        except KeyError:
+            problems.append(f"{wire.producer}.out nie ma ścieżki {prod_path!r}")
+            continue
+        if p_tok is None:
+            problems.append(
+                f"{wire.producer}.out: {prod_path!r} nieobecne w żadnym wariancie wyjścia")
+            continue
+        if not assignable(p_tok, c_tok):
+            problems.append(f"typ {prod_path}:{p_tok} nie pasuje do {cons_field}:{c_tok}")
+        if not p_guar and not c_opt:
+            problems.append(
+                f"{prod_path} jest warunkowe (np. wariant degraded), a {cons_field} jest wymagane → "
+                f"pipeline pęknie, gdy producent zwróci uboższy wariant")
+    return problems
+
+
+def find_wire(wires: list, producer: str, consumer: str) -> Wire:
+    """Locate a Wire by producer+consumer; raises KeyError when absent."""
+    for w in wires:
+        if w.producer == producer and w.consumer == consumer:
+            return w
+    raise KeyError(f"brak krawędzi {producer} → {consumer}")
+
+
+def dig(value: Any, dotted: str) -> Any:
+    """Resolve a dotted path (with list indices) in a concrete value — like flow's _dig_path."""
+    cur = value
+    for seg in dotted.split("."):
+        if isinstance(cur, list) and seg.isdigit():
+            cur = cur[int(seg)]
+        elif isinstance(cur, dict) and seg in cur:
+            cur = cur[seg]
+        else:
+            raise KeyError(f"{dotted!r}: brak segmentu {seg!r}")
+    return cur
+
+
+def wire_payload(wire: Wire, producer_envelope: dict) -> dict:
+    """Build a consumer input payload from a producer envelope via wire.mapping.
+
+    Paths absent in this particular output variant (e.g. fullSize in the degraded branch)
+    are silently skipped — consumer_input_check then surfaces what's missing.
+    """
+    out: dict = {}
+    for field, path in wire.mapping.items():
+        try:
+            out[field] = dig(producer_envelope, path)
+        except KeyError:
+            continue
+    return out
+
+
+def consumer_input_check(consumer_contract: Contract, payload: dict,
+                         wire: Wire) -> "tuple[str, list]":
+    """Validate the payload built from a wire edge. Returns (mode, problems).
+
+    mode='full'    — the wire covers every required consumer input: full handoff, validate all.
+    mode='partial' — the wire carries a subset (rest supplied by another step): type-check only
+                     the carried fields. Makes explicit whether two contracts form a COMPLETE
+                     exchange or a PARTIAL contribution.
+    """
+    inp = consumer_contract.inp
+    required = {k for k, v in inp.items()
+                if not (isinstance(v, str) and v.startswith("?"))}
+    carried = set(wire.mapping)
+    problems: list[str] = []
+    if required <= carried:
+        missing = required - set(payload)
+        if missing:
+            problems.append(
+                f"pełny handoff, ale wariant producenta nie dostarczył: {sorted(missing)}")
+        try:
+            check(inp, {k: payload[k] for k in payload}, "consumer.inp")
+        except (AssertionError, ContractViolation) as exc:
+            problems.append(str(exc))
+        return "full", problems
+    arrived = carried & set(payload)
+    for fld in sorted(arrived):
+        sub = inp.get(fld)
+        if sub is None:
+            continue
+        opt = isinstance(sub, str) and sub.startswith("?")
+        try:
+            check(sub[1:] if opt else sub, payload[fld], f"consumer.inp.{fld}")
+        except (AssertionError, ContractViolation) as exc:
+            problems.append(str(exc))
+    return "partial", problems
