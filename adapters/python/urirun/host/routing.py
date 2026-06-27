@@ -18,6 +18,7 @@ def _connector_hint_for_nodes(selected_nodes: list[str]) -> dict:
         return {
             "scheme": "kvm",
             "package": "urirun-connector-kvm",
+            "startCommand": f"urirun node serve --name {node}",
             "installCommand": f"urirun host ensure {node} kvm",
             "deployCommand": f"urirun host deploy {node}",
             "description": f"KVM/Wayland screen-capture connector for node '{node}'",
@@ -82,6 +83,15 @@ def has_screen_capture_route(routes: list[dict], selected_nodes: list[str], sele
     return False
 
 
+def _offline_selected_nodes(discovered: dict, nodes: list[str]) -> list[str]:
+    """Return names of selected nodes that are unreachable in the last discovery."""
+    target_set = set(nodes)
+    return [
+        n["name"] for n in (discovered.get("nodes") or [])
+        if not n.get("reachable") and n.get("name") in target_set
+    ]
+
+
 def screen_document_capability_gap(prompt: str, discovered: dict, selected_nodes: list[str], selected_targets: list[str]) -> dict | None:
     """Return a CapabilityGap when the prompt needs screen capture but no route is available.
 
@@ -98,15 +108,29 @@ def screen_document_capability_gap(prompt: str, discovered: dict, selected_nodes
         if any(token in str(route.get("uri") or "") for token in ("camera://", "ocr://", "fs://", "browser://", "screen://", "kvm://"))
     ][:20]
     nodes = selected_nodes or [t.removeprefix("node:") for t in selected_targets if t.startswith("node:")]
+    offline = _offline_selected_nodes(discovered, nodes)
+    if offline:
+        node = offline[0]
+        message = (
+            f"Node '{node}' jest offline. Uruchom: urirun node serve --name {node} "
+            f"(a następnie: urirun host ensure {node} kvm)"
+        )
+        missing = "node-offline"
+    elif nodes:
+        node = nodes[0]
+        message = (
+            f"Node '{node}' nie ma trasy zrzutu ekranu (kvm://, screen://, browser://). "
+            f"Zainstaluj connector: urirun host ensure {node} kvm"
+        )
+        missing = "screen-capture"
+    else:
+        message = "Brakuje trasy URI do zrzutow ekranu. Zainstaluj connector kvm: urirun host ensure <node> kvm"
+        missing = "screen-capture"
     return {
         "type": "CapabilityGap",
-        "missing": "screen-capture",
-        "message": (
-            f"Node '{nodes[0]}' nie ma trasy zrzutu ekranu (kvm://, screen://, browser://). "
-            f"Zainstaluj connector: urirun host ensure {nodes[0]} kvm"
-            if nodes else
-            "Brakuje trasy URI do zrzutow ekranu. Zainstaluj connector kvm: urirun host ensure <node> kvm"
-        ),
+        "missing": missing,
+        "offline": offline,
+        "message": message,
         "selectedNodes": selected_nodes,
         "selectedTargets": selected_targets,
         "requiredAnyOf": [

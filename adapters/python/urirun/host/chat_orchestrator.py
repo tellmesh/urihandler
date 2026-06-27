@@ -499,6 +499,13 @@ def _build_escalation_block(remediation: dict, prompt: str, execute: bool) -> di
     human_action = remediation.get("humanAction", "")
     command = remediation.get("command", "")
     dashboard_url = remediation.get("dashboardUrl") or (f"?node={node}&fix={cls}" if node else "")
+    # Per user directive: escalate connection / non-URI-process failures to a human on the node panel
+    # of the DEPLOYED dashboard, so the link is clickable off-host (e.g. on a phone). Make a `?`-relative
+    # deep-link absolute against URIRUN_DASHBOARD_BASE (mirrors URIRUN_LAN_QR_BASE, which hardcodes the
+    # same LAN host on :8195). Default points at the operator dashboard; override via the env var.
+    _dash_base = (os.environ.get("URIRUN_DASHBOARD_BASE") or "http://192.168.188.212:8797").strip().rstrip("/")
+    if _dash_base and dashboard_url.startswith("?"):
+        dashboard_url = f"{_dash_base}/{dashboard_url}"
     return {
         "ok": False,
         "humanEscalation": True,
@@ -808,9 +815,14 @@ def _try_ensure_kvm_for_node(
         return False
     try:
         client = node_client(url, token=token, identity=identity)
-        # adopt-only (install=False) — fast path: works when the package is already in the
-        # node's venv (just binds it without SSH). Full install requires `urirun host ensure`.
+        # Fast path: adopt-only (no install) — works when the package is already in the
+        # node's venv. Falls through to install=True when the package is absent.
         r = client.ensure_scheme("kvm", install=False, route="kvm://host/screen/query/capture")
+        if r.get("ok"):
+            return True
+        # Slow path: discover + install + adopt. Requires the node to have access to the
+        # connector package (local connector catalog or pip-accessible package).
+        r = client.ensure_scheme("kvm", install=True, route="kvm://host/screen/query/capture")
         return bool(r.get("ok"))
     except Exception:  # noqa: BLE001
         return False
@@ -823,11 +835,11 @@ def _try_auto_ensure_screen_capture(
     token: str | None,
     identity: str | None,
 ) -> bool:
-    """Adopt a kvm connector that is already installed in the remote node's venv.
+    """Ensure a kvm connector is live on each targeted node.
 
-    Fast path: calls adopt-only (no SSH, no install) on each targeted node.  If the
-    package is already present, the node binds it and screen capture becomes available.
-    Falls back to the CapabilityGap message when adoption fails or the package is absent."""
+    Fast path: adopt-only (install=False) when the package is already in the venv.
+    Slow path: discover + install + adopt (install=True) when the package is absent.
+    Falls back to CapabilityGap when installation also fails (e.g. signed-deploy required)."""
     from .fs_transfer import node_client as _mk_client  # noqa: PLC0415
     eff_id = identity or os.environ.get("URIRUN_RUN_IDENTITY")
     eff_tok = token or os.environ.get("URIRUN_RUN_TOKEN")
