@@ -474,11 +474,24 @@ def _thin_dispatch_step(step: dict, envelope: FlowEnvelope, dispatch_uri,
     if dep_fail is not None:
         return dep_fail
 
-    # Guard: skip explicitly-irreversible steps when any prior step ran degraded.
+    # Guard: skip irreversible steps when any prior step ran degraded.
     # A degraded prior step (e.g. xdg-portal capture placeholder) means the plan's
-    # precondition is not met — an irreversible write (log://.../write, etc.) based
-    # on that degraded result would record false information.
-    if step.get("reversible") is False:
+    # precondition is not met — an irreversible write based on that degraded result
+    # would record false information.
+    # Catches both:
+    #   • explicit step.reversible = False (twin-generated steps)
+    #   • LLM-generated steps with known-irreversible URI path suffixes (no reversible field)
+    _IRREVERSIBLE_URI_SUFFIXES = (
+        "/session/command/write",
+        "/log/command/write",
+        "/notes/command/write",
+        "/memory/command/write",
+    )
+    _step_is_irreversible = (
+        step.get("reversible") is False
+        or any(suf in uri for suf in _IRREVERSIBLE_URI_SUFFIXES)
+    )
+    if _step_is_irreversible:
         prior_deg, deg_reason = _results_degraded(results)
         if prior_deg:
             skip_r = {"ok": True, "skipped": True,
