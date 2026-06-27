@@ -18,6 +18,7 @@ from urirun.node.reversible import (
     path_of,
     planner_context,
     plausibility,
+    schema_from_contracts,
 )
 
 
@@ -143,6 +144,36 @@ class ReversibleEngineTests(unittest.TestCase):
         rb = proc.rollback(twin, r["ledger"])
         self.assertTrue(rb["ok"])
         self.assertEqual(twin.state_sig, start)                 # scroll undone -> back to start
+
+    # ── B2. the SAME invariant, but the schema is DERIVED FROM THE CONTRACT (one source) ──
+    def test_contract_derived_schema_drives_the_engine_invariant(self):
+        """`Connector.schema()` may RETURN `schema_from_contracts(contracts)` instead of
+        hand-declaring CallSpecs in parallel with contracts.json. This proves the contract's
+        effect/reversible flows all the way into the engine's gate: a /command/ route the contract
+        marks reversible=False is refused exactly like the hand-declared `print` route in test B."""
+        from urirun_connectors_toolkit.contract_gate import Contract
+        contracts = {
+            "kvm://lap/window/command/scroll": Contract(
+                effect="command", reversible=True, inverse_route="kvm://lap/window/command/scroll"),
+            "kvm://lap/window/command/print": Contract(effect="command", reversible=False),
+            "kvm://lap/window/command/close": Contract(
+                effect="command", reversible=True, inverse_route="kvm://lap/window/command/restore"),
+        }
+        schema = schema_from_contracts(contracts)
+        # the contract-derived schema carries the same (mutates, reversible) the engine gates on
+        by = {path_of(s.uri): s for s in schema}
+        self.assertTrue(by["window/command/scroll"].mutates and by["window/command/scroll"].reversible)
+        self.assertTrue(by["window/command/print"].mutates and not by["window/command/print"].reversible)
+
+        kvm = KvmFake("lap")
+        proc = ReversibleProcess(local_transport({"kvm": kvm}))
+        twin = Twin.scan(proc.transport, kvm.scan_uri("lap"))
+        flow = [Action("kvm://lap/window/command/scroll", {"id": "w1", "y": 900}),  # contract: reversible
+                Action("kvm://lap/window/command/print", {"id": "w1"})]             # contract: NOT reversible
+        r = proc.execute(twin, schema, flow)                # schema FROM the contract, not hand-rolled
+        self.assertFalse(r["ok"])                           # engine refused the irreversible mutation
+        self.assertEqual(path_of(r["blocked"].uri), "window/command/print")
+        self.assertEqual(len(r["ledger"]), 1)               # only the contract-reversible scroll ran
 
     def test_mutation_returning_no_inverse_is_a_violation(self):
         class BadKvm(KvmFake):
