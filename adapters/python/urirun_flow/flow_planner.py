@@ -528,7 +528,9 @@ def llm_flow(prompt: str, routes: list[dict], nodes: list[dict],
                 "fallback when no CDP session/route is available. Use 'window/command/focus' (kvm) to "
                 "focus a window regardless. "
                 "CRITICAL: Always break down the task into very detailed, atomic declarative steps. "
+                "When the task says 'open <website>', ALWAYS include cdp/page/command/navigate (payload: {url: 'https://...'}) BEFORE any page interaction or verification. Never skip the navigate step even if a CDP session is already running. "
                 "Always add explicit validation steps (e.g., using 'ui/query/verify', 'cdp/page/query/ready', or evaluating page state) after actions to confirm success before proceeding. "
+                "NOTE: 'ui/query/verify' requires the field 'expect' (not 'text') — payload must be {\"expect\": \"<visible text to assert\"}. "
                 # Concrete-state grounding: when an 'environments' field is present it is the LIVE
                 # capability profile + foreground surface of each node — GROUND your steps on it:
                 "honour each node's 'bestSurface' and ALL items in its 'guidance' list (they are "
