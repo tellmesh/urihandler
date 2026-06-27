@@ -135,6 +135,10 @@ release: sync-versions version-check ## Tag the current version and push it; CI 
 	git push "$$remote" "v$$v"; \
 	echo "pushed tag v$$v to $$remote -> release.yml builds + publishes to PyPI"
 
+.PHONY: test-published
+test-published: ## Verify a fresh pip install from PyPI delivers all 8 bundled sub-namespaces + shims. Run AFTER make publish. V= overrides version (default: root VERSION).
+	bash scripts/test_pypi_install.sh $(V)
+
 .PHONY: clean
 clean: ## Remove local generated cache files.
 	rm -rf node_modules .pytest_cache adapters/python/tests/__pycache__ adapters/python/urirun/__pycache__ adapters/python/*.egg-info adapters/python/build adapters/python/dist __pycache__
