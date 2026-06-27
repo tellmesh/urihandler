@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>urirun host</title>
+  <link rel="stylesheet" href="/dashboard.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>urirun host</h1>
+      <p class="subtle" id="contextLine">Loading...</p>
+    </div>
+    <div class="toolbar">
+      <div class="tabs desktop-tabs">
+        <button data-view="overview">Overview</button>
+        <button data-view="chat">Chat</button>
+        <button data-view="discovery">Discovery</button>
+        <button data-view="artifacts">Artifacts</button>
+        <button data-view="widgets">Widgets</button>
+        <button data-view="twin">Digital Twin</button>
+        <button data-view="tasks">Tasks</button>
+        <button data-view="host">Host</button>
+        <button data-view="nodes">Nodes</button>
+        <button data-view="activity">Activity</button>
+      </div>
+      <button id="scannerBtn" type="button">Phone Scanner</button>
+      <button id="phoneQrBtn" type="button" title="Pokaz QR tego widoku do otwarcia na telefonie" onclick="showViewQr()">Telefon (QR)</button>
+      <span class="pill" id="activeTabPill">overview</span>
+      <button class="primary" id="refreshBtn">Refresh</button>
+    </div>
+  </header>
+  <main>
+    <section class="metrics" id="metrics"></section>
+    <section class="grid">
+      <section class="discovery-layout view-block" data-section="discovery">
+        <article class="panel">
+          <div class="panel-head"><h2>URI Objects</h2><span class="subtle" id="discoveryCount"></span></div>
+          <div class="panel-body"><div class="list" id="discoveryList"></div></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2 id="discoveryRouteTitle">URI Registry</h2>
+              <p class="subtle" id="discoveryRouteMeta"></p>
+            </div>
+            <span class="subtle" id="discoveryRouteCount"></span>
+          </div>
+          <div class="panel-body"><div class="list" id="discoveryRoutesList"></div></div>
+        </article>
+      </section>
+      <section class="artifact-layout view-block" data-section="artifacts">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Artifacts</h2>
+              <p class="subtle">File-style grid/table of generated documents, scans and previews.</p>
+            </div>
+            <div class="actions">
+              <span class="subtle" id="artifactCount"></span>
+              <span class="subtle" id="artifactSelectionSummary">0 selected</span>
+              <button type="button" id="artifactSelectVisibleBtn">Select visible</button>
+              <button type="button" id="artifactClearSelectionBtn">Clear</button>
+              <button type="button" class="danger" id="artifactDeleteSelectedBtn">Delete selected</button>
+              <button type="button" class="danger" id="artifactDeleteVisibleBtn">Delete visible</button>
+              <button type="button" id="artifactDedupeRowsBtn">Dedupe rows</button>
+              <button type="button" id="artifactCleanupOrphansBtn">Cleanup orphan JSON</button>
+              <button type="button" id="documentReconcileBtn">Reconcile docs index</button>
+              <button type="button" id="artifactCopyJsonBtn">Copy JSON</button>
+              <button type="button" id="artifactRefreshBtn">Refresh files</button>
+            </div>
+          </div>
+          <div class="panel-body"><div class="artifact-file-grid" id="artifactFileGrid"></div></div>
+        </article>
+      </section>
+      <section class="widget-layout view-block" data-section="widgets">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Widgets</h2>
+              <p class="subtle">Dashboard service previews and live views exposed by URI services.</p>
+            </div>
+            <div class="actions">
+              <span class="subtle" id="widgetCount"></span>
+              <button type="button" id="widgetRefreshBtn">Refresh widgets</button>
+            </div>
+          </div>
+          <div class="panel-body"><div class="widget-grid" id="widgetGrid"></div></div>
+        </article>
+      </section>
+
+      <section class="widget-layout view-block" data-section="twin" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="panel-head"><h2>Digital Twin Monitor</h2></div>
+        <div class="panel-body" style="flex: 1; padding: 0;">
+          <iframe src="/twin?source=live" title="Digital Twin Monitor" style="width:100%;height:100%;border:none;min-height:70vh;"></iframe>
+        </div>
+      </section>
+
+      <section class="nodes-layout view-block" data-section="host">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Konfiguracja hosta</h2>
+              <p class="subtle">Tożsamość, ścieżki i status lokalnego hosta urirun.</p>
+            </div>
+            <span class="pill" id="hostStatusPill"></span>
+          </div>
+          <div class="panel-body"><div class="list" id="hostConfigList"></div></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><h2>Możliwości hosta (URI)</h2><span class="subtle" id="hostRouteCount"></span></div>
+          <div class="panel-body"><div class="list" id="hostRoutesList"></div></div>
+        </article>
+      </section>
+      <section class="artifact-layout view-block" data-section="host">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Rozszerzenia URI (connectory)</h2>
+              <p class="subtle">Dodaj connector ze \u017ar\u00f3d\u0142a i przetestuj, czy dzia\u0142a na ho\u015bcie lub wybranym w\u0119\u017ale.</p>
+            </div>
+            <span class="subtle" id="connectorInstallStatus"></span>
+          </div>
+          <div class="panel-body">
+            <div class="ticket-form-grid">
+              <label class="stack"><span class="subtle">\u0179r\u00f3d\u0142o</span>
+                <select id="connectorSource" onchange="connectorSourceHint()">
+                  <option value="pip">pip (PyPI)</option>
+                  <option value="github">github repo</option>
+                  <option value="local">lokalny folder</option>
+                  <option value="npm">npm</option>
+                  <option value="docker">docker image</option>
+                  <option value="http">gotowe API (http)</option>
+                </select></label>
+              <label class="stack ticket-form-full"><span class="subtle" id="connectorSpecLabel">Pakiet / spec</span>
+                <input id="connectorSpec" placeholder="urirun-connector-hash"></label>
+            </div>
+            <div class="artifact-actions" style="margin-top:8px">
+              <button type="button" class="primary" onclick="installConnector()">\u2b07\ufe0f Zainstaluj connector</button>
+              <span class="subtle">instaluje na ho\u015bcie (pip/github/lokalny); npm/docker/http \u2192 komenda do ich \u015brodowiska</span>
+            </div>
+            <pre id="connectorInstallResult" class="mono" style="margin-top:8px;white-space:pre-wrap"></pre>
+            <hr style="border-color:var(--line-soft);margin:12px 0">
+            <h3 style="margin:0 0 6px">Test connectora</h3>
+            <div class="ticket-form-grid">
+              <label class="stack ticket-form-full"><span class="subtle">URI testowy (najlepiej read-only query)</span>
+                <input id="connectorTestUri" placeholder="uuid://host/id/query/v4"></label>
+              <label class="stack ticket-form-full"><span class="subtle">Payload (JSON)</span>
+                <input id="connectorTestPayload" placeholder="{}"></label>
+              <label class="stack"><span class="subtle">\u015arodowisko</span>
+                <select id="connectorTestEnv"><option value="host">host (lokalnie)</option></select></label>
+            </div>
+            <div class="artifact-actions" style="margin-top:8px">
+              <button type="button" onclick="testConnector()">\u25b6\ufe0f Testuj</button>
+              <span id="connectorTestStatus" class="subtle"></span>
+            </div>
+            <pre id="connectorTestResult" class="mono" style="margin-top:8px;white-space:pre-wrap"></pre>
+          </div>
+        </article>
+      </section>
+      <section class="artifact-layout view-block" data-section="tasks">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Tickety</h2>
+              <p class="subtle">Tickety infrastruktury — dodawaj ręcznie lub z czatu, uruchamiaj i zamykaj.</p>
+            </div>
+            <div class="toolbar">
+              <select id="sprintFilter">
+                <option value="current">current</option>
+                <option value="all">all</option>
+              </select>
+              <select id="queueFilter">
+                <option value="">all queues</option>
+                <option value="implementation">implementation</option>
+                <option value="daily">daily</option>
+                <option value="review">review</option>
+                <option value="infra">infra</option>
+                <option value="default">default</option>
+              </select>
+              <button type="button" id="taskRefreshBtn" onclick="reloadTasks()">Odśwież</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <details class="add-ticket-form" id="addTicketDetails" style="margin-bottom:12px">
+              <summary>➕ Nowy ticket (ręcznie lub z bieżącego promptu czatu)</summary>
+              <div class="ticket-form-grid" style="margin-top:10px">
+                <label class="stack"><span class="subtle">Tytuł</span><input id="newTicketName" placeholder="np. Wdróż node lenovo do mesh"></label>
+                <label class="stack"><span class="subtle">Priorytet</span>
+                  <select id="newTicketPriority"><option value="normal">normal</option><option value="high">high</option><option value="low">low</option></select></label>
+                <label class="stack"><span class="subtle">Kolejka</span>
+                  <select id="newTicketQueue"><option value="default">default</option><option value="infra">infra</option><option value="implementation">implementation</option><option value="daily">daily</option><option value="review">review</option></select></label>
+                <label class="stack"><span class="subtle">Etykiety (po przecinku)</span><input id="newTicketLabels" placeholder="infra, deploy"></label>
+                <label class="stack ticket-form-full"><span class="subtle">Opis</span><textarea id="newTicketDesc" rows="3" placeholder="Szczegóły zadania infrastrukturalnego…"></textarea></label>
+              </div>
+              <div class="artifact-actions" style="margin-top:8px">
+                <button type="button" class="primary" onclick="createTicket()">💾 Utwórz ticket</button>
+                <button type="button" onclick="createTicketFromChat()" title="Użyj tekstu z pola czatu jako nowy ticket">💬 Z promptu czatu</button>
+                <span id="newTicketStatus" class="subtle"></span>
+              </div>
+            </details>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Queue</th><th>Priority</th><th>Actions</th></tr></thead>
+                <tbody id="tasksBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </section>
+      <div class="stack">
+        <article class="panel view-block chat-panel" data-section="chat">
+          <div class="panel-head">
+            <div>
+              <h2>Chat Result</h2>
+              <p class="subtle">Natural language to URI flow across host, nodes and services.</p>
+            </div>
+            <div class="actions">
+              <span class="subtle" id="chatStatus">idle</span>
+              <span class="pill" id="chatMode">dry-run</span>
+              <button id="chatFullscreenBtn" type="button">Full screen</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="chat-shell">
+              <div class="contacts-panel">
+                <div>
+                  <h3>Contacts</h3>
+                  <p class="subtle">Select one or more URI targets.</p>
+                </div>
+                <div class="contact-list" id="chatContactList"></div>
+              </div>
+              <div class="chat-main">
+                <div class="chat-toolbar">
+                  <div class="subtle" id="chatTargetSummary">urirun host</div>
+                  <div class="actions">
+                    <span class="subtle" id="chatSelectionSummary">0 selected</span>
+                    <button type="button" id="chatTwinBtn" title="Otwórz Digital Twin Monitor">&#128190; Twin</button>
+                    <button type="button" id="chatScrollBottomBtn">Latest</button>
+                    <button type="button" id="chatCopyVisibleBtn">Copy chat</button>
+                    <button type="button" id="chatSelectVisibleBtn">Select visible</button>
+                    <button type="button" id="chatClearSelectionBtn">Clear</button>
+                    <button type="button" class="danger" id="chatDeleteSelectedBtn">Delete selected</button>
+                    <button type="button" class="danger" id="chatDeleteVisibleBtn">Delete all visible</button>
+                  </div>
+                </div>
+                <div class="stream-list" id="chatStreamList"></div>
+                <div class="chat-result" id="chatResult"></div>
+                <form class="chat-form chat-composer" id="chatForm">
+                  <textarea id="chatPrompt" placeholder="Napisz komendę NL do wybranych kontaktów URI..."></textarea>
+                  <div class="chat-options">
+                    <label class="check"><input type="checkbox" id="chatExecute" checked> Execute URI operations</label>
+                    <label class="check"><input type="checkbox" id="chatNoLlm"> Heuristic planner only</label>
+                    <button class="primary" type="submit" id="chatAskBtn">Send</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </article>
+        <section class="nodes-layout view-block" data-section="nodes">
+        <article class="panel">
+          <div class="panel-head"><h2>Nodes</h2><span class="subtle" id="nodeCount"></span></div>
+          <div class="panel-body">
+            <div class="list" id="nodesList"></div>
+            <details class="add-node-help" style="margin-top:10px">
+              <summary>➕ Dodaj node (wybierz typ połączenia)</summary>
+              <div class="stack" style="margin-top:8px">
+                <p class="subtle">Każdy typ node ma inny poziom integracji i wymaga innej wiedzy. Wybierz typ, wypełnij formularz i otwórz pełną instrukcję. <a href="/docs/nodes" target="_blank" rel="noreferrer">📖 Dokumentacja typów node</a></p>
+                <div class="node-kind-tabs" id="nodeKindTabs">
+                  <button type="button" class="node-kind-tab" data-kind="server" onclick="selectNodeKind('server')">🖥️ Server <span class="subtle">shell/SSH</span></button>
+                  <button type="button" class="node-kind-tab" data-kind="pc" onclick="selectNodeKind('pc')">💻 PC <span class="subtle">app + shell</span></button>
+                  <button type="button" class="node-kind-tab" data-kind="rdp" onclick="selectNodeKind('rdp')">🪟 RDP <span class="subtle">pulpit zdalny</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="smartphone" onclick="selectNodeKind('smartphone')">📱 Smartphone <span class="subtle">webpage → APK</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="browser-debug" onclick="selectNodeKind('browser-debug')">🌐 Browser Debug <span class="subtle">CDP</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="browser-chrome-plugin" onclick="selectNodeKind('browser-chrome-plugin')">🧩 Chrome Plugin <span class="subtle">extension</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="browser-firefox-plugin" onclick="selectNodeKind('browser-firefox-plugin')">🧩 Firefox Plugin <span class="subtle">extension</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="webpage" onclick="selectNodeKind('webpage')">📄 Webpage <span class="subtle">jedna strona JS</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="api" onclick="selectNodeKind('api')">🔌 API <span class="subtle">HTTP/auth</span></button>
+	                  <button type="button" class="node-kind-tab" data-kind="device" onclick="selectNodeKind('device')">🧩 Device <span class="subtle">multi-API</span></button>
+                </div>
+
+                <!-- SERVER -->
+                <div class="node-kind-form" id="nodeForm-server" style="display:none">
+                  <p class="subtle">🖥️ <strong>Server</strong> — sterowanie przez <strong>shell/SSH</strong>. Headless maszyna; instalujesz węzeł urirun zdalnie przez SSH. Wymaga: dostęp SSH (user@host), uprawnienia do instalacji. <a href="/docs/nodes#server" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="srvName" placeholder="server-01"></label>
+                  <label class="stack"><span class="subtle">Host / IP</span><input id="srvHost" oninput="srvSnippet()" placeholder="192.168.1.50"></label>
+                  <div class="artifact-actions">
+                    <label class="stack" style="flex:1"><span class="subtle">SSH user</span><input id="srvUser" oninput="srvSnippet()" placeholder="ubuntu"></label>
+                    <label class="stack"><span class="subtle">Port node'a</span><input id="srvPort" oninput="srvSnippet()" value="8765" style="width:90px"></label>
+                  </div>
+                  <p class="subtle">Uruchom zdalnie (instaluje węzeł i serwuje go w tle):</p>
+                  <pre id="srvSnippet" class="mono">— podaj host i usera —</pre>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('server','srvName',srvUrl())">💾 Zapisz node (po instalacji)</button>
+                    <span id="srvStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- PC -->
+                <div class="node-kind-form" id="nodeForm-pc" style="display:none">
+                  <p class="subtle">💻 <strong>PC</strong> — sterowanie przez <strong>aplikację desktop + shell</strong>. Maszyna z GUI; uruchamiasz węzeł lokalnie (lub przez aplikację ifURI). Wymaga: dostęp do pulpitu, terminal. <a href="/docs/nodes#pc" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="pcName" placeholder="lenovo"></label>
+                  <label class="stack"><span class="subtle">URL węzła (po uruchomieniu)</span><input id="pcUrl" placeholder="http://192.168.1.20:8765"></label>
+                  <p class="subtle">Na PC uruchom węzeł:</p>
+                  <pre class="mono">curl -fsSL https://get.ifuri.com/node.sh | bash -s -- --name pc --port 8765 --background</pre>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('pc','pcName',document.getElementById('pcUrl').value)">💾 Zapisz node</button>
+                    <span id="pcStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- RDP -->
+                <div class="node-kind-form" id="nodeForm-rdp" style="display:none">
+                  <p class="subtle">🪟 <strong>RDP</strong> — <strong>pulpit zdalny</strong> (Windows/xrdp). Sterujesz klawiaturą/myszą/ekranem zdalnego pulpitu. Wymaga: host RDP, login, port 3389, węzeł urirun z connectorem KVM po stronie pulpitu. <a href="/docs/nodes#rdp" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="rdpName" placeholder="win-desktop"></label>
+                  <div class="artifact-actions">
+                    <label class="stack" style="flex:1"><span class="subtle">Host RDP</span><input id="rdpHost" oninput="rdpSnippet()" placeholder="192.168.1.30"></label>
+                    <label class="stack"><span class="subtle">Port RDP</span><input id="rdpPort" oninput="rdpSnippet()" value="3389" style="width:90px"></label>
+                  </div>
+                  <label class="stack"><span class="subtle">URL węzła urirun na pulpicie</span><input id="rdpUrl" placeholder="http://192.168.1.30:8765"></label>
+                  <p class="subtle">Połącz pulpit (przykład xfreerdp):</p>
+                  <pre id="rdpSnippet" class="mono">— podaj host RDP —</pre>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('rdp','rdpName',document.getElementById('rdpUrl').value)">💾 Zapisz node</button>
+                    <span id="rdpStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- SMARTPHONE (two-stage: webpage node now then mobile node after APK) -->
+                <div class="node-kind-form" id="nodeForm-smartphone" style="display:none">
+                  <p class="subtle">📱 <strong>Smartphone</strong> — dwa etapy: <strong>(1) webpage node</strong> od razu po otwarciu strony w przeglądarce telefonu (sterowanie przez JS na stronie), <strong>(2) mobile node</strong> po instalacji APK/Termux (pełny węzeł: pliki, system). Wymaga: serwis android-node (port 8195) + telefon w tej samej sieci. <a href="/docs/nodes#smartphone" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <div class="artifact-actions">
+                    <button type="button" id="phoneSvcBtn" onclick="startPhoneService()">▶ Uruchom serwis android-node</button>
+                    <button type="button" onclick="restartPhoneService()">↻ Restart 8195</button>
+                    <button type="button" id="addPhoneNodeBtn" onclick="showAddPhoneNodeQR()">📱 Pokaż QR</button>
+                    <span id="addPhoneNodeStatus" class="subtle"></span>
+                  </div>
+                  <div id="phoneNodeQrContainer" style="display:none;margin-top:8px">
+                    <div id="phoneNodeQr" class="phone-node-qr"></div>
+                    <p class="subtle">URL instalacji: <code id="phoneNodeUrl"></code></p>
+                    <p class="subtle" id="phoneNodeReach"></p>
+                    <div id="phoneWebNodes" class="subtle">Brak podłączonych telefonów (webpage node) — otwórz URL na telefonie.</div>
+                    <label class="stack" style="margin-top:6px"><span class="subtle">Po instalacji APK — zarejestruj jako mobile node (nazwa + URL telefonu, port 8765)</span></label>
+                    <div class="artifact-actions">
+                      <input id="phoneNodeName" placeholder="nexus7">
+                      <input id="phoneNodeNodeUrl" placeholder="http://192.168.x.x:8765">
+                      <button type="button" onclick="savePhoneNode()">💾 Zapisz mobile node</button>
+                      <span id="phoneNodeSaveStatus" class="subtle"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- BROWSER DEBUG -->
+                <div class="node-kind-form" id="nodeForm-browser-debug" style="display:none">
+                  <p class="subtle">🌐 <strong>Browser Debug</strong> — sterowanie <strong>całą przeglądarką</strong> przez DevTools/CDP. Wszystkie karty: otwieraj/zamykaj/nawiguj. Wymaga: przeglądarka z <code>--remote-debugging-port=9222</code> + connector webnode. <a href="/docs/nodes#browser-debug" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <div class="phone-node-qr" id="connectQr-browser-debug"></div>
+                  <p class="subtle">QR powyżej = ścieżka <strong>relay</strong> (otwórz na urządzeniu, <code>http://HOST:8195/</code>, <strong>HTTP</strong>). Pola CDP poniżej = osobny tryb debugowania: lista kart i pełne sterowanie przez DevTools, ale wymaga uruchomienia przeglądarki z <code>--remote-debugging-port=9222</code>.</p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="brName" placeholder="chrome"></label>
+                  <label class="stack"><span class="subtle">Endpoint debugowania (CDP)</span><input id="brUrl" placeholder="http://127.0.0.1:9222" oninput="updateEndpointQr('brUrl','cdpQr-browser-debug')"></label>
+                  <div class="phone-node-qr" id="cdpQr-browser-debug"><span class="subtle">wpisz endpoint CDP — QR pojawi się tutaj</span></div>
+                  <p class="subtle">Uruchom przeglądarkę z debugowaniem:</p>
+                  <pre class="mono">google-chrome --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1</pre>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('browser-debug','brName',document.getElementById('brUrl').value)">💾 Zapisz node</button>
+                    <span id="brStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- CHROME PLUGIN -->
+                <div class="node-kind-form" id="nodeForm-browser-chrome-plugin" style="display:none">
+                  <p class="subtle">🧩 <strong>Chrome Plugin</strong> — kontrola aktywnej karty przez rozszerzenie Chrome. Używa <code>browser-plugin://chrome/...</code> i może czytać DOM, listować urządzenia strony, uruchamiać kamerę oraz przekazywać inne URI do node <code>/run</code>. <a href="/docs/nodes#browser-chrome-plugin" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="chromePluginName" placeholder="chrome-plugin"></label>
+                  <label class="stack"><span class="subtle">Node URL dla popupu pluginu</span><input id="chromePluginUrl" placeholder="http://127.0.0.1:8765"></label>
+                  <p class="subtle">Załaduj folder <code>/home/tom/github/if-uri/chrome-plugin</code> w <code>chrome://extensions</code> jako unpacked extension.</p>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('browser-chrome-plugin','chromePluginName',document.getElementById('chromePluginUrl').value)">💾 Zapisz node</button>
+                    <span id="chromePluginStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- FIREFOX PLUGIN -->
+                <div class="node-kind-form" id="nodeForm-browser-firefox-plugin" style="display:none">
+                  <p class="subtle">🧩 <strong>Firefox Plugin</strong> — kontrola aktywnej karty przez rozszerzenie Firefox. Używa <code>browser-plugin://firefox/...</code> i zachowuje kompatybilność z <code>browser://</code>. <a href="/docs/nodes#browser-firefox-plugin" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="firefoxPluginName" placeholder="firefox-plugin"></label>
+                  <label class="stack"><span class="subtle">Node URL dla popupu pluginu</span><input id="firefoxPluginUrl" placeholder="http://127.0.0.1:8765"></label>
+                  <p class="subtle">Załaduj folder <code>/home/tom/github/if-uri/firefox-plugin</code> w <code>about:debugging#/runtime/this-firefox</code>.</p>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveTypedNode('browser-firefox-plugin','firefoxPluginName',document.getElementById('firefoxPluginUrl').value)">💾 Zapisz node</button>
+                    <span id="firefoxPluginStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- WEBPAGE -->
+                <div class="node-kind-form" id="nodeForm-webpage" style="display:none">
+                  <p class="subtle">📄 <strong>Webpage</strong> — sterowanie <strong>konkretną stroną</strong> przez HTML/JS (relay). Otwórz QR na urządzeniu — strona rejestruje się sama w serwisie android-node pod <code>http://HOST:8195/</code> (czysty <strong>HTTP</strong>, bez „s") i staje się webpage node: lista URI process, urządzenia strony (kamera/mikrofon), sensory, akcje navigate/eval/iframe. Tryb debugowania przeglądarki (CDP/DevTools) jest w osobnej zakładce <strong>Browser Debug</strong>. <a href="/docs/nodes#webpage" target="_blank" rel="noreferrer">instrukcja</a></p>
+                  <div class="phone-node-qr" id="connectQr-webpage"></div>
+                  <div id="webpageNodes" class="subtle">Brak podłączonych stron — otwórz QR na urządzeniu (telefon/przeglądarka).</div>
+                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="webName" placeholder="page-checkout"></label>
+                  <div class="artifact-actions">
+                    <button type="button" onclick="saveWebpageNode()">💾 Zapisz webpage node</button>
+                    <span id="webStatus" class="subtle"></span>
+                  </div>
+                </div>
+
+                <!-- API NODE -->
+	                <div class="node-kind-form" id="nodeForm-api" style="display:none">
+	                  <p class="subtle">🔌 <strong>API Node</strong> — zewnętrzne API HTTP/REST/OpenAPI z autoryzacją. Sekret zostanie zapisany w keyring, a w configu zostanie tylko <code>secretRef</code>. <a href="/docs/nodes#api" target="_blank" rel="noreferrer">instrukcja</a></p>
+	                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="apiNodeName" placeholder="crm-api"></label>
+	                  <label class="stack"><span class="subtle">Base URL API</span><input id="apiNodeUrl" placeholder="https://api.example.test/v1"></label>
+	                  <div class="artifact-actions">
+	                    <label class="stack" style="flex:1"><span class="subtle">API id</span><input id="apiNodeApiId" value="main"></label>
+	                    <label class="stack" style="flex:1"><span class="subtle">Kind/protocol</span><input id="apiNodeApiKind" value="rest"></label>
+	                  </div>
+	                  <div class="artifact-actions">
+	                    <label class="stack" style="flex:1"><span class="subtle">Auth type</span><input id="apiNodeAuthType" placeholder="bearer / api-key / basic"></label>
+	                    <label class="stack" style="flex:2"><span class="subtle">Token/API key (keyring)</span><input id="apiNodeSecret" type="password" autocomplete="off" placeholder="nie zapisuje się w pliku"></label>
+	                  </div>
+	                  <div class="artifact-actions">
+	                    <button type="button" onclick="saveApiNode()">💾 Zapisz API node</button>
+	                    <span id="apiNodeStatus" class="subtle"></span>
+	                  </div>
+	                </div>
+
+	                <!-- DEVICE NODE -->
+	                <div class="node-kind-form" id="nodeForm-device" style="display:none">
+	                  <p class="subtle">🧩 <strong>Device Node</strong> — urządzenie z wieloma interfejsami, np. kamera IP/RPi/NAS: panel WWW, RTSP/RTMP, SSH, SMB/NFS. <a href="/docs/nodes#device" target="_blank" rel="noreferrer">instrukcja</a></p>
+	                  <label class="stack"><span class="subtle">Nazwa node'a</span><input id="deviceNodeName" placeholder="rpi-camera"></label>
+	                  <label class="stack"><span class="subtle">Główny URL/panel</span><input id="deviceNodeUrl" placeholder="http://rpi.local"></label>
+	                  <label class="stack"><span class="subtle">apis[] JSON</span><textarea id="deviceNodeApis" rows="7">[
+  {"id":"panel","kind":"web","url":"http://rpi.local"},
+  {"id":"stream","kind":"rtsp","role":"camera","url":"rtsp://rpi.local/live"},
+  {"id":"share","kind":"smb","url":"smb://rpi.local/share"},
+  {"id":"ssh","kind":"ssh","url":"ssh://pi@rpi.local"}
+]</textarea></label>
+	                  <div class="artifact-actions">
+	                    <button type="button" onclick="saveDeviceNode()">💾 Zapisz device node</button>
+	                    <span id="deviceNodeStatus" class="subtle"></span>
+	                  </div>
+	                </div>
+
+	                <hr style="border:none;border-top:1px solid var(--border,#334155);margin:12px 0">
+                <details>
+                  <summary class="subtle">🔎 Skan LAN / wpis ręczny / token (zaawansowane)</summary>
+                  <div class="stack" style="margin-top:8px">
+                    <div class="artifact-actions">
+                      <button type="button" id="scanNodesBtn" onclick="scanNodes()">🔎 Skanuj sieć (LAN)</button>
+                      <span id="scanNodesStatus" class="subtle"></span>
+                    </div>
+                    <div id="scanNodesResults" class="list"></div>
+                    <label class="stack"><span class="subtle">Nazwa node'a</span><input id="addNodeName" oninput="nodeAddSnippet()" placeholder="office-node"></label>
+                    <label class="stack"><span class="subtle">URL node'a</span><input id="addNodeUrl" oninput="nodeAddSnippet()" placeholder="http://host-or-ip:8765"></label>
+                    <div class="artifact-actions">
+                      <button type="button" onclick="saveNodeFromForm()">💾 Zapisz node</button>
+                      <a id="addNodeHealth" href="#" target="_blank" rel="noreferrer">otwórz /health</a>
+                      <span id="addNodeStatus" class="subtle"></span>
+                    </div>
+                    <label class="stack"><span class="subtle">Token zarządzania węzłem (X-Urirun-Token)</span>
+                      <input id="addNodeToken" type="password" autocomplete="off" placeholder="wklej token (keyring, nie plaintext)"></label>
+                    <div class="artifact-actions">
+                      <button type="button" onclick="saveNodeToken()">🔑 Zapisz token (keyring)</button>
+                      <span id="addNodeTokenStatus" class="subtle"></span>
+                    </div>
+                    <pre id="addNodeSnippet" class="mono">— wpisz nazwę i URL powyżej —</pre>
+                  </div>
+                </details>
+              </div>
+            </details>
+          </div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><h2>URI Processes</h2><span class="subtle" id="routeCount"></span><span id="routesNodeFilter" class="subtle"></span></div>
+          <div class="panel-body"><div class="list" id="routesList"></div></div>
+        </article>
+        </section>
+      </div>
+      <aside class="stack">
+        <article class="panel view-block" data-section="activity">
+          <div class="panel-head"><h2>Logs</h2><span class="subtle" id="logCount"></span></div>
+          <div class="panel-body"><div id="logsList"></div></div>
+        </article>
+      </aside>
+    </section>
+  </main>
+  <nav class="bottom-nav">
+    <button data-view="overview">Overview</button>
+    <button data-view="chat">Chat</button>
+    <button data-view="discovery">Discovery</button>
+    <button data-view="artifacts">Artifacts</button>
+    <button data-view="widgets">Widgets</button>
+    <button data-view="twin">Digital Twin</button>
+    <button data-view="tasks">Tasks</button>
+    <button data-view="host">Host</button>
+    <button data-view="nodes">Nodes</button>
+    <button data-view="activity">Activity</button>
+  </nav>
+  <script src="/dashboard.js"></script>
+</body>
+</html>

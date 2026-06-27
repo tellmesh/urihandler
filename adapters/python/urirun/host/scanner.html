@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>urirun phone scanner</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b0f14; --panel:#111827; --ink:#f8fafc; --muted:#94a3b8; --line:#334155; --accent:#14b8a6; --bad:#f87171; }
+    * { box-sizing: border-box; }
+    body { margin:0; font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--ink); }
+    header { padding:12px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; align-items:center; }
+    h1 { margin:0; font-size:18px; }
+    main { display:grid; gap:12px; padding:12px; }
+    video, canvas { width:100%; max-height:72vh; object-fit:contain; background:#000; border:1px solid var(--line); border-radius:8px; }
+    .controls { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    button, select, input { min-height:44px; border:1px solid var(--line); border-radius:7px; background:var(--panel); color:var(--ink); font:inherit; padding:0 12px; }
+    button.primary { background:var(--accent); border-color:var(--accent); color:#042f2e; font-weight:700; }
+    button.remote-click { outline:3px solid #fde68a; outline-offset:2px; }
+    button:disabled { opacity:.55; }
+    .field { display:grid; gap:4px; color:var(--muted); font-size:13px; }
+    .inline-check { min-height:44px; display:flex; gap:8px; align-items:center; color:var(--muted); }
+    .inline-check input { min-height:auto; }
+    .status { color:var(--muted); overflow-wrap:anywhere; }
+    .error { color:var(--bad); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>urirun phone scanner</h1>
+    <span class="status" id="state">idle</span>
+  </header>
+  <main>
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas" hidden></canvas>
+    <div class="controls">
+      <button class="primary" id="start">Start camera</button>
+      <button id="torch" disabled>Light off</button>
+      <button class="primary" id="capture" disabled>Scan now</button>
+      <button class="primary" id="best" disabled>Best PDF</button>
+      <select id="bestCount">
+        <option value="6">6 frames</option>
+        <option value="4">4 frames</option>
+        <option value="8">8 frames</option>
+      </select>
+      <select id="quality">
+        <option value="0.92">JPEG 92%</option>
+        <option value="0.82">JPEG 82%</option>
+        <option value="0.70">JPEG 70%</option>
+      </select>
+      <label class="field">Scan interval (s)<input type="number" id="scanInterval" min="1" max="60" step="0.5" inputmode="decimal"></label>
+      <label class="inline-check"><input type="checkbox" id="startBest" checked> best after start</label>
+      <label class="inline-check"><input type="checkbox" id="auto"> <span id="autoIntervalLabel">auto every 3s</span></label>
+    </div>
+    <p class="status">Use this page from the phone on the same LAN. Mobile browsers usually require HTTPS or a trusted local exception for camera access.</p>
+  </main>
+  <script src="/assets/urirun.js"
+          data-site="urirun-phone-scanner"
+          data-endpoint="/api/uri/event"
+          data-action-endpoint="/api/uri/invoke"
+          data-load="0"
+          data-clicks="0"
+          data-forms="0"
+          data-spa="0"
+          data-debug="1"></script>
+  <script src="/scanner.js"></script>
+</body>
+</html>
