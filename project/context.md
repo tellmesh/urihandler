@@ -7,10 +7,10 @@
 - **Primary Language**: python
 - **Languages**: python: 189, json: 13, shell: 11, yaml: 5, javascript: 5
 - **Analysis Mode**: static
-- **Total Functions**: 2451
-- **Total Classes**: 64
+- **Total Functions**: 2463
+- **Total Classes**: 65
 - **Modules**: 252
-- **Entry Points**: 1037
+- **Entry Points**: 1042
 
 ## Architecture by Module
 
@@ -53,14 +53,14 @@
 - **Functions**: 49
 - **File**: `flow.py`
 
+### adapters.python.urirun.host.chat_orchestrator
+- **Functions**: 47
+- **Classes**: 1
+- **File**: `chat_orchestrator.py`
+
 ### adapters.python.urirun.host.object_registry
 - **Functions**: 46
 - **File**: `object_registry.py`
-
-### adapters.python.urirun.host.chat_orchestrator
-- **Functions**: 45
-- **Classes**: 1
-- **File**: `chat_orchestrator.py`
 
 ### adapters.python.urirun_runtime._registry
 - **Functions**: 43
@@ -99,9 +99,10 @@
 - **Classes**: 8
 - **File**: `reversible.py`
 
-### adapters.python.urirun.host.twin_bridge
+### adapters.python.urirun_flow.flow_thin
 - **Functions**: 26
-- **File**: `twin_bridge.py`
+- **Classes**: 1
+- **File**: `flow_thin.py`
 
 ## Key Entry Points
 
@@ -483,17 +484,33 @@ concurrency (If-Registry-
 ### adapters.python.urirun.connectors.connector_lint._format_report
 - **Output to**: lines.append, lines.extend, lines.append, lines.append, lines.extend
 
+### adapters.python.urirun_connectors_toolkit.contract_gate._parse_const
+- **Output to**: None.isdigit, int, token.lstrip
+
+### adapters.python.urirun_connectors_toolkit.contract_gate.validate_output
+> Validate an ok-envelope against the contract's ``out`` (no-op when out is empty).
+- **Output to**: adapters.python.urirun_connectors_toolkit.contract_gate.check
+
 ### adapters.python.urirun.connectors.connector_contract.ConnectorContractSuite.test_bindings_validate
 > The bindings document must pass urirun.validate_binding_document.
 - **Output to**: urirun.validate_binding_document, result.get, result.get
 
-### adapters.python.urirun.node.diagnostics._decode_error_ctx
-- **Output to**: None.casefold, str, str, str, None.get
-
-### adapters.python.urirun_flow.Flow._validate
-- **Output to**: model_validator, self._validate_graph
-
 ## Behavioral Patterns
+
+### recursion__leaf_ok
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun_connectors_toolkit.contract_gate._leaf_ok
+
+### recursion_check
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun_connectors_toolkit.contract_gate.check
+
+### recursion__walk_out
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun_connectors_toolkit.contract_gate._walk_out
 
 ### recursion__field_type
 - **Type**: recursion
@@ -545,30 +562,15 @@ concurrency (If-Registry-
 - **Confidence**: 0.90
 - **Functions**: adapters.python.urirun.Connector.handler
 
-### recursion_short_value
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun.host.fs_transfer.short_value
-
-### recursion__leaf_ok
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun_connectors_toolkit.contract_gate._leaf_ok
-
-### recursion_check
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun_connectors_toolkit.contract_gate.check
-
 ### recursion__uri_action_lookup
 - **Type**: recursion
 - **Confidence**: 0.90
 - **Functions**: adapters.python.urirun.host.host_dashboard._uri_action_lookup
 
-### state_machine_Urirun
-- **Type**: state_machine
-- **Confidence**: 0.70
-- **Functions**: adapters.java.Urirun.Urirun.Connector, adapters.java.Urirun.Urirun.Connector, adapters.java.Urirun.Urirun.command, adapters.java.Urirun.Urirun.bindingsJson
+### recursion_short_value
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun.host.fs_transfer.short_value
 
 ## Public API Surface
 

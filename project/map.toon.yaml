@@ -1,7 +1,7 @@
-# urirun | 380f 71545L | python:354,shell:11,javascript:6,go:3,rust:2,typescript:2,css:1,less:1 | 2026-06-27
-# stats: 2879 func | 170 cls | 380 mod | CC̄=4.3 | critical:244 | cycles:0
+# urirun | 380f 71829L | python:354,shell:11,javascript:6,go:3,rust:2,typescript:2,css:1,less:1 | 2026-06-27
+# stats: 2891 func | 171 cls | 380 mod | CC̄=4.3 | critical:247 | cycles:0
 # alerts[5]: CC test_dashboard_html_tracks_tabs_actions_and_chat_fullscreen=125; CC test_archive_scanned_document_writes_pdf_json_index_and_detects_duplicate=26; CC test_sync_documents_to_node_copies_pdfs_and_logs_chat=23; CC test_chat_ask_plans_document_sync_without_llm=22; CC _top_level_packages=19
-# hotspots[5]: summary fan=29; serve fan=28; _chat_ask_general fan=26; main fan=23; main fan=20
+# hotspots[5]: summary fan=29; serve fan=28; _chat_ask_general fan=23; main fan=23; main fan=20
 # evolution: baseline
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
 M[380]:
@@ -58,7 +58,7 @@ M[380]:
   adapters/python/tests/test_flow.py,365
   adapters/python/tests/test_flow_reversible.py,118
   adapters/python/tests/test_flow_rollup.py,283
-  adapters/python/tests/test_flow_scheme.py,183
+  adapters/python/tests/test_flow_scheme.py,197
   adapters/python/tests/test_flow_twin.py,512
   adapters/python/tests/test_formatting.py,130
   adapters/python/tests/test_fs_transfer.py,105
@@ -91,7 +91,7 @@ M[380]:
   adapters/python/tests/test_progress.py,120
   adapters/python/tests/test_proof_cache.py,66
   adapters/python/tests/test_public_api.py,191
-  adapters/python/tests/test_recall_gate.py,126
+  adapters/python/tests/test_recall_gate.py,147
   adapters/python/tests/test_recovery.py,185
   adapters/python/tests/test_refactor_helpers.py,201
   adapters/python/tests/test_registry.py,118
@@ -161,7 +161,7 @@ M[380]:
   adapters/python/urirun/host/android_node.py,163
   adapters/python/urirun/host/artifacts_admin.py,5
   adapters/python/urirun/host/capability.py,161
-  adapters/python/urirun/host/chat_orchestrator.py,1447
+  adapters/python/urirun/host/chat_orchestrator.py,1467
   adapters/python/urirun/host/connector_admin.py,241
   adapters/python/urirun/host/contracts.py,120
   adapters/python/urirun/host/dashboard.css,683
@@ -170,7 +170,7 @@ M[380]:
   adapters/python/urirun/host/dashboard_http.py,182
   adapters/python/urirun/host/decision_loop.py,135
   adapters/python/urirun/host/discovery.py,373
-  adapters/python/urirun/host/dispatch.py,169
+  adapters/python/urirun/host/dispatch.py,198
   adapters/python/urirun/host/document_metadata.py,5
   adapters/python/urirun/host/document_sync.py,5
   adapters/python/urirun/host/domain_monitor.py,6
@@ -275,7 +275,7 @@ M[380]:
   adapters/python/urirun_connectors_toolkit/connector_scaffold.py,414
   adapters/python/urirun_connectors_toolkit/connector_sdk.py,88
   adapters/python/urirun_connectors_toolkit/connector_smoke.py,82
-  adapters/python/urirun_connectors_toolkit/contract_gate.py,256
+  adapters/python/urirun_connectors_toolkit/contract_gate.py,455
   adapters/python/urirun_connectors_toolkit/declarative.py,7
   adapters/python/urirun_connectors_toolkit/openapi_import.py,8
   adapters/python/urirun_connectors_toolkit/resolver.py,170
@@ -304,7 +304,7 @@ M[380]:
   adapters/python/urirun_node/paths.py,39
   adapters/python/urirun_node/preconditions.py,219
   adapters/python/urirun_node/routing.py,174
-  adapters/python/urirun_node/server.py,997
+  adapters/python/urirun_node/server.py,998
   adapters/python/urirun_node/skill.py,251
   adapters/python/urirun_node/transport.py,541
   adapters/python/urirun_runtime/__init__.py,2
@@ -1304,7 +1304,7 @@ D:
     ResultDegradedTest: test_flags_mock_driver_and_modes(0),test_real_results_are_not_degraded(0)  # urirun.result_degraded — surfaces a connector running in moc
   adapters/python/tests/test_recall_gate.py:
     e: _seed,FlowRecallHandlerTests,RecallGateShortCircuitsLLMTests
-    FlowRecallHandlerTests: setUp(0),_restore(0),test_hit_by_intent_x_env_returns_the_stored_plan(0),test_hit_by_episode_id(0),test_drift_suppresses_recall(0),test_unknown_intent_misses(0)  # The twin connector's flow/query/recall handler — recall logi
+    FlowRecallHandlerTests: setUp(0),_restore(0),test_hit_by_intent_x_env_returns_the_stored_plan(0),test_hit_by_episode_id(0),test_drift_suppresses_recall(0),test_missing_drift_route_allows_recall(0),test_unknown_intent_misses(0)  # The twin connector's flow/query/recall handler — recall logi
     RecallGateShortCircuitsLLMTests: test_miss_returns_none_so_caller_plans(0),test_found_recall_builds_cached_flow_and_skips_make_flow(0),test_make_flow_is_not_called_on_hit(0)  # _try_recall_gate: a found recall builds a cached flow (calle
     _seed(mem;prompt;prof)
   adapters/python/tests/test_recovery.py:
@@ -1879,7 +1879,7 @@ D:
     _capability_check_for_api(api)
     api_node_doctor(node)
   adapters/python/urirun/host/chat_orchestrator.py:
-    e: chat_message,compact_chat_result,_is_document_sync_prompt,_document_sync_node_from_prompt,_chat_ask_phone_scanner,_sync_execute_initial,_sync_ok_and_status,_apply_urifix_recovery,_chat_ask_document_sync,_classify_exc_remediation,_build_escalation_block,_chat_ask_general_planner_failure,_timeline_steps_all_ok,_resolve_artifact_value,_build_remote_path_maps,_save_inline_attachment,_enrich_remote_attachments,_register_step_artifacts,_emit_general_chat_message,_general_path_complete,_collect_target_names,_try_ensure_kvm_for_node,_try_auto_ensure_screen_capture,_chat_ask_general_capability_gap,_apply_run_credentials,_restore_run_credentials,_actual_nodes_from_steps,_rebuild_node_targets,_filter_mesh_for_targets,_sync_targets_from_flow,_fetch_planner_environments_for_nodes,_find_human_node,_escalate_offline_to_human,_chat_ask_general_check_offline,_chat_ask_general_build_result,_try_recall_gate,_is_selected_remote_node,_flag_remote_capture_inline,_suggest_recall_for_memory,_chat_ask_general,_add_chat_user_message,_chat_insert_twin_preview,_parse_chat_nodes_targets,_init_selected_targets,_infer_node_targets,chat_ask,ChatDeps
+    e: chat_message,compact_chat_result,_is_document_sync_prompt,_document_sync_node_from_prompt,_chat_ask_phone_scanner,_sync_execute_initial,_sync_ok_and_status,_apply_urifix_recovery,_chat_ask_document_sync,_classify_exc_remediation,_build_escalation_block,_chat_ask_general_planner_failure,_timeline_steps_all_ok,_resolve_artifact_value,_build_remote_path_maps,_save_inline_attachment,_enrich_remote_attachments,_register_step_artifacts,_emit_general_chat_message,_general_path_complete,_collect_target_names,_try_ensure_kvm_for_node,_try_auto_ensure_screen_capture,_chat_ask_general_capability_gap,_apply_run_credentials,_restore_run_credentials,_actual_nodes_from_steps,_rebuild_node_targets,_filter_mesh_for_targets,_sync_targets_from_flow,_fetch_planner_environments_for_nodes,_find_human_node,_escalate_offline_to_human,_chat_ask_general_check_offline,_chat_ask_general_build_result,_try_recall_gate,_is_selected_remote_node,_flag_remote_capture_inline,_suggest_recall_for_memory,_screen_capability_gap_or_recall,_chat_ask_general,_add_chat_user_message,_chat_insert_twin_preview,_parse_chat_nodes_targets,_init_selected_targets,_infer_node_targets,chat_ask,ChatDeps
     ChatDeps:
     chat_message(role;content)
     compact_chat_result(result;payload)
@@ -1920,6 +1920,7 @@ D:
     _is_selected_remote_node(n;sel)
     _flag_remote_capture_inline(flow;discovered;selected_nodes)
     _suggest_recall_for_memory(flow;twin_memory)
+    _screen_capability_gap_or_recall(prompt;discovered;selected_nodes;selected_targets;token;identity;execute;mesh;config;node_urls;db;deps)
     _chat_ask_general(project;db;config;payload;node_urls;token;identity;prompt;execute;no_llm;selected_nodes;selected_targets;deps)
     _add_chat_user_message(db;prompt;config;node_urls)
     _chat_insert_twin_preview(db;prompt;selected_nodes;selected_targets;deps)
@@ -2027,14 +2028,15 @@ D:
     _node_test_summary(node;node_url;mode;results)
     node_test_routes(payload)
   adapters/python/urirun/host/dispatch.py:
-    e: _flow_scheme_query,_flow_scheme_run,_flow_scheme_dispatch,_inprocess_run,_env_to_result,inprocess_fallback,make_local_dispatch_uri
+    e: _flow_scheme_query,_flow_scheme_run,_flow_scheme_dispatch,_inprocess_run,_env_to_result,inprocess_fallback,_local_scheme_installed,make_local_dispatch_uri
     _flow_scheme_query(name;ep;skill;skill_steps;episode_id;uri)
     _flow_scheme_run(name;ep;skill_steps;episode_id;uri;payload)
     _flow_scheme_dispatch(uri;payload)
     _inprocess_run(uri;payload)
     _env_to_result(uri;env)
     inprocess_fallback(uri;payload)
-    make_local_dispatch_uri(registry;run_mode;fallback)
+    _local_scheme_installed(uri)
+    make_local_dispatch_uri(registry;run_mode;fallback;local_first)
   adapters/python/urirun/host/document_metadata.py:
   adapters/python/urirun/host/document_sync.py:
   adapters/python/urirun/host/domain_monitor.py:
@@ -2732,8 +2734,9 @@ D:
     smoke(bindings)
     smoke_command(args)
   adapters/python/urirun_connectors_toolkit/contract_gate.py:
-    e: _parse_const,_leaf_ok,check,validate_output,conform,contract_to_dict,attach_contracts,envelope_violation,enforce,Contract,ContractViolation
+    e: _parse_const,_leaf_ok,check,validate_output,conform,contract_to_dict,attach_contracts,envelope_violation,enforce,_terminal_type,_walk_oneof,_walk_out,resolve_out_type,assignable,check_wire,find_wire,dig,wire_payload,consumer_input_check,Contract,Wire,ContractViolation
     Contract:  # One route's canonical contract. The URI is the stable identi
+    Wire:  # A composition edge: the output of ``producer`` feeds the inp
     ContractViolation:  # Handler output diverged from its declared contract.
     _parse_const(token)
     _leaf_ok(token;value)
@@ -2744,6 +2747,16 @@ D:
     attach_contracts(conn;contracts)
     envelope_violation(contract;envelope)
     enforce(conn;contracts)
+    _terminal_type(schema)
+    _walk_oneof(schema;segs)
+    _walk_out(schema;segs)
+    resolve_out_type(out_schema;dotted)
+    assignable(producer_tok;consumer_tok)
+    check_wire(wire;contracts)
+    find_wire(wires;producer;consumer)
+    dig(value;dotted)
+    wire_payload(wire;producer_envelope)
+    consumer_input_check(consumer_contract;payload;wire)
   adapters/python/urirun_connectors_toolkit/declarative.py:
   adapters/python/urirun_connectors_toolkit/openapi_import.py:
   adapters/python/urirun_connectors_toolkit/resolver.py:

@@ -1,6 +1,6 @@
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.24s
-# nodes: 457 | edges: 500 | modules: 55
+# generated in 0.23s
+# nodes: 462 | edges: 500 | modules: 54
 # CC̄=4.7
 
 HUBS[20]:
@@ -16,30 +16,30 @@ HUBS[20]:
     CC=10  in:2  out:30  total:32
   adapters.python.urirun_node.server.NodeHandler._stream_events
     CC=14  in:0  out:31  total:31
-  adapters.python.urirun.host.dashboard.open
-    CC=1  in:28  out:1  total:29
   adapters.python.urirun_node.server.NodeHandler._handle_deploy
     CC=11  in:0  out:29  total:29
+  adapters.python.urirun.host.dashboard.open
+    CC=1  in:28  out:1  total:29
   scripts.transport_swap_proof.main
     CC=5  in:0  out:29  total:29
+  adapters.python.urirun_connectors_toolkit.contract_gate.check
+    CC=15  in:10  out:19  total:29
   adapters.python.urirun.connectors.connector_lint.verify_connector
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
   adapters.python.urirun_node.server.apply_deploy
     CC=12  in:2  out:25  total:27
   adapters.python.urirun_runtime.v2.validate_binding_document
     CC=12  in:3  out:24  total:27
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
   adapters.python.urirun_node.server.NodeHandler._handle_run
     CC=14  in:0  out:27  total:27
-  adapters.python.urirun.node.flow_planner._append_target_steps
-    CC=14  in:1  out:26  total:27
   adapters.python.urirun_connectors_toolkit.resolver.resolve
     CC=12  in:2  out:24  total:26
+  adapters.python.urirun.host.dashboard.type
+    CC=2  in:24  out:1  total:25
   adapters.python.urirun.connectors.connect_catalog._cmd_show
     CC=9  in:0  out:25  total:25
-  adapters.python.urirun.host.dashboard.type
-    CC=2  in:23  out:1  total:24
   adapters.python.urirun_connectors_toolkit.resolver.index_local
     CC=12  in:2  out:22  total:24
   adapters.python.urirun_node.server.NodeHandler._get
@@ -78,10 +78,9 @@ MODULES:
     _heal_file  CC=7  out:12
     heal  CC=6  out:7
     main  CC=5  out:9
-  adapters.python.urirun  [3 funcs]
+  adapters.python.urirun  [2 funcs]
     manifest  CC=11  out:13
     handler  CC=1  out:1
-    result_data  CC=8  out:7
   adapters.python.urirun.connectors.connect_catalog  [17 funcs]
     _cmd_check  CC=7  out:15
     _cmd_install  CC=13  out:14
@@ -118,15 +117,12 @@ MODULES:
     list  CC=8  out:4
     open  CC=1  out:1
     type  CC=2  out:1
-  adapters.python.urirun.node._util  [4 funcs]
+  adapters.python.urirun.node._util  [3 funcs]
     json_load  CC=1  out:3
     json_write  CC=1  out:4
-    quiet_completion  CC=1  out:2
     slug  CC=2  out:3
-  adapters.python.urirun.node.diagnostics  [17 funcs]
+  adapters.python.urirun.node.diagnostics  [14 funcs]
     _build  CC=3  out:3
-    _cdp_feasible  CC=3  out:5
-    _controllable  CC=3  out:5
     _decode_error_ctx  CC=8  out:8
     _is_login_surface  CC=5  out:8
     _mark_feasibility  CC=7  out:5
@@ -134,6 +130,8 @@ MODULES:
     _maybe_escalate_surface  CC=6  out:6
     _os_level_unreliable  CC=4  out:4
     _rem_already_cdp  CC=6  out:7
+    _rem_has_ui_failure  CC=4  out:3
+    _surface_upgrade  CC=6  out:0
   adapters.python.urirun.node.doctor  [11 funcs]
     _api_id  CC=8  out:9
     _api_protocol  CC=4  out:6
@@ -158,25 +156,6 @@ MODULES:
   adapters.python.urirun.node.event_schema  [2 funcs]
     _step_inverse  CC=5  out:1
     step_category  CC=3  out:1
-  adapters.python.urirun.node.flow_planner  [11 funcs]
-    _append_target_steps  CC=14  out:26
-    _flow_intents  CC=6  out:3
-    _flow_intents_llm  CC=6  out:8
-    _uri_is_available  CC=4  out:2
-    _uri_matches_template  CC=6  out:8
-    _uri_segments  CC=1  out:3
-    append_if_available  CC=5  out:6
-    first_url  CC=2  out:2
-    heuristic_flow  CC=13  out:17
-    nl_key  CC=1  out:6
-  adapters.python.urirun.node.flow_verify  [7 funcs]
-    _dig_value  CC=5  out:4
-    _flow_stdout  CC=6  out:7
-    _goal_passed  CC=8  out:5
-    _run_goal_check  CC=6  out:12
-    _verify_goal_check  CC=5  out:4
-    _verify_log_fragment_check  CC=6  out:6
-    verify_flow_execution  CC=10  out:10
   adapters.python.urirun.node.manage  [32 funcs]
     _app_count  CC=5  out:4
     _augment_local_routes  CC=5  out:7
@@ -192,7 +171,7 @@ MODULES:
     deploy_dir  CC=5  out:7
     node_state_dir  CC=1  out:3
     node_token_path  CC=1  out:1
-  adapters.python.urirun.node.routing  [11 funcs]
+  adapters.python.urirun.node.routing  [10 funcs]
     binding_for_remote_route  CC=3  out:5
     registry_fingerprint  CC=2  out:7
     registry_from_routes  CC=3  out:3
@@ -202,7 +181,7 @@ MODULES:
     route_targets_for_nodes  CC=14  out:10
     routes_from_registry  CC=8  out:15
     safe_route  CC=1  out:4
-    target_nodes  CC=10  out:3
+    uri_is_denied  CC=2  out:1
   adapters.python.urirun.node.skill  [14 funcs]
     _episode_for  CC=8  out:6
     _memory  CC=1  out:1
@@ -239,6 +218,17 @@ MODULES:
   adapters.python.urirun_connectors_toolkit.connector_sdk  [2 funcs]
     connector_cli  CC=5  out:11
     emit  CC=1  out:2
+  adapters.python.urirun_connectors_toolkit.contract_gate  [18 funcs]
+    _leaf_ok  CC=7  out:15
+    _parse_const  CC=4  out:3
+    _terminal_type  CC=5  out:4
+    _walk_oneof  CC=9  out:5
+    _walk_out  CC=12  out:13
+    assignable  CC=4  out:0
+    attach_contracts  CC=4  out:7
+    check  CC=15  out:19
+    check_wire  CC=10  out:11
+    conform  CC=13  out:11
   adapters.python.urirun_connectors_toolkit.resolver  [8 funcs]
     _candidate_dirs  CC=1  out:4
     _read_manifest  CC=3  out:4
@@ -248,9 +238,6 @@ MODULES:
     index_local  CC=12  out:22
     resolve  CC=12  out:24
     resolve_command  CC=6  out:14
-  adapters.python.urirun_flow  [2 funcs]
-    _validate_graph  CC=11  out:13
-    order  CC=3  out:6
   adapters.python.urirun_flow.cli  [2 funcs]
     _load_flow  CC=3  out:8
     _load_python_flow  CC=4  out:6
@@ -268,17 +255,6 @@ MODULES:
     _llm_model_actions  CC=1  out:0
     _not_found_actions  CC=5  out:3
     _transient_actions  CC=2  out:3
-  adapters.python.urirun_flow.run  [10 funcs]
-    _flow_policy  CC=5  out:5
-    _prereq_skip  CC=5  out:3
-    _resolve_payload  CC=3  out:2
-    _result_value  CC=3  out:4
-    _skip_envelope  CC=1  out:0
-    _skip_step  CC=1  out:1
-    envelope_ok  CC=6  out:5
-    flow_summary  CC=8  out:13
-    resolve_step  CC=14  out:21
-    run_flow  CC=12  out:15
   adapters.python.urirun_node._artifacts  [5 funcs]
     _artifact_extension  CC=9  out:5
     _decode_base64_artifact  CC=6  out:6
@@ -327,6 +303,15 @@ MODULES:
     load_authorized  CC=5  out:7
     sign  CC=2  out:13
     verify  CC=3  out:9
+  adapters.python.urirun_node.preconditions  [8 funcs]
+    _acquire_item  CC=3  out:1
+    _satisfied_by  CC=4  out:1
+    _uri_ready_check  CC=3  out:3
+    _uri_ready_ensure  CC=3  out:4
+    _uri_ready_report  CC=1  out:1
+    ensure  CC=12  out:9
+    report  CC=4  out:5
+    status  CC=5  out:3
   adapters.python.urirun_node.server  [39 funcs]
     publish  CC=3  out:4
     _get  CC=12  out:19
@@ -349,7 +334,8 @@ MODULES:
     _mqtt_publish_fn  CC=2  out:3
     _parse_sse_line  CC=6  out:8
     _pids_on_port  CC=9  out:15
-  adapters.python.urirun_runtime.v2  [1 funcs]
+  adapters.python.urirun_runtime.v2  [2 funcs]
+    decorated_bindings  CC=2  out:1
     validate_binding_document  CC=12  out:24
   adapters.python.urirun_twin.planner  [7 funcs]
     _action_matrix_hints  CC=11  out:9
@@ -370,6 +356,17 @@ MODULES:
     _inverse_uri  CC=3  out:6
     _normalize_stuck  CC=8  out:10
     _rollback_from_ledger  CC=6  out:9
+  adapters.python.urirun_twin.twin_store  [14 funcs]
+    __init__  CC=5  out:5
+    items  CC=1  out:2
+    drift  CC=3  out:2
+    recall_episode  CC=9  out:8
+    recall_flow_by_intent  CC=8  out:8
+    remember  CC=1  out:1
+    session_append  CC=3  out:5
+    session_steps  CC=3  out:3
+    items  CC=1  out:3
+    keys  CC=1  out:3
   adapters.ts.urirun  [2 funcs]
     document  CC=1  out:0
     toJSON  CC=1  out:2

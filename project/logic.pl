@@ -55,7 +55,7 @@ project_file('adapters/python/tests/test_exec.py', 147, 'python').
 project_file('adapters/python/tests/test_flow.py', 365, 'python').
 project_file('adapters/python/tests/test_flow_reversible.py', 118, 'python').
 project_file('adapters/python/tests/test_flow_rollup.py', 283, 'python').
-project_file('adapters/python/tests/test_flow_scheme.py', 183, 'python').
+project_file('adapters/python/tests/test_flow_scheme.py', 197, 'python').
 project_file('adapters/python/tests/test_flow_twin.py', 512, 'python').
 project_file('adapters/python/tests/test_formatting.py', 130, 'python').
 project_file('adapters/python/tests/test_fs_transfer.py', 105, 'python').
@@ -88,7 +88,7 @@ project_file('adapters/python/tests/test_preconditions.py', 121, 'python').
 project_file('adapters/python/tests/test_progress.py', 120, 'python').
 project_file('adapters/python/tests/test_proof_cache.py', 66, 'python').
 project_file('adapters/python/tests/test_public_api.py', 191, 'python').
-project_file('adapters/python/tests/test_recall_gate.py', 126, 'python').
+project_file('adapters/python/tests/test_recall_gate.py', 147, 'python').
 project_file('adapters/python/tests/test_recovery.py', 185, 'python').
 project_file('adapters/python/tests/test_refactor_helpers.py', 201, 'python').
 project_file('adapters/python/tests/test_registry.py', 118, 'python').
@@ -158,7 +158,7 @@ project_file('adapters/python/urirun/host/__init__.py', 2, 'python').
 project_file('adapters/python/urirun/host/android_node.py', 163, 'python').
 project_file('adapters/python/urirun/host/artifacts_admin.py', 5, 'python').
 project_file('adapters/python/urirun/host/capability.py', 161, 'python').
-project_file('adapters/python/urirun/host/chat_orchestrator.py', 1447, 'python').
+project_file('adapters/python/urirun/host/chat_orchestrator.py', 1467, 'python').
 project_file('adapters/python/urirun/host/connector_admin.py', 241, 'python').
 project_file('adapters/python/urirun/host/contracts.py', 120, 'python').
 project_file('adapters/python/urirun/host/dashboard.css', 683, 'css').
@@ -167,7 +167,7 @@ project_file('adapters/python/urirun/host/dashboard_api.py', 289, 'python').
 project_file('adapters/python/urirun/host/dashboard_http.py', 182, 'python').
 project_file('adapters/python/urirun/host/decision_loop.py', 135, 'python').
 project_file('adapters/python/urirun/host/discovery.py', 373, 'python').
-project_file('adapters/python/urirun/host/dispatch.py', 169, 'python').
+project_file('adapters/python/urirun/host/dispatch.py', 198, 'python').
 project_file('adapters/python/urirun/host/document_metadata.py', 5, 'python').
 project_file('adapters/python/urirun/host/document_sync.py', 5, 'python').
 project_file('adapters/python/urirun/host/domain_monitor.py', 6, 'python').
@@ -272,7 +272,7 @@ project_file('adapters/python/urirun_connectors_toolkit/connector_lint.py', 715,
 project_file('adapters/python/urirun_connectors_toolkit/connector_scaffold.py', 414, 'python').
 project_file('adapters/python/urirun_connectors_toolkit/connector_sdk.py', 88, 'python').
 project_file('adapters/python/urirun_connectors_toolkit/connector_smoke.py', 82, 'python').
-project_file('adapters/python/urirun_connectors_toolkit/contract_gate.py', 256, 'python').
+project_file('adapters/python/urirun_connectors_toolkit/contract_gate.py', 455, 'python').
 project_file('adapters/python/urirun_connectors_toolkit/declarative.py', 7, 'python').
 project_file('adapters/python/urirun_connectors_toolkit/openapi_import.py', 8, 'python').
 project_file('adapters/python/urirun_connectors_toolkit/resolver.py', 170, 'python').
@@ -301,7 +301,7 @@ project_file('adapters/python/urirun_node/mesh.py', 309, 'python').
 project_file('adapters/python/urirun_node/paths.py', 39, 'python').
 project_file('adapters/python/urirun_node/preconditions.py', 219, 'python').
 project_file('adapters/python/urirun_node/routing.py', 174, 'python').
-project_file('adapters/python/urirun_node/server.py', 997, 'python').
+project_file('adapters/python/urirun_node/server.py', 998, 'python').
 project_file('adapters/python/urirun_node/skill.py', 251, 'python').
 project_file('adapters/python/urirun_node/transport.py', 541, 'python').
 project_file('adapters/python/urirun_runtime/__init__.py', 2, 'python').
@@ -1528,11 +1528,12 @@ python_function('adapters/python/urirun/host/chat_orchestrator.py', '_find_human
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_escalate_offline_to_human', 4, 9, 3).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_chat_ask_general_check_offline', 7, 13, 7).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_chat_ask_general_build_result', 12, 10, 11).
-python_function('adapters/python/urirun/host/chat_orchestrator.py', '_try_recall_gate', 3, 12, 4).
+python_function('adapters/python/urirun/host/chat_orchestrator.py', '_try_recall_gate', 3, 14, 4).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_is_selected_remote_node', 2, 8, 3).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_flag_remote_capture_inline', 3, 9, 6).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_suggest_recall_for_memory', 2, 2, 1).
-python_function('adapters/python/urirun/host/chat_orchestrator.py', '_chat_ask_general', 13, 17, 26).
+python_function('adapters/python/urirun/host/chat_orchestrator.py', '_screen_capability_gap_or_recall', 12, 6, 7).
+python_function('adapters/python/urirun/host/chat_orchestrator.py', '_chat_ask_general', 13, 15, 23).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_add_chat_user_message', 4, 4, 7).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_chat_insert_twin_preview', 5, 4, 5).
 python_function('adapters/python/urirun/host/chat_orchestrator.py', '_parse_chat_nodes_targets', 1, 7, 3).
@@ -1632,7 +1633,8 @@ python_function('adapters/python/urirun/host/dispatch.py', '_flow_scheme_dispatc
 python_function('adapters/python/urirun/host/dispatch.py', '_inprocess_run', 2, 8, 6).
 python_function('adapters/python/urirun/host/dispatch.py', '_env_to_result', 2, 6, 4).
 python_function('adapters/python/urirun/host/dispatch.py', 'inprocess_fallback', 2, 6, 6).
-python_function('adapters/python/urirun/host/dispatch.py', 'make_local_dispatch_uri', 3, 2, 1).
+python_function('adapters/python/urirun/host/dispatch.py', '_local_scheme_installed', 1, 5, 5).
+python_function('adapters/python/urirun/host/dispatch.py', 'make_local_dispatch_uri', 4, 3, 4).
 python_function('adapters/python/urirun/host/fs_transfer.py', 'route_key', 1, 3, 3).
 python_function('adapters/python/urirun/host/fs_transfer.py', 'node_has_route', 2, 4, 5).
 python_function('adapters/python/urirun/host/fs_transfer.py', 'fs_file_transfer_binding', 1, 4, 1).
@@ -2192,13 +2194,23 @@ python_function('adapters/python/urirun_connectors_toolkit/connector_smoke.py', 
 python_function('adapters/python/urirun_connectors_toolkit/connector_smoke.py', 'smoke_command', 1, 2, 4).
 python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', '_parse_const', 1, 4, 3).
 python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', '_leaf_ok', 2, 7, 6).
-python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'check', 3, 11, 10).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'check', 3, 15, 10).
 python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'validate_output', 2, 2, 1).
 python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'conform', 1, 13, 4).
 python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'contract_to_dict', 1, 2, 1).
 python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'attach_contracts', 2, 4, 6).
 python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'envelope_violation', 2, 10, 5).
 python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'enforce', 2, 1, 10).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', '_terminal_type', 1, 5, 2).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', '_walk_oneof', 2, 9, 3).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', '_walk_out', 2, 12, 8).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'resolve_out_type', 2, 1, 2).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'assignable', 2, 4, 0).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'check_wire', 2, 10, 7).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'find_wire', 3, 4, 1).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'dig', 2, 6, 5).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'wire_payload', 2, 3, 2).
+python_function('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'consumer_input_check', 3, 13, 9).
 python_function('adapters/python/urirun_connectors_toolkit/resolver.py', '_schemes_from_manifest', 1, 13, 7).
 python_function('adapters/python/urirun_connectors_toolkit/resolver.py', '_schemes_from_code', 1, 9, 8).
 python_function('adapters/python/urirun_connectors_toolkit/resolver.py', '_read_manifest', 1, 3, 4).
@@ -3621,8 +3633,8 @@ python_method('TestRecallDriftGuard', '_recall', 0, 1, 1).
 python_method('TestRecallDriftGuard', '_mem', 0, 1, 1).
 python_method('TestRecallDriftGuard', '_ep', 2, 1, 1).
 python_method('TestRecallDriftGuard', 'test_recall_skips_drift_check_when_flag_set', 0, 1, 7).
-python_method('TestRecallDriftGuard', 'test_recall_suppresses_episode_when_drift_detected', 0, 1, 8).
-python_method('TestRecallDriftGuard', 'test_recall_returns_episode_when_no_drift', 0, 1, 7).
+python_method('TestRecallDriftGuard', 'test_recall_suppresses_episode_when_drift_detected', 0, 1, 9).
+python_method('TestRecallDriftGuard', 'test_recall_returns_episode_when_no_drift', 0, 1, 8).
 python_method('TestRecallDriftGuard', 'test_flow_store_fallback_has_no_drift_guard', 0, 1, 8).
 python_class('adapters/python/tests/test_host_dashboard.py', 'HostDashboardTests').
 python_method('HostDashboardTests', 'test_dashboard_html_summary_and_task_action', 0, 1, 22).
@@ -3858,7 +3870,8 @@ python_method('FlowRecallHandlerTests', 'setUp', 0, 1, 5).
 python_method('FlowRecallHandlerTests', '_restore', 0, 3, 3).
 python_method('FlowRecallHandlerTests', 'test_hit_by_intent_x_env_returns_the_stored_plan', 0, 2, 3).
 python_method('FlowRecallHandlerTests', 'test_hit_by_episode_id', 0, 1, 2).
-python_method('FlowRecallHandlerTests', 'test_drift_suppresses_recall', 0, 1, 3).
+python_method('FlowRecallHandlerTests', 'test_drift_suppresses_recall', 0, 1, 6).
+python_method('FlowRecallHandlerTests', 'test_missing_drift_route_allows_recall', 0, 1, 2).
 python_method('FlowRecallHandlerTests', 'test_unknown_intent_misses', 0, 1, 2).
 python_class('adapters/python/tests/test_recall_gate.py', 'RecallGateShortCircuitsLLMTests').
 python_method('RecallGateShortCircuitsLLMTests', 'test_miss_returns_none_so_caller_plans', 0, 1, 2).
@@ -4076,6 +4089,7 @@ python_method('ConnectorContractSuite', 'test_dry_run_routes_return_valid_reply_
 python_method('ConnectorContractSuite', 'test_execute_cases', 0, 4, 5).
 python_method('ConnectorContractSuite', 'test_failed_dispatch_carries_error', 0, 4, 4).
 python_class('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'Contract').
+python_class('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'Wire').
 python_class('adapters/python/urirun_connectors_toolkit/contract_gate.py', 'ContractViolation').
 python_class('adapters/python/urirun_contracts/__init__.py', 'RemediationClass').
 python_class('adapters/python/urirun_contracts/__init__.py', 'Remediation').
@@ -4166,7 +4180,7 @@ python_method('NodeHandler', '_publish_run', 2, 5, 4).
 python_method('NodeHandler', '_validate_run_request', 1, 10, 7).
 python_method('NodeHandler', '_dispatch_control_uri', 3, 6, 5).
 python_method('NodeHandler', '_respond_async', 4, 1, 11).
-python_method('NodeHandler', '_handle_run', 0, 14, 22).
+python_method('NodeHandler', '_handle_run', 0, 14, 23).
 python_method('NodeHandler', '_handle_adopt', 2, 9, 7).
 python_method('NodeHandler', '_handle_need', 2, 9, 6).
 python_method('NodeHandler', '_handle_run_control', 1, 8, 5).

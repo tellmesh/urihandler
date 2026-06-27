@@ -1,9 +1,10 @@
-# code2llm | 253f 40187L | python:189,json:13,shell:11,yaml:5,javascript:5,csharp:4,txt:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-27
-# generated in 0.17s
-# CC̅=4.7 | critical:35/2451 | dups:0 | cycles:0
+# code2llm | 253f 40443L | python:189,json:13,shell:11,yaml:5,javascript:5,csharp:4,txt:3,yml:2,java:2,go:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-27
+# generated in 0.16s
+# CC̅=4.7 | critical:37/2463 | dups:0 | cycles:0
 
 HEALTH[20]:
-  🟡 CC    _thin_dispatch_step CC=16 (limit:15)
+  🟡 CC    check CC=15 (limit:15)
+  🟡 CC    _thin_dispatch_step CC=18 (limit:15)
   🟡 CC    applyControlsFromUrl CC=22 (limit:15)
   🟡 CC    createTicket CC=25 (limit:15)
   🟡 CC    installConnector CC=26 (limit:15)
@@ -22,12 +23,11 @@ HEALTH[20]:
   🟡 CC    discoveryObjects CC=21 (limit:15)
   🟡 CC    renderDiscovery CC=17 (limit:15)
   🟡 CC    renderArtifactFileRow CC=19 (limit:15)
-  🟡 CC    renderTwinPlanCard CC=43 (limit:15)
 
 REFACTOR[1]:
   1. split 20 high-CC methods  (CC>15)
 
-PIPELINES[873]:
+PIPELINES[878]:
   [1] Src [http]: http
       PURITY: 100% pure
   [2] Src [_attacker_key]: _attacker_key → open → esc → text
@@ -145,8 +145,8 @@ LAYERS:
   │ !! v2                        2033L  2C  120m  CC=14     ←6
   │ !! host_dashboard            1934L  0C  102m  CC=14     ←1
   │ !! scanner_bridge            1548L  0C    0m  CC=0.0    ←0
+  │ !! chat_orchestrator         1462L  1C   47m  CC=15     ←0
   │ !! document_sync             1422L  0C    0m  CC=0.0    ←0
-  │ !! chat_orchestrator         1418L  1C   45m  CC=14     ←0
   │ !! server                     996L  3C   55m  CC=14     ←3
   │ !! object_registry            981L  0C   46m  CC=14     ←0
   │ !! flow                       939L  0C   49m  CC=10     ←6
@@ -155,7 +155,7 @@ LAYERS:
   │ !! _registry                  718L  0C   43m  CC=14     ←1
   │ !! scanner.js                 664L  0C  116m  CC=26     ←1
   │ !! _runtime                   597L  1C   30m  CC=13     ←2
-  │ !! flow_thin                  568L  1C   26m  CC=16     ←1
+  │ !! flow_thin                  581L  1C   26m  CC=18     ←1
   │ !! client                     558L  1C   35m  CC=12     ←1
   │ !! transport                  540L  0C   24m  CC=14     ←3
   │ !! twin_bridge                528L  0C   26m  CC=12     ←1
@@ -163,6 +163,7 @@ LAYERS:
   │ artifacts_admin            495L  0C    0m  CC=0.0    ←0
   │ document_metadata          471L  0C    0m  CC=0.0    ←0
   │ service_control            462L  0C   23m  CC=11     ←0
+  │ !! contract_gate              454L  3C   19m  CC=15     ←0
   │ connector_scaffold         413L  0C   11m  CC=3      ←0
   │ recovery                   393L  0C   23m  CC=10     ←2
   │ reversible                 383L  8C   26m  CC=10     ←5
@@ -182,7 +183,6 @@ LAYERS:
   │ node_types                 265L  0C    8m  CC=8      ←1
   │ secrets                    263L  1C   18m  CC=9      ←1
   │ node_api                   260L  0C   12m  CC=13     ←0
-  │ contract_gate              255L  2C    9m  CC=13     ←0
   │ connector_admin            240L  0C    9m  CC=14     ←1
   │ run                        236L  0C   12m  CC=14     ←1
   │ config                     226L  0C   17m  CC=9      ←3
@@ -239,9 +239,9 @@ LAYERS:
   │ urirun_test.c               18L  0C    2m  CC=2      ←0
   │ urirun.sh                   17L  0C    2m  CC=0.0    ←0
   │ urirun-connector.csproj.FileListAbsolute.txt    15L  0C    0m  CC=0.0    ←0
+  │ package.json                14L  0C    0m  CC=0.0    ←0
   │ hash_connector.pl           14L  0C    0m  CC=0.0    ←0
   │ hash-connector.php          14L  0C    0m  CC=0.0    ←0
-  │ package.json                14L  0C    0m  CC=0.0    ←0
   │ urirun.h                    13L  0C    1m  CC=1      ←0
   │ hash_connector.rs           12L  0C    1m  CC=1      ←0
   │ HashConnector.java          11L  1C    1m  CC=1      ←0
@@ -413,13 +413,13 @@ COUPLING:
         adapters.java                   ←1                                                                                                                            ──                     
         adapters.perl                   ←1                                                                                                                                                 ──
   CYCLES: none
-  HUB: adapters/ (fan-in=19)
-  HUB: scripts/ (fan-in=158)
-  HUB: v1.js/ (fan-in=6)
   HUB: adapters.python/ (fan-in=7)
-  SMELL: adapters/ fan-out=12 → split needed
+  HUB: v1.js/ (fan-in=6)
+  HUB: scripts/ (fan-in=158)
+  HUB: adapters/ (fan-in=19)
   SMELL: examples.matrix/ fan-out=10 → split needed
   SMELL: adapters.python/ fan-out=166 → split needed
+  SMELL: adapters/ fan-out=12 → split needed
 
 EXTERNAL:
   validation: run `vallm batch .` → validation.toon

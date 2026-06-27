@@ -1,4 +1,4 @@
-# code2llm/evolution | 2405 func | 120f | 2026-06-27
+# code2llm/evolution | 2417 func | 120f | 2026-06-27
 # generated in 0.01s
 
 NEXT[10] (ranked by impact):
@@ -26,21 +26,21 @@ NEXT[10] (ranked by impact):
       WHY: CC=30 exceeds 15
       EFFORT: ~1h  IMPACT: 420
 
-  [7] !! SPLIT-FUNC      renderTwinPlanCard  CC=43  fan=8
+  [7] !  SPLIT-FUNC      _chat_ask_general  CC=15  fan=25
+      WHY: CC=15 exceeds 15
+      EFFORT: ~1h  IMPACT: 375
+
+  [8] !! SPLIT-FUNC      renderTwinPlanCard  CC=43  fan=8
       WHY: CC=43 exceeds 15
       EFFORT: ~1h  IMPACT: 344
 
-  [8] !  SPLIT-FUNC      _thin_dispatch_step  CC=16  fan=16
+  [9] !  SPLIT-FUNC      _thin_dispatch_step  CC=18  fan=17
+      WHY: CC=18 exceeds 15
+      EFFORT: ~1h  IMPACT: 306
+
+  [10] !  SPLIT-FUNC      renderNodes  CC=16  fan=16
       WHY: CC=16 exceeds 15
       EFFORT: ~1h  IMPACT: 256
-
-  [9] !  SPLIT-FUNC      renderNodes  CC=16  fan=16
-      WHY: CC=16 exceeds 15
-      EFFORT: ~1h  IMPACT: 256
-
-  [10] !  SPLIT-FUNC      applyControlsFromUrl  CC=22  fan=11
-      WHY: CC=22 exceeds 15
-      EFFORT: ~1h  IMPACT: 242
 
 
 RISKS[3]:
@@ -52,7 +52,7 @@ METRICS-TARGET:
   CC̄:          4.7 → ≤3.3
   max-CC:      43 → ≤20
   god-modules: 21 → 0
-  high-CC(≥15): 35 → ≤17
+  high-CC(≥15): 37 → ≤18
   hub-types:   0 → ≤0
 
 PATTERNS (language parser shared logic):
