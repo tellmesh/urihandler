@@ -815,13 +815,16 @@ def _try_ensure_kvm_for_node(
         return False
     try:
         client = node_client(url, token=token, identity=identity)
-        # Fast path: adopt-only (no install) — works when the package is already in the
-        # node's venv. Falls through to install=True when the package is absent.
+        # Phase 1 (no-op if kvm is already adopted): adopt bindings already in node venv via
+        # node://*/registry/command/adopt.  Requires --manage on the node; returns ok=False fast if not.
         r = client.ensure_scheme("kvm", install=False, route="kvm://host/screen/query/capture")
         if r.get("ok"):
             return True
-        # Slow path: discover + install + adopt. Requires the node to have access to the
-        # connector package (local connector catalog or pip-accessible package).
+        # Phase 2 (HTTP host-deploy): push the host's kvm connector bindings to the node via
+        # /deploy (signed, no SSH needed). Works on any node with --deploy enabled (the default).
+        # _ensure_via_discovery_install (the only slow path) needs --manage to reach
+        # node://*/connector/query/discover; without it, discovery returns empty and is skipped
+        # immediately, so this call is fast on managed-deploy-only nodes like lenovo.
         r = client.ensure_scheme("kvm", install=True, route="kvm://host/screen/query/capture")
         return bool(r.get("ok"))
     except Exception:  # noqa: BLE001

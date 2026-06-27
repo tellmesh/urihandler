@@ -1457,6 +1457,12 @@ def _handle_get_static(handler, parsed, project) -> bool:
     if parsed.path in {"/", "/index.html"}:
         _html_response(handler)
         return True
+    if parsed.path == "/dashboard.js":
+        # The dashboard's ~2700-line JS lives in dashboard.js (extracted from the INDEX_HTML raw
+        # string) and is served fresh per request, so edits load without a service restart.
+        js = Path(__file__).parent / "dashboard.js"
+        _asset_response(handler, js.read_bytes(), "application/javascript; charset=utf-8")
+        return True
     if parsed.path == "/favicon.ico":
         handler.send_response(204)
         handler.send_header("Cache-Control", "public, max-age=86400")
