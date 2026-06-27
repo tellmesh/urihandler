@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import json
 import pytest
-from urirun_flow.flow_planner import _strip_focus_from_cdp_flows
+from urirun_flow.flow_planner import (
+    _strip_focus_from_cdp_flows,
+    _chrome_profile_root,
+    _rewrite_cdp_profile_for_auth,
+)
 from urirun.node.flow import (
     _dig_path,
     _flow_intents,
@@ -363,3 +367,42 @@ def test_thin_driver_resolves_step_payload_from_prior_result(monkeypatch):
     send_call = next((c for c in dispatch_log if "send" in c["uri"]), None)
     assert send_call is not None
     assert send_call["payload"].get("to") == "alice@x.com"
+
+
+def test_chrome_profile_root_trims_default_subdir():
+    # copy_from must be the user-data-dir ROOT (_AUTH_FILES resolve 'Default/Cookies' against it).
+    assert _chrome_profile_root("~/.config/google-chrome/Default") == "~/.config/google-chrome"
+    assert _chrome_profile_root("~/.config/google-chrome") == "~/.config/google-chrome"
+    assert _chrome_profile_root("/home/u/.config/chromium/Profile 1") == "/home/u/.config/chromium"
+
+
+def test_chrome_profile_root_rejects_temp_and_unknown():
+    assert _chrome_profile_root("/tmp/urirun-cdp-9222") is None
+    assert _chrome_profile_root("") is None
+    assert _chrome_profile_root("/some/random/dir") is None
+
+
+def test_rewrite_cdp_profile_converts_user_data_dir_to_copy_from():
+    # The LinkedIn login case: ensure with user_data_dir=<live profile> → copy_from=<root>,
+    # so the connector clones cookies into a dedicated CDP profile instead of fighting the lock.
+    steps = [{
+        "id": "ensure",
+        "uri": "kvm://host/cdp/session/command/ensure",
+        "payload": {"user_data_dir": "~/.config/google-chrome/Default"},
+    }]
+    out = _rewrite_cdp_profile_for_auth(steps)
+    assert out[0]["payload"] == {"copy_from": "~/.config/google-chrome"}
+    assert "user_data_dir" not in out[0]["payload"]
+
+
+def test_rewrite_cdp_profile_is_idempotent_and_scoped():
+    # explicit copy_from is left alone; temp dirs and non-ensure steps are untouched.
+    keep_copy = [{"id": "e", "uri": "kvm://host/cdp/session/command/ensure",
+                  "payload": {"copy_from": "~/.config/google-chrome", "user_data_dir": "~/.config/google-chrome/Default"}}]
+    assert _rewrite_cdp_profile_for_auth(keep_copy)[0]["payload"].get("user_data_dir")
+    temp = [{"id": "e", "uri": "kvm://host/cdp/session/command/ensure",
+             "payload": {"user_data_dir": "/tmp/urirun-cdp-9222"}}]
+    assert _rewrite_cdp_profile_for_auth(temp) == temp
+    other = [{"id": "n", "uri": "kvm://host/cdp/page/command/navigate",
+              "payload": {"user_data_dir": "~/.config/google-chrome/Default"}}]
+    assert _rewrite_cdp_profile_for_auth(other) == other

@@ -665,18 +665,24 @@
     }
 
     // After the phone has installed the APK and is serving on :8765, persist it as a MOBILE node.
+    function inputValue(id) {
+      return (($(id) || {}).value || '').trim();
+    }
+    function setStatusText(el, text) {
+      if (el) el.textContent = text;
+    }
     async function savePhoneNode() {
-      const name = (($('phoneNodeName') || {}).value || '').trim();
-      const url = (($('phoneNodeNodeUrl') || {}).value || '').trim();
+      const name = inputValue('phoneNodeName');
+      const url = inputValue('phoneNodeNodeUrl');
       const status = $('phoneNodeSaveStatus');
-      if (!name || !url) { if (status) status.textContent = 'podaj nazwę i URL telefonu'; return; }
-      if (status) status.textContent = 'zapisuję…';
+      if (!name || !url) { setStatusText(status, 'podaj nazwę i URL telefonu'); return; }
+      setStatusText(status, 'zapisuję…');
       try {
         const res = await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url, kind: 'smartphone' }) });
-        if (status) status.textContent = 'zapisano: ' + (res.node ? res.node.name + ' → ' + res.node.url : name);
+        setStatusText(status, 'zapisano: ' + (res.node ? res.node.name + ' → ' + res.node.url : name));
         if (typeof load === 'function') load().catch(() => {});
       } catch (error) {
-        if (status) status.textContent = 'błąd zapisu: ' + error.message;
+        setStatusText(status, 'błąd zapisu: ' + error.message);
       }
     }
 
@@ -1171,21 +1177,31 @@
       return objects.length ? objects[0].id : 'host';
     }
 
-    function renderDiscovery(summary) {
-      const objects = discoveryObjects(summary);
-      state.discoveryTarget = chooseDiscoveryTarget(objects);
-      const selected = objects.find((item) => item.id === state.discoveryTarget) || objects[0] || null;
-      $('discoveryCount').textContent = `${objects.length} objects`;
-      $('discoveryList').innerHTML = objects.map((item) => {
-        const active = item.id === state.discoveryTarget ? 'active' : '';
-        const pillClass = item.reachable === false ? 'down' : 'up';
-        return `<button type="button" class="discovery-target ${active}" data-discovery-target="${esc(item.id)}">
+    function discoveryTargetButton(item) {
+      const active = item.id === state.discoveryTarget ? 'active' : '';
+      const pillClass = item.reachable === false ? 'down' : 'up';
+      return `<button type="button" class="discovery-target ${active}" data-discovery-target="${esc(item.id)}">
           <div><strong>${esc(item.label)}</strong> <span class="pill ${pillClass}">${esc(item.status || item.kind)}</span></div>
           <div class="mono">${esc(item.id)}</div>
           <div class="subtle">${esc(item.url || '')}</div>
           <div class="subtle">${item.routes.length} URI routes · ${esc(item.kind || '')}</div>
         </button>`;
-      }).join('') || empty('No URI objects discovered');
+    }
+
+    function discoveryRouteRow(route) {
+      return `<div class="item">
+        <div class="route-title"><span class="mono">${esc(route.uri)}</span>${route.safe === false ? '<span class="pill down">unsafe</span>' : ''}</div>
+        ${route.title ? `<div>${esc(route.title)}</div>` : ''}
+        <div class="subtle">${esc(route.ownerLabel)} · ${esc(route.kind || 'route')} · ${esc(route.adapter || 'registry')} · target:${esc(route.target)}</div>
+      </div>`;
+    }
+
+    function renderDiscovery(summary) {
+      const objects = discoveryObjects(summary);
+      state.discoveryTarget = chooseDiscoveryTarget(objects);
+      const selected = objects.find((item) => item.id === state.discoveryTarget) || objects[0] || null;
+      $('discoveryCount').textContent = `${objects.length} objects`;
+      $('discoveryList').innerHTML = objects.map(discoveryTargetButton).join('') || empty('No URI objects discovered');
       if (!selected) {
         $('discoveryRouteTitle').textContent = 'URI Registry';
         $('discoveryRouteMeta').textContent = '';
@@ -1196,11 +1212,7 @@
       $('discoveryRouteTitle').textContent = `${selected.label} registry`;
       $('discoveryRouteMeta').textContent = `${selected.id}${selected.url ? ` · ${selected.url}` : ''}`;
       $('discoveryRouteCount').textContent = `${selected.routes.length} routes`;
-      $('discoveryRoutesList').innerHTML = selected.routes.map((route) => `<div class="item">
-        <div class="route-title"><span class="mono">${esc(route.uri)}</span>${route.safe === false ? '<span class="pill down">unsafe</span>' : ''}</div>
-        ${route.title ? `<div>${esc(route.title)}</div>` : ''}
-        <div class="subtle">${esc(route.ownerLabel)} · ${esc(route.kind || 'route')} · ${esc(route.adapter || 'registry')} · target:${esc(route.target)}</div>
-      </div>`).join('') || empty('No URI routes for this object');
+      $('discoveryRoutesList').innerHTML = selected.routes.map(discoveryRouteRow).join('') || empty('No URI routes for this object');
     }
 
     function renderRoutes(routes) {
@@ -1387,18 +1399,35 @@
       return parts.join(' · ');
     }
 
+    function artifactRowLinks(url) {
+      return {
+        openLink: url ? `<a href="${esc(url)}" target="_blank" rel="noreferrer">open</a>` : '',
+        download: url ? `<a href="${esc(url)}" download>download</a>` : '',
+      };
+    }
+
+    function artifactRowBadges(item, id, path) {
+      const duplicateCount = Number(item.duplicateCount || 0);
+      return {
+        missing: path && item.fileExists === false ? '<span class="pill down">missing file</span>' : '',
+        selected: id && state.selectedArtifactIds.has(id) ? 'checked' : '',
+        duplicates: duplicateCount > 1 ? `<span class="pill">${duplicateCount} records</span>` : '',
+      };
+    }
+
+    function artifactRowActions(item, id) {
+      const del = id ? `<button type="button" class="danger" data-artifact-delete="${esc(id)}">Delete</button>` : '';
+      const meta = item.meta ? `<details><summary>metadata</summary><pre>${esc(JSON.stringify(item.meta, null, 2))}</pre></details>` : '';
+      return `<div class="subtle">${esc(item.created_at || '')}</div>${del}${meta}`;
+    }
+
     function renderArtifactFileRow(item) {
       const id = text(item.id);
       const path = text(item.path);
       const name = basename(path || item.uri || item.id);
-      const url = artifactFileUrl(item);
       const metaLine = artifactMetaSummary(item);
-      const openLink = url ? `<a href="${esc(url)}" target="_blank" rel="noreferrer">open</a>` : '';
-      const download = url ? `<a href="${esc(url)}" download>download</a>` : '';
-      const missing = path && item.fileExists === false ? '<span class="pill down">missing file</span>' : '';
-      const selected = id && state.selectedArtifactIds.has(id) ? 'checked' : '';
-      const duplicateCount = Number(item.duplicateCount || 0);
-      const duplicates = duplicateCount > 1 ? `<span class="pill">${duplicateCount} records</span>` : '';
+      const { openLink, download } = artifactRowLinks(artifactFileUrl(item));
+      const { missing, selected, duplicates } = artifactRowBadges(item, id, path);
       return `<div class="artifact-file-row">
         <div><input type="checkbox" name="artifactSelect" value="${esc(id)}" ${selected}></div>
         ${artifactThumb(item)}
@@ -1411,11 +1440,7 @@
           <div class="mono">${esc(item.uri || '')}</div>
           ${metaLine ? `<div class="artifact-meta-line">${esc(metaLine)}</div>` : ''}
         </div>
-        <div>
-          <div class="subtle">${esc(item.created_at || '')}</div>
-          ${id ? `<button type="button" class="danger" data-artifact-delete="${esc(id)}">Delete</button>` : ''}
-          ${item.meta ? `<details><summary>metadata</summary><pre>${esc(JSON.stringify(item.meta, null, 2))}</pre></details>` : ''}
-        </div>
+        <div>${artifactRowActions(item, id)}</div>
       </div>`;
     }
 
@@ -1622,45 +1647,42 @@
       });
     }
 
-    function renderTwinPlanCard(att) {
-      const plan = att.plan || {};
-      const env = att.environment || {};
-      const mock = att.mock;
-      const sel = plan.browserSelection || {};
-      const steps = (plan.steps || []);
-      const constraints = (env.constraints || []);
-      const domain = att.domain || '';
-      const taskType = att.taskType || 'task';
-      const needsAuth = att.needsAuth;
+    // ── Digital Twin Plan card: section builders ─────────────────────────────
+    // Each builder renders one self-contained block of the twin-plan card; renderTwinPlanCard
+    // (below) just assembles them. Split out so the card's branching lives in small functions
+    // rather than one CC=43 monolith.
+    function twinSelBadge(sel) {
+      const selMode = (sel && sel.mode) || '';
+      if (selMode === 'attach') {
+        return `<span class="pill up" title="${esc(sel.reason||'')}">CDP attach :${esc(String(sel.port||''))}${sel.authCookie ? ' 🔑' : ''}</span>`;
+      }
+      if (selMode === 'needs-login') {
+        return `<span class="pill warn" title="${esc(sel.reason||'')}">⚠ login required (human-gated)</span>`;
+      }
+      if (selMode === 'no-chrome') {
+        return '<span class="pill down">no CDP Chrome found</span>';
+      }
+      return '';
+    }
 
-      // ── session selection badge ──────────────────────────────────────────────
-      const selMode = sel.mode || '';
-      const selBadge = selMode === 'attach'
-        ? `<span class="pill up" title="${esc(sel.reason||'')}">CDP attach :${esc(String(sel.port||''))}${sel.authCookie ? ' 🔑' : ''}</span>`
-        : selMode === 'needs-login'
-        ? `<span class="pill warn" title="${esc(sel.reason||'')}">⚠ login required (human-gated)</span>`
-        : selMode === 'no-chrome'
-        ? `<span class="pill down">no CDP Chrome found</span>`
-        : '';
-
-      // ── steps table ─────────────────────────────────────────────────────────
-      const stepRows = steps.map(s => {
-        const feasMark = s.feasible ? '✓' : '✗';
-        const feasCls = s.feasible ? 'color:var(--ok)' : 'color:var(--err)';
-        const revMark = s.reversible ? '↩' : '—';
-        const surf = s.surface || '';
-        const uri = (s.uri || '').replace(/^kvm:\/\/[^/]+\//, '');
-        const fixHint = !s.feasible && s.fix ? ` → fix: ${s.fix}` : '';
-        return `<tr>
+    function twinStepRow(s) {
+      const feasMark = s.feasible ? '✓' : '✗';
+      const feasCls = s.feasible ? 'color:var(--ok)' : 'color:var(--err)';
+      const revMark = s.reversible ? '↩' : '—';
+      const uri = (s.uri || '').replace(/^kvm:\/\/[^/]+\//, '');
+      const fixHint = !s.feasible && s.fix ? ` → fix: ${s.fix}` : '';
+      return `<tr>
           <td style="padding:2px 6px;color:var(--subtle)">${s.step}</td>
           <td style="padding:2px 6px;font-family:monospace;font-size:0.82em">${esc(uri)}</td>
-          <td style="padding:2px 6px;font-size:0.8em">${esc(surf)}</td>
+          <td style="padding:2px 6px;font-size:0.8em">${esc(s.surface || '')}</td>
           <td style="padding:2px 6px;${feasCls}">${feasMark}${esc(fixHint)}</td>
           <td style="padding:2px 6px;color:var(--subtle)">${revMark}</td>
         </tr>`;
-      }).join('');
+    }
 
-      const stepsHtml = steps.length ? `
+    function twinStepsHtml(steps) {
+      if (!steps.length) return '<div class="subtle" style="font-size:0.82em">no steps derived</div>';
+      return `
         <table style="width:100%;border-collapse:collapse;margin:4px 0">
           <thead><tr style="font-size:0.78em;color:var(--subtle)">
             <th style="padding:2px 6px;text-align:left">#</th>
@@ -1669,11 +1691,13 @@
             <th style="padding:2px 6px;text-align:left">feasible</th>
             <th style="padding:2px 6px;text-align:left">rev</th>
           </tr></thead>
-          <tbody>${stepRows}</tbody>
-        </table>` : '<div class="subtle" style="font-size:0.82em">no steps derived</div>';
+          <tbody>${steps.map(twinStepRow).join('')}</tbody>
+        </table>`;
+    }
 
-      // ── Docker mock section ──────────────────────────────────────────────────
-      const mockHtml = mock ? `
+    function twinMockHtml(mock) {
+      if (!mock) return '';
+      return `
         <details style="margin-top:6px">
           <summary style="cursor:pointer;font-size:0.82em;color:var(--subtle)">
             Docker mock: ${esc(mock.service || '')} (port ${mock.port || ''})
@@ -1684,15 +1708,25 @@
             <code style="color:var(--subtle)">${esc(mock.stopCmd || '')}</code>
           </div>
           ${(mock.notes||[]).map(n=>`<div class="subtle" style="font-size:0.78em">• ${esc(n)}</div>`).join('')}
-        </details>` : '';
+        </details>`;
+    }
 
-      // ── constraints summary ──────────────────────────────────────────────────
-      const constraintsHtml = constraints.length ? constraints.map(c =>
+    function twinConstraintsHtml(constraints) {
+      return constraints.map(c =>
         `<div style="font-size:0.8em;color:var(--warn,#f59e0b)">⚠ ${esc(c.what||'')} — ${esc(c.reason||'')}${c.fix ? ` → ${esc(c.fix)}` : ''}</div>`
-      ).join('') : '';
+      ).join('');
+    }
 
-      const domainTag = domain ? `<span class="pill" style="font-size:0.78em">${esc(domain)}</span>` : '';
-      const authTag = needsAuth ? `<span class="pill" style="font-size:0.78em;background:var(--warn,#f59e0b20)">auth required</span>` : '';
+    function renderTwinPlanCard(att) {
+      const plan = att.plan || {};
+      const env = att.environment || {};
+      const sel = plan.browserSelection || {};
+      const steps = (plan.steps || []);
+      const taskType = att.taskType || 'task';
+
+      const selBadge = twinSelBadge(sel);
+      const domainTag = att.domain ? `<span class="pill" style="font-size:0.78em">${esc(att.domain)}</span>` : '';
+      const authTag = att.needsAuth ? `<span class="pill" style="font-size:0.78em;background:var(--warn,#f59e0b20)">auth required</span>` : '';
       const humanGated = plan.humanGated ? `<div style="color:var(--warn,#f59e0b);font-size:0.82em;margin:4px 0">⚠ human-gated: ${esc(plan.guidance||plan.blockedBy||'')}</div>` : '';
 
       return `<div class="attachment" style="border:1px solid var(--border-color);border-radius:4px;padding:8px 10px;width:100%;box-sizing:border-box">
@@ -1703,12 +1737,12 @@
         </div>
         ${selBadge ? `<div style="margin-bottom:4px">${selBadge}</div>` : ''}
         ${humanGated}
-        ${constraintsHtml}
+        ${twinConstraintsHtml(env.constraints || [])}
         <div style="margin:4px 0">
           <span style="font-size:0.8em;color:var(--subtle)">${plan.totalSteps||0} steps · ${plan.feasibleSteps||0} feasible · ${plan.infeasibleSteps||0} blocked · ${plan.irreversibleSteps||0} irreversible</span>
         </div>
-        ${stepsHtml}
-        ${mockHtml}
+        ${twinStepsHtml(steps)}
+        ${twinMockHtml(att.mock)}
         <details style="margin-top:4px"><summary style="font-size:0.75em;color:var(--subtle);cursor:pointer">raw data</summary><pre style="font-size:0.72em;overflow-x:auto">${esc(JSON.stringify(att, null, 2))}</pre></details>
       </div>`;
     }
@@ -2109,6 +2143,32 @@
       }
     }
 
+    // Reconcile a stale summary at READ time (no stored mutation): an old "failed: N URI step(s)"
+    // written before the status-aggregation fix, where every timeline step actually succeeded,
+    // is relabelled "ok:". Genuinely-failed/degraded summaries are left untouched.
+    function reconcileChatContent(message, timeline) {
+      const c = String(message.content || '');
+      if (/^failed:\s*\d+ URI step/i.test(c) && timeline.length && timeline.every((st) => st && st.ok !== false)) {
+        return c.replace(/^failed:/i, 'ok:');
+      }
+      return c;
+    }
+
+    // Per-message action controls (select checkbox + repeat/copy/delete buttons). Returns the
+    // raw HTML fragments; absent for messages without an id (transient/system rows).
+    function chatMessageControls(message, role) {
+      if (!message.id) return { checkbox: '', repeat: '', copyMd: '', remove: '' };
+      const selected = state.selectedChatMessageIds.has(message.id) ? 'checked' : '';
+      // Re-run the command: only on user messages that carry a prompt (the command text).
+      const canRepeat = role === 'user' && (message.content || '').trim();
+      return {
+        checkbox: `<input type="checkbox" name="chatMessageSelect" value="${esc(message.id)}" ${selected}>`,
+        repeat: canRepeat ? `<button type="button" data-chat-repeat="${esc(message.id)}" title="Powtorz komende">Repeat</button>` : '',
+        copyMd: `<button type="button" data-chat-copy-md="${esc(message.id)}" title="Copy message as Markdown">Copy MD</button>`,
+        remove: `<button type="button" class="danger" data-chat-delete="${esc(message.id)}">Delete</button>`,
+      };
+    }
+
     function renderChatMessage(message) {
       const widgetRenderer = state.dashboardWidgets && state.dashboardWidgets.renderDashboardWidget;
       if (typeof widgetRenderer === 'function') {
@@ -2117,35 +2177,20 @@
       const detail = message.detail || {};
       const timeline = detail.timeline || [];
       const lines = timeline.map((step) => `${step.ok ? 'ok' : 'fail'} · ${step.target || ''} · ${step.uri}`).join('\n');
-      // Reconcile a stale summary at READ time (no stored mutation): an old "failed: N URI step(s)"
-      // written before the status-aggregation fix, where every timeline step actually succeeded,
-      // is relabelled "ok:". Genuinely-failed/degraded summaries are left untouched.
-      const _reconciledContent = (() => {
-        const c = String(message.content || '');
-        if (/^failed:\s*\d+ URI step/i.test(c) && timeline.length && timeline.every((st) => st && st.ok !== false))
-          return c.replace(/^failed:/i, 'ok:');
-        return c;
-      })();
       const attachments = messageAttachments(message);
       const role = message.role || 'system';
-      const selected = message.id && state.selectedChatMessageIds.has(message.id) ? 'checked' : '';
-      const checkbox = message.id ? `<input type="checkbox" name="chatMessageSelect" value="${esc(message.id)}" ${selected}>` : '';
-      const deleteButton = message.id ? `<button type="button" class="danger" data-chat-delete="${esc(message.id)}">Delete</button>` : '';
-      const copyMarkdownButton = message.id ? `<button type="button" data-chat-copy-md="${esc(message.id)}" title="Copy message as Markdown">Copy MD</button>` : '';
-      // Re-run the command: only on user messages that carry a prompt (the command text).
-      const repeatButton = (message.id && role === 'user' && (message.content || '').trim())
-        ? `<button type="button" data-chat-repeat="${esc(message.id)}" title="Powtorz komende">Repeat</button>` : '';
+      const ctl = chatMessageControls(message, role);
       return `<div class="message ${esc(role)}">
         <div class="message-head">
-          <span class="message-title">${checkbox}<strong>${esc(role)}</strong></span>
+          <span class="message-title">${ctl.checkbox}<strong>${esc(role)}</strong></span>
           <span class="message-actions">
             <span class="subtle">${esc(message.created_at || '')}</span>
-            ${repeatButton}
-            ${copyMarkdownButton}
-            ${deleteButton}
+            ${ctl.repeat}
+            ${ctl.copyMd}
+            ${ctl.remove}
           </span>
         </div>
-        <div>${linkify(_reconciledContent)}</div>
+        <div>${linkify(reconcileChatContent(message, timeline))}</div>
         ${lines ? `<pre>${esc(lines)}</pre>` : ''}
         ${attachments.length ? `<div class="attachments">${attachments.map(renderAttachment).join('')}</div>` : ''}
         ${Object.keys(detail).length ? `<details><summary>URI / JSON</summary><pre>${esc(JSON.stringify(detail, null, 2))}</pre></details>` : ''}

@@ -31,6 +31,26 @@ class DiagnoseTests(unittest.TestCase):
                      step={"uri": "kvm://laptop/ui/command/click-text"})
         self.assertEqual(d["rule"], "ui-target-not-located")
 
+    def test_required_verify_gate_matches_ui_target(self):
+        # ui/query/verify {required:true} login gate: the asserted label isn't on screen.
+        # This is the LinkedIn "Zacznij publikację" case — previously matched no rule.
+        d = diagnose(_err("required text not found on screen: 'Zacznij publikację'",
+                          category="ACTION_FAILED"),
+                     step={"uri": "kvm://host/ui/query/verify"})
+        self.assertIsNotNone(d)
+        self.assertEqual(d["rule"], "ui-target-not-located")
+        self.assertIn("ensure-cdp-dom", d["autoApplicable"])
+
+    def test_required_verify_gate_upgrades_to_not_logged_in_on_login_surface(self):
+        # When the foreground surface is a login page, the gate failure is the real cause:
+        # not-logged-in → recommend an auth re-launch (human-gated), not a futile retry.
+        d = diagnose(_err("required text not found on screen: 'Zacznij publikację'",
+                          category="ACTION_FAILED"),
+                     step={"uri": "kvm://host/ui/query/verify"},
+                     surface={"kind": "browser",
+                              "browser": {"url": "https://www.linkedin.com/login", "title": "Zaloguj"}})
+        self.assertEqual(d["rule"], "not-logged-in")
+
     def test_debugger_down_proposes_dedicated_profile(self):
         d = diagnose(_err("debugger did not come up"),
                      step={"uri": "browser://laptop/cdp/session/command/launch"})

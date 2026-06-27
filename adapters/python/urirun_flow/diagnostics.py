@@ -71,7 +71,13 @@ PLAYBOOK: list[_Rule] = [
          r"vision: target not located",
          # browser-control / CDP-DOM phrasings (cdp/page/command/click|fill -> element not found)
          r"element not found", r"no element (matching|found)", r"could not find element",
-         r"no (dom )?node (found|matching)"],
+         r"no (dom )?node (found|matching)",
+         # ui/query/verify gate failures: the asserted on-screen text/label isn't present.
+         # Phrased "required text not found on screen: '<label>'" — a required login/presence
+         # gate that fires exactly the same root cause (label-language mismatch, not loaded, or
+         # an authwall where the control doesn't exist). Without this the gate failure matched no
+         # rule and surfaced with zero remediation.
+         r"required text not found", r"text not found on screen", r"expected text .*not (found|present)"],
         "The UI target was not found by the active control strategy — typically OCR on a dark / "
         "late-rendered page, a role/label-language mismatch (e.g. Polish vs English labels), the page "
         "not loaded yet, OR (on a browser/CDP step) a login/authwall where the target simply doesn't "

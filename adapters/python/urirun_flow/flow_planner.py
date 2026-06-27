@@ -493,6 +493,59 @@ def _strip_focus_from_cdp_flows(steps: list[dict]) -> list[dict]:
     ]
 
 
+# Real Chrome-family user-data-dir roots. A user_data_dir under one of these is the user's LIVE
+# profile, which must NOT be handed to a debug Chrome directly: launching --remote-debugging-port
+# over a profile that the user's own Chrome already holds fights the SingletonLock (the launch
+# forwards to the running browser or opens a throwaway), so NO session cookies reach the CDP
+# profile (authCopied:[] → the page lands on the login wall). The auth path is copy_from, which
+# CLONES the minimal auth files into a dedicated /tmp CDP profile (urirun_cdp.cdp._copy_auth) —
+# lock-safe AND logged in. Markers are matched case-insensitively (macOS paths are mixed-case).
+_BROWSER_PROFILE_MARKERS = (
+    ".config/google-chrome", ".config/chromium", ".config/microsoft-edge",
+    ".config/bravesoftware", "library/application support/google/chrome",
+    "library/application support/chromium",
+)
+
+
+def _chrome_profile_root(path: str | None) -> str | None:
+    """The user-data-dir ROOT (the dir holding ``Local State`` + the ``Default/`` profile) for a
+    Chrome-family profile path, or None when ``path`` isn't a recognised browser profile. ``copy_from``
+    resolves ``_AUTH_FILES`` (e.g. ``Default/Cookies``) against this root, so a path that points INTO
+    the profile (…/google-chrome/Default) is trimmed back to …/google-chrome. Temp / already-dedicated
+    CDP dirs are rejected (they hold no real session)."""
+    raw = str(path or "").strip()
+    low = raw.lower()
+    if not raw or low.startswith("/tmp/") or "urirun-cdp" in low:
+        return None
+    for marker in _BROWSER_PROFILE_MARKERS:
+        idx = low.find(marker)
+        if idx != -1:
+            return raw[: idx + len(marker)]
+    return None
+
+
+def _rewrite_cdp_profile_for_auth(steps: list[dict]) -> list[dict]:
+    """Repair the login-profile anti-pattern in ``cdp/session/command/ensure`` steps: when the LLM
+    (per the LOGIN PROFILE prompt rule) sets ``user_data_dir`` to the user's live Chrome profile,
+    rewrite it to ``copy_from`` of the profile ROOT so the connector clones the auth files into a
+    dedicated CDP profile instead of fighting the live profile's SingletonLock (the cause of
+    authCopied:[] → login wall). Idempotent: only ensure steps whose ``user_data_dir`` is a real
+    browser profile and that don't already set ``copy_from`` are touched."""
+    out: list[dict] = []
+    for step in steps:
+        uri = str(step.get("uri") or "")
+        payload = step.get("payload")
+        if uri.endswith(_CDP_ENSURE_SUFFIX) and isinstance(payload, dict) and not payload.get("copy_from"):
+            root = _chrome_profile_root(payload.get("user_data_dir"))
+            if root:
+                new_payload = {k: v for k, v in payload.items() if k != "user_data_dir"}
+                new_payload["copy_from"] = root
+                out.append({**step, "payload": new_payload})
+                continue
+        out.append(step)
+    return out
+
+
 def normalize_flow(flow: dict, allowed_uris: set[str], routes: list[dict] | None = None,
                    infeasible_constraints: list[dict] | None = None) -> dict:
     task = flow.get("task") if isinstance(flow.get("task"), dict) else {}
@@ -504,6 +557,7 @@ def normalize_flow(flow: dict, allowed_uris: set[str], routes: list[dict] | None
                                   infeasible_constraints=infeasible_constraints)
              for index, step in enumerate(raw_steps, start=1)]
     steps = _strip_focus_from_cdp_flows(steps)
+    steps = _rewrite_cdp_profile_for_auth(steps)
     steps = _inject_cdp_ready_probes(steps, allowed_uris, used, routes=routes)
     return {"task": _normalize_flow_task(task), "steps": steps}
 
@@ -602,7 +656,7 @@ def llm_flow(prompt: str, routes: list[dict], nodes: list[dict],
                 "Always add explicit validation steps (e.g., using 'ui/query/verify', 'cdp/page/query/ready', or evaluating page state) after actions to confirm success before proceeding. "
                 "NOTE: 'ui/query/verify' requires the field 'expect' (not 'text') — payload must be {\"expect\": \"<visible text to assert\"}. "
                 "GATE VERIFY: when a verify step checks for login/presence of a UI element that is REQUIRED for the next action (e.g. 'Zacznij publikację' before clicking Publish), add {\"required\": true} to the verify payload — this fails the flow early when not logged in, instead of continuing into failing click steps. "
-                "LOGIN PROFILE: when the task requires being logged in to a service (LinkedIn, Google, GitHub…), set {\"user_data_dir\": \"~/.config/google-chrome/Default\"} in the cdp/session/command/ensure payload so Chrome uses the real user profile with saved session cookies. NEVER use an empty or temp user_data_dir for tasks that require authentication. "
+                "LOGIN PROFILE: when the task requires being logged in to a service (LinkedIn, Google, GitHub…), set {\"copy_from\": \"~/.config/google-chrome\"} (the user-data-dir ROOT, not the Default subdir) in the cdp/session/command/ensure payload — this CLONES the saved session cookies into a dedicated CDP profile so Chrome opens already logged in WITHOUT fighting the live profile's lock. Do NOT set user_data_dir to the live profile (it launches over the SingletonLock and copies no cookies → login wall); never use an empty or temp profile for tasks that require authentication. "
                 "SCREENSHOT RULE: when the request contains 'screenshot', 'zrzut ekranu', 'capture', 'snap' or similar, the LAST step MUST be screen/query/capture — ALWAYS, regardless of login state, page content, or what verify found. Never substitute a log note for a screenshot step. "
                 # Concrete-state grounding: when an 'environments' field is present it is the LIVE
                 # capability profile + foreground surface of each node — GROUND your steps on it:
