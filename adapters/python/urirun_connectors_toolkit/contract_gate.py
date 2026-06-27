@@ -161,7 +161,9 @@ def conform(contracts: dict[str, Contract]) -> None:
         if c.reversible:
             inv = contracts[c.inverse_route]
             for i, ex in enumerate(c.examples):
-                args = (ex.get("result", {}).get("inverse") or {}).get("args", {})
+                if "inverse" not in ex.get("result", {}):
+                    continue  # conditional inverse — absent in this variant
+                args = ex["result"]["inverse"].get("args", {})
                 check(inv.inp, args, f"{route} examples[{i}].inverse.args -> {c.inverse_route} input")
 
 
