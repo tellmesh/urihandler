@@ -92,6 +92,15 @@ def _offline_selected_nodes(discovered: dict, nodes: list[str]) -> list[str]:
     ]
 
 
+def escalation_dashboard_url(node: str, fix: str) -> str:
+    """Absolute deep-link to the human on the deployed dashboard's node panel. Per user directive,
+    connection / capability failures escalate here so the link is clickable off-host (e.g. on a phone).
+    Configurable base mirrors URIRUN_LAN_QR_BASE (which hardcodes the same LAN host on :8195)."""
+    import os
+    base = (os.environ.get("URIRUN_DASHBOARD_BASE") or "http://192.168.188.212:8797").strip().rstrip("/")
+    return f"{base}/?node={node}&fix={fix}" if node else ""
+
+
 def screen_document_capability_gap(prompt: str, discovered: dict, selected_nodes: list[str], selected_targets: list[str]) -> dict | None:
     """Return a CapabilityGap when the prompt needs screen capture but no route is available.
 
@@ -140,4 +149,13 @@ def screen_document_capability_gap(prompt: str, discovered: dict, selected_nodes
         ],
         "availableRelatedRoutes": related,
         "connectorHint": _connector_hint_for_nodes(nodes),
+        # Human-escalation hand-off (user directive): surface this on the node panel of the deployed
+        # dashboard with a clickable deep-link + the exact fix command, instead of a dead-end error.
+        "humanEscalation": True,
+        "remediationClass": "unreachable" if missing == "node-offline" else "route-missing",
+        "humanAction": message,
+        "dashboardUrl": escalation_dashboard_url(
+            nodes[0] if nodes else "",
+            "unreachable" if missing == "node-offline" else "route-missing",
+        ),
     }

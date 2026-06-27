@@ -884,12 +884,15 @@ def _chat_ask_general_capability_gap(
     }
     hint = (capability_gap or {}).get("connectorHint") or {}
     install_cmd = hint.get("installCommand") or "urirun host ensure <node> kvm"
+    dashboard_url = (capability_gap or {}).get("dashboardUrl") or ""
+    fix_suffix = f" · {dashboard_url}" if dashboard_url else ""
     deps.add_chat_message_fn(db, chat_message(
         "system",
-        f"Brak trasy zrzutu ekranu. Napraw: {install_cmd}",
+        f"Brak trasy zrzutu ekranu. Napraw: {install_cmd}{fix_suffix}",
         detail={"prompt": prompt, "execute": execute, "ok": False, "selectedTargets": selected_targets,
                 "generator": generator, "flow": flow, "timeline": [], "results": {}, "error": capability_gap,
-                "connectorHint": hint},
+                "connectorHint": hint,
+                **({"dashboardUrl": dashboard_url} if dashboard_url else {})},
     ))
     try:
         deps.host_db_fn().add_log(db, "chat", "ask", {
