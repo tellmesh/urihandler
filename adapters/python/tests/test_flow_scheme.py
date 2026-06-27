@@ -142,18 +142,32 @@ class TestRecallDriftGuard(unittest.TestCase):
         self.assertEqual(result.get("source"), "episode")
 
     def test_recall_suppresses_episode_when_drift_detected(self):
-        self._mem().remember_episode(self._ep())
+        # _drift_ok() calls kvm://host/environment/query/profile + mem.drift() in-process.
+        # Store a known-good baseline first, then return a DIFFERENT profile so drift fires.
+        # environment_fingerprint keys on: platform, wayland, display, monitor COUNT, best,
+        # osLevelReliable — NOT pixel dimensions, so change best/osLevelReliable to fake drift.
+        known_profile = {"platform": "linux", "wayland": True, "monitors": [{"w": 2560, "h": 1600}],
+                         "best": "cdp", "osLevelReliable": True}
+        drifted_profile = {**known_profile, "best": "vision", "osLevelReliable": False}
+        mem = self._mem()
+        mem.remember("host", known_profile)
+        mem.remember_episode(self._ep())
         def _drifted(uri, payload, registry, mode):
-            return {"ok": True, "result": {"value": {"drift": True, "known": True}}}
+            return {"ok": True, "result": {"value": drifted_profile}}
         with mock.patch("urirun.v2_service.call", side_effect=_drifted):
             result = self._recall(episode_id="ep-dr")
         self.assertFalse(result.get("found"))
         self.assertTrue(result.get("driftDetected"))
 
     def test_recall_returns_episode_when_no_drift(self):
-        self._mem().remember_episode(self._ep())
+        known_profile = {"platform": "linux", "wayland": True, "monitors": [{"w": 2560, "h": 1600}],
+                         "best": "cdp", "osLevelReliable": True}
+        mem = self._mem()
+        mem.remember("host", known_profile)
+        mem.remember_episode(self._ep())
         def _no_drift(uri, payload, registry, mode):
-            return {"ok": True, "result": {"value": {"drift": False, "known": True}}}
+            # Return the SAME profile so mem.drift() sees no change.
+            return {"ok": True, "result": {"value": known_profile}}
         with mock.patch("urirun.v2_service.call", side_effect=_no_drift):
             result = self._recall(episode_id="ep-dr")
         self.assertTrue(result.get("found"))
