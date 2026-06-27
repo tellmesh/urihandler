@@ -55,6 +55,13 @@
       }[ch]));
     }
 
+    function linkify(value) {
+      return esc(value).replace(
+        /https?:\/\/[^\s&,;'"<>]+/g,
+        (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
+      );
+    }
+
     function metric(label, value, note) {
       return `<div class="metric"><strong>${text(value, 0)}</strong><span>${label}</span><p class="subtle">${text(note)}</p></div>`;
     }
@@ -2029,7 +2036,7 @@
             ${deleteButton}
           </span>
         </div>
-        <div>${esc(_reconciledContent)}</div>
+        <div>${linkify(_reconciledContent)}</div>
         ${lines ? `<pre>${esc(lines)}</pre>` : ''}
         ${attachments.length ? `<div class="attachments">${attachments.map(renderAttachment).join('')}</div>` : ''}
         ${Object.keys(detail).length ? `<details><summary>URI / JSON</summary><pre>${esc(JSON.stringify(detail, null, 2))}</pre></details>` : ''}
