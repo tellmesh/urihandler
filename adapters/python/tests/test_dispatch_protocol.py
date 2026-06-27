@@ -300,3 +300,41 @@ def test_inprocess_fallback_reaches_twin_preflight():
     assert err_type != "registry", (
         f"preflight must reach twin connector in-process, not fail as a registry miss: {r}"
     )
+
+
+def test_inprocess_fallback_flow_falls_through_to_entry_point():
+    """flow:// URIs that are NOT named skills/episodes must fall through the
+    skill/episode store (Tier 2c miss) and reach entry-point connectors.
+
+    Regression guard for the multi-candidate scheme dispatch bug:
+    inprocess_fallback previously returned None immediately when
+    _flow_scheme_dispatch missed (unknown name), blocking domain-monitor's
+    flow://host/daily/command/run and flow-repair's flow://host/repair/command/run.
+
+    We don't assume domain-monitor is installed; we verify the fallback plumbing
+    by checking that an entry-point route is reached instead of short-circuiting.
+    A missing entry-point gives None; the wrong short-circuit gives None too — but
+    the former path emits a proper ok=True or ok=False result dict when the
+    connector IS installed."""
+    from urirun.host.dispatch import _flow_scheme_dispatch, inprocess_fallback
+
+    # "nonexistent-skill" is never in the store — tier-2c returns None
+    tier2c_miss = _flow_scheme_dispatch("flow://host/nonexistent-skill/query/get", {})
+    assert tier2c_miss is None, "tier-2c must miss unknown skill names"
+
+    # After the fix, inprocess_fallback must NOT short-circuit on that None;
+    # it must continue to entry-point dispatch.  We verify the code path by
+    # directly checking that the function no longer returns None for a URI
+    # that IS served by an installed connector (domain-monitor: daily/command/run).
+    # Skip this check gracefully when the connector is not installed.
+    try:
+        import urirun_connector_domain_monitor  # noqa: F401
+    except ImportError:
+        return  # connector absent — can't verify entry-point reach, skip
+
+    result = inprocess_fallback("flow://host/daily/command/run", {})
+    assert result is not None, (
+        "inprocess_fallback must reach domain-monitor's flow://host/daily/command/run "
+        "after tier-2c miss — multi-candidate flow:// fall-through is broken"
+    )
+    assert result.get("ok") is True, f"domain-monitor daily/command/run failed: {result}"

@@ -133,9 +133,17 @@ def inprocess_fallback(uri: str, payload: dict | None = None) -> dict | None:
 
     Tier 2a — entry-point discovery (installed packages with urirun.bindings group).
     Tier 2b — DECORATED_BINDINGS (connector.handler() registrations without an entry point).
-    Tier 2c — flow:// scheme (dynamic plan-as-artifact dispatch, no static registry needed)."""
+    Tier 2c — flow:// named-artifact dispatch (skill_store/episode_store by name).
+
+    Tier 2c fires first for flow:// but returns None for routes that are not named
+    skills/episodes (e.g. domain-monitor's flow://host/daily/command/run).  When it
+    misses we fall through to Tier 2a/2b so entry-point connectors can handle their
+    own flow:// sub-paths."""
     if uri.startswith("flow://"):
-        return _flow_scheme_dispatch(uri, payload)
+        _artifact = _flow_scheme_dispatch(uri, payload)
+        if _artifact is not None:
+            return _artifact
+        # flow:// miss in skill/episode store — fall through to entry-point dispatch
     try:
         env = _inprocess_run(uri, dict(payload or {}))
     except Exception as exc:  # noqa: BLE001
