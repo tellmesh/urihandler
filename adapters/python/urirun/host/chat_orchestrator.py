@@ -1295,6 +1295,30 @@ def _screen_capability_gap_or_recall(prompt, discovered, selected_nodes, selecte
     return None, discovered
 
 
+_LOCAL_NL_KWS = ("lokalnym", "lokalny", "lokalnie", "lokalnego", "lokalnej",
+                 "local computer", "my computer", "this computer", "this machine")
+
+
+def _apply_explicit_target_sync(payload, flow, discovered, selected_nodes, selected_targets):
+    """Sync targets from flow when the user did not explicitly choose them; flag remote capture."""
+    explicit = [str(t).strip() for t in (payload.get("targets") or []) if str(t).strip()]
+    if not explicit:
+        selected_nodes, selected_targets = _sync_targets_from_flow(
+            flow, discovered, selected_nodes, selected_targets)
+    _flag_remote_capture_inline(flow, discovered, selected_nodes)
+    return selected_nodes, selected_targets
+
+
+def _apply_local_nl_override(prompt, selected_nodes, selected_targets):
+    """Return (nodes, targets, local_first) after applying NL 'local computer' override."""
+    prompt_says_local = any(kw in prompt.lower() for kw in _LOCAL_NL_KWS)
+    local_first = (selected_targets == ["host"]) or prompt_says_local
+    if prompt_says_local and selected_targets != ["host"]:
+        selected_targets = ["host"]
+        selected_nodes = []
+    return selected_nodes, selected_targets, local_first
+
+
 def _chat_ask_general(
     project: str,
     db: str | None,
@@ -1340,32 +1364,14 @@ def _chat_ask_general(
             if flow is None:
                 flow, generator = mesh.make_flow(prompt, discovered, selected_nodes=selected_nodes,
                                                  use_llm=not no_llm, environments=environments)
-            # Only auto-sync targets when user didn't explicitly pick them — preserve explicit
-            # "host" selections so kvm://host/... doesn't get re-routed to a remote node.
-            _explicit_targets = [str(t).strip() for t in (payload.get("targets") or [])
-                                  if str(t).strip()]
-            if not _explicit_targets:
-                selected_nodes, selected_targets = _sync_targets_from_flow(
-                    flow, discovered, selected_nodes, selected_targets)
-            _flag_remote_capture_inline(flow, discovered, selected_nodes)
+            selected_nodes, selected_targets = _apply_explicit_target_sync(
+                payload, flow, discovered, selected_nodes, selected_targets)
         except Exception as exc:  # noqa: BLE001 - return a recovery contract instead of a raw API failure.
             return _chat_ask_general_planner_failure(exc, db, prompt, execute, selected_nodes, selected_targets, deps)
         _recall = _suggest_recall_for_memory(flow, twin_memory)
         _run_mode = "execute" if execute else "dry-run"
-        # local_first=True when the user wants steps to run on the local (dashboard) machine.
-        # Two signals:
-        #  a) selected_targets == ["host"] — only host selected in UI
-        #  b) NL prompt explicitly says "local computer" — override even if remote nodes are
-        #     checked in the UI (e.g. "lokalnym komputerze" with lenovo also selected)
-        _LOCAL_NL_KWS = ("lokalnym", "lokalny", "lokalnie", "lokalnego", "lokalnej",
-                         "local computer", "my computer", "this computer", "this machine")
-        _prompt_says_local = any(kw in prompt.lower() for kw in _LOCAL_NL_KWS)
-        _local_first = (selected_targets == ["host"]) or _prompt_says_local
-        if _prompt_says_local and selected_targets != ["host"]:
-            # NL says "local" but UI has remote nodes checked — honour NL intent and
-            # dispatch only to host so kvm://host/... doesn't go to a remote node.
-            selected_targets = ["host"]
-            selected_nodes = []
+        selected_nodes, selected_targets, _local_first = _apply_local_nl_override(
+            prompt, selected_nodes, selected_targets)
         _dispatch = make_local_dispatch_uri(registry, _run_mode, local_first=_local_first)
         execution = mesh.execute_flow(flow, discovered, registry, execute=execute, memory=twin_memory,
                                       dispatch_uri=_dispatch)
