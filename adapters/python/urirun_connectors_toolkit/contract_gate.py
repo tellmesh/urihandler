@@ -282,6 +282,33 @@ def enforce(conn, contracts: dict, *, validate: bool):
 _NUMERIC = {"int", "num"}
 
 
+def _terminal_type(schema: Any) -> "tuple[str, bool]":
+    """Base case for _walk_out: resolve type token + guarantee flag for a leaf schema node."""
+    if isinstance(schema, str):
+        opt = schema.startswith("?")
+        return (schema[1:] if opt else schema), not opt
+    if isinstance(schema, dict):
+        return "obj", True
+    if isinstance(schema, list):
+        return "list", True
+    return "any", True
+
+
+def _walk_oneof(schema: dict, segs: list) -> "tuple[str | None, bool]":
+    """Walk all oneOf branches and return the union result: (type_token, guaranteed_in_ALL)."""
+    resolved: list[tuple] = []
+    for branch in schema["oneOf"]:
+        try:
+            resolved.append(_walk_out(branch, segs))
+        except KeyError:
+            resolved.append((None, False))
+    present = [r for r in resolved if r[0] is not None]
+    if not present:
+        return None, False
+    guaranteed = all(r[0] is not None for r in resolved) and all(r[1] for r in resolved)
+    return present[0][0], guaranteed
+
+
 def _walk_out(schema: Any, segs: list) -> "tuple[str | None, bool]":
     """Return (type_token | None, guaranteed: bool) for ``segs`` path in an output schema.
 
@@ -289,23 +316,10 @@ def _walk_out(schema: Any, segs: list) -> "tuple[str | None, bool]":
     or present only in SOME oneOf branches — meaning the pipeline may break on the leaner shape.
     """
     if not segs:
-        if isinstance(schema, str):
-            opt = schema.startswith("?")
-            return (schema[1:] if opt else schema), not opt
-        return ("obj" if isinstance(schema, dict) else "list" if isinstance(schema, list) else "any"), True
+        return _terminal_type(schema)
     seg, rest = segs[0], segs[1:]
     if isinstance(schema, dict) and set(schema) == {"oneOf"}:
-        resolved: list[tuple] = []
-        for branch in schema["oneOf"]:
-            try:
-                resolved.append(_walk_out(branch, segs))
-            except KeyError:
-                resolved.append((None, False))
-        present = [r for r in resolved if r[0] is not None]
-        if not present:
-            return None, False
-        guaranteed = all(r[0] is not None for r in resolved) and all(r[1] for r in resolved)
-        return present[0][0], guaranteed
+        return _walk_oneof(schema, segs)
     if isinstance(schema, dict):
         if seg not in schema:
             raise KeyError(seg)
