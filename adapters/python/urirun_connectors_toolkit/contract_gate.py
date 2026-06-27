@@ -11,45 +11,52 @@ This module makes the contract a declared entity, joined to the handler BY ROUTE
 ``@conn.handler`` already uses — zero duplication):
 
 * ``Contract``            — the canonical, versioned declaration (lives in the connector, LLM-edited).
+* ``Wire``                — a declared composition edge (producer → consumer + field mapping).
 * ``conform(contracts)``  — the conformance gate (CI oracle): effect↔verb agree, a reversible
                             command names an inverse that EXISTS, golden examples satisfy in/out, and
                             — the strongest check — an example's ``inverse.args`` satisfy the INPUT
                             schema of the inverse route (a broken rollback fails declaratively in CI,
                             not at runtime during the actual rollback).
+* ``enforce(conn, …)``    — wrap ``conn.handler`` BEFORE decorators so every contracted route is
+                            guarded at call site when ``URIRUN_CONTRACT_CHECK=1``.
 * ``attach_contracts``    — joins contracts onto live bindings by route key so ``conn.bindings()``
                             carries output shape + examples (the model the LLM planner needs to chain
                             steps and to know a result may come back ``degraded``).
-* ``validate_output``     — schema-check one envelope against ``out`` (for runtime/CI enforcement).
+* ``check_wire``          — static composition validation: type compat, field availability across
+                            all oneOf branches, conditional→required detection.
 
-Schema dialect (a tiny JSON-schema subset that fits in an LLM context — the same dict used for
-inputs): leaf tokens ``"str" | "int" | "bool" | "obj" | "list" | "any"``; ``"?T"`` optional/nullable;
-``"const:X"`` exact value (``true``/``false``/ints parsed); ``"enum:a|b|c"``; nested ``dict`` = object
-schema (extra keys allowed — additive/forward-compatible); ``{"oneOf": [schema, ...]}``.
+Schema dialect (a tiny JSON-schema subset that fits in an LLM context):
+  leaf tokens ``"str" | "int" | "bool" | "obj" | "list" | "any"``;
+  ``"?T"`` optional/nullable; ``"const:X"`` exact value (``true``/``false``/ints parsed);
+  ``"enum:a|b|c"``; nested ``dict`` = object schema (extra keys allowed — additive);
+  ``{"oneOf": [schema, …]}``.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
 
-try:  # the error taxonomy a contract may declare must be real RemediationClass values
+try:  # error taxonomy: declared errors must be real RemediationClass values (optional dep)
     from urirun_contracts import RemediationClass
     _REMEDIATION_CLASSES = frozenset(m.value for m in RemediationClass)
-except Exception:  # noqa: BLE001 - contracts pkg optional at import time
+except Exception:  # noqa: BLE001
     _REMEDIATION_CLASSES = frozenset()
 
 
+# ── declarations ─────────────────────────────────────────────────────────────
+
 @dataclass(frozen=True)
 class Contract:
-    """One route's canonical contract. The URI is the stable identity; this is its versioned axis."""
+    """One route's canonical contract. The URI path is the stable identity; this is its versioned axis."""
 
     version: str = "v1"
     effect: str = "query"                       # "query" | "command"
     reversible: bool = False                    # commands only; if True, inverse_route MUST be declared
     inverse_route: str = ""                     # connector-local path, e.g. "window/command/restore"
-    inp: dict = field(default_factory=dict)     # schema-subset of the payload (same dict as inputs)
+    inp: dict = field(default_factory=dict)     # schema-subset of the payload
     out: dict = field(default_factory=dict)     # schema-subset of the ok-envelope (oneOf allowed)
     errors: tuple[str, ...] = ()                # RemediationClass values this route may emit
-    examples: tuple[dict, ...] = ()             # golden {payload, result} — conformance fixtures + few-shot
+    examples: tuple[dict, ...] = ()             # golden {payload, result} — conformance fixtures
 
 
 @dataclass(frozen=True)
@@ -58,7 +65,7 @@ class Wire:
 
     ``mapping``: {consumer_input_field: "dotted.path.in.producer.output"}. Checked statically
     (type compatibility, field availability across all oneOf branches) and verified via JSON
-    round-trip across process boundaries — so composition is guaranteed before runtime.
+    round-trip across process boundaries.
     """
 
     producer: str
@@ -119,9 +126,8 @@ def check(schema: Any, value: Any, where: str) -> None:
             check(spec, value[key], f"{where}.{key}")
         return
     if isinstance(schema, list):
-        assert isinstance(value, list), \
-            f"{where}: expected list, got {type(value).__name__}"
-        if schema:  # homogeneous list: schema[0] describes every element
+        assert isinstance(value, list), f"{where}: expected list, got {type(value).__name__}"
+        if schema:
             for i, item in enumerate(value):
                 check(schema[0], item, f"{where}[{i}]")
         return
@@ -140,24 +146,18 @@ def conform(contracts: dict[str, Contract]) -> None:
     """The CI oracle. Raises AssertionError on the first violation; returns None when all pass."""
     for route, c in contracts.items():
         assert c.effect in ("query", "command"), f"{route}: bad effect {c.effect!r}"
-        # 1) effect class agrees with the URI verb — convention becomes ENFORCED
         assert ("/query/" in route) == (c.effect == "query"), \
             f"{route}: effect {c.effect!r} contradicts the URI verb"
-        # 2) a reversible command must name an inverse that EXISTS
         if c.reversible:
             assert c.effect == "command", f"{route}: only commands can be reversible"
             assert c.inverse_route in contracts, \
                 f"{route}: inverse_route {c.inverse_route!r} is not a declared contract"
-        # 3) declared errors must be real RemediationClass values (when the taxonomy is importable)
         for cls in c.errors:
             assert (not _REMEDIATION_CLASSES) or cls in _REMEDIATION_CLASSES, \
                 f"{route}: error {cls!r} is not a RemediationClass value"
-        # 4) golden examples actually satisfy in/out
         for i, ex in enumerate(c.examples):
             check(c.inp, ex.get("payload", {}), f"{route} examples[{i}].payload")
             check(c.out, ex.get("result", {}), f"{route} examples[{i}].result")
-        # 5) STRONGEST: an example's inverse.args satisfy the INPUT schema of the inverse route —
-        #    a broken rollback fails here in CI, declaratively, instead of at runtime mid-rollback.
         if c.reversible:
             inv = contracts[c.inverse_route]
             for i, ex in enumerate(c.examples):
@@ -167,7 +167,7 @@ def conform(contracts: dict[str, Contract]) -> None:
                 check(inv.inp, args, f"{route} examples[{i}].inverse.args -> {c.inverse_route} input")
 
 
-# ── join contracts onto live bindings (the AI registry) ───────────────────────
+# ── registry join ─────────────────────────────────────────────────────────────
 
 def contract_to_dict(c: Contract) -> dict:
     d: dict[str, Any] = {
@@ -180,18 +180,14 @@ def contract_to_dict(c: Contract) -> dict:
 
 
 def attach_contracts(conn, contracts: dict[str, Contract]):
-    """Join contracts onto live bindings BY ROUTE KEY (zero duplication).
+    """Join contracts onto live urirun bindings BY ROUTE KEY.
 
-    A contract key is either a connector-local path (joined via ``conn.uri``) or a full URI
-    (for multi-scheme connectors that have no single ``conn`` — pass ``conn=None``). Mutates each
-    matched binding's ``meta["contract"]`` so ``conn.bindings()`` / the manifest carry the output
-    shape + examples — the model an LLM planner needs. Returns ``conn`` for chaining::
-
-        conn = attach_contracts(urirun.connector("kvm", scheme="kvm"), CONTRACTS)   # local paths
-        attach_contracts(None, CONTRACTS_WITH_FULL_URI_KEYS)                         # multi-scheme
+    Requires ``urirun`` to be installed. Safe to call when absent — returns ``conn`` unchanged.
     """
-    from urirun.v2 import decorated_bindings
-
+    try:
+        from urirun.v2 import decorated_bindings
+    except ImportError:
+        return conn
     store = decorated_bindings().get("bindings", {})
     for route, c in contracts.items():
         uri = route if "://" in route else conn.uri(route)
@@ -201,19 +197,14 @@ def attach_contracts(conn, contracts: dict[str, Contract]):
     return conn
 
 
-# ── runtime guard (enforce) ───────────────────────────────────────────────────
+# ── runtime guard ─────────────────────────────────────────────────────────────
 
 class ContractViolation(AssertionError):
     """Handler output diverged from its declared contract."""
 
 
 def envelope_violation(contract: Contract, envelope: dict) -> "str | None":
-    """Check ``envelope`` against the contract; return a violation message or None.
-
-    ok-path: checks ``out`` schema.
-    error-path: checks the ``remediation.class`` (or ``error.remediationClass``) is declared.
-    Returns None when conformant so callers can ``assert envelope_violation(...) is None``.
-    """
+    """Check ``envelope`` against the contract; return a violation message or None."""
     try:
         if envelope.get("ok"):
             if contract.out:
@@ -235,18 +226,18 @@ def envelope_violation(contract: Contract, envelope: dict) -> "str | None":
 def enforce(conn, contracts: dict, *, validate: bool):
     """Wrap ``conn.handler`` so each decorated handler is guarded by its contract.
 
+    Must be called BEFORE any ``@conn.handler`` decorator. Usage::
+
+        conn = urirun.connector("kvm", scheme="kvm")
+        from urirun_contract import enforce
+        from myconnector.contracts import CONTRACTS
+        enforce(conn, CONTRACTS, validate=bool(os.environ.get("URIRUN_CONTRACT_CHECK")))
+
+        @conn.handler("screen/query/capture", ...)
+        def capture(...): ...
+
     ``validate=True``  — wraps the handler; ``ContractViolation`` raised at call site on drift.
-    ``validate=False`` — zero overhead; the CI gate already verified the contract.
-
-    Also calls ``conn.attach_contract(route, contract)`` when available, so ``bindings()``
-    can carry the contract meta without a separate ``attach_contracts`` call.
-
-    Usage in a connector's ``core.py``::
-
-        conn = enforce(urirun.connector("kvm", scheme="kvm"), CONTRACTS,
-                       validate=bool(os.environ.get("URIRUN_CONTRACT_CHECK")))
-
-    Handlers are registered normally via ``@conn.handler``; the gate is injected transparently.
+    ``validate=False`` — zero overhead; the CI gate already verified the contract (recommended default).
     """
     import functools
 
@@ -275,20 +266,16 @@ def enforce(conn, contracts: dict, *, validate: bool):
 
         return wrap
 
-    # Connector is a frozen dataclass — plain `conn.handler = handler` raises FrozenInstanceError
-    # (which a caller's broad except would silently swallow, leaving enforcement a no-op). Bypass the
-    # freeze via object.__setattr__ so the guard is actually installed. Works for non-frozen conns too.
     object.__setattr__(conn, "handler", handler)
     return conn
 
 
-# ── contract composition: static wire checking + IPC round-trip ──────────────
+# ── static wire checking + composition helpers ────────────────────────────────
 
 _NUMERIC = {"int", "num"}
 
 
 def _terminal_type(schema: Any) -> "tuple[str, bool]":
-    """Base case for _walk_out: resolve type token + guarantee flag for a leaf schema node."""
     if isinstance(schema, str):
         opt = schema.startswith("?")
         return (schema[1:] if opt else schema), not opt
@@ -300,7 +287,6 @@ def _terminal_type(schema: Any) -> "tuple[str, bool]":
 
 
 def _walk_oneof(schema: dict, segs: list) -> "tuple[str | None, bool]":
-    """Walk all oneOf branches and return the union result: (type_token, guaranteed_in_ALL)."""
     resolved: list[tuple] = []
     for branch in schema["oneOf"]:
         try:
@@ -315,11 +301,7 @@ def _walk_oneof(schema: dict, segs: list) -> "tuple[str | None, bool]":
 
 
 def _walk_out(schema: Any, segs: list) -> "tuple[str | None, bool]":
-    """Return (type_token | None, guaranteed: bool) for ``segs`` path in an output schema.
-
-    guaranteed=False when the path is optional (?), behind a list index (length unknown),
-    or present only in SOME oneOf branches — meaning the pipeline may break on the leaner shape.
-    """
+    """Return (type_token | None, guaranteed: bool) for ``segs`` path in an output schema."""
     if not segs:
         return _terminal_type(schema)
     seg, rest = segs[0], segs[1:]
@@ -334,7 +316,7 @@ def _walk_out(schema: Any, segs: list) -> "tuple[str | None, bool]":
         return tok, guar and not opt
     if isinstance(schema, list) and schema and seg.isdigit():
         tok, _ = _walk_out(schema[0], rest)
-        return tok, False  # list length not encoded in schema → element not guaranteed
+        return tok, False
     raise KeyError(seg)
 
 
@@ -355,9 +337,8 @@ def assignable(producer_tok: str, consumer_tok: str) -> bool:
 def check_wire(wire: Wire, contracts: dict) -> list:
     """Statically validate a composition edge. Returns a list of problems ([] = clean).
 
-    Catches before runtime: missing field, type mismatch, and the subtlest one — a binding
-    from a CONDITIONAL output (e.g. only in the success branch of a oneOf) to a REQUIRED
-    consumer input, which would break the pipeline when the producer returns the leaner shape.
+    Catches: missing field, type mismatch, conditional→required binding that would break the
+    pipeline when the producer returns the leaner oneOf variant.
     """
     prod, cons = contracts[wire.producer], contracts[wire.consumer]
     problems: list[str] = []
@@ -395,7 +376,7 @@ def find_wire(wires: list, producer: str, consumer: str) -> Wire:
 
 
 def dig(value: Any, dotted: str) -> Any:
-    """Resolve a dotted path (with list indices) in a concrete value — like flow's _dig_path."""
+    """Resolve a dotted path (with list indices) in a concrete value."""
     cur = value
     for seg in dotted.split("."):
         if isinstance(cur, list) and seg.isdigit():
@@ -410,13 +391,12 @@ def dig(value: Any, dotted: str) -> Any:
 def wire_payload(wire: Wire, producer_envelope: dict) -> dict:
     """Build a consumer input payload from a producer envelope via wire.mapping.
 
-    Paths absent in this particular output variant (e.g. fullSize in the degraded branch)
-    are silently skipped — consumer_input_check then surfaces what's missing.
+    Paths absent in the current output variant are silently skipped.
     """
     out: dict = {}
-    for field, path in wire.mapping.items():
+    for f, path in wire.mapping.items():
         try:
-            out[field] = dig(producer_envelope, path)
+            out[f] = dig(producer_envelope, path)
         except KeyError:
             continue
     return out
@@ -426,10 +406,8 @@ def consumer_input_check(consumer_contract: Contract, payload: dict,
                          wire: Wire) -> "tuple[str, list]":
     """Validate the payload built from a wire edge. Returns (mode, problems).
 
-    mode='full'    — the wire covers every required consumer input: full handoff, validate all.
-    mode='partial' — the wire carries a subset (rest supplied by another step): type-check only
-                     the carried fields. Makes explicit whether two contracts form a COMPLETE
-                     exchange or a PARTIAL contribution.
+    mode='full'    — the wire covers every required consumer input: full handoff.
+    mode='partial' — the wire carries a subset: type-check only the carried fields.
     """
     inp = consumer_contract.inp
     required = {k for k, v in inp.items()
