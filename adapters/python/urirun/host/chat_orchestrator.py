@@ -1465,7 +1465,7 @@ def _add_chat_user_message(db: str | None, prompt: str, config: str | None, node
 def _chat_insert_twin_preview(db, prompt, selected_nodes, selected_targets, deps: ChatDeps) -> None:
     if not is_desktop_task_prompt(prompt):
         return
-    node = (selected_nodes or [""])[0]
+    node = (selected_nodes or [""])[0] or "host"
     twin_att = twin_plan_preview(prompt, node=node)
     if twin_att:
         deps.add_chat_message_fn(db, chat_message(
