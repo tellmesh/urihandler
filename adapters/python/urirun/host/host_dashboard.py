@@ -1457,10 +1457,11 @@ def _handle_get_static(handler, parsed, project) -> bool:
     if parsed.path in {"/", "/index.html"}:
         _html_response(handler)
         return True
-    if parsed.path == "/dashboard.js":
-        # The dashboard's ~2700-line JS lives in dashboard.js (extracted from the INDEX_HTML raw
-        # string) and is served fresh per request, so edits load without a service restart.
-        js = Path(__file__).parent / "dashboard.js"
+    if parsed.path in ("/dashboard.js", "/scanner.js"):
+        # Page JS extracted from the INDEX_HTML / SCANNER_HTML raw strings into real .js files next
+        # to this module, served fresh per request (edits load without a service restart). Whitelist
+        # by exact basename — no user-controlled path, so no traversal.
+        js = Path(__file__).parent / parsed.path.lstrip("/")
         _asset_response(handler, js.read_bytes(), "application/javascript; charset=utf-8")
         return True
     if parsed.path == "/favicon.ico":
