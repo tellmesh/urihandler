@@ -66,6 +66,10 @@ report only.
   `_enrich_remote_attachments` 17→5 (`_resolve_attachment_preview`),
   `local_entry_point_host_routes` 16→5 (`_host_entry_point_route`, `_entry_point_safe`),
   `_chat_ask_general` 17→14 (`_attach_known_good_recall`). Gate green afterwards.
+- **2026-06-28** — `_top_level_packages` 19→8 in `tests/test_distribution_name_collision.py`
+  (the worst offender at the time, a pre-existing test helper): the
+  `[tool.setuptools.packages.find]` scan moved into `_packages_from_find` (CC 5) and a per-dir
+  predicate `_package_dir_name` (CC 9). Collision tests unchanged and green.
 
 ## Background
 

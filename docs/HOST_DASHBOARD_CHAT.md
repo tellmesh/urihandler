@@ -37,21 +37,25 @@ See also:
 3. Targets are normalized:
    - explicit `nodes: ["lenovo"]` become `node:lenovo` targets,
    - explicit `targets: ["node:lenovo"]` imply `selectedNodes: ["lenovo"]`,
-   - when no target is selected, the default is host plus selected nodes.
-4. The dashboard tries deterministic intents first. Examples:
-   - phone scanner start/autonomous scan,
-   - document archive sync to a node.
-5. If no deterministic intent matches, the dashboard discovers the mesh and asks
-   the planner to build a URI flow. This path requires `URIRUN_LLM_MODEL` or
-   `LLM_MODEL` unless the caller uses a no-LLM mode that can be planned
-   heuristically.
-6. Each URI step is dry-run or executed according to `execute`.
-7. Deterministic side-effecting actions attach a realization contract when they
+   - when no node target is selected, the default execution target is `host`.
+4. The dashboard discovers the mesh, collects twin state and retrieves
+   propose-stage context through `twin://host/experience/query/retrieve`.
+   Retrieval may return exact remembered episodes, remembered flows, preferences
+   and optional similarity-ranked routes. These are hints for planning, not an
+   accepted plan.
+5. The normal autonomy path asks the LLM planner to build a URI flow from the
+   prompt, selected targets, current action space and retrieval context. This
+   path requires `URIRUN_LLM_MODEL` or `LLM_MODEL`.
+6. The candidate flow passes deterministic acceptance: route existence, router
+   target/runsOn checks, contracts, policy and environment-domain selection.
+   Invalid monitor/node/route choices are blocked before execution.
+7. Each accepted URI step is dry-run or executed according to `execute`.
+8. Side-effecting actions attach a realization contract when they
    can verify the final state. The contract lives under `verification` and makes
    `ok` mean "the requested state was observed", not just "the command returned".
-8. Results are written as a system chat message, a log row, and optionally
+9. Results are written as a system chat message, a log row, and optionally
    artifacts.
-9. On failure, recovery is attached before the result is returned.
+10. On failure, recovery is attached before the result is returned.
 
 The important rule is that chat is not a second protocol. It is an operator view
 over URI actions.
@@ -62,7 +66,7 @@ User chat messages distinguish the raw UI selection from resolved routing:
 - `selectedNodes` / `selectedTargets` — what the dashboard will use for the run,
 - `resolvedNodes` / `resolvedTargets` — alias of the resolved routing state for
   display/debugging,
-- `intent` — deterministic intent inferred from the prompt, when one matched.
+- `intent` — normalized intent metadata, when available.
 
 For example, a user can select only `host` and `service:phone-scanner`, but write
 "copy documents to Lenovo laptop". The stored user message should then preserve
@@ -85,7 +89,7 @@ export URIRUN_NODE_ALIASES='office-laptop=notebook|work laptop'
 ```
 
 For autonomous work, the dashboard also emits a `decisionLoop` block on supported
-deterministic flows. That block is the normalized control shape:
+URI flows. That block is the normalized control shape:
 
 ```text
 intent -> flow -> execution/result -> observation -> nextIntent
@@ -95,14 +99,16 @@ intent -> flow -> execution/result -> observation -> nextIntent
 structure that says whether the run is `done`, `dry-run`, `blocked` or ready for
 another URI flow. See `docs/DECISION_LOOP.md`.
 
-## Deterministic Intents
+## Explicit No-LLM Paths
 
-Some common commands should not depend on an LLM, because their shape is stable
-and the failure modes need to be predictable.
+Normal chat autonomy is retrieval/recall plus LLM proposal plus deterministic
+validation. Some legacy or operational paths still have explicit no-LLM handlers.
+Treat them as narrow debug/offline paths or direct service controls, not as the
+generic planner.
 
 ### Phone Scanner
 
-Commands that ask to start the phone scanner generate a flow like:
+Commands that explicitly start the phone scanner can generate a direct flow like:
 
 ```json
 {
@@ -127,7 +133,7 @@ queue the click or autonomous scan, but it cannot bypass browser permission.
 
 ### Document Sync To Node
 
-Commands such as "copy document PDFs to Lenovo downloads" map without an LLM to:
+The document-sync service can still be invoked directly through:
 
 ```text
 document://host/archive/command/sync-to-node
@@ -441,7 +447,9 @@ For a reliable chat run:
    export URIRUN_LLM_MODEL=...
    ```
 
-4. For deterministic document sync and scanner actions, no LLM is required.
+4. Direct service controls and explicit `noLlm` diagnostic paths can run without
+   an LLM. Normal natural-language autonomy should use the LLM proposal path and
+   let the router/contracts decide whether the plan is admissible.
 
 5. If a result contains `recovery` or `urifix`, inspect the suggested `retry`
    before executing it.

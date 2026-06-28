@@ -275,6 +275,44 @@ def test_llm_flow_injects_environment_facts_into_planner(monkeypatch) -> None:
     assert "bestSurface" in system["content"] and "guidance" in system["content"]  # told to ground on them
 
 
+def test_llm_flow_injects_retrieval_candidates_into_planner(monkeypatch) -> None:
+    """retrieval is propose-stage context for the LLM, not an acceptance shortcut."""
+    import urirun.node._util as tp
+    monkeypatch.setenv("URIRUN_LLM_MODEL", "test-model")
+    captured = {}
+
+    class _Resp:
+        class _C:
+            class message:
+                content = '{"task":{"id":"t","title":"x"},"steps":[]}'
+        choices = [_C()]
+
+    def fake_complete(model, messages, **k):
+        captured["messages"] = messages
+        return _Resp()
+
+    monkeypatch.setattr(tp, "quiet_completion", fake_complete)
+    retrieval = {
+        "kind": "experience-retrieval",
+        "episodes": [{"episode_id": "ep-1", "score": 0.93}],
+        "routes": [{"uri": "kvm://host/screen/query/capture", "score": 0.88}],
+        "note": "retrieval returns candidates only; router/contract/env gates decide admissibility",
+    }
+
+    flow.llm_flow(
+        "take a screenshot",
+        routes=[],
+        nodes=[{"name": "host", "reachable": True}],
+        retrieval=retrieval,
+    )
+
+    user = next(m for m in captured["messages"] if m["role"] == "user")
+    system = next(m for m in captured["messages"] if m["role"] == "system")
+    assert '"retrieval"' in user["content"]
+    assert "ep-1" in user["content"]
+    assert "PROPOSE-stage" in system["content"]
+
+
 def test_execute_flow_acquire_path_retries_after_precondition_met(monkeypatch) -> None:
     """Thin-driver acquire path: step returns next.kind='acquire' → driver calls
     ready://<node>/ready/command/ensure → precondition acquired → step retried → ok."""

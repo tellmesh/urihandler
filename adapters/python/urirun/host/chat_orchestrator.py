@@ -1435,6 +1435,35 @@ def _try_recall_gate(twin_memory, selected_nodes: list, prompt: str) -> tuple:
     return flow, generator
 
 
+def _retrieve_experience_context(twin_memory, selected_nodes: list, prompt: str, routes: list[dict]) -> dict:
+    """Retrieve propose-stage candidates; never bypass validation."""
+    if twin_memory is None:
+        return {}
+    from urirun.host.dispatch import inprocess_fallback as _iproc  # noqa: PLC0415
+    node = selected_nodes[0] if selected_nodes else "host"
+    env_fp = _recall_env_fp(twin_memory, node)
+    payload = {"intent": prompt, "fingerprint": env_fp, "node": node, "routes": routes, "k": 5}
+    result = _iproc("twin://host/experience/query/retrieve", payload) or {}
+    if isinstance(result, dict) and isinstance(result.get("result"), dict):
+        result = result["result"]
+    if not (isinstance(result, dict) and result.get("ok")):
+        return {}
+    return {key: value for key, value in result.items() if key != "ok"}
+
+
+def _make_flow_with_retrieval(mesh, prompt: str, discovered: dict, planner_nodes: list[str],
+                              no_llm: bool, environments: list[dict], retrieval: dict) -> tuple:
+    try:
+        return mesh.make_flow(prompt, discovered, selected_nodes=planner_nodes,
+                              use_llm=not no_llm, environments=environments,
+                              retrieval=retrieval)
+    except TypeError as exc:
+        if "retrieval" not in str(exc):
+            raise
+        return mesh.make_flow(prompt, discovered, selected_nodes=planner_nodes,
+                              use_llm=not no_llm, environments=environments)
+
+
 def _is_selected_remote_node(n: dict, sel: set[str]) -> bool:
     name = str(n.get("name") or n.get("node") or "")
     url = str(n.get("url") or n.get("nodeUrl") or "")
@@ -1752,8 +1781,10 @@ def _chat_ask_general(
             # closing the loop that the episode gate alone left open.
             flow, generator = _try_recall_gate(twin_memory, selected_nodes, prompt)
             if flow is None:
-                flow, generator = mesh.make_flow(prompt, discovered, selected_nodes=planner_nodes,
-                                                 use_llm=not no_llm, environments=environments)
+                retrieval = _retrieve_experience_context(
+                    twin_memory, selected_nodes, prompt, discovered.get("routes") or [])
+                flow, generator = _make_flow_with_retrieval(
+                    mesh, prompt, discovered, planner_nodes, no_llm, environments, retrieval)
             flow = _apply_capture_preferences(flow, twin_memory)
             selection = _resolve_env_enum_flow(flow, registry, discovered.get("routes") or [], twin_memory)
             if not selection.get("ok"):
@@ -1857,6 +1888,15 @@ def _chat_insert_twin_flow_preview(db: str | None, prompt: str, flow: dict, sele
         ))
 
 
+def _routing_where(report: dict) -> str:
+    """Comma-joined unique list of targets each step runs on, or 'unknown'."""
+    ordered: list[str] = []
+    for target in (str(v) for v in (report.get("runsOnByStep") or {}).values() if v):
+        if target not in ordered:
+            ordered.append(target)
+    return ", ".join(ordered) if ordered else "unknown"
+
+
 def _routing_plan_content(report: dict) -> str:
     step_count = int(report.get("stepCount") or 0)
     blocked = report.get("blockedSteps") or []
@@ -1868,13 +1908,7 @@ def _routing_plan_content(report: dict) -> str:
         first = violations[0] if violations else {}
         reason = first.get("kind") or "plan-rejected"
         return f"Routing Plan: rejected, {step_count} URI step(s), {reason}"
-    runs_on = [str(v) for v in (report.get("runsOnByStep") or {}).values() if v]
-    ordered = []
-    for target in runs_on:
-        if target not in ordered:
-            ordered.append(target)
-    where = ", ".join(ordered) if ordered else "unknown"
-    return f"Routing Plan: ok, {step_count} URI step(s), runs on {where}"
+    return f"Routing Plan: ok, {step_count} URI step(s), runs on {_routing_where(report)}"
 
 
 def _chat_insert_routing_preview(

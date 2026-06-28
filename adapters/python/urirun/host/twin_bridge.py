@@ -409,6 +409,48 @@ def twin_plan_preview(prompt: str, node: str = "") -> "dict | None":
     }
 
 
+def _routing_violations_by_uri(routing_report: dict | None) -> dict[str, list[dict]]:
+    """Group a router report's dict violations by their URI; {} when there are none."""
+    if not isinstance(routing_report, dict):
+        return {}
+    by_uri: dict[str, list[dict]] = {}
+    for violation in (routing_report.get("violations") or []):
+        if not isinstance(violation, dict):
+            continue
+        uri = str(violation.get("uri") or "")
+        if uri:
+            by_uri.setdefault(uri, []).append(violation)
+    return by_uri
+
+
+def _step_with_routing_block(step: dict, matches: list[dict]) -> dict:
+    """Return ``step`` marked infeasible by its first routing-acceptance violation."""
+    first = matches[0]
+    return {
+        **step,
+        "feasible": False,
+        "blocked_by": first.get("kind") or "routing-acceptance",
+        "fix": first,
+        "routingViolations": matches,
+    }
+
+
+def _plan_with_routing(plan: dict, steps: list, routing_report: dict) -> dict:
+    """Recompute feasibility tallies and attach the routing verdict to the overlaid plan."""
+    infeasible = [s for s in steps if isinstance(s, dict) and not s.get("feasible", True)]
+    return {
+        **plan,
+        "steps": steps,
+        "infeasibleSteps": len(infeasible),
+        "feasibleSteps": max(0, int(plan.get("totalSteps") or len(steps)) - len(infeasible)),
+        "needsMock": bool(plan.get("needsMock") or infeasible),
+        "routing": {
+            "accepted": bool(routing_report.get("accepted", routing_report.get("ok", True))),
+            "violations": [v for v in (routing_report.get("violations") or []) if isinstance(v, dict)],
+        },
+    }
+
+
 def _apply_routing_report_to_plan(plan: dict, routing_report: dict | None) -> dict:
     """Overlay router acceptance failures onto a Twin diagnostic plan.
 
@@ -417,47 +459,16 @@ def _apply_routing_report_to_plan(plan: dict, routing_report: dict | None) -> di
     route contract and live inventory?". The preview must show the latter too, so
     invalid env-domain values do not appear as feasible.
     """
-    if not isinstance(plan, dict) or not isinstance(routing_report, dict):
+    if not isinstance(plan, dict):
         return plan
-    violations = [v for v in (routing_report.get("violations") or []) if isinstance(v, dict)]
-    if not violations:
-        return plan
-    by_uri: dict[str, list[dict]] = {}
-    for violation in violations:
-        uri = str(violation.get("uri") or "")
-        if uri:
-            by_uri.setdefault(uri, []).append(violation)
+    by_uri = _routing_violations_by_uri(routing_report)
     if not by_uri:
         return plan
-    out = {**plan}
     steps = []
     for step in plan.get("steps") or []:
-        if not isinstance(step, dict):
-            steps.append(step)
-            continue
-        matches = by_uri.get(str(step.get("uri") or "")) or []
-        if not matches:
-            steps.append(step)
-            continue
-        first = matches[0]
-        updated = {
-            **step,
-            "feasible": False,
-            "blocked_by": first.get("kind") or "routing-acceptance",
-            "fix": first,
-            "routingViolations": matches,
-        }
-        steps.append(updated)
-    infeasible_steps = [s for s in steps if isinstance(s, dict) and not s.get("feasible", True)]
-    out["steps"] = steps
-    out["infeasibleSteps"] = len(infeasible_steps)
-    out["feasibleSteps"] = max(0, int(out.get("totalSteps") or len(steps)) - len(infeasible_steps))
-    out["needsMock"] = bool(out.get("needsMock") or infeasible_steps)
-    out["routing"] = {
-        "accepted": bool(routing_report.get("accepted", routing_report.get("ok", True))),
-        "violations": violations,
-    }
-    return out
+        matches = by_uri.get(str(step.get("uri") or "")) if isinstance(step, dict) else None
+        steps.append(_step_with_routing_block(step, matches) if matches else step)
+    return _plan_with_routing(plan, steps, routing_report)
 
 
 def twin_flow_preview(prompt: str, flow: dict, node: str = "",

@@ -341,6 +341,12 @@ except ImportError:
                 for key, child in node.items():
                     if key in {"bytes_b64", "base64", "data"}:
                         continue
+                    # Diagnostic / contract metadata is never a source of produced artifacts.
+                    # The routing plan embeds the route's contract, whose `examples` carry sample
+                    # results tagged `kind: screenshot` with placeholder paths (e.g. .../s.png).
+                    # Walking into it harvested those as phantom "missing file" attachments.
+                    if key in {"routing", "contract", "examples", "inputSchema"}:
+                        continue
                     walk(child, str(key))
             elif isinstance(node, list):
                 for item in node:

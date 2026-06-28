@@ -13,13 +13,15 @@ decyzji, żeby nie budować kolejnego wielkiego drzewa heurystyk w `chat_orchest
 ## Teza
 
 Autonomia nie polega na tym, że jeden centralny moduł zna wszystkie przypadki.
-Polega na tym, że LLM, recall albo heurystyka mogą proponować plan, ale plan
-musi przejść jedną deterministyczną bramę akceptacji względem kontraktów,
-routera, policy i aktualnego stanu Digital Twin.
+Polega na tym, że retrieval/recall i LLM mogą proponować plan, ale plan musi
+przejść jedną deterministyczną bramę akceptacji względem kontraktów, routera,
+policy i aktualnego stanu Digital Twin. Heurystyka jest tylko jawnym trybem
+offline/debug (`noLlm=true`), nie cichym fallbackiem normalnej autonomii.
 
 ```text
 NL intent + action_space + twin_state
-  -> candidate plan                  # LLM / recall / heuristic
+  -> retrieve candidates             # exact graph + optional similarity
+  -> candidate plan                  # LLM / exact recall
   -> deterministic acceptance gate    # router + contracts + policy + env domains
   -> execute or typed block           # no silent fallback
 ```
@@ -85,6 +87,31 @@ LLM nie może:
 
 Reguła: LLM proponuje plany, nie bramy.
 
+## Retrieve Przed Propose
+
+Retrieval jest osobnym krokiem przed planowaniem, a nie bramą. Nowa trasa:
+
+```text
+twin://host/experience/query/retrieve
+```
+
+Wejście: `{intent, fingerprint/env_fp, node, k, routes}`. Wyjście:
+`{episodes, flows, routes, preferences, index}` z `score` i `provenance`.
+Kandydaci są materiałem roboczym dla LLM: pokazują sprawdzone epizody,
+potencjalnie trafne trasy i preferencje z aktualnego fingerprintu. Nie są
+decyzją i nie omijają `router://host/plan/query/accept`.
+
+Warstwa retrieval ma dwie klasy krawędzi:
+
+- dokładne, typowane: `environment_fingerprint`, `intent_sig`,
+  `contract.domains -> inventory.domains`, preferencje fingerprint-scoped;
+- podobieństwa: opcjonalne embeddingi dla intencja -> epizod i intencja ->
+  route.
+
+Embeddingi mogą tylko rankować kandydatów. Jeśli embedder nie jest
+skonfigurowany, `retrieve` zwraca exact/provenance i oznacza indeks jako
+zdegradowany; poprawność wykonania nie zależy od indeksu.
+
 ## Digital Twin Jako Stan Wejściowy
 
 Twin ma dwa osobne zadania:
@@ -120,7 +147,8 @@ Docelowa pętla autonomii:
 
 ```text
 observe:   drift + inventory + routes + contracts
-propose:   LLM / recall / heuristic -> candidate flow
+retrieve:  twin://host/experience/query/retrieve -> candidates only
+propose:   LLM / exact recall -> candidate flow
 validate:  router accept + contract gate + env-selection + policy
 execute:   connector/node/service transport
 learn:     remember successful flow and fingerprint-scoped preferences
@@ -154,6 +182,12 @@ wysyła typed blocks do UI i uruchamia flow po zielonej bramie.
 - `screen.capture.default` jest pamiętane z fingerprintem środowiska.
 - `router://host/plan/query/accept` i `accept_plan()` są bramą akceptacji planu.
 - Preferencje capture przeniesiono do `urirun_twin.capture_preferences`.
+- `twin://host/experience/query/retrieve` zwraca propose-stage kandydatów z
+  `TwinMemory` i route registry; embeddingi są opcjonalnym akceleratorem, nie
+  źródłem decyzji.
+- Normalny `use_llm=True` nie spada po cichu do heurystyk. Fallback heurystyczny
+  wymaga jawnego `noLlm=true` albo flagi debug
+  `URIRUN_ALLOW_HEURISTIC_PLANNER_FALLBACK=1`.
 
 ## Nadal Do Zrobienia
 
@@ -166,3 +200,6 @@ wysyła typed blocks do UI i uruchamia flow po zielonej bramie.
 4. Dodać przykład acceptance-loop w `examples/*`, który przechodzi przez:
    inventory -> needs-selection -> remember preference -> auto-run przy tym samym
    fingerprintcie.
+5. Dodać realny embedder dla `experience/query/retrieve` przez `llm://` albo
+   mały lokalny model, utrzymując zasadę: similarity tylko w `retrieve`,
+   deterministyczna admisja tylko w router/contract/env gates.

@@ -1023,3 +1023,292 @@ will connect the image artifact to the service's URI contract.
 ## License
 
 Licensed under Apache-2.0.
+
+
+
+
+
+# Warstwa wyszukiwania doświadczeń (Experience Retrieval)
+
+<!-- docs-nav -->
+📖 **Dokumentacja urirun:** [← README](../README.md) · [Architektura](ARCHITECTURE.md) · [Autonomia](AUTONOMY_ARCHITECTURE.md) · **Retrieval** · [Komponenty](COMPONENTS.md) · [Decision Loop](DECISION_LOOP.md)
+<!-- /docs-nav -->
+
+Status: 2026-06-28.
+
+Ten dokument opisuje warstwę, która **znajduje kierunek działań operacyjnych**: jak
+z otwartego żądania NL plus stanu Digital Twin wybrać garść trafnych route'ów i
+sprawdzonych epizodów, którymi LLM rozumuje w kroku `propose`. To rozszerzenie
+[AUTONOMY_ARCHITECTURE.md](AUTONOMY_ARCHITECTURE.md): **bramę akceptacji opisuje
+tamten dokument**, tu dokładamy tylko warstwę wyszukiwania przed nią. Nie
+duplikujemy bramy.
+
+---
+
+## 1. Teza — similarity należy do PROPOSE, nigdy do VALIDATE
+
+Baza wektorowa to mechanizm **wyszukiwania i rankingu**, nie **rozstrzygania**.
+Gdyby podobieństwo decydowało, co jest *dopuszczalne*, dwa plany semantycznie
+bliskie, ale materialnie różne, stałyby się wymienne — i wykonałby się ten
+„prawie dobry". To zielony shim, który po cichu kłamie, tyle że z dystansem
+kosinusowym zamiast `if`-a.
+
+> **Embeddingi proponują, brama rozstrzyga. Retrieval miękki, admisja twarda.**
+
+Wyszukiwanie krzyżowe karmi krok `propose` (daje LLM materiał i kierunek);
+deterministyczna brama akceptacji (`router://host/plan/query/accept` + gate
+kontraktu + `env_selection`) zostaje **bez zmian**.
+
+---
+
+## 2. Kształt — hybryda: graf typowany + indeks embeddingowy
+
+W urirun warstwy **są już krzyżowo powiązane** — jawnymi kluczami, nie
+embeddingami. To zostaje. Architektura docelowa to **typowany graf własności +
+indeks embeddingowy nałożony na niego**, a nie wektorowy blob zastępujący klucze.
+
+```mermaid
+flowchart TB
+    NL["Żądanie NL + twin_state"]
+
+    subgraph SOURCES["źródła krawędzi"]
+        direction LR
+        GRAPH["Graf typowany<br/>(klucze dokładne, deterministyczny)"]
+        VEC["Indeks embeddingowy<br/>(podobieństwo, pochodny)"]
+    end
+
+    subgraph SOFT["miękkie — PROPOSE (similarity dozwolona)"]
+        direction TB
+        RET["twin://host/experience/query/retrieve<br/>effect: query"]
+        PROP["LLM proponuje plan<br/>nad zestawem roboczym"]
+        RET -->|"kandydaci + score + proweniencja"| PROP
+    end
+
+    subgraph HARD["twarde — VALIDATE (deterministyczne, bez zmian)"]
+        GATE["router://host/plan/query/accept<br/>+ gate kontraktu + env_selection"]
+    end
+
+    NL --> RET
+    GRAPH -. dokładne dopasowanie .-> RET
+    VEC -. nearest-neighbor .-> RET
+    PROP --> GATE
+    GATE -->|"akceptacja"| EXEC["execute przez adapter"]
+    GATE -->|"typed block: violations"| PROP
+    EXEC --> VERIFY["verify(state)"]
+    VERIFY -->|"known-good epizod"| REIDX["zapis do TwinMemory → reindeks"]
+    REIDX -. przebudowa .-> VEC
+
+    classDef soft fill:#e0f2f1,stroke:#00897b,color:#004d40
+    classDef hard fill:#fff3e0,stroke:#fb8c00,color:#e65100
+    classDef src fill:#f3e5f5,stroke:#8e24aa,color:#4a148c
+    class RET,PROP soft
+    class GATE hard
+    class GRAPH,VEC src
+```
+
+Linia ciągła = klucz dokładny (graf typowany). Linia kropkowana = podobieństwo
+(indeks). **Jedyny punkt rozstrzygania to brama** (pomarańczowa); cała reszta po
+lewej to wyszukiwanie i propozycja.
+
+---
+
+## 3. Krawędzie — co jest dokładne, a co podobieństwowe
+
+Część warstw łączy się na **dokładnych kluczach** i to działa dziś.
+`env_selection.resolve_env_enums` jest wzorcem: spina trzy warstwy bez żadnego
+podobieństwa — `contract.domains[param].domain` ↔ `inventory.domains["monitors.id"]`
+↔ `memory.recall_preference(node, pref, fingerprint)`. Fingerprint albo pasuje,
+albo nie; domena albo się rozwiązuje, albo emituje `needs-selection`.
+
+```mermaid
+flowchart LR
+    INTENT(["Intencja NL"])
+
+    subgraph TYPED["Typowane — klucz dokładny (są dziś)"]
+        CONTRACT["Kontrakt: domains[param]"]
+        INV["Inventory env"]
+        MEM["Epizod (TwinMemory)"]
+        CMD["Komenda effect=command"]
+        UNDO["inverse_route"]
+    end
+
+    subgraph VECG["Podobieństwo — embeddingi (do dodania)"]
+        ROUTES["action_space (route'y)"]
+        CONN["connector"]
+    end
+
+    CONTRACT ==>|"env:monitors.id"| INV
+    MEM ==>|"environment_fingerprint"| INV
+    CMD ==>|"inverse_route"| UNDO
+    INTENT -. "nn, filtr fingerprint" .-> MEM
+    INTENT -. "podobieństwo" .-> ROUTES
+    INTENT -. "capability" .-> CONN
+
+    classDef t fill:#e0f2f1,stroke:#00897b,color:#004d40
+    classDef v fill:#f3e5f5,stroke:#8e24aa,color:#4a148c
+    class CONTRACT,INV,MEM,CMD,UNDO t
+    class ROUTES,CONN v
+```
+
+| Łączy | Klucz | Typ krawędzi | Stan dziś |
+|---|---|---|---|
+| kontrakt param → inventory | `env:monitors.id` (dokładny) | typowana | ✅ `env_selection` |
+| epizod → środowisko | `environment_fingerprint` (dokładny) | typowana | ✅ `TwinMemory` |
+| komenda → cofnięcie | `inverse_route` (dokładny) | typowana | ✅ `reversible` |
+| **intencja NL → epizod** | podobieństwo | **wektorowa** | ❌ exact `recall_flow_by_intent` |
+| **intencja NL → podzbiór action_space** | podobieństwo | **wektorowa** | ❌ `action_space()` zwraca wszystko |
+| **capability → connector** | podobieństwo | **wektorowa** | ⚠️ `resolver._terms` (bag-of-words) |
+
+---
+
+## 4. Trzy krawędzie wektorowe
+
+**Intencja → epizod.** Dziś `_try_recall_gate` / `recall_flow_by_intent` wymaga
+zgodnego `intent_sig`. NL jest otwarty słownikowo, więc to się rozjeżdża
+(„otwórz przeglądarkę i zrzut LinkedIn" ≠ „uruchom chrome i przechwyć feed",
+choć to ten sam flow). Podmiana na nearest-neighbor po embeddingach epizodów,
+**filtrowany twardo do zgodnego fingerprintu**. Recall rozmyty, strażnik
+środowiska twardy.
+
+**Intencja → action_space.** Zamiast podawać LLM cały rejestr URI na zimno
+(`action_space(registry)` zwraca wszystko), retriever rankuje route'y po
+trafności i daje **skupiony zestaw roboczy**. To dosłownie RAG dla plannera,
+ograniczony do kroku `propose`. Tu „znajdywanie rozwiązań" robi się tanie: model
+rozumuje nad ~8 trafnymi route'ami i ~3 sprawdzonymi epizodami, nie nad 280
+modułami.
+
+**Capability → connector.** `resolver.resolve` / `_terms` już robi ubogie
+dopasowanie po nakładaniu się terminów — to poor-man's similarity. Embeddingi to
+po prostu lepsza wersja czegoś, co już istnieje.
+
+---
+
+## 5. Kontrakt wyszukiwania
+
+Jeden URI, **tylko do odczytu** (`effect: query`):
+
+```
+twin://host/experience/query/retrieve
+  in:  { intent, fingerprint, k }
+  out: { episodes[], routes[], preferences[] }   # każdy ze score + proweniencją
+```
+
+Zwraca **kandydatów z uzasadnieniem (która krawędź go wskazała), nie decyzje.**
+Indeks jest **pochodny i przebudowywalny** z `TwinMemory` + rejestru — istnieje
+precedens: `discovery.build_index` / `load_index` / `_fingerprint` buduje już
+fingerprintowany indeks pochodny nad rejestrem. Generalizujesz ten wzorzec i
+dokładasz krawędzie podobieństwa.
+
+---
+
+## 6. Miejsce w pętli decyzyjnej
+
+Z [AUTONOMY_ARCHITECTURE.md](AUTONOMY_ARCHITECTURE.md), jeden krok więcej między
+obserwacją a propozycją — `RETRIEVE`:
+
+```mermaid
+flowchart TB
+    OBS["observe<br/>drift + inventory"]
+    RET["RETRIEVE<br/>graf typowany + embeddingi"]
+    PROP["propose<br/>LLM nad zestawem roboczym + sprawdzonymi epizodami"]
+    VAL{"validate<br/>router accept + gate + env_selection"}
+    EXEC["execute<br/>connector / node / service"]
+    VERIFY["verify(state)"]
+    LEARN["learn<br/>zapis epizodu"]
+    REIDX["reindeks (pochodny)"]
+
+    OBS --> RET --> PROP --> VAL
+    VAL -->|"akceptacja"| EXEC
+    VAL -->|"typed block"| PROP
+    EXEC --> VERIFY
+    VERIFY -->|"known-good"| LEARN --> REIDX
+    REIDX -.-> RET
+    VERIFY -->|"następna iteracja: stan się zmienił"| OBS
+
+    classDef hard fill:#fff3e0,stroke:#fb8c00,color:#e65100
+    class VAL hard
+```
+
+Warstwa wektorowa to silnik „znajdź rozwiązanie"; brama to silnik „czy wolno".
+Przebieg jednego żądania:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as Użytkownik (NL)
+    participant R as Retrieve (query)
+    participant G as Graf + Indeks
+    participant L as LLM (propose)
+    participant A as Brama akceptacji
+    participant X as Wykonanie
+    participant M as TwinMemory
+
+    U->>R: intent, fingerprint, k
+    R->>G: zapytanie po kluczach + nearest-neighbor
+    G-->>R: kandydaci (score, proweniencja)
+    Note over R,L: filtr twardy — tylko zgodny fingerprint
+    R-->>L: zestaw roboczy: epizody + route'y + preferencje
+    L->>A: kandydat plan (URI + payloady)
+    alt plan dopuszczalny
+        A->>X: wykonaj
+        X-->>M: verify(state) == known-good → zapis epizodu
+        Note over M: reindeks (pochodny)
+    else plan niedopuszczalny
+        A-->>L: typed block: violations
+        L->>A: poprawiony kandydat
+    end
+```
+
+---
+
+## 7. Kuratorem indeksu jest weryfikacja
+
+To domyka przykłady office-automation (`examples/*`, gdzie każde zadanie to
+≥10-krokowy flow z `verify(state)`). Te flow są właśnie **epizodami do
+zaindeksowania**, a `verify(state)` — sygnałem, że epizod jest **known-good**.
+Indeksujesz i rankujesz wysoko **tylko zweryfikowane** epizody.
+
+Czyli ta sama weryfikacja, która dowodzi, że zadanie się wydarzyło, jest tym, co
+czyni jego rozwiązanie wyszukiwalnym: **retrieval nad dowiedzionymi
+rozwiązaniami, nie nad surowymi próbami.** To zamyka pętlę bez wpuszczania szumu
+do propozycji.
+
+---
+
+## 8. Koszt, fallback, kolejność
+
+**Nie doczepiaj ciężkiej bazy wektorowej.** Zacznij od **pliku indeksu
+pochodnego** z `TwinMemory`, embeddingi przez istniejący `llm://` albo mały model
+lokalny — to lustro `discovery.build_index`.
+
+**Akcelerator opcjonalny.** Zimny/niedostępny indeks → fallback do exact-match
+recall (`recall_flow_by_intent`) + pełnego `action_space`. **Poprawność nie
+zależy od indeksu, tylko szybkość znajdowania.**
+
+**Kolejność: po ekstrakcji, nie przed.** Z codemapy: `task_planner` wciąż ma
+`is_destructive` (do skasowania — czyta się z `effect`/`reversible`) i
+`heuristic_plan_chat_request` jako lidera nad `llm_plan_chat_request` (do
+odwrócenia), a `chat_orchestrator` urósł do 1942L, bo rozwiązywanie env-enum
+wylądowało w nim (`_resolve_env_enum_flow`) zamiast wyłącznie w
+`urirun_flow.env_selection`. **Indeksuj czysty szew `propose`/`validate`, nie
+obecny splot** — inaczej zaindeksujesz heurystyki, które miały zniknąć.
+
+---
+
+## 9. Single-source dla indeksu
+
+Indeks jest **projekcją** `TwinMemory` + rejestru, nie źródłem prawdy. Epizody,
+flow i preferencje w `TwinMemory` to prawda; indeks to pochodna. Obejmij go
+strażnikiem w stylu `check_single_source`, żeby nikt nie zaczął traktować indeksu
+jako pierwotnego — ta sama dyscyplina, która pilnuje kernela, rendererów i
+routingu.
+
+---
+
+## Powiązane dokumenty
+
+- Autonomia i brama akceptacji: [AUTONOMY_ARCHITECTURE.md](AUTONOMY_ARCHITECTURE.md)
+- Architektura systemu: [ARCHITECTURE.md](ARCHITECTURE.md)
+- Pętla decyzyjna: [DECISION_LOOP.md](DECISION_LOOP.md)
+- Rozwiązywanie env-enum (wzorzec krawędzi typowanej): `urirun_flow.env_selection`
+- Indeks pochodny (precedens): `urirun_runtime.discovery.build_index`
