@@ -1,6 +1,6 @@
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.34s
-# nodes: 451 | edges: 500 | modules: 53
+# generated in 0.26s
+# nodes: 453 | edges: 500 | modules: 54
 # CC̄=4.5
 
 HUBS[20]:
@@ -16,32 +16,32 @@ HUBS[20]:
     CC=12  in:1  out:36  total:37
   adapters.python.urirun_node.server.NodeHandler._stream_events
     CC=14  in:0  out:31  total:31
-  scripts.transport_swap_proof.main
-    CC=5  in:0  out:29  total:29
   adapters.python.urirun.runtime.errors.info
     CC=13  in:2  out:27  total:29
   adapters.python.urirun_node.server.NodeHandler._handle_deploy
     CC=11  in:0  out:29  total:29
   adapters.python.urirun_node.server.NodeHandler._handle_run
     CC=14  in:0  out:29  total:29
+  scripts.transport_swap_proof.main
+    CC=5  in:0  out:29  total:29
   adapters.python.urirun.connectors.connector_lint.verify_connector
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
   adapters.python.urirun_runtime.v2.validate_binding_document
     CC=12  in:3  out:24  total:27
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
   adapters.python.urirun_node.server.apply_deploy
     CC=12  in:2  out:25  total:27
   adapters.python.urirun_connectors_toolkit.resolver.resolve
     CC=12  in:2  out:24  total:26
   adapters.python.urirun.connectors.connect_catalog._cmd_show
     CC=9  in:0  out:25  total:25
-  adapters.python.urirun_runtime.v1.run
-    CC=14  in:1  out:23  total:24
-  adapters.python.urirun_connectors_toolkit.resolver.index_local
-    CC=12  in:2  out:22  total:24
   adapters.python.urirun_twin.twin_store.environment_fingerprint
     CC=9  in:2  out:22  total:24
+  adapters.python.urirun_connectors_toolkit.resolver.index_local
+    CC=12  in:2  out:22  total:24
+  adapters.python.urirun_runtime.v1.run
+    CC=14  in:1  out:23  total:24
   adapters.python.urirun_node.server.NodeHandler._get
     CC=12  in:4  out:19  total:23
 
@@ -170,7 +170,7 @@ MODULES:
     _uri_session_promote  CC=7  out:8
     _uri_session_replay  CC=7  out:10
     _uri_session_start  CC=8  out:11
-  adapters.python.urirun.runtime.errors  [31 funcs]
+  adapters.python.urirun.runtime.errors  [30 funcs]
     _aggregate  CC=4  out:13
     _append  CC=3  out:13
     _cmd_bindings  CC=2  out:2
@@ -315,11 +315,15 @@ MODULES:
     make_dispatch  CC=1  out:6
     service_base  CC=5  out:6
   adapters.python.urirun_twin.capture_preferences  [5 funcs]
-    apply_capture_preferences  CC=15  out:18
+    apply_capture_preferences  CC=16  out:19
     capture_preference_fingerprint  CC=6  out:5
     capture_preference_from_payload  CC=8  out:6
     capture_step_node  CC=5  out:4
     remember_capture_preferences  CC=11  out:10
+  adapters.python.urirun_twin.experience_retrieval  [3 funcs]
+    _unwrap_retrieval  CC=7  out:6
+    recall_env_fingerprint  CC=6  out:4
+    retrieve_experience_context  CC=5  out:3
   adapters.python.urirun_twin.planner  [7 funcs]
     _action_matrix_hints  CC=11  out:9
     _best_surface_hint  CC=3  out:0

@@ -79,6 +79,58 @@ Checked against the repo on 2026-06-28:
 - Capture preferences moved out of host chat into
   `urirun_twin.capture_preferences`; `chat_orchestrator` only applies and
   remembers them at orchestration boundaries.
+- The app/window-bound screenshot path is now routed through environment state,
+  not a stale capture preference: `kvm://host/window/query/list` can ground a
+  browser/app window, `screen/query/capture` may use `monitor_from` to bind the
+  selected monitor at execution time, the flow resolver accepts both
+  `result.value` and direct `result` envelopes, and
+  `urirun_twin.capture_preferences` never overrides a runtime result reference.
+  Verified live on 2026-06-28 with the prompt "zrob zrzut jednego ekranu
+  monitora, na którym jest przeglądarka chrome": LLM plan without fallback,
+  target `host`, `monitor=3`, `scope=monitor`, `fullSize=2560x1600`.
+- Experience retrieval is a typed Twin connector route, not only a chat helper:
+  `urirun-connector-twin` owns `twin://host/experience/query/retrieve`, its
+  route contract and retrieval implementation. The hub now consumes it through
+  `urirun_twin.experience_retrieval`; `chat_orchestrator` no longer defines
+  `_retrieve_experience_context` or `_make_flow_with_retrieval`. An AST
+  regression test keeps that boundary from drifting back into chat.
+- Pure routing-target math is single-source in `urirun-connector-router`:
+  `urirun_connector_router.target_resolution` owns `rebuild_node_targets`,
+  `inactive_node_urls`, `route_targets_active`, `filter_mesh_for_targets` and
+  the host-gated `with_local_host_routes` merge (the host injects its
+  entry-point routes; the connector does the math). `chat_orchestrator` imports
+  these and keeps only a thin `_with_local_host_routes` wrapper; an AST gate
+  (`test_router_target_resolution_client.py`) forbids the four pure helpers from
+  being redefined in the hub. Deliberate boundary: NL-intent → target inference
+  (`_apply_host_default_when_no_node_in_prompt`, `_prompt_names_remote` and the
+  remote-keyword heuristics) stays in chat, which owns intent — it is not pure
+  routing and would drag Polish NL keywords into a leaf routing connector.
+- Twin flow preview no longer lets the global `bestSurface=cdp` overwrite
+  route-specific read-only desktop surfaces: `window/query/list` is annotated as
+  `surface=window`, and `screen/query/capture` as `surface=screen`. The
+  2026-06-28 Chrome-monitor trace already captured the right monitor (`DP-1`,
+  `monitor=3`); this closes the misleading diagnostic label in the Twin Plan.
+- A dashboard-chat regression harness exists in
+  `examples/44-chat-prompt-sweep`: it posts 100 NL prompts to `/api/chat/ask`,
+  records JSONL/Markdown reports, defaults to dry-run, and protects prompts
+  marked `executeAllowed: false` during live execution.
+- The root `testing/` metamorphic matrix is now wired to both the reference
+  oracle and the real no-LLM urirun planner/router path. Oracle + mutant tests
+  are green (`108/108`, `6 passed`), while real no-LLM currently passes `53/108`.
+  The failures are planner gaps, not gate gaps: Chrome-monitor paraphrases do not
+  consistently produce `window/query/list -> capture(monitor_from)`, several
+  all-monitor phrasings miss `scope=all`, and some explicit monitor numbers are
+  not carried into the env-domain gate.
+- Latest `urirun/project/map.toon.yaml` snapshot (278 modules / 44,002 lines)
+  reports code2llm `critical:3` and high fan-out in `_chat_ask_general`,
+  `summary`, `_add_host_subparser`, `serve`, and `main`. This is a structural
+  refactor signal, not a CI failure: the enforced radon gate remains green
+  (`scripts/cc_gate.py`, all Python functions <= CC 15).
+- `urirun.host.task_planner.is_destructive` is still live in the no-LLM
+  planfile/ticket planner: `_derive_plan_labels`,
+  `_derive_acceptance_criteria`, priority, executor mode, queue and review flags
+  still consume that boolean. It is documented as legacy and is not an
+  autonomy/router safety gate, but it has not been removed.
 - `project.toon.yaml` in `urirun` still points at large owner modules
   (`host/dashboard.js`, `host/host_dashboard.py`, `host/chat_orchestrator.py`,
   `host/object_registry.py`, `urirun_node/server.py`). Those are extraction
@@ -318,7 +370,24 @@ Acceptance:
 
 ## Immediate Next Tasks
 
-1. **Scanner single-source burn-down.** `urirun_scanner/*` in the hub and
+1. **Move target/capture decision helpers out of host chat.** The latest codemap
+   still has `_chat_ask_general` as the top fan-out hotspot, and the monitor
+   bug showed why: chat currently sequences LLM planning, recall, twin
+   inventory, env-enum resolution, capture preferences, routing preview and
+   execution. Retrieval's client adapter has been moved to `urirun_twin`; move
+   the remaining target/capture decision helpers into their owner layers:
+   - env/domain selection and result-reference binding: `urirun-flow`;
+   - route admission and target/runsOn diagnosis: `urirun-connector-router`;
+   - fingerprint preferences and environment memory: `urirun_twin`.
+   `chat_orchestrator` should keep conversation state, typed UI blocks and
+   persistence only.
+2. **Dashboard JS split by view/controller.** `dashboard.js` is now the largest
+   single frontend owner and includes routing, discovery, artifacts, chat,
+   scanner stream rendering, widget loading and human-task sound handling.
+   Extract by view modules behind the existing API surface before adding more UI
+   logic. Start with chat rendering/actions and artifact rendering because they
+   already have clear function groups.
+3. **Scanner single-source burn-down.** `urirun_scanner/*` in the hub and
    `urirun-connector-scanner/urirun_connector_scanner/*` are both full
    implementations today. The package dependency cycle blocker is now removed:
    `urirun-connector-scanner` no longer declares a dependency on the hub
@@ -326,41 +395,41 @@ Acceptance:
    make the scanner package available wherever `urirun[host]` runs, replace hub
    `urirun_scanner` fallback bodies with thin shims to
    `urirun_connector_scanner`, and add a scanner single-source gate.
-2. Publish `urirun-connector-router` and `urirun-widgets` before the next hub
+4. Publish `urirun-connector-router` and `urirun-widgets` before the next hub
    release, or the fresh-install path remains unsatisfiable for base routing and
    `urirun[host]`.
-3. Finish the UI side of typed environment selection. The kernel already emits
+5. Finish the UI side of typed environment selection. The kernel already emits
    `needs-selection` from env-enum resolution; chat/dashboard still need a
    first-class clickable card that writes the selection/preference and resumes
    the flow without requiring a manual payload edit.
-4. Extend `accept_plan` beyond reachability/effect mismatch: required inputs,
+6. Extend `accept_plan` beyond reachability/effect mismatch: required inputs,
    destructive policy, human-gated tasks and contract envelope conformance should
    become plan-level `violations` before execution.
-5. Move the remaining target/capture decision helpers out of
-   `host/chat_orchestrator.py` into `urirun-flow`, `urirun-connector-router` or
-   `urirun_twin`. `chat_orchestrator` should keep conversation state and typed
-   UI blocks, not own routing policy.
-6. Add a replay regression for the exact recalled LinkedIn screenshot episode:
+7. Replace the no-LLM `task_planner.is_destructive` ticket heuristic with route
+   contract/effect evidence where a flow/action space is available. Until then,
+   keep it clearly scoped to ticket triage only; do not treat it as an autonomy
+   safety gate.
+8. Add a replay regression for the exact recalled LinkedIn screenshot episode:
    recall-generated flow, required verify before capture, execute path keeps the
    capture reachable.
-7. Move remaining pure flow tests out of `urirun/adapters/python/tests` and into
+9. Move remaining pure flow tests out of `urirun/adapters/python/tests` and into
    `urirun-flow/tests`, keeping host/dashboard-specific tests in the hub.
-8. Continue reducing `urirun-flow` top-level imports of hub runtime modules:
+10. Continue reducing `urirun-flow` top-level imports of hub runtime modules:
    remaining heavy edges are `flow.py`, `flow_planner.py`, `diagnostics.py`
    optional URI registration, and `recovery.py` error taxonomy.
-9. Convert `urirun-runtime` from meta-package to real-source package only after
+11. Convert `urirun-runtime` from meta-package to real-source package only after
    `urirun-flow` is stable; runtime is green but broader and should move second.
-10. Convert `urirun-cdp` from meta-package to real-source package or fold it into
+12. Convert `urirun-cdp` from meta-package to real-source package or fold it into
    `urirun-connector-webnode`/browser-control if the CDP surface is only used
    by browser connectors.
-11. Wire `urirun-contract` JSON Schema validation into connector/example CI,
+13. Wire `urirun-contract` JSON Schema validation into connector/example CI,
    using the KVM xlang proof as the reference shape.
-12. Extract `urirun-node` real source, excluding `node_cli` and `task_cli` host
+14. Extract `urirun-node` real source, excluding `node_cli` and `task_cli` host
    compatibility shims until host services own those commands.
-13. Audit `project/map.toon.yaml` for remaining large owners inside `urirun`:
+15. Audit `project/map.toon.yaml` for remaining large owners inside `urirun`:
    `host/chat_orchestrator.py`, `host/dashboard.js`, `host/host_dashboard.py`,
    `host/object_registry.py`, `urirun_node/server.py`.
-14. Create a top-level smoke suite for host/node/local/remote scenarios:
+16. Create a top-level smoke suite for host/node/local/remote scenarios:
    host-only, explicit node, inferred node, stale URL target, route.node override,
    missing route, unreachable node, unsafe command.
 

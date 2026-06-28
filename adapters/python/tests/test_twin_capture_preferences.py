@@ -26,6 +26,18 @@ def test_capture_preference_is_scoped_to_known_good_fingerprint():
     assert apply_capture_preferences(flow, mem)["steps"][0]["payload"] == {"monitor": 2}
 
 
+def test_capture_preference_does_not_override_result_reference():
+    mem = TwinMemory()
+    fp = mem.remember("host", {"platform": "linux", "display": {"width": 10, "height": 10}})["fingerprint"]
+    mem.remember_preference("host", "screen.capture.default", {"scope": "all", "monitor": -1}, fp)
+    flow = {"steps": [{"id": "cap", "uri": "kvm://host/screen/query/capture",
+                       "payload": {"monitor_from": "list.result.value.selected.monitor"}}]}
+
+    assert apply_capture_preferences(flow, mem)["steps"][0]["payload"] == {
+        "monitor_from": "list.result.value.selected.monitor",
+    }
+
+
 def test_capture_preference_is_remembered_only_after_successful_execution():
     mem = TwinMemory()
     fp = mem.remember("host", {"platform": "linux", "display": {"width": 10, "height": 10}})["fingerprint"]

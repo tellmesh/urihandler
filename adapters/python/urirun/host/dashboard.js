@@ -2063,6 +2063,40 @@
       </div>`;
     }
 
+    function resultValue(env) {
+      if (!env || typeof env !== 'object') return {};
+      const res = env.result;
+      if (res && typeof res === 'object') {
+        if (res.value && typeof res.value === 'object') return res.value;
+        return res;
+      }
+      return env;
+    }
+
+    function timelineStepFacts(step, detail) {
+      const uri = String((step && step.uri) || '');
+      const results = (detail && detail.results) || {};
+      const value = resultValue(results[(step && step.id) || '']);
+      const parts = [];
+      if (uri.includes('/window/query/list') && value && value.selected) {
+        const selected = value.selected || {};
+        if (selected.monitor !== undefined && selected.monitor !== null) parts.push(`monitor=${text(selected.monitor)}`);
+        if (selected.monitorConnector) parts.push(`output=${selected.monitorConnector}`);
+        if (selected.app) parts.push(`app=${selected.app}`);
+      }
+      if (uri.includes('/screen/query/capture') && value && typeof value === 'object') {
+        if (value.monitor !== undefined && value.monitor !== null) parts.push(`monitor=${text(value.monitor)}`);
+        if (value.outputConnector) parts.push(`output=${value.outputConnector}`);
+        if (value.scope) parts.push(`scope=${value.scope}`);
+        if (value.width && value.height) parts.push(`${value.width}x${value.height}`);
+      }
+      return parts.length ? ` · ${parts.join(' · ')}` : '';
+    }
+
+    function timelineDisplayLine(step, detail) {
+      return `${step.ok ? 'ok' : 'fail'} · ${step.target || ''} · ${step.uri}${timelineStepFacts(step, detail)}`;
+    }
+
     // Per-message action controls (select checkbox + repeat/copy/delete buttons). Returns the
     // raw HTML fragments; absent for messages without an id (transient/system rows).
     function chatMessageControls(message, role) {
@@ -2085,7 +2119,7 @@
       }
       const detail = message.detail || {};
       const timeline = detail.timeline || [];
-      const lines = timeline.map((step) => `${step.ok ? 'ok' : 'fail'} · ${step.target || ''} · ${step.uri}`).join('\n');
+      const lines = timeline.map((step) => timelineDisplayLine(step, detail)).join('\n');
       const attachments = messageAttachments(message);
       const role = message.role || 'system';
       const ctl = chatMessageControls(message, role);
@@ -2178,8 +2212,8 @@
       $('chatClearSelectionBtn').disabled = selectedCount === 0;
     }
 
-    function timelinePlainLines(timeline) {
-      return timeline.map((step) => `- ${step.ok ? 'ok' : 'fail'} ${step.target || ''} ${step.uri || ''}`.trim());
+    function timelinePlainLines(timeline, detail={}) {
+      return timeline.map((step) => `- ${timelineDisplayLine(step, detail).replace(/ · /g, ' ')}`.trim());
     }
 
     function attachmentPlainLines(attachments) {
@@ -2194,7 +2228,7 @@
         `[${message.created_at || ''}] ${message.role || 'system'}`,
         text(message.content || ''),
       ].filter(Boolean);
-      if (timeline.length) parts.push('URI timeline:', ...timelinePlainLines(timeline));
+      if (timeline.length) parts.push('URI timeline:', ...timelinePlainLines(timeline, detail));
       if (attachments.length) parts.push('Attachments:', ...attachmentPlainLines(attachments));
       return parts.join('\n');
     }
@@ -2204,12 +2238,13 @@
       return '```' + (lang || '') + '\n' + body + '\n```';
     }
 
-    function timelineMarkdownLine(step) {
+    function timelineMarkdownLine(step, detail={}) {
       const status = step.ok ? 'ok' : 'fail';
       const target = step.target || '';
       const uri = step.uri || '';
+      const facts = timelineStepFacts(step, detail).replace(/^ · /, ' ');
       const error = step.error ? ` error=${JSON.stringify(step.error)}` : '';
-      return `${status} ${target} ${uri}${error}`.trim();
+      return `${status} ${target} ${uri}${facts}${error}`.trim();
     }
 
     function stripBase64(obj) {
@@ -2252,7 +2287,7 @@
       if (message.id) parts.push(`- id: ${message.id}`);
       parts.push('', '## Content', '', markdownFence(message.content || '', 'text'));
       if (timeline.length) {
-        parts.push('', '## URI Timeline', '', markdownFence(timeline.map(timelineMarkdownLine).join('\n'), 'text'));
+        parts.push('', '## URI Timeline', '', markdownFence(timeline.map((step) => timelineMarkdownLine(step, detail)).join('\n'), 'text'));
       }
       if (attachments.length) {
         parts.push('', '## Attachments', '');

@@ -47,6 +47,18 @@ from urirun_twin.capture_preferences import (
     capture_step_node as _capture_step_node,
     remember_capture_preferences as _remember_capture_preferences,
 )
+from urirun_twin.experience_retrieval import (
+    make_flow_with_retrieval as _make_flow_with_retrieval,
+    recall_env_fingerprint as _recall_env_fp,
+    retrieve_experience_context as _retrieve_experience_context,
+)
+from urirun_connector_router.target_resolution import (
+    filter_mesh_for_targets as _filter_mesh_for_targets,
+    inactive_node_urls as _inactive_node_urls,
+    rebuild_node_targets as _rebuild_node_targets,
+    route_targets_active as _route_targets_active,
+    with_local_host_routes as _with_local_host_routes_impl,
+)
 
 
 @dataclasses.dataclass
@@ -1039,63 +1051,13 @@ def _actual_nodes_from_steps(flow: dict, routes_by_uri: dict) -> tuple[list[str]
     return actual, has_local
 
 
-def _rebuild_node_targets(selected_targets: list[str], actual: list[str],
-                          has_local: bool, existing_remote: set[str]) -> list[str]:
-    targets: list[str] = [t for t in selected_targets if t.startswith("node:")]
-    if has_local:
-        targets = ["host"] + targets
-    for node in actual:
-        if node not in existing_remote:
-            targets.append(f"node:{node}")
-    return targets
-
-
-def _inactive_node_urls(nodes: list, active_names: set[str]) -> set:
-    return {
-        n["url"] for n in nodes
-        if n.get("reachable") and n.get("name") not in active_names and n.get("url")
-    }
-
-
-def _route_targets_active(route: dict, active_names: set[str], include_host: bool) -> bool:
-    node = str(route.get("node") or "").strip()
-    if node and node != "host":
-        return node in active_names
-    return include_host
-
-
-def _filter_mesh_for_targets(discovered: dict, selected_targets: list[str]) -> dict:
-    """Return a copy of discovered with serviceMap filtered to only route to selected nodes.
-
-    When selected_targets is ["host"] (no remote node), removes all serviceMap entries that
-    point to remote node URLs and drops remote-node routes — so kvm://host/... stays local
-    instead of being treated as a remote node capability during execution/memory capture."""
-    active_names = {t.split(":", 1)[1] for t in selected_targets if t.startswith("node:")}
-    include_host = not selected_targets or "host" in selected_targets
-
-    full_map = discovered.get("serviceMap") or {}
-    nodes = discovered.get("nodes") or []
-    inactive_urls = _inactive_node_urls(nodes, active_names)
-    routes = [r for r in (discovered.get("routes") or []) if _route_targets_active(r, active_names, include_host)]
-    service_map = {k: v for k, v in full_map.items() if v not in inactive_urls}
-    if routes == (discovered.get("routes") or []) and service_map == full_map:
-        return discovered
-    return {**discovered, "routes": routes, "serviceMap": service_map}
-
-
 def _with_local_host_routes(discovered: dict, selected_targets: list[str]) -> dict:
+    """Thin host wrapper: inject the host's entry-point routes, then delegate the host-gated,
+    de-duplicated merge to ``urirun_connector_router.target_resolution.with_local_host_routes``.
+    The host owns the entry-point route SOURCE; the routing connector owns the merge math."""
     include_host = not selected_targets or "host" in selected_targets
-    if not include_host:
-        return discovered
-    local_routes = local_entry_point_host_routes()
-    if not local_routes:
-        return discovered
-    routes = list(discovered.get("routes") or [])
-    seen = {str(route.get("uri") or "") for route in routes}
-    extra = [route for route in local_routes if str(route.get("uri") or "") not in seen]
-    if not extra:
-        return discovered
-    return {**discovered, "routes": [*routes, *extra], "localHostRoutes": local_routes}
+    local_routes = local_entry_point_host_routes() if include_host else []
+    return _with_local_host_routes_impl(discovered, selected_targets, local_routes)
 
 
 def _sync_targets_from_flow(
@@ -1387,19 +1349,6 @@ def _chat_ask_general_build_result(
     return result
 
 
-def _recall_env_fp(twin_memory, node: str) -> str:
-    """Fingerprint to probe recall with: the pinned node's known-good, else the host's.
-
-    Episodes are captured against the HOST env (reality.fingerprint = host's known-good), so passing
-    env_fp="" used to skip the (working) episode-recall tier and leave only the intent-only flow_store
-    tier, which made the gate miss in practice."""
-    for key in (node, "host"):
-        fp = (twin_memory.known_good(key) or {}).get("fingerprint")
-        if fp:
-            return fp
-    return ""
-
-
 def _unwrap_recall(recalled) -> dict | None:
     """Unwrap the inprocess {ok,result,error} envelope and return the recall dict only on a real hit.
 
@@ -1440,35 +1389,6 @@ def _try_recall_gate(twin_memory, selected_nodes: list, prompt: str,
                  "flowKey": _recalled.get("flow_key"),
                  "source": _recalled.get("source")}
     return flow, generator
-
-
-def _retrieve_experience_context(twin_memory, selected_nodes: list, prompt: str, routes: list[dict]) -> dict:
-    """Retrieve propose-stage candidates; never bypass validation."""
-    if twin_memory is None:
-        return {}
-    from urirun.host.dispatch import inprocess_fallback as _iproc  # noqa: PLC0415
-    node = selected_nodes[0] if selected_nodes else "host"
-    env_fp = _recall_env_fp(twin_memory, node)
-    payload = {"intent": prompt, "fingerprint": env_fp, "node": node, "routes": routes, "k": 5}
-    result = _iproc("twin://host/experience/query/retrieve", payload) or {}
-    if isinstance(result, dict) and isinstance(result.get("result"), dict):
-        result = result["result"]
-    if not (isinstance(result, dict) and result.get("ok")):
-        return {}
-    return {key: value for key, value in result.items() if key != "ok"}
-
-
-def _make_flow_with_retrieval(mesh, prompt: str, discovered: dict, planner_nodes: list[str],
-                              no_llm: bool, environments: list[dict], retrieval: dict) -> tuple:
-    try:
-        return mesh.make_flow(prompt, discovered, selected_nodes=planner_nodes,
-                              use_llm=not no_llm, environments=environments,
-                              retrieval=retrieval)
-    except TypeError as exc:
-        if "retrieval" not in str(exc):
-            raise
-        return mesh.make_flow(prompt, discovered, selected_nodes=planner_nodes,
-                              use_llm=not no_llm, environments=environments)
 
 
 def _is_selected_remote_node(n: dict, sel: set[str]) -> bool:
@@ -1657,8 +1577,11 @@ def _planner_nodes_for_targets(selected_nodes: list[str], selected_targets: list
     ``host`` node without changing the public result shape.
     """
     out = [str(n) for n in (selected_nodes or []) if str(n)]
-    include_host = not selected_targets or "host" in selected_targets
-    if include_host and "host" not in out:
+    # Only pin the synthetic host when there is NO explicit node — that is the empty-list case the
+    # planner would otherwise resolve to a reachable remote. An explicit node selection must reach
+    # the planner unchanged (host in targets is the default UI chip, not a "also run on host").
+    include_host = not out and (not selected_targets or "host" in selected_targets)
+    if include_host:
         out.insert(0, "host")
     return out
 
@@ -2004,9 +1927,12 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
     no_llm = bool(payload.get("no_llm") or payload.get("noLlm"))
     # Rule: if the prompt doesn't mention which node to use, default to host.
     # The chat prompt is the routing command; stale contact/URL selections must
-    # not make a host-local command run on a remote laptop.
-    selected_nodes, selected_targets = _apply_host_default_when_no_node_in_prompt(
-        prompt, selected_nodes, selected_targets, config, node_urls, deps)
+    # not make a host-local command run on a remote laptop. But do NOT override an
+    # explicit UI/API node target — URL tab autorun can mark targets non-explicit
+    # (copied UI state), whereas an explicit node:/nodes= selection IS a routing command.
+    if not _has_explicit_remote_selection(requested_nodes, requested_targets, target_explicit):
+        selected_nodes, selected_targets = _apply_host_default_when_no_node_in_prompt(
+            prompt, selected_nodes, selected_targets, config, node_urls, deps)
     _add_chat_user_message(
         db, prompt, config, node_urls, execute=execute, no_llm=no_llm,
         requested_nodes=requested_nodes, requested_targets=requested_targets,

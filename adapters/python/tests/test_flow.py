@@ -176,6 +176,15 @@ def test_resolve_step_payload_mixed():
     assert resolved["limit"] == 5
 
 
+def test_resolve_step_payload_accepts_direct_result_when_value_segment_requested():
+    payload = {"monitor_from": "list_windows.result.value.selected.monitor"}
+    results = {"list_windows": {"result": {"selected": {"monitor": 3}}}}
+
+    resolved = resolve_step_payload(payload, results)
+
+    assert resolved["monitor"] == 3
+
+
 def test_resolve_step_payload_keeps_cdp_copy_from_literal():
     payload = {"copy_from": "~/.config/google-chrome"}
     assert resolve_step_payload(payload, {}) == payload

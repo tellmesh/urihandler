@@ -21,6 +21,19 @@ def capture_preference_from_payload(payload: dict | None) -> dict[str, Any]:
     return {}
 
 
+def capture_payload_has_result_reference(payload: dict | None) -> bool:
+    """True when capture target is produced by a prior flow step.
+
+    Fingerprint preferences are defaults; they must not override explicit
+    runtime bindings such as ``monitor_from``.
+    """
+    data = payload or {}
+    return any(
+        key in data and isinstance(data.get(key), str)
+        for key in ("monitor_from", "scope_from")
+    )
+
+
 def capture_step_node(step: dict | None) -> str:
     uri = str((step or {}).get("uri") or "")
     if "://" not in uri:
@@ -44,7 +57,11 @@ def apply_capture_preferences(flow: dict, memory: object | None) -> dict:
         new_step = dict(step)
         uri = str(new_step.get("uri") or "")
         payload = dict(new_step.get("payload") or {})
-        if "/screen/query/capture" in uri and not capture_preference_from_payload(payload):
+        if (
+            "/screen/query/capture" in uri
+            and not capture_payload_has_result_reference(payload)
+            and not capture_preference_from_payload(payload)
+        ):
             node = capture_step_node(new_step)
             fingerprint = capture_preference_fingerprint(memory, node)
             if not fingerprint:
@@ -77,6 +94,7 @@ def remember_capture_preferences(flow: dict, execution: dict, memory: object | N
 
 __all__ = [
     "apply_capture_preferences",
+    "capture_payload_has_result_reference",
     "capture_preference_fingerprint",
     "capture_preference_from_payload",
     "capture_step_node",

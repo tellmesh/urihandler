@@ -5,17 +5,17 @@
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 207, json: 15, shell: 15, yaml: 5, javascript: 5
+- **Languages**: python: 208, json: 15, shell: 15, yaml: 5, javascript: 5
 - **Analysis Mode**: static
-- **Total Functions**: 2388
+- **Total Functions**: 2406
 - **Total Classes**: 59
-- **Modules**: 278
-- **Entry Points**: 1026
+- **Modules**: 279
+- **Entry Points**: 1030
 
 ## Architecture by Module
 
 ### adapters.python.urirun.host.dashboard
-- **Functions**: 580
+- **Functions**: 589
 - **File**: `dashboard.js`
 
 ### adapters.python.urirun.host.scanner
@@ -32,7 +32,7 @@
 - **File**: `host_dashboard.py`
 
 ### adapters.python.urirun.host.chat_orchestrator
-- **Functions**: 71
+- **Functions**: 73
 - **Classes**: 1
 - **File**: `chat_orchestrator.py`
 
@@ -55,7 +55,7 @@
 - **File**: `__init__.py`
 
 ### adapters.python.urirun.host.object_registry
-- **Functions**: 50
+- **Functions**: 51
 - **File**: `object_registry.py`
 
 ### adapters.python.urirun_twin.twin_store
@@ -80,6 +80,10 @@
 - **Functions**: 33
 - **File**: `host_db.py`
 
+### adapters.python.urirun.host.twin_bridge
+- **Functions**: 31
+- **File**: `twin_bridge.py`
+
 ### adapters.python.urirun_runtime._runtime
 - **Functions**: 30
 - **Classes**: 1
@@ -98,10 +102,6 @@
 - **Functions**: 27
 - **Classes**: 1
 - **File**: `planfile_adapter.py`
-
-### adapters.python.urirun.host.twin_bridge
-- **Functions**: 26
-- **File**: `twin_bridge.py`
 
 ## Key Entry Points
 
@@ -195,15 +195,15 @@ Result shape::
       ok: bool,            # True only when ever
 - **Calls**: adapters.python.urirun.host.node_health._probe_reachable, checks.append, adapters.python.urirun.host.node_health._probe_auth, checks.append, adapters.python.urirun.host.node_health._probe_version, checks.append, adapters.python.urirun.host.node_health._probe_schemes, checks.append
 
-### adapters.python.urirun.host.chat_orchestrator.chat_ask
-- **Calls**: None.strip, adapters.python.urirun.host.chat_orchestrator._parse_chat_nodes_targets, adapters.python.urirun.host.chat_orchestrator._target_selection_explicit, adapters.python.urirun.host.chat_orchestrator._init_selected_targets, adapters.python.urirun.host.chat_orchestrator._infer_node_targets, adapters.python.urirun.host.screen_capability.selected_nodes_from_targets, bool, bool
-
 ### adapters.python.urirun_node.server.NodeHandler._handle_enroll
 - **Calls**: adapters.python.urirun_node.server.read_raw, keyauth.verify_request, keyauth.token_matches, scripts.test_pypi_install.print, adapters.python.urirun_node.server.send_json, adapters.python.urirun_node.server.send_json, keyauth.available, adapters.python.urirun_node.server.send_json
 
 ### adapters.python.urirun.runtime.errors.problem
 > Project an error envelope to RFC 9457 ``application/problem+json``.
 - **Calls**: dict, adapters.python.urirun.runtime.errors.category_meta, err.get, adapters.python.urirun.runtime.errors.classify, err.get, adapters.python.urirun.runtime.errors.error_code, err.get, err.get
+
+### adapters.python.urirun.host.chat_orchestrator.chat_ask
+- **Calls**: None.strip, adapters.python.urirun.host.chat_orchestrator._parse_chat_nodes_targets, adapters.python.urirun.host.chat_orchestrator._target_selection_explicit, adapters.python.urirun.host.chat_orchestrator._init_selected_targets, adapters.python.urirun.host.chat_orchestrator._infer_node_targets, adapters.python.urirun.host.screen_capability.selected_nodes_from_targets, bool, bool
 
 ### adapters.python.urirun.node.manage.connector_install
 > Install a connector from ANY source into the node's venv:
@@ -609,13 +609,13 @@ Functions exposed as public API (no underscore prefix):
 - `adapters.python.urirun.testing.smoke` - 23 calls
 - `adapters.python.urirun.host.node_api.configured_api_headers` - 23 calls
 - `adapters.python.urirun.host.node_health.node_doctor` - 23 calls
-- `adapters.python.urirun.host.chat_orchestrator.chat_ask` - 23 calls
 - `adapters.python.urirun.node.doctor.format_doctor_report` - 22 calls
 - `adapters.python.urirun_twin.twin_store.environment_fingerprint` - 22 calls
 - `adapters.python.urirun_connectors_toolkit.resolver.index_local` - 22 calls
 - `adapters.python.urirun.runtime.errors.problem` - 22 calls
 - `adapters.python.urirun_runtime._runtime.run` - 22 calls
 - `adapters.python.urirun.host.host_dashboard.serve` - 22 calls
+- `adapters.python.urirun.host.chat_orchestrator.chat_ask` - 22 calls
 - `adapters.python.urirun.node.manage.connector_install` - 21 calls
 - `adapters.python.urirun.host.host_db.search_records` - 21 calls
 - `adapters.python.urirun.host.dashboard_api.chat_history` - 21 calls
