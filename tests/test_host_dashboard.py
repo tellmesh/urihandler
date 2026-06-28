@@ -298,8 +298,8 @@ def test_dashboard_chat_messages_can_copy_markdown():
     assert "function chatMessageMarkdown" in html
     assert "function copyChatMessageMarkdown" in html
     assert "function markdownFence" in html
-    assert "markdownFence(JSON.stringify(detail, null, 2), 'json')" in html
-    assert "markdownFence(JSON.stringify(message, null, 2), 'json')" in html
+    assert "markdownFence(JSON.stringify(stripBase64(detail), null, 2), 'json')" in html
+    assert "markdownFence(JSON.stringify(stripBase64(message), null, 2), 'json')" in html
     assert "clipboardError = error" in html
     assert "document.execCommand && document.execCommand('copy')" in html
     assert "closest('[data-chat-copy-md]')" in html

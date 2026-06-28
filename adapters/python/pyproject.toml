@@ -14,6 +14,7 @@ dependencies = [
   "pydantic>=2",
   "urirun-contract>=0.1.0",
   "urirun-connector-router>=0.2.0",
+  "urirun-flow>=0.2.1",
 ]
 
 [project.optional-dependencies]
@@ -34,7 +35,6 @@ urirun = "urirun.v2:main"
 urirun-v1 = "urirun.v1:main"
 urirun-v2 = "urirun.v2:main"
 uri-copy-id = "urirun.node.mesh:copy_id_cli"
-urirun-flow = "urirun_flow.cli:main"  # flow DSL CLI (folded in from the urirun-flow meta-package)
 
 # In-core URI surfaces (trace-first authoring): a promoted known-good run replayable by name,
 # and a session recorder. Declared as bindings so skill:// / session:// resolve like any connector.
@@ -46,6 +46,7 @@ ready = "urirun.node.preconditions:ready_bindings"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["urirun*"]
+exclude = ["urirun_flow*"]
 
 [tool.setuptools.package-data]
 # Static assets served by the dashboard from their package dir (read fresh per request):

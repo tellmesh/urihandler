@@ -1,8 +1,8 @@
-# urirun | 2587 func | 136f | 44087L | python | 2026-06-28
-# generated in 0.01s
+# urirun | 2590 func | 136f | 44136L | python | 2026-06-28
+# generated in 0.00s
 
 HEALTH:
-  CC̄=4.6  critical=305 (limit:10)  dup=2  cycles=0
+  CC̄=4.6  critical=309 (limit:10)  dup=2  cycles=0
 
 ALERTS[20]:
   !!! high_fan_out     _add_host_subparser = 30 (limit:10)
@@ -17,7 +17,7 @@ ALERTS[20]:
   !!! high_fan_out     _add_host_task_subparser = 23 (limit:10)
 
 MODULES[276] (top by size):
-  M[adapters/python/urirun/host/dashboard.js] 2986L C:0 F:443 CC↑14 D:51 (javascript)
+  M[adapters/python/urirun/host/dashboard.js] 3035L C:0 F:446 CC↑14 D:51 (javascript)
   M[adapters/python/urirun_runtime/v2.py] 2033L C:2 F:120 CC↑14 D:5 (python)
   M[adapters/python/urirun/host/host_dashboard.py] 1934L C:0 F:102 CC↑14 D:1 (python)
   M[adapters/python/urirun/host/chat_orchestrator.py] 1660L C:1 F:60 CC↑14 D:0 (python)
@@ -31,7 +31,7 @@ MODULES[276] (top by size):
   M[adapters/python/urirun/host/node_cli.py] 910L C:0 F:57 CC↑13 D:1 (python)
   M[adapters/python/urirun/__init__.py] 766L C:1 F:53 CC↑14 D:14 (python)
   M[adapters/python/urirun_runtime/_registry.py] 718L C:0 F:43 CC↑14 D:1 (python)
-  M[adapters/python/urirun/host/scanner.js] 681L C:0 F:121 CC↑14 D:1 (javascript)
+  M[adapters/python/urirun/host/scanner.js] 681L C:0 F:121 CC↑14 D:2 (javascript)
   LANGS: python:202/shell:15/json:15/javascript:7/yaml:5/csharp:4/txt:4/go:3/c:3/ruby:2/typescript:2/php:2/java:2/rust:2/other:2/toml:2/yml:2/pm:1/perl:1
 
 HOTSPOTS[10]:
@@ -44,9 +44,9 @@ HOTSPOTS[10]:
 REFACTOR[15]:
   [1] H/H Split god module adapters/python/urirun/__init__.py (766L, 1 classes)
   [2] H/H Split god module adapters/python/urirun/host/chat_orchestrator.py (1660L, 1 classes)
-  [3] H/H Split god module adapters/python/urirun/host/dashboard.js (2986L, 0 classes)
+  [3] H/H Split god module adapters/python/urirun/host/dashboard.js (3035L, 0 classes)
   [4] H/H Split god module adapters/python/urirun/host/host_dashboard.py (1934L, 0 classes)
   [5] H/H Split god module adapters/python/urirun/host/object_registry.py (981L, 0 classes)
 
 EVOLUTION:
-  2026-06-28 CC̄=4.6 crit=305 44087L // Automated analysis
+  2026-06-28 CC̄=4.6 crit=309 44136L // Automated analysis

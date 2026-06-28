@@ -2383,6 +2383,33 @@
       return `${status} ${target} ${uri}${error}`.trim();
     }
 
+    function stripBase64(obj) {
+      if (obj === null || obj === undefined) return obj;
+      if (typeof obj === 'string') {
+        if (obj.startsWith('data:') && obj.includes(';base64,')) {
+          const parts = obj.split(';base64,');
+          return `${parts[0]};base64,... [truncated]`;
+        }
+        if (obj.length > 200 && /^[a-zA-Z0-9+/=]+$/.test(obj)) {
+          return `${obj.substring(0, 30)}... [base64 truncated]`;
+        }
+        return obj;
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(stripBase64);
+      }
+      if (typeof obj === 'object') {
+        const copy = {};
+        for (const key in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            copy[key] = stripBase64(obj[key]);
+          }
+        }
+        return copy;
+      }
+      return obj;
+    }
+
     function chatMessageMarkdown(message) {
       const detail = message.detail || {};
       const timeline = detail.timeline || [];
@@ -2403,12 +2430,12 @@
         attachments.forEach((att) => {
           parts.push(`- ${att.kind || 'file'}: ${att.path || att.uri || att.previewUrl || ''}`);
         });
-        parts.push('', markdownFence(JSON.stringify(attachments, null, 2), 'json'));
+        parts.push('', markdownFence(JSON.stringify(stripBase64(attachments), null, 2), 'json'));
       }
       if (Object.keys(detail).length) {
-        parts.push('', '## URI / JSON', '', markdownFence(JSON.stringify(detail, null, 2), 'json'));
+        parts.push('', '## URI / JSON', '', markdownFence(JSON.stringify(stripBase64(detail), null, 2), 'json'));
       }
-      parts.push('', '## Raw Message', '', markdownFence(JSON.stringify(message, null, 2), 'json'));
+      parts.push('', '## Raw Message', '', markdownFence(JSON.stringify(stripBase64(message), null, 2), 'json'));
       return parts.join('\n');
     }
 
@@ -2459,14 +2486,36 @@
 
     async function copyChatMessageMarkdown(id) {
       const sid = String(id || '');
-      const message = state.chatMessages.find((item) => String(item.id || '') === sid)
-        || state.visibleChatMessages.find((item) => String(item.id || '') === sid);
-      if (!message) throw new Error(`chat message not found: ${id}`);
-      const content = chatMessageMarkdown(message);
+      let messagesToCopy = [];
+      let index = state.chatMessages.findIndex((item) => String(item.id || '') === sid);
+      if (index !== -1) {
+        const msg = state.chatMessages[index];
+        messagesToCopy.push(msg);
+        if (msg.role === 'user' && index + 1 < state.chatMessages.length) {
+          const nextMsg = state.chatMessages[index + 1];
+          if (nextMsg.role === 'system') {
+            messagesToCopy.push(nextMsg);
+          }
+        }
+      } else {
+        index = state.visibleChatMessages.findIndex((item) => String(item.id || '') === sid);
+        if (index !== -1) {
+          const msg = state.visibleChatMessages[index];
+          messagesToCopy.push(msg);
+          if (msg.role === 'user' && index + 1 < state.visibleChatMessages.length) {
+            const nextMsg = state.visibleChatMessages[index + 1];
+            if (nextMsg.role === 'system') {
+              messagesToCopy.push(nextMsg);
+            }
+          }
+        }
+      }
+      if (messagesToCopy.length === 0) throw new Error(`chat message not found: ${id}`);
+      const content = messagesToCopy.map(chatMessageMarkdown).join('\n\n---\n\n');
       const method = await copyTextToClipboard(content);
       window.__urirunLastCopiedChatMarkdown = content;
       $('chatStatus').textContent = `copied markdown (${method})`;
-      writeUrlState({ action: 'chat:copy-message-md', copied: 1 }, { replace: true });
+      writeUrlState({ action: 'chat:copy-message-md', copied: messagesToCopy.length }, { replace: true });
     }
 
     function chatRenderSignature(visible) {

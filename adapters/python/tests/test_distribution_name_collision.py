@@ -2,8 +2,8 @@
 
 Phase-5 extraction left several ``urirun_*`` import packages copied into BOTH the bundled
 ``urirun`` distribution (``adapters/python``, ``include = ["urirun*"]``) and a standalone
-repo-root distribution (``urirun-runtime``, ``urirun-cdp``, ``urirun-connectors-toolkit``,
-``urirun-flow``). When two installed distributions ship the same top-level import name, which
+repo-root distribution (``urirun-runtime``, ``urirun-cdp``, ``urirun-connectors-toolkit``).
+When two installed distributions ship the same top-level import name, which
 copy wins is install-order dependent, and the hand-maintained copies drift — exactly the
 "fresh install broken" failure mode this project has hit before.
 
@@ -138,5 +138,22 @@ def test_bundle_owns_the_urirun_namespace_packages():
                        if tomllib.loads(p.read_text())["project"].get("name") == "urirun"), None)
     assert bundle is not None, "could not locate the urirun bundle pyproject"
     pkgs = _top_level_packages(bundle)
-    for name in ("urirun_runtime", "urirun_cdp", "urirun_connectors_toolkit", "urirun_flow"):
+    for name in ("urirun_runtime", "urirun_cdp", "urirun_connectors_toolkit"):
         assert name in pkgs, f"bundle no longer ships {name}: {sorted(pkgs)}"
+    assert "urirun_flow" not in pkgs, "bundle must not ship urirun_flow; urirun-flow owns it"
+
+
+def test_urirun_flow_owned_by_standalone_distribution():
+    root = _repo_root()
+    owners: dict[str, set[str]] = {}
+    for pyproject in _iter_pyprojects(root):
+        data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        dist_name = data.get("project", {}).get("name")
+        if not dist_name:
+            continue
+        for pkg in _top_level_packages(pyproject):
+            owners.setdefault(pkg, set()).add(dist_name)
+
+    assert owners.get("urirun_flow") == {"urirun-flow"}, (
+        f"urirun_flow ownership drifted: {owners.get('urirun_flow')}"
+    )

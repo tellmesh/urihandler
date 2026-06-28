@@ -212,62 +212,32 @@ from urirun_node.formatting import (  # noqa: E402,F401
 
 
 
-# CLI command handlers for host/node subcommands moved to urirun.node.node_cli;
-# re-exported here so existing callers keep using mesh.<name> unchanged.
-from urirun.node.node_cli import (  # noqa: E402,F401
-    DEFAULT_IDENTITY,
-    _DATA_HANDLERS,
-    _HOST_MESH_HANDLERS,
-    _build_implicit_api,
-    _data_artifact_register,
-    _data_artifacts,
-    _data_bindings,
-    _data_check_add,
-    _data_checks,
-    _data_dataset_create,
-    _data_datasets,
-    _data_init,
-    _data_record_upsert,
-    _data_records,
-    _data_sql,
-    _handle_add_node,
-    _handle_add_node_advanced,
-    _host_cmd_agents,
-    _host_cmd_ask,
-    _host_cmd_config,
-    _host_cmd_doctor,
-    _host_cmd_nodes,
-    _host_cmd_routes,
-    _host_delegated_command,
-    _host_mesh_command,
-    _maybe_ensure_scheme,
-    _maybe_load_dotenv,
-    _parse_api_json_args,
-    _print_event,
-    _probe_one_route,
-    _render_probe_report,
-    _resolve_registry_source,
-    _run_streamed,
-    _split_deploy_doc,
-    _warn_dropped_routes,
-    _watch_loop,
-    copy_id_cli,
-    copy_id_command,
-    data_command,
-    deploy_command,
-    ensure_command,
-    fulfill_need,
-    host_command,
-    monitor_command,
-    node_command,
-    node_list_command,
-    node_stop_command,
-    probe_command,
-    run_command,
-    supply_command,
-    task_command,
-    watch_command,
-)
+# CLI command handlers live in urirun.node.node_cli (the host-layer composition root). To keep
+# `mesh.<name>` back-compat WITHOUT a static node→host import edge — which makes the node package
+# un-liftable (scripts/extraction_audit.py preset F: node↔host CLI cycle) — these names are
+# forwarded LAZILY via PEP 562 module __getattr__. They resolve on first attribute access, so the
+# node layer no longer imports the host layer at module load.
+_CLI_REEXPORTS = frozenset({
+    "DEFAULT_IDENTITY", "_DATA_HANDLERS", "_HOST_MESH_HANDLERS", "_build_implicit_api",
+    "_data_artifact_register", "_data_artifacts", "_data_bindings", "_data_check_add",
+    "_data_checks", "_data_dataset_create", "_data_datasets", "_data_init",
+    "_data_record_upsert", "_data_records", "_data_sql", "_handle_add_node",
+    "_handle_add_node_advanced", "_host_cmd_agents", "_host_cmd_ask", "_host_cmd_config",
+    "_host_cmd_doctor", "_host_cmd_nodes", "_host_cmd_routes", "_host_delegated_command",
+    "_host_mesh_command", "_maybe_ensure_scheme", "_maybe_load_dotenv", "_parse_api_json_args",
+    "_print_event", "_probe_one_route", "_render_probe_report", "_resolve_registry_source",
+    "_run_streamed", "_split_deploy_doc", "_warn_dropped_routes", "_watch_loop", "copy_id_cli",
+    "copy_id_command", "data_command", "deploy_command", "ensure_command", "fulfill_need",
+    "host_command", "monitor_command", "node_command", "node_list_command", "node_stop_command",
+    "probe_command", "run_command", "supply_command", "task_command", "watch_command",
+})
+
+
+def __getattr__(name):  # PEP 562 — fires only for attributes missing from the module namespace
+    if name in _CLI_REEXPORTS:
+        from urirun.node import node_cli as _cli  # lazy: no static node→host import edge
+        return getattr(_cli, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # Node state directories moved to urirun.node.paths; re-exported for callers.
@@ -281,8 +251,9 @@ def _register_cli_bridge() -> None:
     connector layers — the node layer pushes its CLI implementations down."""
     from urirun.runtime import v2
     from urirun.connectors import connect_catalog
-    v2.register_cli_command("host_command", host_command)
-    v2.register_cli_command("node_command", node_command)
+    from urirun.node import node_cli as _cli  # lazy (CLI handlers live in host)
+    v2.register_cli_command("host_command", _cli.host_command)
+    v2.register_cli_command("node_command", _cli.node_command)
     v2.register_cli_command("version_status", version_status)
     v2.register_cli_command("version_line", version_line)
     v2.register_cli_command("connectors_command", connect_catalog.connectors_command)

@@ -18,6 +18,7 @@ CHECK="${1:-}"
 # (leaf kernels first; widgets/artifacts depend on the routing+contract kernels).
 SIBLINGS=(
   urirun-contract
+  urirun-flow
   urirun-declarative
   urirun-connector-router
   urirun-connector-twin
@@ -28,7 +29,7 @@ SIBLINGS=(
 # (and the routing shim that re-exports the extracted routing kernel). twin/widgets/artifacts
 # are leaf consumers with import-time connector registration — they are verified by their own
 # test-CI, not by a bare top-level import here (which can trip their registration side-effects).
-CORE_IMPORTS=(urirun_contract urirun_declarative urirun_connector_router)
+CORE_IMPORTS=(urirun_contract urirun_flow urirun_declarative urirun_connector_router)
 
 if [ "$CHECK" = "--check" ]; then
   fail=0

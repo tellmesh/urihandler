@@ -7,15 +7,15 @@
 - **Primary Language**: python
 - **Languages**: python: 201, json: 15, shell: 15, yaml: 5, javascript: 5
 - **Analysis Mode**: static
-- **Total Functions**: 2587
+- **Total Functions**: 2590
 - **Total Classes**: 63
 - **Modules**: 272
-- **Entry Points**: 1067
+- **Entry Points**: 1070
 
 ## Architecture by Module
 
 ### adapters.python.urirun.host.dashboard
-- **Functions**: 618
+- **Functions**: 624
 - **File**: `dashboard.js`
 
 ### adapters.python.urirun.host.scanner

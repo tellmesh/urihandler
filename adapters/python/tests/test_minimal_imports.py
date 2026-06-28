@@ -47,6 +47,42 @@ raise SystemExit(1 if loaded else 0)
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_core_import_does_not_load_host_node_scanner(self):
+        # Slim-core ratchet (ACTIVE_REFACTOR_PLAN.md Phase 3 acceptance): a bare `import urirun`
+        # must not pull in host, node or scanner implementation modules. This is the prefix-based
+        # invariant — sharper than the named denylist above — that keeps the kernel thin BEFORE
+        # the host/node extraction lands, so a stray reverse-import can't silently re-fatten it.
+        adapter_root = Path(__file__).resolve().parents[1]
+        code = """
+import json
+import sys
+
+import urirun
+
+loaded = sorted(
+    m for m in sys.modules
+    if m.startswith(("urirun.host", "urirun_node", "urirun_scanner"))
+)
+print(json.dumps({"loaded": loaded}, sort_keys=True))
+raise SystemExit(1 if loaded else 0)
+"""
+        env = dict(os.environ)
+        previous = env.get("PYTHONPATH")
+        env["PYTHONPATH"] = str(adapter_root) if not previous else f"{adapter_root}{os.pathsep}{previous}"
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            check=False,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.assertEqual(
+            result.returncode,
+            0,
+            "`import urirun` loaded host/node/scanner modules:\n" + result.stdout + result.stderr,
+        )
+
     def test_host_binding_generation_keeps_executors_lazy(self):
         adapter_root = Path(__file__).resolve().parents[1]
         code = """

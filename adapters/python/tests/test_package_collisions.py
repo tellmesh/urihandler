@@ -18,6 +18,9 @@ Fix path (when standalone packages are published to PyPI):
   2. add them as [project.dependencies] in adapters/python/pyproject.toml
   3. change include = ["urirun*"] to exclude the now-external packages
   4. re-run this test — collisions list becomes empty, content-drift checks removed
+
+`urirun_flow` has already moved to the real-source `urirun-flow` distribution and is no longer a
+known-ok collision.
 """
 from __future__ import annotations
 
@@ -34,7 +37,6 @@ _KNOWN_COLLISIONS: dict[str, tuple[str, str]] = {
     "urirun_runtime": ("urirun", "urirun-runtime"),
     "urirun_cdp": ("urirun", "urirun-cdp"),
     "urirun_connectors_toolkit": ("urirun", "urirun-connectors-toolkit"),
-    "urirun_flow": ("urirun", "urirun-flow"),
 }
 
 # ── Authoritative source paths (adapters/python takes priority via sys.path) ──

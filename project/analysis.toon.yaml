@@ -1,12 +1,12 @@
-# code2llm | 276f 44087L | python:201,json:15,shell:15,yaml:5,javascript:5,txt:4,csharp:4,go:3,yml:2,java:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-28
-# generated in 0.26s
-# CC̅=4.6 | critical:0/2587 | dups:0 | cycles:0
+# code2llm | 276f 44136L | python:201,json:15,shell:15,yaml:5,javascript:5,txt:4,csharp:4,go:3,yml:2,java:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-28
+# generated in 0.20s
+# CC̅=4.6 | critical:0/2590 | dups:0 | cycles:0
 
 HEALTH[0]: ok
 
 REFACTOR[0]: none needed
 
-PIPELINES[900]:
+PIPELINES[903]:
   [1] Src [http]: http
       PURITY: 100% pure
   [2] Src [_attacker_key]: _attacker_key
@@ -136,7 +136,7 @@ LAYERS:
   │ gate.mjs                     0L  0C    9m  CC=12     ←0
   │
   adapters/                       CC̄=4.6    ←in:18  →out:12  !! split
-  │ !! dashboard.js              2986L  0C  443m  CC=14     ←51
+  │ !! dashboard.js              3035L  0C  446m  CC=14     ←51
   │ !! v2                        2033L  2C  120m  CC=14     ←5
   │ !! host_dashboard            1934L  0C  102m  CC=14     ←1
   │ !! chat_orchestrator         1660L  1C   60m  CC=14     ←0
@@ -149,7 +149,7 @@ LAYERS:
   │ !! node_cli                   910L  0C   57m  CC=13     ←1
   │ !! __init__                   766L  1C   53m  CC=14     ←14
   │ !! _registry                  718L  0C   43m  CC=14     ←1
-  │ !! scanner.js                 681L  0C  121m  CC=14     ←1
+  │ !! scanner.js                 681L  0C  121m  CC=14     ←2
   │ !! _runtime                   602L  1C   30m  CC=13     ←2
   │ !! flow_thin                  597L  1C   28m  CC=14     ←1
   │ !! diagnostics                589L  1C   19m  CC=8      ←2
@@ -421,14 +421,14 @@ COUPLING:
         adapters.perl                   ←1                                                                                                                                                 ──                     
   security.mesh-probe                                         1                                                                                                                                                 ──
   CYCLES: none
-  HUB: adapters.python/ (fan-in=8)
   HUB: scripts/ (fan-in=163)
-  HUB: v1.js/ (fan-in=6)
   HUB: adapters/ (fan-in=18)
-  SMELL: adapters.python/ fan-out=165 → split needed
-  SMELL: xlang/ fan-out=8 → split needed
+  HUB: v1.js/ (fan-in=6)
+  HUB: adapters.python/ (fan-in=8)
   SMELL: adapters/ fan-out=12 → split needed
   SMELL: examples.matrix/ fan-out=9 → split needed
+  SMELL: xlang/ fan-out=8 → split needed
+  SMELL: adapters.python/ fan-out=165 → split needed
 
 EXTERNAL:
   validation: run `vallm batch .` → validation.toon

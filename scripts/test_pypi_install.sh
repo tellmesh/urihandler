@@ -6,7 +6,7 @@
 #   --local      Install from the local adapters/python directory (no PyPI needed).
 #                Run any time; does not require a published version.
 #   --collision  Install the FULL local distribution set (bundle + the urirun-runtime /
-#                urirun-cdp / urirun-connectors-toolkit / urirun-flow meta-packages) into one
+#                urirun-cdp / urirun-connectors-toolkit meta-packages + real urirun-flow) into one
 #                venv and assert each urirun_* import name resolves to exactly one distribution
 #                (`urirun`). Catches the Phase-5 shadowing hazard at install time.
 #   (default)    Install from PyPI == VERSION (root VERSION file). Run AFTER publish.
@@ -19,7 +19,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-MONO="$(cd "$ROOT/.." && pwd)"   # monorepo root: holds the sibling meta-package repos
+MONO="$(cd "$ROOT/.." && pwd)"   # monorepo root: holds sibling package repos
 LOCAL_MODE=0
 COLLISION=0
 VERSION=""
@@ -45,13 +45,16 @@ python3 -m venv "$VENV"
 
 # ── --collision: full local set must resolve each urirun_* import name to one dist ───────────
 if [ "$COLLISION" -eq 1 ]; then
-  echo "==> test-collision: install bundle + all meta-packages from local, assert single resolution"
+  echo "==> test-collision: install bundle + extracted siblings from local, assert single resolution"
+  # Install real-source local siblings first so the local bundle can resolve unpublished floors
+  # without fetching them from PyPI. Meta siblings must add no import package; real-source siblings
+  # must be excluded from the bundle so they own their import name alone.
+  for real in urirun-contract urirun-connector-router urirun-flow; do
+    [ -d "$MONO/$real" ] && "$VENV/bin/pip" install --quiet "$MONO/$real"
+  done
   "$VENV/bin/pip" install --quiet "$ROOT/adapters/python"
-  # Install the meta-packages with --no-deps so they don't try to fetch `urirun` from PyPI
-  # (it is already installed locally above; the extras that pull these — urirun[cdp] etc. — are
-  # exercised once the meta-packages are published). A correct meta-package ships NO import
-  # package, so installing it must not add a second copy of any urirun_* name.
   for meta in urirun-runtime urirun-cdp urirun-connectors-toolkit urirun-flow; do
+    [ "$meta" = "urirun-flow" ] && continue
     [ -d "$MONO/$meta" ] && "$VENV/bin/pip" install --quiet --no-deps "$MONO/$meta"
   done
   "$VENV/bin/python3" - <<'PY'
@@ -59,24 +62,32 @@ import importlib.metadata as md
 import sys
 
 pd = md.packages_distributions()  # import-name -> [distribution names]
-NAMES = ["urirun_runtime", "urirun_cdp", "urirun_connectors_toolkit", "urirun_flow",
-         "urirun_node", "urirun_twin", "urirun_contracts", "urirun_scanner"]
+EXPECTED = {
+    "urirun_runtime": ["urirun"],
+    "urirun_cdp": ["urirun"],
+    "urirun_connectors_toolkit": ["urirun"],
+    "urirun_flow": ["urirun-flow"],
+    "urirun_node": ["urirun"],
+    "urirun_twin": ["urirun"],
+    "urirun_contracts": ["urirun"],
+    "urirun_scanner": ["urirun"],
+}
 failures = []
-for name in NAMES:
+for name, expected in EXPECTED.items():
     dists = sorted(set(pd.get(name, [])))
-    if dists != ["urirun"]:
-        failures.append(f"{name} -> {dists or 'NOT FOUND'} (expected ['urirun'])")
+    if dists != expected:
+        failures.append(f"{name} -> {dists or 'NOT FOUND'} (expected {expected})")
     else:
-        print(f"  ok  {name} resolves to exactly ['urirun']")
+        print(f"  ok  {name} resolves to exactly {expected}")
 
-# the colliding names must also actually import, and the folded-in flow DSL must work
+# the extracted names must also actually import, and the standalone flow DSL must work
 try:
     import urirun_cdp, urirun_connectors_toolkit, urirun_runtime, urirun_flow  # noqa: F401
     from urirun_flow import Flow  # was silently broken when urirun_flow was a path-loading shim
     from urirun_flow.run import run_flow  # noqa: F401
     from urirun_flow.flow import make_flow  # noqa: F401
     print("  ok  urirun_cdp / urirun_connectors_toolkit / urirun_runtime import")
-    print("  ok  from urirun_flow import Flow  (DSL fold-in)")
+    print("  ok  from urirun_flow import Flow  (standalone owner)")
     print("  ok  urirun_flow.run.run_flow + urirun_flow.flow.make_flow")
 except Exception as exc:  # noqa: BLE001
     failures.append(f"IMPORT {type(exc).__name__}: {exc}")
@@ -94,6 +105,7 @@ fi
 
 if [ "$LOCAL_MODE" -eq 1 ]; then
   echo "==> test-install: pip install urirun from local $ROOT/adapters/python (no PyPI)"
+  [ -d "$MONO/urirun-flow" ] && "$VENV/bin/pip" install --quiet "$MONO/urirun-flow"
   "$VENV/bin/pip" install --quiet "$ROOT/adapters/python"
 else
   echo "==> test-published: pip install urirun==$VERSION (clean venv, no editable, no URIRUN_KERNEL_SRC)"
@@ -235,14 +247,15 @@ assert r.get("ok"), f"/run returned not-ok: {r}"
 print(f"  ok  /run env://pypi-gate/runtime/query/health")
 PY
 
-# ── Collision guard (post-publish): the meta-packages must add NO second copy of any name ──
-# urirun-runtime / urirun-cdp / urirun-connectors-toolkit / urirun-flow are meta-packages that
-# ship no import package — the bundled `urirun` is the single source of truth. Installing them
-# alongside `urirun` must therefore leave EVERY urirun_* import name resolving to exactly one
-# distribution. (The pre-publish equivalent against local builds is `--collision`.)
-echo "==> test-collision: install the meta-packages alongside urirun (zero tolerance for shadowing)"
+# ── Collision guard (post-publish): extracted packages must not double-ship import names ──
+# urirun-runtime / urirun-cdp / urirun-connectors-toolkit remain meta-packages that ship no import
+# package. urirun-flow is now a real-source owner, and bundled `urirun` must not ship
+# `urirun_flow`. Installing them alongside `urirun` must therefore leave EVERY urirun_* import
+# name resolving to exactly one distribution. (The pre-publish equivalent against local builds is
+# `--collision`.)
+echo "==> test-collision: install extracted siblings alongside urirun (zero tolerance for shadowing)"
 "$VENV/bin/pip" install --quiet urirun-runtime urirun-cdp urirun-connectors-toolkit urirun-flow 2>/dev/null || {
-  echo "  skip  meta-packages not yet on PyPI (publish them to exercise this check end-to-end)"
+  echo "  skip  extracted siblings not yet on PyPI (publish them to exercise this check end-to-end)"
 }
 
 "$VENV/bin/python3" - <<'PY'
@@ -258,8 +271,8 @@ if collisions:
     print("COLLISION FAIL: urirun_* name(s) shipped by 2+ distributions:", file=sys.stderr)
     for name, dists in sorted(collisions.items()):
         print(f"  {name} -> {dists}", file=sys.stderr)
-    print("  Fix: the extra distribution must be a meta-package (no import package; "
-          "depends on urirun) so the bundle stays the single source of truth.", file=sys.stderr)
+    print("  Fix: choose one owner. Meta-packages must ship no import package; real-source "
+          "packages require the bundle to exclude that import name.", file=sys.stderr)
     sys.exit(1)
 print("  ok  no package-name collisions — every urirun_* name resolves to a single distribution")
 PY

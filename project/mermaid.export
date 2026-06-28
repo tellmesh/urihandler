@@ -1,5 +1,5 @@
 flowchart TD
-%% generated in 0.02s
+%% generated in 0.01s
     subgraph adapters__bash
         adapters__bash__urirun__urirun_command["urirun_command"]
         adapters__bash__urirun__urirun_document["urirun_document"]
