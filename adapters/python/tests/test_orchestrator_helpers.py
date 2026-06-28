@@ -9,6 +9,7 @@ from urirun.host.chat_orchestrator import (
     _route_targets_active,
     _inactive_node_urls,
     _timeline_steps_all_ok,
+    _chat_insert_routing_preview,
 )
 
 
@@ -213,3 +214,31 @@ def test_calls_suggest_recall_with_real_memory(monkeypatch):
     finally:
         if original is not None:
             fl.suggest_recall = original
+
+
+def test_routing_preview_attaches_runs_on_by_step():
+    """The orchestrator emits WHERE each plan step runs before executing."""
+    flow = {"steps": [
+        {"uri": "kvm://lenovo/cdp/page/command/navigate"},
+        {"uri": "kvm://host/screen/query/capture"},
+        {"uri": "kvm://ghost/x/query/y"},          # unknown target → blocked
+    ]}
+    mesh = {
+        "nodes": [{"name": "lenovo", "url": "http://192.168.188.201:8765"}],
+        "routes": [
+            {"uri": "kvm://lenovo/cdp/page/command/navigate", "node": "lenovo"},
+            {"uri": "kvm://host/screen/query/capture", "node": "lenovo"},
+        ],
+    }
+    messages = []
+
+    class _Deps:
+        def add_chat_message_fn(self, db, message):
+            messages.append(message)
+
+    r = _chat_insert_routing_preview("db", flow, mesh, ["node:lenovo"], True, _Deps())
+    assert r["runsOnByStep"]["kvm://lenovo/cdp/page/command/navigate"] == "lenovo"
+    assert r["runsOnByStep"]["kvm://host/screen/query/capture"] == "lenovo"
+    assert r["blockedSteps"] == [{"uri": "kvm://ghost/x/query/y", "blockedAt": "target"}]
+    assert messages[0]["detail"]["kind"] == "routing-plan"
+    assert messages[0]["detail"]["routing"] == r

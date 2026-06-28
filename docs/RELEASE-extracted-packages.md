@@ -70,3 +70,42 @@ makes `pip install urirun` fail outright (worse than the current import-time err
 An extraction is **not done when the shim lands** — it is done when the target package is
 **published AND pinned**. Re-test `node.sh` after each new extraction; a green shim with an
 unpublished target silently breaks every fresh install.
+
+## Two categories of extracted package (current model, 2026-06-28)
+
+The `urirun-*` siblings settled into **two distinct kinds** — keeping them apart removes the main
+"where does this code live?" confusion. (Sections above are historical: `urirun` is now `0.4.190`
+on PyPI and these packages publish via per-repo `release.yml`.)
+
+**Meta-packages** — ship NO code (`[tool.setuptools] packages = []`), only `depends urirun>=<hub>`.
+`pip install urirun-<name>` pulls `urirun`; the namespace `urirun_<name>` resolves from the monorepo
+(`adapters/python/`). The repo is a PyPI distribution handle, nothing more.
+- `urirun-connectors-toolkit`, `urirun-runtime`, `urirun-cdp`, `urirun-flow`
+- Their ONLY promise is "the namespace imports after install" → enforced by a per-repo
+  `ci.yml` import-smoke (`pip install . && python -c "import urirun_<name>"`). Without it, a
+  namespace rename in `urirun` breaks the wrapper silently.
+- `urirun-flow` additionally carries a JS emitter SDK (`js/`) + conformance harness (`conformance.py`,
+  documented in its README, run by its Makefile) — repo content, NOT shipped via the empty Python
+  wheel. Intentional, not cruft.
+
+**Real-source packages** — own code, sole source of truth; the monorepo SHIMS to them
+(e.g. `urirun.connectors.declarative` → `from urirun_declarative import …`).
+- `urirun-contract` (contract kernel), `urirun-connector-router` (URI routing/preflight kernel),
+  `urirun-declarative`, `urirun-widgets`, `urirun-artifacts`
+- Each runs its own tests in CI (`ci.yml`: **install-then-`pytest`** — the install matters, routes
+  execute through the local-function-subprocess adapter which imports the package by name, so a bare
+  `pytest` without install gives false failures).
+- `urirun-contract` additionally runs the contract gates (`conform`, `check_single_source`).
+- `urirun-connector-router` owns route safety, URI parsing, template matching, `route.node`/`runsOn`
+  resolution, and the diagnostic layers used before NL-generated actions are dispatched. The
+  monorepo side must remain a shim plus integration guard, not a second routing implementation.
+
+**The rule:** a package is EITHER a meta-wrapper (no source, smoke-tested) OR a real-source package
+(own code, test-CI'd) — never half-extracted. Moving source out of the monorepo for
+flow/runtime/cdp/toolkit would split one build/test into four and multiply version drift; keep them
+meta. The real-source set are deliberate exceptions with genuinely separable concerns.
+
+**Version floors:** every sibling's `urirun>=X` floor tracks the hub VERSION via
+`urirun/scripts/sync-sibling-floors.sh` (run at release; `--check` mode is a drift gate). Independent
+per-package SemVer (`0.1.0`/`0.2.0`) is fine; the `urirun>=X` floor must not lag (widgets/artifacts
+were stuck at `urirun>=0.4.14` while the hub was `0.4.190`).

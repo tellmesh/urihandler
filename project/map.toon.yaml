@@ -1,12 +1,12 @@
-# urirun | 269f 43830L | yaml:5,txt:4,json:15,shell:13,python:200,yml:2,javascript:5,java:2,go:3,typescript:2,perl:2,toml:2,rust:2,php:2,c:1,cpp:1,csharp:4,ruby:2 | 2026-06-28
-# generated in 0.09s
-# stats: 2592 func | 0 cls | 269 mod | CC̄=4.6 | critical:0 | cycles:0
+# urirun | 272f 44087L | yaml:5,txt:4,json:15,shell:15,python:201,yml:2,javascript:5,java:2,go:3,typescript:2,perl:2,toml:2,rust:2,php:2,c:1,cpp:1,csharp:4,ruby:2 | 2026-06-28
+# generated in 0.05s
+# stats: 2587 func | 0 cls | 272 mod | CC̄=4.6 | critical:0 | cycles:0
 # alerts[5]: fan-out _add_host_subparser=30; fan-out serve=30; fan-out summary=30; fan-out main=26; fan-out NodeHandler._handle_run=25
 # hotspots[5]: _add_host_subparser fan=30; serve fan=30; summary fan=30; main fan=26; NodeHandler._handle_run fan=25
 # evolution: CC̄ 4.6→4.6 (flat 0.0)
 # Keys: M=modules, D=details, i=imports, e=exports, c=classes, f=functions, m=methods
-M[269]:
-  Makefile,168
+M[272]:
+  Makefile,177
   adapters/bash/example/hash-connector.sh,9
   adapters/bash/urirun.sh,17
   adapters/c/urirun.h,13
@@ -33,7 +33,7 @@ M[269]:
   adapters/php/Urirun.php,73
   adapters/php/composer.json,7
   adapters/php/example/hash-connector.php,14
-  adapters/python/pyproject.toml,77
+  adapters/python/pyproject.toml,78
   adapters/python/scripts/heal_future_imports.py,84
   adapters/python/urirun/__init__.py,766
   adapters/python/urirun/_registry.py,8
@@ -66,7 +66,7 @@ M[269]:
   adapters/python/urirun/host/android_node.py,162
   adapters/python/urirun/host/artifacts_admin.py,4
   adapters/python/urirun/host/capability.py,160
-  adapters/python/urirun/host/chat_orchestrator.py,1614
+  adapters/python/urirun/host/chat_orchestrator.py,1660
   adapters/python/urirun/host/connector_admin.py,240
   adapters/python/urirun/host/contracts.py,119
   adapters/python/urirun/host/dashboard.js,2986
@@ -187,9 +187,9 @@ M[269]:
   adapters/python/urirun_flow/__init__.py,216
   adapters/python/urirun_flow/cli.py,65
   adapters/python/urirun_flow/diagnostics.py,589
-  adapters/python/urirun_flow/flow.py,948
+  adapters/python/urirun_flow/flow.py,1033
   adapters/python/urirun_flow/flow_planner.py,938
-  adapters/python/urirun_flow/flow_thin.py,594
+  adapters/python/urirun_flow/flow_thin.py,597
   adapters/python/urirun_flow/recovery.py,393
   adapters/python/urirun_flow/run.py,236
   adapters/python/urirun_node/_artifacts.py,111
@@ -200,6 +200,7 @@ M[269]:
   adapters/python/urirun_node/keyauth.py,182
   adapters/python/urirun_node/mesh.py,308
   adapters/python/urirun_node/preconditions.py,218
+  adapters/python/urirun_node/routing.py,17
   adapters/python/urirun_node/server.py,997
   adapters/python/urirun_node/transport.py,540
   adapters/python/urirun_runtime/__init__.py,1
@@ -252,10 +253,12 @@ M[269]:
   project.sh,69
   requirements.txt,32
   scripts/cc_gate.py,86
+  scripts/dev-install.sh,52
   scripts/extraction_audit.py,423
   scripts/lint_connectors.py,140
   scripts/release-bump.sh,29
   scripts/repin_connectors.py,176
+  scripts/sync-sibling-floors.sh,44
   scripts/sync-versions.sh,25
   scripts/test_pypi_install.sh,267
   scripts/transport_swap_proof.py,118
@@ -1668,7 +1671,7 @@ Connector a...
     node_token_for(node;fallback)
     run_node_uri(node_url;uri;payload)
   adapters/python/urirun/host/chat_orchestrator.py:
-    e: ChatDeps,chat_message,compact_chat_result,_is_document_sync_prompt,_document_sync_node_from_prompt,_chat_ask_phone_scanner,_sync_execute_initial,_sync_ok_and_status,_apply_urifix_recovery,_chat_ask_document_sync,_classify_exc_remediation,_build_escalation_block,_chat_ask_general_planner_failure,_result_envelope_ok,_result_for_timeline_step,_timeline_step_ok,_timeline_steps_all_ok,_resolve_artifact_value,_build_remote_path_maps,_save_inline_attachment,_enrich_remote_attachments,_register_step_artifacts,_emit_general_chat_message,_general_path_complete,_collect_target_names,_try_ensure_kvm_for_node,_try_auto_ensure_screen_capture,_chat_ask_general_capability_gap,_apply_run_credentials,_restore_run_credentials,_actual_nodes_from_steps,_rebuild_node_targets,_inactive_node_urls,_route_targets_active,_filter_mesh_for_targets,_sync_targets_from_flow,_fetch_planner_environments_for_nodes,_find_human_node,_escalate_offline_to_human,_chat_ask_general_check_offline,_chat_ask_general_build_result,_try_recall_gate,_is_selected_remote_node,_flag_remote_capture_inline,_suggest_recall_for_memory,_screen_capability_gap_or_recall,_prompt_names_remote,_apply_host_default_when_no_node_in_prompt,_target_selection_explicit,_has_explicit_remote_selection,_apply_explicit_target_sync,_apply_local_nl_override,_chat_ask_general,_add_chat_user_message,_chat_insert_twin_preview,_parse_chat_nodes_targets,_init_selected_targets,_infer_node_targets,chat_ask
+    e: ChatDeps,chat_message,compact_chat_result,_is_document_sync_prompt,_document_sync_node_from_prompt,_chat_ask_phone_scanner,_sync_execute_initial,_sync_ok_and_status,_apply_urifix_recovery,_chat_ask_document_sync,_classify_exc_remediation,_build_escalation_block,_chat_ask_general_planner_failure,_result_envelope_ok,_result_for_timeline_step,_timeline_step_ok,_timeline_steps_all_ok,_resolve_artifact_value,_build_remote_path_maps,_save_inline_attachment,_enrich_remote_attachments,_register_step_artifacts,_emit_general_chat_message,_general_path_complete,_collect_target_names,_try_ensure_kvm_for_node,_try_auto_ensure_screen_capture,_chat_ask_general_capability_gap,_apply_run_credentials,_restore_run_credentials,_actual_nodes_from_steps,_rebuild_node_targets,_inactive_node_urls,_route_targets_active,_filter_mesh_for_targets,_sync_targets_from_flow,_fetch_planner_environments_for_nodes,_find_human_node,_escalate_offline_to_human,_chat_ask_general_check_offline,_chat_ask_general_build_result,_try_recall_gate,_is_selected_remote_node,_flag_remote_capture_inline,_suggest_recall_for_memory,_screen_capability_gap_or_recall,_prompt_names_remote,_apply_host_default_when_no_node_in_prompt,_target_selection_explicit,_has_explicit_remote_selection,_apply_explicit_target_sync,_apply_local_nl_override,_chat_ask_general,_add_chat_user_message,_chat_insert_twin_preview,_routing_plan_content,_chat_insert_routing_preview,_parse_chat_nodes_targets,_init_selected_targets,_infer_node_targets,chat_ask
     ChatDeps:
     chat_message(role;content)
     compact_chat_result(result;payload)
@@ -1724,6 +1727,8 @@ Connector a...
     _chat_ask_general(project;db;config;payload;node_urls;token;identity;prompt;execute;no_llm;selected_nodes;selected_targets;deps)
     _add_chat_user_message(db;prompt;config;node_urls)
     _chat_insert_twin_preview(db;prompt;selected_nodes;selected_targets;deps)
+    _routing_plan_content(report)
+    _chat_insert_routing_preview(db;flow;execution_mesh;selected_targets;execute;deps)
     _parse_chat_nodes_targets(payload)
     _init_selected_targets(requested_nodes;requested_targets)
     _infer_node_targets(prompt;requested_nodes;requested_targets;config;node_urls;deps)
@@ -2266,7 +2271,7 @@ Connector a...
     planner_failure(exc)
     _uri_remediate(payload)
   adapters/python/urirun_flow/flow.py:
-    e: _flow_format,flow_document,write_flow_document,load_flow_document,_flow_step_failure,_flow_timeline_entry,_self_heal_via_uri,_attempt_self_heal,_cdp_needs_provision,_provision_cdp_surface,_preflight,_kvm_targets,suggest_recall,_flow_key,_remember_known_good_flow,_capture_known_good,_update_known_good,_drift_timeline,_circuit_break_if_over,_resolve_payload_or_fail,_step_fail_envelope,_set_service_map,_restore_service_map,_make_memory_dispatch,_plan_with_preflight,_thin_remember_record,_route_node_for_uri,_kvm_step_targets,_drift_steps_for,_build_thin_plan,_default_dispatch_uri,_make_flow_envelope,_resolve_dispatch,_mesh_routes,execute_flow,_should_compensate,_apply_compensation,_apply_reversibility,run_flow_document,_inproc_category,_inproc_result,_in_process_discovery,make_dispatch_uri,_flow_transport,rollback_flow,_uri_goal_verify,_uri_preflight,_uri_env_drift,_remember_node_profile,_uri_memory_remember
+    e: _flow_format,flow_document,write_flow_document,load_flow_document,_flow_step_failure,_flow_timeline_entry,_self_heal_via_uri,_attempt_self_heal,_cdp_needs_provision,_provision_cdp_surface,_preflight,_kvm_targets,suggest_recall,_flow_key,_remember_known_good_flow,_capture_known_good,_update_known_good,_drift_timeline,_circuit_break_if_over,_resolve_payload_or_fail,_step_fail_envelope,_set_service_map,_restore_service_map,_make_memory_dispatch,_plan_with_preflight,_thin_remember_record,_route_node_for_uri,_kvm_step_targets,_drift_steps_for,_build_thin_plan,_default_dispatch_uri,_make_flow_envelope,_resolve_dispatch,_mesh_routes,_flow_routing_report,_routing_timeline,_routing_block_result,_apply_routing_targets,execute_flow,_should_compensate,_apply_compensation,_apply_reversibility,run_flow_document,_inproc_category,_inproc_result,_in_process_discovery,make_dispatch_uri,_flow_transport,rollback_flow,_uri_goal_verify,_uri_preflight,_uri_env_drift,_remember_node_profile,_uri_memory_remember
     _flow_format(path;requested)
     flow_document(flow)
     write_flow_document(path;document;fmt)
@@ -2301,6 +2306,10 @@ Connector a...
     _make_flow_envelope(flow;envelope)
     _resolve_dispatch(dispatch_uri;memory;flow;registry)
     _mesh_routes(mesh)
+    _flow_routing_report(flow;mesh;routes)
+    _routing_timeline(report)
+    _routing_block_result(report;envelope)
+    _apply_routing_targets(result;report)
     execute_flow(flow;mesh;registry;execute)
     _should_compensate(ok;execute;rollback_on_failure;document)
     _apply_compensation(result;execution;mesh;scan_uri;dispatch_uri)
@@ -2831,7 +2840,6 @@ Connector a...
   adapters/python/urirun_scanner/scanner_bridge.py:
   adapters/python/urirun/node/manage.py:
   adapters/python/urirun/node/skill.py:
-  adapters/python/urirun/node/routing.py:
   adapters/python/urirun/node/_util.py:
   adapters/python/urirun/node/doctor.py:
   adapters/python/urirun/node/paths.py:
@@ -2921,6 +2929,7 @@ Connector a...
   adapters/python/urirun/node/config.py:
   adapters/python/urirun/node/node_cli.py:
   adapters/python/urirun/node/keyauth.py:
+  adapters/python/urirun/node/routing.py:
   adapters/python/urirun/node/task_cli.py:
   adapters/python/urirun/node/recovery.py:
   adapters/python/urirun/node/diagnostics.py:
@@ -2952,3 +2961,6 @@ Connector a...
   xlang/run3.sh:
   xlang/contracts.kvm.json:
   xlang/run_driver.sh:
+  scripts/sync-sibling-floors.sh:
+  scripts/dev-install.sh:
+  adapters/python/urirun_node/routing.py:

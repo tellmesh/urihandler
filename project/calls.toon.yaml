@@ -1,6 +1,6 @@
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.59s
-# nodes: 469 | edges: 500 | modules: 57
+# generated in 0.45s
+# nodes: 472 | edges: 500 | modules: 56
 # CC̄=4.6
 
 HUBS[20]:
@@ -16,32 +16,32 @@ HUBS[20]:
     CC=10  in:2  out:30  total:32
   adapters.python.urirun_node.server.NodeHandler._stream_events
     CC=14  in:0  out:31  total:31
-  scripts.transport_swap_proof.main
-    CC=5  in:0  out:29  total:29
   adapters.python.urirun_node.server.NodeHandler._handle_deploy
     CC=11  in:0  out:29  total:29
   adapters.python.urirun_node.server.NodeHandler._handle_run
     CC=14  in:0  out:29  total:29
+  scripts.transport_swap_proof.main
+    CC=5  in:0  out:29  total:29
   adapters.python.urirun.connectors.connector_lint.verify_connector
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun.connectors.connector_lint.lint_connector
-    CC=9  in:3  out:24  total:27
   adapters.python.urirun_node.server.apply_deploy
     CC=12  in:2  out:25  total:27
   adapters.python.urirun_runtime.v2.validate_binding_document
     CC=12  in:3  out:24  total:27
+  adapters.python.urirun.connectors.connector_lint.lint_connector
+    CC=9  in:3  out:24  total:27
   adapters.python.urirun_connectors_toolkit.resolver.resolve
     CC=12  in:2  out:24  total:26
   adapters.python.urirun.connectors.connect_catalog._cmd_show
     CC=9  in:0  out:25  total:25
+  adapters.python.urirun.host.dashboard.type
+    CC=2  in:23  out:1  total:24
   adapters.python.urirun_connectors_toolkit.resolver.index_local
     CC=12  in:2  out:22  total:24
   adapters.python.urirun_node.server.NodeHandler._get
     CC=12  in:4  out:19  total:23
-  adapters.python.urirun.host.dashboard.type
-    CC=2  in:22  out:1  total:23
-  adapters.python.urirun_node.server.NodeHandler._handle_enroll
-    CC=11  in:0  out:22  total:22
+  adapters.python.urirun_node.server._serve_opts_merged
+    CC=14  in:1  out:21  total:22
   adapters.python.urirun_flow.run.resolve_step
     CC=14  in:1  out:21  total:22
 
@@ -169,17 +169,6 @@ MODULES:
     deploy_dir  CC=5  out:7
     node_state_dir  CC=1  out:3
     node_token_path  CC=1  out:1
-  adapters.python.urirun.node.routing  [10 funcs]
-    binding_for_remote_route  CC=3  out:5
-    registry_fingerprint  CC=2  out:7
-    registry_from_routes  CC=3  out:3
-    route_class  CC=7  out:5
-    route_is_safe  CC=3  out:2
-    route_target  CC=1  out:1
-    route_targets_for_nodes  CC=14  out:10
-    routes_from_registry  CC=8  out:15
-    safe_route  CC=1  out:4
-    uri_is_denied  CC=2  out:1
   adapters.python.urirun.node.skill  [14 funcs]
     _episode_for  CC=8  out:6
     _memory  CC=1  out:1
@@ -246,12 +235,18 @@ MODULES:
     _rem_already_cdp  CC=6  out:7
   adapters.python.urirun_flow.flow  [2 funcs]
     _flow_transport  CC=1  out:8
-    execute_flow  CC=3  out:9
-  adapters.python.urirun_flow.flow_thin  [4 funcs]
+    execute_flow  CC=8  out:16
+  adapters.python.urirun_flow.flow_thin  [17 funcs]
     _action_error  CC=2  out:3
     _action_ok  CC=3  out:4
+    _circuit_break  CC=2  out:0
     _dig_path  CC=4  out:5
-    resolve_step_payload  CC=6  out:5
+    _extract_inverse  CC=6  out:10
+    _next_kind  CC=4  out:3
+    _resolve_inverse_uri  CC=4  out:7
+    _thin_circuit_break  CC=4  out:4
+    _thin_fold_inner_ok  CC=4  out:3
+    _thin_handle_acquire  CC=11  out:13
   adapters.python.urirun_flow.recovery  [22 funcs]
     _apply_one_remediation  CC=7  out:11
     _cdp_page_ready_actions  CC=3  out:3

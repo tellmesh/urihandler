@@ -13,6 +13,7 @@ dependencies = [
   "jsonschema>=4.18",
   "pydantic>=2",
   "urirun-contract>=0.1.0",
+  "urirun-connector-router>=0.2.0",
 ]
 
 [project.optional-dependencies]

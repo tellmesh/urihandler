@@ -321,7 +321,10 @@ def _thin_step_entry(sid: str, uri: str, r: dict) -> dict:
 
 
 def _thin_result_target(uri: str, result: dict) -> str:
-    service = str((result or {}).get("service") or "").strip()
+    result = result or {}
+    service = str(result.get("service") or "").strip()
+    if not service and isinstance(result.get("response"), dict):
+        service = str(result["response"].get("service") or "").strip()
     return service or route_target(uri)
 
 

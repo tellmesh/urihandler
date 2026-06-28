@@ -108,6 +108,131 @@ class TestHostDefault(unittest.TestCase):
         self.assertEqual(result["selectedTargets"], ["host"])
         self.assertEqual(captured["routes"], ["time://host/clock/query/now"])
 
+    def test_chat_execute_enables_router_guard(self):
+        messages = []
+        captured = {}
+
+        class FakeMesh:
+            def discover_mesh(self, _config):
+                return {
+                    "nodes": [],
+                    "routes": [{"uri": "time://host/clock/query/now", "node": "host", "safe": True}],
+                    "serviceMap": {},
+                }
+
+            def registry_from_routes(self, routes):
+                return {"routes": routes}
+
+            def fetch_planner_environments(self, *args, **kwargs):
+                return []
+
+            def make_flow(self, prompt, discovered, selected_nodes=None, use_llm=True, environments=None):
+                return (
+                    {"steps": [{"id": "now", "uri": "time://host/clock/query/now", "payload": {}}]},
+                    {"provider": "test"},
+                )
+
+            def execute_flow(self, *args, **kwargs):
+                captured["router_guard"] = kwargs.get("router_guard")
+                return {
+                    "ok": True,
+                    "timeline": [{"id": "now", "uri": "time://host/clock/query/now", "ok": True}],
+                    "results": {"now": {"ok": True, "result": {"value": {"ok": True}}}},
+                }
+
+        deps = co.ChatDeps(
+            host_db_fn=MagicMock(),
+            mesh_fn=FakeMesh,
+            host_config_fn=MagicMock(return_value={}),
+            node_alias_map_fn=MagicMock(return_value=ALIAS),
+            add_chat_message_fn=lambda db, msg: messages.append(msg),
+            page_action_enqueue_fn=MagicMock(),
+            ensure_phone_scanner_fn=MagicMock(),
+            sync_documents_fn=MagicMock(),
+        )
+
+        with patch.object(co, "_try_recall_gate", lambda *a, **k: (None, None)), \
+             patch.object(co, "_suggest_recall_for_memory", lambda *a, **k: None), \
+             patch.object(co, "capture_episode", lambda **k: {}), \
+             patch.object(co, "append_twin_widget", lambda *a, **k: None):
+            result = co._chat_ask_general(
+                "proj", "db", None,
+                {"prompt": "która godzina", "targets": ["host"], "execute": True},
+                [], None, None, "która godzina", True, True, [], ["host"], deps,
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertIs(captured["router_guard"], True)
+
+    def test_chat_emits_routing_plan_before_execute(self):
+        messages = []
+        events = []
+
+        class FakeMesh:
+            def discover_mesh(self, _config):
+                return {
+                    "nodes": [{"name": "lenovo", "url": "http://192.168.1.10:8765", "reachable": True}],
+                    "routes": [{
+                        "uri": "kvm://host/screen/query/capture",
+                        "node": "lenovo",
+                        "safe": True,
+                    }],
+                    "serviceMap": {},
+                }
+
+            def registry_from_routes(self, routes):
+                return {"routes": routes}
+
+            def fetch_planner_environments(self, *args, **kwargs):
+                return []
+
+            def make_flow(self, prompt, discovered, selected_nodes=None, use_llm=True, environments=None):
+                return (
+                    {"steps": [{"id": "cap", "uri": "kvm://host/screen/query/capture", "payload": {}}]},
+                    {"provider": "test"},
+                )
+
+            def execute_flow(self, *args, **kwargs):
+                events.append("execute")
+                return {
+                    "ok": True,
+                    "timeline": [{"id": "cap", "uri": "kvm://host/screen/query/capture", "ok": True}],
+                    "results": {"cap": {"ok": True, "result": {"value": {"ok": True}}}},
+                }
+
+        def add_message(db, msg):
+            messages.append(msg)
+            if msg.get("detail", {}).get("kind") == "routing-plan":
+                events.append("routing-plan")
+
+        deps = co.ChatDeps(
+            host_db_fn=MagicMock(),
+            mesh_fn=FakeMesh,
+            host_config_fn=MagicMock(return_value={}),
+            node_alias_map_fn=MagicMock(return_value=ALIAS),
+            add_chat_message_fn=add_message,
+            page_action_enqueue_fn=MagicMock(),
+            ensure_phone_scanner_fn=MagicMock(),
+            sync_documents_fn=MagicMock(),
+        )
+
+        with patch.object(co, "_try_recall_gate", lambda *a, **k: (None, None)), \
+             patch.object(co, "_suggest_recall_for_memory", lambda *a, **k: None), \
+             patch.object(co, "capture_episode", lambda **k: {}), \
+             patch.object(co, "append_twin_widget", lambda *a, **k: None):
+            result = co._chat_ask_general(
+                "proj", "db", None,
+                {"prompt": "zrób zrzut ekranu na lenovo", "targets": ["node:lenovo"], "execute": True},
+                [], None, None, "zrób zrzut ekranu na lenovo", True, True, ["lenovo"], ["node:lenovo"], deps,
+            )
+
+        routing_messages = [m for m in messages if m.get("detail", {}).get("kind") == "routing-plan"]
+        self.assertTrue(result["ok"])
+        self.assertEqual(events[:2], ["routing-plan", "execute"])
+        self.assertEqual(len(routing_messages), 1)
+        routing = routing_messages[0]["detail"]["routing"]
+        self.assertEqual(routing["runsOnByStep"]["kvm://host/screen/query/capture"], "lenovo")
+
     def test_no_node_in_prompt_strips_remote(self):
         nodes, targets = self._call(
             "opublikuj post na LinkedIn",

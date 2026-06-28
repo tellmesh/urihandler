@@ -8,7 +8,7 @@
         {"kind": "const:screenshot", "path": "str", "bytes": "int", "fullSize": ["int"], "via": "str"},
         {"kind": "const:screenshot", "degraded": "const:true", "degradedReason": "str", "bytes": "int"}
       ]},
-      "errors": ["portal-denied", "capture-backend-missing"],
+      "errors": ["precondition-unmet", "degraded-backend"],
       "examples": [
         {"payload": {"base64": false},
          "result": {"ok": true, "connector": "kvm", "action": "capture", "kind": "screenshot",
@@ -24,7 +24,7 @@
       "version": "v1", "effect": "command", "reversible": false, "inverseRoute": null,
       "inp": {"x": "int", "y": "int", "sw": "?int", "sh": "?int", "button": "?str", "do_click": "?bool"},
       "out": {"action": "const:click-abs", "screen": ["int"]},
-      "errors": ["uinput-unavailable"],
+      "errors": ["degraded-backend"],
       "examples": [
         {"payload": {"x": 840, "y": 612, "sw": 2560, "sh": 1440},
          "result": {"ok": true, "connector": "kvm", "action": "click-abs", "screen": [2560, 1440],
@@ -36,7 +36,7 @@
       "inp": {"id": "?str"},
       "out": {"action": "const:window-close", "reversible": "const:true", "snapshot": "obj",
               "inverse": {"path": "const:window/command/restore", "args": {"snapshot": "obj"}}},
-      "errors": ["cdp-unreachable"],
+      "errors": ["degraded-backend"],
       "examples": [
         {"payload": {"id": "active"},
          "result": {"ok": true, "connector": "kvm", "action": "window-close", "did": "close(active)",
@@ -51,7 +51,7 @@
       "inp": {"snapshot": "obj"},
       "out": {"action": "const:window-restore", "reversible": "const:true",
               "inverse": {"path": "const:window/command/close", "args": {"id": "?str"}}},
-      "errors": ["cdp-unreachable", "snapshot-url-missing"],
+      "errors": ["degraded-backend", "precondition-unmet"],
       "examples": [
         {"payload": {"snapshot": {"url": "https://example.test/x", "scrollY": 240, "forms": [], "id": "active"}},
          "result": {"ok": true, "connector": "kvm", "action": "window-restore", "did": "restore(active)",

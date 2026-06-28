@@ -786,6 +786,7 @@ def _emit_general_chat_message(
             "selectedTargets": selected_targets,
             "generator": generator,
             "flow": flow,
+            "routing": result.get("routing"),
             "timeline": result.get("timeline") or [],
             "results": result.get("results") or {},
             "error": result.get("error"),
@@ -801,6 +802,7 @@ def _emit_general_chat_message(
             "selectedNodes": selected_nodes,
             "selectedTargets": selected_targets,
             "generator": generator,
+            "routing": result.get("routing"),
             "timeline": result.get("timeline") or [],
             "recovery": result.get("recovery") or [],
         })
@@ -1484,8 +1486,9 @@ def _chat_ask_general(
         execution_mesh = _filter_mesh_for_targets(discovered, selected_targets)
         execution_registry = mesh.registry_from_routes(execution_mesh.get("routes") or [])
         _dispatch = make_local_dispatch_uri(execution_registry, _run_mode, local_first=_local_first)
+        _chat_insert_routing_preview(db, flow, execution_mesh, selected_targets, execute, deps)
         execution = mesh.execute_flow(flow, execution_mesh, execution_registry, execute=execute, memory=twin_memory,
-                                      dispatch_uri=_dispatch)
+                                      dispatch_uri=_dispatch, router_guard=execute)
     finally:
         _restore_run_credentials(old_token, old_identity)
     result = _chat_ask_general_build_result(
@@ -1553,6 +1556,49 @@ def _chat_insert_twin_preview(db, prompt, selected_nodes, selected_targets, deps
             detail={"twinPlan": twin_att, "selectedTargets": selected_targets},
             attachments=[twin_att],
         ))
+
+
+def _routing_plan_content(report: dict) -> str:
+    step_count = int(report.get("stepCount") or 0)
+    blocked = report.get("blockedSteps") or []
+    if blocked:
+        first = blocked[0]
+        return f"Routing Plan: blocked at {first.get('blockedAt') or 'unknown'} for {first.get('uri') or '<unknown>'}"
+    runs_on = [str(v) for v in (report.get("runsOnByStep") or {}).values() if v]
+    ordered = []
+    for target in runs_on:
+        if target not in ordered:
+            ordered.append(target)
+    where = ", ".join(ordered) if ordered else "unknown"
+    return f"Routing Plan: ok, {step_count} URI step(s), runs on {where}"
+
+
+def _chat_insert_routing_preview(
+    db: str | None,
+    flow: dict,
+    execution_mesh: dict,
+    selected_targets: list[str],
+    execute: bool,
+    deps: ChatDeps,
+) -> dict | None:
+    """Emit a pre-dispatch routing report so the operator sees where each URI will run."""
+    try:
+        from urirun.node.routing import diagnose_plan  # noqa: PLC0415
+        report = diagnose_plan(flow.get("steps") or [], execution_mesh, probe=False)
+    except Exception:  # noqa: BLE001 - routing preview is diagnostic; execution guard remains authoritative
+        return None
+    deps.add_chat_message_fn(db, chat_message(
+        "system",
+        _routing_plan_content(report),
+        detail={
+            "kind": "routing-plan",
+            "execute": execute,
+            "probe": False,
+            "selectedTargets": selected_targets,
+            "routing": report,
+        },
+    ))
+    return report
 
 
 def _parse_chat_nodes_targets(payload: dict) -> tuple[list[str], list[str]]:

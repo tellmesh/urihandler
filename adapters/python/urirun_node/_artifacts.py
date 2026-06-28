@@ -78,7 +78,7 @@ def materialize_base64_artifacts(data: Any, *, artifact_dir: str | None = None,
         if isinstance(value, dict):
             out = {}
             for key, item in value.items():
-                if isinstance(item, str) and key in {"base64", "data", "png", "screenshot", "image"}:
+                if isinstance(item, str) and key in {"base64", "data", "png", "pngBase64", "screenshot", "image"}:
                     decoded = _decode_base64_artifact(item)
                     if decoded:
                         raw, mime = decoded

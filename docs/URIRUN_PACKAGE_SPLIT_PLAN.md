@@ -5,6 +5,8 @@
 <!-- /docs-nav -->
 
 > **NOWY CEL REFAKTORYZACJI (2026-06-28, nadrzędny względem reszty dokumentu).**
+> Aktywna kolejność prac jest w `docs/ACTIVE_REFACTOR_PLAN.md`; ten dokument opisuje
+> model docelowy i historyczne decyzje splitu.
 > `urirun` ma zostać **maksymalnie prostym kernelem URI + CLI**, a nie
 > samodzielnym backendem aplikacyjnym. Wszystko, co jest zdolnością domenową,
 > procesem long-running, UI, przepływem, integracją lub kontraktem, ma mieć
@@ -95,6 +97,17 @@
 > jest aktywnie współedytowany — shim cdp.py bywa cofany przez drugi tor; bez commitu/koordynacji
 > dryfuje do dwóch kopii (nic się nie psuje, ale rozjeżdża).
 
+> **STATUS EKSTRAKCJI (2026-06-28) — `urirun-connector-router`.**
+> Routing URI jest teraz osobnym real-source package, a nie kolejną funkcją w `urirun`.
+> Paczka `urirun-connector-router` jest właścicielem parsera URI, `safe`/denylisty,
+> dopasowania template routes, `route.node`/`runsOn`, `diagnose_plan` i warstw
+> `parse -> target -> route -> reachability -> safety`. Stara ścieżka
+> `urirun.node.routing`/`urirun_node.routing` ma zostać shimem do tej paczki.
+> `execute_flow(router_guard=True)` używa raportu przed dispatch i blokuje plan z błędem
+> `ROUTING_BLOCKED`; chat dodatkowo emituje komunikat `Routing Plan` przed pierwszą akcją,
+> żeby operator widział, czy np. `kvm://host/...` faktycznie zostanie uruchomione na `lenovo`
+> przez `route.node`.
+
 > **GRANICA AKTUALNOŚCI.** Blok powyżej oraz sekcje "Docelowy Model
 > Slim-Core", "Minimalne API `urirun`" i "Reguły Ekstrakcji" poniżej są
 > bieżącym planem: `urirun` jako slim-core, kontrakty w `urirun-contract`,
@@ -109,6 +122,7 @@
 | --- | --- | --- |
 | URI grammar, registry, policy, envelope, minimal dispatch | `urirun` | Core bez domeny i bez UI |
 | Route contract, schema, lint, reversible, compat, codegen | `urirun-contract` | Jedno źródło jakości kontraktów |
+| URI route planning, target/runsOn resolution, pre-dispatch diagnostics | `urirun-connector-router` | Jedno źródło decyzji gdzie wykonać krok |
 | Authoring toolkit, scaffold, resolver, catalog helpers | `urirun-connectors-toolkit` | Narzędzia dla paczek, nie runtime core |
 | Domenowe możliwości (`fs`, `email`, `ksef`, `kvm`, `planfile`, `sqlite`, `domain-monitor`) | `urirun-connector-*` | Każda zdolność ma własny manifest, testy i opcjonalny `contracts.json` |
 | Long-running dashboard/scanner/android node | `urirun-service-*` | Procesy mają własne entry pointy i `service.manifest.json` |

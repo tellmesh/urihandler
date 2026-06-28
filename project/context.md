@@ -1,15 +1,15 @@
 # System Architecture Analysis
-<!-- generated in 0.02s -->
+<!-- generated in 0.01s -->
 
 ## Overview
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 200, json: 15, shell: 13, yaml: 5, javascript: 5
+- **Languages**: python: 201, json: 15, shell: 15, yaml: 5, javascript: 5
 - **Analysis Mode**: static
-- **Total Functions**: 2592
+- **Total Functions**: 2587
 - **Total Classes**: 63
-- **Modules**: 269
+- **Modules**: 272
 - **Entry Points**: 1067
 
 ## Architecture by Module
@@ -36,7 +36,7 @@
 - **File**: `urirun-v1.js`
 
 ### adapters.python.urirun.host.chat_orchestrator
-- **Functions**: 58
+- **Functions**: 60
 - **Classes**: 1
 - **File**: `chat_orchestrator.py`
 
@@ -49,14 +49,14 @@
 - **Classes**: 3
 - **File**: `server.py`
 
+### adapters.python.urirun_flow.flow
+- **Functions**: 54
+- **File**: `flow.py`
+
 ### adapters.python.urirun
 - **Functions**: 53
 - **Classes**: 1
 - **File**: `__init__.py`
-
-### adapters.python.urirun_flow.flow
-- **Functions**: 50
-- **File**: `flow.py`
 
 ### adapters.python.urirun.host.object_registry
 - **Functions**: 46
@@ -456,7 +456,7 @@ concurrency (If-Registry-
 - **Output to**: adapters.python.urirun_node.formatting.format_table, len, len, rows.append, None.get
 
 ### adapters.python.urirun_node.formatting.format_routes
-- **Output to**: adapters.python.urirun_node.formatting.format_table, sorted, adapters.python.urirun.node.routing.safe_route, route.get, route.get
+- **Output to**: adapters.python.urirun_node.formatting.format_table, sorted, safe_route, route.get, route.get
 
 ### adapters.python.urirun_node.formatting.format_tickets
 - **Output to**: adapters.python.urirun_node.formatting.format_table, ticket.get, ticket.get, None.get, None.get

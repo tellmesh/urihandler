@@ -1,6 +1,6 @@
-# code2llm | 273f 43830L | python:200,json:15,shell:13,yaml:5,javascript:5,txt:4,csharp:4,go:3,yml:2,java:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-28
+# code2llm | 276f 44087L | python:201,json:15,shell:15,yaml:5,javascript:5,txt:4,csharp:4,go:3,yml:2,java:2,typescript:2,perl:2,toml:2,rust:2,php:2,ruby:2,c:1,cpp:1 | 2026-06-28
 # generated in 0.26s
-# CC̅=4.6 | critical:0/2592 | dups:0 | cycles:0
+# CC̅=4.6 | critical:0/2587 | dups:0 | cycles:0
 
 HEALTH[0]: ok
 
@@ -116,6 +116,8 @@ LAYERS:
   │ lint_connectors            140L  0C    6m  CC=13     ←0
   │ transport_swap_proof       118L  0C    5m  CC=6      ←0
   │ cc_gate                     86L  0C    3m  CC=8      ←0
+  │ dev-install.sh              52L  0C    0m  CC=0.0    ←0
+  │ sync-sibling-floors.sh      44L  0C    0m  CC=0.0    ←0
   │ release-bump.sh             29L  0C    0m  CC=0.0    ←0
   │ sync-versions.sh            25L  0C    0m  CC=0.0    ←0
   │
@@ -137,19 +139,19 @@ LAYERS:
   │ !! dashboard.js              2986L  0C  443m  CC=14     ←51
   │ !! v2                        2033L  2C  120m  CC=14     ←5
   │ !! host_dashboard            1934L  0C  102m  CC=14     ←1
-  │ !! chat_orchestrator         1614L  1C   58m  CC=14     ←0
+  │ !! chat_orchestrator         1660L  1C   60m  CC=14     ←0
   │ !! scanner_bridge            1548L  0C    0m  CC=0.0    ←0
   │ !! document_sync             1422L  0C    0m  CC=0.0    ←0
+  │ !! flow                      1033L  0C   54m  CC=10     ←6
   │ !! server                     997L  3C   55m  CC=14     ←3
   │ !! object_registry            981L  0C   46m  CC=14     ←0
-  │ !! flow                       948L  0C   50m  CC=10     ←6
   │ !! flow_planner               938L  0C   40m  CC=14     ←3
   │ !! node_cli                   910L  0C   57m  CC=13     ←1
   │ !! __init__                   766L  1C   53m  CC=14     ←14
   │ !! _registry                  718L  0C   43m  CC=14     ←1
   │ !! scanner.js                 681L  0C  121m  CC=14     ←1
   │ !! _runtime                   602L  1C   30m  CC=13     ←2
-  │ !! flow_thin                  594L  1C   28m  CC=14     ←1
+  │ !! flow_thin                  597L  1C   28m  CC=14     ←1
   │ !! diagnostics                589L  1C   19m  CC=8      ←2
   │ !! client                     558L  1C   35m  CC=12     ←1
   │ !! transport                  540L  0C   24m  CC=14     ←3
@@ -210,7 +212,7 @@ LAYERS:
   │ heal_future_imports         84L  0C    3m  CC=7      ←0
   │ urirun.go                   80L  3C    5m  CC=3      ←0
   │ formatting                  80L  0C    4m  CC=8      ←2
-  │ pyproject.toml              77L  0C    0m  CC=0.0    ←0
+  │ pyproject.toml              78L  0C    0m  CC=0.0    ←0
   │ __init__                    76L  2C    1m  CC=1      ←0
   │ _version                    76L  0C    5m  CC=5      ←1
   │ Urirun.php                  73L  1C    5m  CC=3      ←0
@@ -233,6 +235,7 @@ LAYERS:
   │ urirun-connector.AssemblyInfo.cs    22L  0C    0m  CC=0.0    ←0
   │ urirun_test.c               18L  0C    2m  CC=2      ←0
   │ urirun.sh                   17L  0C    2m  CC=0.0    ←0
+  │ routing                     17L  0C    0m  CC=0.0    ←0
   │ urirun-connector.csproj.FileListAbsolute.txt    15L  0C    0m  CC=0.0    ←0
   │ package.json                14L  0C    0m  CC=0.0    ←0
   │ hash_connector.pl           14L  0C    0m  CC=0.0    ←0
@@ -307,7 +310,6 @@ LAYERS:
   │ event_schema                 4L  3C    2m  CC=5      ←1
   │ manage                       4L  0C   36m  CC=13     ←0
   │ skill                        4L  0C   17m  CC=12     ←1
-  │ routing                      4L  0C   11m  CC=14     ←10
   │ _util                        4L  0C    6m  CC=2      ←7
   │ doctor                       4L  0C   13m  CC=9      ←1
   │ paths                        4L  0C    3m  CC=5      ←4
@@ -332,6 +334,7 @@ LAYERS:
   │ _version                     4L  0C    0m  CC=0.0    ←0
   │ config                       4L  0C    0m  CC=0.0    ←0
   │ keyauth                      4L  0C    0m  CC=0.0    ←0
+  │ routing                      4L  0C    0m  CC=0.0    ←0
   │ recovery                     4L  0C    0m  CC=0.0    ←0
   │ diagnostics                  4L  0C    0m  CC=0.0    ←0
   │ server                       4L  0C    0m  CC=0.0    ←0
@@ -388,7 +391,7 @@ LAYERS:
   │ !! planfile.yaml             1319L  0C    0m  CC=0.0    ←0
   │ !! tree.txt                   613L  0C    0m  CC=0.0    ←0
   │ !! goal.yaml                  538L  0C    0m  CC=0.0    ←0
-  │ Makefile                   168L  0C    0m  CC=0.0    ←0
+  │ Makefile                   177L  0C    0m  CC=0.0    ←0
   │ prefact.yaml                94L  0C    0m  CC=0.0    ←0
   │ project.sh                  69L  0C    0m  CC=0.0    ←0
   │ requirements.txt            32L  0C    0m  CC=0.0    ←0
@@ -419,13 +422,13 @@ COUPLING:
   security.mesh-probe                                         1                                                                                                                                                 ──
   CYCLES: none
   HUB: adapters.python/ (fan-in=8)
-  HUB: adapters/ (fan-in=18)
-  HUB: v1.js/ (fan-in=6)
   HUB: scripts/ (fan-in=163)
+  HUB: v1.js/ (fan-in=6)
+  HUB: adapters/ (fan-in=18)
   SMELL: adapters.python/ fan-out=165 → split needed
+  SMELL: xlang/ fan-out=8 → split needed
   SMELL: adapters/ fan-out=12 → split needed
   SMELL: examples.matrix/ fan-out=9 → split needed
-  SMELL: xlang/ fan-out=8 → split needed
 
 EXTERNAL:
   validation: run `vallm batch .` → validation.toon

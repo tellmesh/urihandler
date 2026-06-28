@@ -96,6 +96,17 @@ def test_materialize_replaces_large_png():
         assert artifacts[0]["mime"] == "image/png"
 
 
+def test_materialize_replaces_png_base64_capture_field():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        data = {"result": {"value": {"kind": "screenshot", "pngBase64": base64.b64encode(_PNG_HEADER).decode()}}}
+        out, artifacts = materialize_base64_artifacts(data, artifact_dir=tmpdir, hint="screen")
+        ref = out["result"]["value"]["pngBase64"]
+        assert "artifactPath" in ref
+        assert Path(ref["artifactPath"]).exists()
+        assert len(artifacts) == 1
+        assert artifacts[0]["fields"] == ["screen.result.value.pngBase64"]
+
+
 def test_materialize_deduplicates_identical_content():
     with tempfile.TemporaryDirectory() as tmpdir:
         encoded = base64.b64encode(_PNG_HEADER).decode()

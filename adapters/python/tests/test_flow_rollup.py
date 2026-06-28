@@ -63,6 +63,77 @@ def test_thin_step_entry_uses_transport_service_as_target() -> None:
     assert entry["target"] == "lenovo"
 
 
+def test_thin_step_entry_uses_nested_response_service_as_target() -> None:
+    from urirun_flow.flow_thin import _thin_step_entry
+
+    entry = _thin_step_entry(
+        "capture",
+        "kvm://host/screen/query/capture",
+        {"ok": True, "response": {"service": "lenovo"}},
+    )
+
+    assert entry["target"] == "lenovo"
+
+
+def test_execute_flow_attaches_pre_execution_routing_report() -> None:
+    uri = "kvm://host/screen/query/capture"
+    flow_doc = {"steps": [{"id": "capture", "uri": uri}]}
+    mesh = {
+        "nodes": [{"name": "lenovo", "url": "http://192.168.188.201:8765"}],
+        "routes": [{"uri": uri, "node": "lenovo"}],
+    }
+
+    def fake_dispatch(_uri, _payload=None):
+        return {"ok": True, "result": {"value": {"ok": True}}}
+
+    res = flow.execute_flow(flow_doc, mesh=mesh, registry={}, execute=False, dispatch_uri=fake_dispatch)
+
+    assert res["ok"] is True
+    assert res["routing"]["ok"] is True
+    assert res["routing"]["runsOnByStep"][uri] == "lenovo"
+
+
+def test_execute_flow_router_guard_blocks_before_dispatch() -> None:
+    uri = "kvm://host/screen/query/capture"
+    flow_doc = {"steps": [{"id": "capture", "uri": uri}]}
+    mesh = {
+        "nodes": [{"name": "lenovo", "url": "http://192.168.188.201:8765"}],
+        "routes": [{"uri": "fs://host/file/query/stat", "node": "host"}],
+    }
+    dispatched: list[str] = []
+
+    def fake_dispatch(_uri, _payload=None):
+        dispatched.append(_uri)
+        return {"ok": True}
+
+    res = flow.execute_flow(
+        flow_doc, mesh=mesh, registry={}, execute=True,
+        dispatch_uri=fake_dispatch, router_guard=True,
+    )
+
+    assert res["ok"] is False
+    assert res["error"]["category"] == "ROUTING_BLOCKED"
+    assert res["routing"]["blockedSteps"] == [{"uri": uri, "blockedAt": "route"}]
+    assert dispatched == []
+
+
+def test_execute_flow_routing_target_is_used_for_transport_failure_timeline() -> None:
+    uri = "kvm://host/ui/query/verify"
+    flow_doc = {"steps": [{"id": "verify", "uri": uri}]}
+    mesh = {
+        "nodes": [{"name": "lenovo", "url": "http://192.168.188.201:8765"}],
+        "routes": [{"uri": uri, "node": "lenovo"}],
+    }
+
+    def fake_dispatch(_uri, _payload=None):
+        return {"ok": False, "uri": _uri, "target": "host", "error": {"type": "transport", "message": "timed out"}}
+
+    res = flow.execute_flow(flow_doc, mesh=mesh, registry={}, execute=True, dispatch_uri=fake_dispatch)
+
+    assert res["ok"] is False
+    assert res["timeline"][0]["target"] == "lenovo"
+
+
 def test_execute_flow_aborts_on_inner_action_failure(monkeypatch) -> None:
     """End-to-end guard for the LinkedIn case: a flow whose first action fails (transport
     200, inner ok False) must ABORT — report ok False AND not dispatch the dependent step.

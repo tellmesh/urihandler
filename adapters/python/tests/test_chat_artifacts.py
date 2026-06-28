@@ -4,11 +4,12 @@
 # A mesh-routed frozen artifact (e.g. a screenshot from kvm://…/screen/query/capture) must get a
 # durable artifact address at flow completion, not just a transient chat attachment — mesh steps
 # bypass _run_inprocess_connector_uri's register hook, so chat_orchestrator catalogs them itself.
+import base64
 import os
 import tempfile
 import unittest
 
-from urirun.host.chat_orchestrator import _register_step_artifacts
+from urirun.host.chat_orchestrator import _register_step_artifacts, compact_chat_result
 
 
 class _FakeDB:
@@ -76,6 +77,34 @@ class RegisterStepArtifactsTests(unittest.TestCase):
             self._result({"kind": "screenshot", "live": False, "path": self.path}),
             "db", Boom())
         self.assertEqual(n, 0)  # swallowed — a catalog hiccup must not fail the chat turn
+
+
+class CompactChatResultTests(unittest.TestCase):
+    def test_png_base64_capture_field_becomes_artifact_reference(self):
+        png = b"\x89PNG\r\n\x1a\n" + (b"x" * 4096)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = {
+                "results": {
+                    "capture": {
+                        "ok": True,
+                        "result": {
+                            "value": {
+                                "kind": "screenshot",
+                                "live": False,
+                                "path": "/remote/shot.png",
+                                "pngBase64": base64.b64encode(png).decode(),
+                            }
+                        },
+                    }
+                }
+            }
+            out = compact_chat_result(result, {"artifact_dir": tmpdir})
+
+        ref = out["results"]["capture"]["result"]["value"]["pngBase64"]
+        self.assertIsInstance(ref, dict)
+        self.assertIn("artifactPath", ref)
+        self.assertNotIn(base64.b64encode(png).decode(), str(out))
+        self.assertEqual(out["artifacts"][0]["fields"], ["host-chat.results.capture.result.value.pngBase64"])
 
 
 if __name__ == "__main__":
