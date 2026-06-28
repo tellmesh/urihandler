@@ -338,14 +338,31 @@ Minimalny zestaw bram architektonicznych:
 - collision smoke dla paczek real-source,
 - slim import smoke: `import urirun` nie może importować host/node/flow/widgets.
 
-Praktyczne komendy są utrzymywane w `ACTIVE_REFACTOR_PLAN.md` i w Makefile
-poszczególnych paczek.
+W hubie domyślne `make test` odpala oba ratchety strukturalne przed cięższymi
+suite'ami:
+
+```text
+make slim-import
+make render-single-source
+```
+
+`slim-import` dopuszcza kernel `urirun_runtime`, ale blokuje import-time creep z
+warstw host/node/flow/scanner/widgets/twin. `render-single-source` blokuje
+definicje renderu widgetów w `urirun.host`; host może tylko konsumować
+`urirun-widgets`.
+
+Pozostałe praktyczne komendy są utrzymywane w `ACTIVE_REFACTOR_PLAN.md` i w
+Makefile poszczególnych paczek.
 
 ## Aktualne luki
 
-1. `urirun-connector-router` i `urirun-widgets` muszą zostać opublikowane przed
-   kolejnym release hub, inaczej świeża instalacja może mieć niespełnialne
-   zależności.
+1. `urirun-connector-router` i `urirun-widgets` są **publish-ready** (LICENSE,
+   `connector.manifest.json`, `python -m build` + `twine check` zielone 2/2,
+   czysty wheel importuje); pozostaje sam **upload na PyPI** przed kolejnym release
+   hub — inaczej świeża instalacja może mieć niespełnialne zależności. Ta sama
+   zależność dotyczy real-source `urirun-flow`/`urirun-runtime`: w środowiskach z
+   zainstalowanymi paczkami system jest zgodny, ryzyko jest tylko przy fresh
+   install bez publikacji.
 2. `urirun-service-chat` istnieje, ale pełny kod operator chat/dashboard nadal
    jest głównie w hub `urirun.host`.
 3. `urirun-node` jest meta-package; real-source split node/mesh jest następny po
