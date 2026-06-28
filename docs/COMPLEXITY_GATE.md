@@ -45,6 +45,28 @@ the refactor used — they preserve behaviour:
 - **Split a god-function** — move each intent branch to its own handler and leave a thin
   dispatcher (see `chat_ask`, which went from CC=100 to a small dispatcher + handlers).
 
+## The radon gate vs. the `code2llm` `critical` metric
+
+These are **two different metrics** and only one is enforced. The CI gate above is **radon,
+`complexity > 15`**. The `code2llm` HEALTH report (e.g. `critical:7/2384`, `🟡 CC … (limit:15)`)
+is a *separate* analyzer with its own count — its `critical` tier and the per-function CC it
+prints do **not** match radon's, so a function `code2llm` flags `🟡 CC=15` already **passes**
+the radon gate (which only fails on `> 15`), and a non-zero `code2llm critical:N` does **not**
+mean CI is red. When deciding what to refactor, run `python scripts/cc_gate.py` — that is the
+authoritative list of what breaks the build. Treat `code2llm` as a trend signal, not a gate.
+
+JS/Go functions (e.g. `dashboard.js`'s `humanTaskBanner`) are **out of scope** for this
+Python gate; their complexity is covered by the xlang polyglot proofs and the `code2llm`
+report only.
+
+## Recent reductions
+
+- **2026-06-28** — four host functions taken back under the limit by pure helper extraction
+  (behaviour-preserving): `_try_recall_gate` 17→8 (`_recall_env_fp`, `_unwrap_recall`),
+  `_enrich_remote_attachments` 17→5 (`_resolve_attachment_preview`),
+  `local_entry_point_host_routes` 16→5 (`_host_entry_point_route`, `_entry_point_safe`),
+  `_chat_ask_general` 17→14 (`_attach_known_good_recall`). Gate green afterwards.
+
 ## Background
 
 This gate locks in a complexity-reduction pass that brought the worst offenders under the
@@ -54,7 +76,5 @@ extracted two self-contained concerns out of the 10k-line `host_dashboard.py` in
 metadata) and [`host/scanner_net.py`](../adapters/python/urirun/host/scanner_net.py) (scanner
 networking / QR / TLS). See [Roadmap](REFACTOR_ROADMAP.md) for the broader backlog.
 
-> The gate uses radon with a strict `> 15`, which matches the project's reported `critical: 0`
-> state. If you ever want exact parity with the `code2llm` metric the analysis reports, the
-> gate's backend is a one-line swap — but radon is the right call for CI (fast, deterministic,
-> no output parsing).
+> Want exact parity with the `code2llm` metric instead? The gate's backend is a one-line swap —
+> but radon is the right call for CI (fast, deterministic, no output parsing).
