@@ -350,8 +350,11 @@ poszczególnych paczek.
    jest głównie w hub `urirun.host`.
 3. `urirun-node` jest meta-package; real-source split node/mesh jest następny po
    ustabilizowaniu flow/runtime.
-4. `urirun-runtime` i `urirun-cdp` są nadal meta-package albo shimowane
-   powierzchnie; decyzja real-source/fold-in jest otwarta.
+4. `urirun-runtime` jest **rozstrzygnięty: real-source** — kod żyje w `urirun_runtime/`
+   (24 moduły: `_runtime`, `_registry`, `_scan`, `cli`, `codegen`…), `urirun/runtime/*`
+   to shimy, a dystrybucja `urirun-runtime` jest meta-wrapperem nad bundlem. To samo
+   dotyczy `urirun-flow` (real-source w `urirun-flow/urirun_flow/`). Otwarte zostaje już
+   tylko `urirun-cdp` (real-source vs fold-in do browser/webnode).
 5. Duże moduły hosta nadal są właścicielami wielu concernów i powinny być
    rozbijane dopiero po zielonych smoke testach router/chat/flow.
 
