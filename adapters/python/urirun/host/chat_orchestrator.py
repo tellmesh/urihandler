@@ -1942,11 +1942,15 @@ def _infer_node_targets(prompt: str, requested_nodes: list[str], requested_targe
     return [f"node:{matched}"] if matched and matched != "host" else None
 
 
-def chat_ask(project: str, db: str | None, config: str | None, payload: dict, node_urls: list[str] | None,
-             token: str | None, identity: str | None, deps: ChatDeps) -> dict:
-    prompt = str(payload.get("prompt") or "").strip()
-    if not prompt:
-        raise ValueError("prompt is required")
+def _resolve_selected_targets(
+        payload: dict, prompt: str, config: str | None,
+        node_urls: list[str] | None, deps: "ChatDeps",
+) -> tuple[list[str], list[str], list[str], list[str]]:
+    """Resolve requested_nodes, requested_targets, selected_nodes, selected_targets from payload.
+
+    Applies NL node inference and the host-default rule.  Returns a 4-tuple:
+    (requested_nodes, requested_targets, selected_nodes, selected_targets).
+    """
     requested_nodes, requested_targets = _parse_chat_nodes_targets(payload)
     target_explicit = _target_selection_explicit(payload)
     selected_targets = _init_selected_targets(requested_nodes, requested_targets)
@@ -1958,9 +1962,6 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
     if inferred is not None:
         selected_targets = inferred
     selected_nodes = selected_nodes_from_targets(list(requested_nodes) if target_explicit else [], selected_targets)
-    execute = bool(payload.get("execute"))
-    no_llm = bool(payload.get("no_llm") or payload.get("noLlm"))
-    llm_model = _payload_llm_model(payload)
     # Rule: if the prompt doesn't mention which node to use, default to host.
     # The chat prompt is the routing command; stale contact/URL selections must
     # not make a host-local command run on a remote laptop. But do NOT override an
@@ -1969,15 +1970,50 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
     if not _has_explicit_remote_selection(requested_nodes, requested_targets, target_explicit):
         selected_nodes, selected_targets = _apply_host_default_when_no_node_in_prompt(
             prompt, selected_nodes, selected_targets, config, node_urls, deps)
-    _add_chat_user_message(
-        db, prompt, config, node_urls, execute=execute, no_llm=no_llm,
-        requested_nodes=requested_nodes, requested_targets=requested_targets,
-        selected_nodes=selected_nodes, selected_targets=selected_targets,
-        deps=deps, llm_model=llm_model,
-    )
+    return requested_nodes, requested_targets, selected_nodes, selected_targets
+
+
+def _extract_chat_flags(payload: dict) -> tuple[bool, bool, str | None]:
+    """Extract execution-control flags from the payload.
+
+    Returns (execute, no_llm, llm_model).
+    """
+    execute = bool(payload.get("execute"))
+    no_llm = bool(payload.get("no_llm") or payload.get("noLlm"))
+    llm_model = _payload_llm_model(payload)
+    return execute, no_llm, llm_model
+
+
+def _dispatch_chat_request(
+        project: str, db: str | None, config: str | None, payload: dict,
+        node_urls: list[str] | None, token: str | None, identity: str | None,
+        prompt: str, execute: bool, no_llm: bool,
+        selected_nodes: list[str], selected_targets: list[str],
+        deps: "ChatDeps",
+) -> dict:
+    """Route to the appropriate specialist handler (scanner / document-sync / general)."""
     if is_phone_scanner_prompt(prompt):
         return _chat_ask_phone_scanner(project, db, config, node_urls, token, identity, prompt, execute, selected_nodes, selected_targets, deps)
     if _is_document_sync_prompt(prompt, selected_nodes, selected_targets, config, node_urls, deps):
         return _chat_ask_document_sync(project, db, config, payload, node_urls, token, identity, prompt, execute, no_llm, selected_nodes, selected_targets, deps)
     return _chat_ask_general(project, db, config, payload, node_urls, token, identity, prompt,
                              execute, no_llm, selected_nodes, selected_targets, deps)
+
+
+def chat_ask(project: str, db: str | None, config: str | None, payload: dict, node_urls: list[str] | None,
+             token: str | None, identity: str | None, deps: ChatDeps) -> dict:
+    prompt = str(payload.get("prompt") or "").strip()
+    if not prompt:
+        raise ValueError("prompt is required")
+    requested_nodes, requested_targets, selected_nodes, selected_targets = _resolve_selected_targets(
+        payload, prompt, config, node_urls, deps)
+    execute, no_llm, llm_model = _extract_chat_flags(payload)
+    _add_chat_user_message(
+        db, prompt, config, node_urls, execute=execute, no_llm=no_llm,
+        requested_nodes=requested_nodes, requested_targets=requested_targets,
+        selected_nodes=selected_nodes, selected_targets=selected_targets,
+        deps=deps, llm_model=llm_model,
+    )
+    return _dispatch_chat_request(
+        project, db, config, payload, node_urls, token, identity,
+        prompt, execute, no_llm, selected_nodes, selected_targets, deps)
