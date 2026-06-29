@@ -617,21 +617,31 @@ def _resolve_node_remediation(node_name: str, diag: dict) -> tuple[dict, dict]:
     return node_diag, remediation
 
 
+def _diagnosis_title(remediation_class: str, node_name: str) -> str:
+    if remediation_class == "no-node-url":
+        return f"Skonfiguruj node urirun na {node_name}"
+    return f"Uruchom node urirun na {node_name}"
+
+
+def _diagnosis_instruction(remediation: dict, node_name: str, prompt: str) -> str:
+    return str(remediation.get("humanAction") or remediation.get("message") or (
+        f"Node '{node_name}' wymaga interwencji.\nZadanie: \"{prompt}\""
+    ))
+
+
+def _diagnosis_error_type(remediation: dict, remediation_class: str) -> str:
+    return str(remediation.get("errorType") or (
+        "NodeMissing" if remediation_class == "no-node-url" else "NodeOffline"
+    ))
+
+
 def _extract_node_diagnosis_params(node_name: str, prompt: str, diagnosis: dict | None) -> dict:
-    """Extract escalation parameters from node diagnosis data; returns a flat params dict."""
     diag = diagnosis or {}
     node_diag, remediation = _resolve_node_remediation(node_name, diag)
     remediation_class = str(remediation.get("class") or node_diag.get("remediationClass") or "unreachable")
     status = str(remediation.get("status") or node_diag.get("status") or "uri-process-unreachable")
-    title = (
-        f"Skonfiguruj node urirun na {node_name}"
-        if remediation_class == "no-node-url"
-        else f"Uruchom node urirun na {node_name}"
-    )
-    instruction = str(remediation.get("humanAction") or remediation.get("message") or (
-        f"Node '{node_name}' wymaga interwencji.\n"
-        f"Zadanie: \"{prompt}\""
-    ))
+    title = _diagnosis_title(remediation_class, node_name)
+    instruction = _diagnosis_instruction(remediation, node_name, prompt)
     return {
         "remediation_class": remediation_class,
         "remediation": remediation,
@@ -640,9 +650,7 @@ def _extract_node_diagnosis_params(node_name: str, prompt: str, diagnosis: dict 
         "instruction": instruction,
         "command": str(remediation.get("command") or ""),
         "dashboard_url": str(remediation.get("dashboardUrl") or ""),
-        "error_type": str(remediation.get("errorType") or (
-            "NodeMissing" if remediation_class == "no-node-url" else "NodeOffline"
-        )),
+        "error_type": _diagnosis_error_type(remediation, remediation_class),
         "error_message": str(remediation.get("message") or instruction),
         "notify": {"sound": "beep", "reason": "human-task"},
     }
