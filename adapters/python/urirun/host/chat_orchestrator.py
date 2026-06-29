@@ -59,7 +59,6 @@ from urirun_connector_router.target_resolution import (
     route_targets_active as _route_targets_active,
     with_local_host_routes as _with_local_host_routes_impl,
 )
-from urirun_connector_router.routing import route_target as _route_target
 
 
 @dataclasses.dataclass
@@ -1099,19 +1098,13 @@ def _sync_targets_from_flow(
     return new_nodes, _rebuild_node_targets(selected_targets, actual, has_local, existing_remote)
 
 
-def _fetch_planner_environments_for_nodes(mesh: Any, selected_nodes: list[str],
+def _fetch_planner_environments_for_nodes(mesh: Any, selected_nodes: list[str], execute: bool,
                                           registry: Any, discovered: dict, *, memory: Any = None) -> list:
-    """Fetch grounded env/surface/window contexts for reachable selected nodes.
-
-    This is a read-only planner probe, so it must also run for dry-run/preview. Otherwise
-    prompts such as "capture the monitor with Chrome" cannot be grounded before execution.
-    ``memory`` threads durable TwinMemory into planner_context so drift/preference guidance is live.
-    """
+    """Fetch grounded env/surface contexts for reachable selected nodes (only when executing).
+    ``memory`` threads the durable TwinMemory into planner_context so drift guidance is live."""
     reachable = {n["name"] for n in (discovered.get("nodes") or []) if n.get("reachable")}
-    if any(_route_target(str(r.get("uri") or "")) == "host" for r in (discovered.get("routes") or [])):
-        reachable.add("host")
     ground = [n for n in (selected_nodes or []) if n in reachable]
-    return mesh.fetch_planner_environments(ground, registry, discovered, memory=memory) if ground else []
+    return mesh.fetch_planner_environments(ground, registry, discovered, memory=memory) if (execute and ground) else []
 
 
 def _find_human_node(discovered: dict) -> tuple[str, str] | tuple[None, None]:
@@ -1325,21 +1318,6 @@ def _chat_ask_general_check_offline(
     return _chat_ask_general_planner_failure(exc, db, prompt, execute, no_llm, selected_nodes, selected_targets, deps)
 
 
-def _stamp_execution_target(result: dict) -> None:
-    """L11↔L3: stamp the router's ``runsOn`` into each step result as TOP-LEVEL execution
-    metadata, so results / routing / timeline agree on the MACHINE a step ran on. The nested
-    connector payload (``result.target``) is left intact — it is the connector's local view, which
-    can legitimately differ from where the mesh actually routed the call. Without this, a green
-    recall trace can claim two machines for one step (results=host, runsOn=lenovo)."""
-    runs_on = (result.get("routing") or {}).get("runsOnByStep") or {}
-    for sr in (result.get("results") or {}).values():
-        if not isinstance(sr, dict) or sr.get("target") is not None:
-            continue
-        uri = str(sr.get("invokedUri") or sr.get("uri") or "")
-        if runs_on.get(uri):
-            sr["target"] = runs_on[uri]
-
-
 def _chat_ask_general_build_result(
     execution: dict,
     flow: dict,
@@ -1375,7 +1353,6 @@ def _chat_ask_general_build_result(
         "flow": flow,
         **execution,
     }
-    _stamp_execution_target(result)
     if execute and not result.get("verification"):
         from urirun.host.contracts import flow_execution_verification as _flow_exec_verify  # noqa: PLC0415
         result["verification"] = _flow_exec_verify(flow, execution)
@@ -1407,6 +1384,28 @@ def _recall_routes_replan_required(flow: dict, routes: list[dict], registry: dic
     return bool(recall_env_enum_replan_required(flow, routes, inventories).get("required"))
 
 
+def _recalled_to_flow(recalled: dict, prompt: str, routes: list[dict] | None, registry: dict) -> dict | None:
+    """Build a recalled flow dict; return None if routes require replanning."""
+    from urirun_flow.flow_planner import prepare_screenshot_capture_flow  # noqa: PLC0415
+    _rec_steps = recalled.get("steps") or []
+    flow = {"steps": _rec_steps,
+            "task": {"id": "recall", "source": recalled.get("source", "recall"), "title": prompt}}
+    allowed_uris = {str(s.get("uri") or "") for s in _rec_steps if isinstance(s, dict)}
+    allowed_uris.update(str(r.get("uri") or "") for r in (routes or []) if isinstance(r, dict))
+    flow = prepare_screenshot_capture_flow(flow, prompt, allowed_uris)
+    if routes and _recall_routes_replan_required(flow, routes, registry):
+        return None
+    return flow
+
+
+def _build_recall_generator(recalled: dict) -> dict:
+    """Build the generator metadata dict for a recalled episode."""
+    return {"provider": "recall", "fallback": False, "cached": True,
+            "episodeId": recalled.get("episode_id"),
+            "flowKey": recalled.get("flow_key"),
+            "source": recalled.get("source")}
+
+
 def _try_recall_gate(twin_memory, selected_nodes: list, prompt: str,
                      routes: list[dict] | None = None, registry: dict | None = None) -> tuple:
     """Check the episode recall gate; return (flow, generator) or (None, None) on miss."""
@@ -1419,20 +1418,10 @@ def _try_recall_gate(twin_memory, selected_nodes: list, prompt: str,
                                       {"prompt": prompt, "env_fp": _env_fp, "node": _node}))
     if _recalled is None:
         return None, None
-    _rec_steps = _recalled.get("steps") or []
-    flow = {"steps": _rec_steps,
-            "task": {"id": "recall", "source": _recalled.get("source", "recall"), "title": prompt}}
-    from urirun_flow.flow_planner import prepare_screenshot_capture_flow  # noqa: PLC0415
-    allowed_uris = {str(s.get("uri") or "") for s in _rec_steps if isinstance(s, dict)}
-    allowed_uris.update(str(r.get("uri") or "") for r in (routes or []) if isinstance(r, dict))
-    flow = prepare_screenshot_capture_flow(flow, prompt, allowed_uris)
-    if routes and _recall_routes_replan_required(flow, routes, registry or {}):
+    flow = _recalled_to_flow(_recalled, prompt, routes, registry or {})
+    if flow is None:
         return None, None
-    generator = {"provider": "recall", "fallback": False, "cached": True,
-                 "episodeId": _recalled.get("episode_id"),
-                 "flowKey": _recalled.get("flow_key"),
-                 "source": _recalled.get("source")}
-    return flow, generator
+    return flow, _build_recall_generator(_recalled)
 
 
 def _is_selected_remote_node(n: dict, sel: set[str]) -> bool:
@@ -1698,49 +1687,6 @@ def _chat_ask_general_needs_selection(selection: dict, db: str | None, prompt: s
     }
 
 
-def _chat_ask_general_env_block(selection: dict, db: str | None, prompt: str, execute: bool,
-                                selected_nodes: list[str], selected_targets: list[str],
-                                deps: ChatDeps,
-                                *, no_llm: bool = False,
-                                generator: dict | None = None) -> dict:
-    kind = str(selection.get("kind") or "blocked")
-    violation = selection.get("violation") or {}
-    next_step = selection.get("next") or {"kind": "blocked"}
-    value = violation.get("value")
-    allowed = violation.get("allowed") or []
-    content = f"Nie można wykonać: {kind}"
-    if value is not None and allowed:
-        content = f"Nie można wykonać: {kind} ({value!r} poza {allowed})"
-    attachment = {"kind": kind, "path": kind, "violation": violation, "next": next_step}
-    detail = {
-        **selection,
-        "prompt": prompt,
-        "execute": execute,
-        "noLlm": no_llm,
-        "generator": generator or {},
-    }
-    deps.add_chat_message_fn(db, {
-        "role": "system",
-        "content": content,
-        "detail": detail,
-        "attachments": [attachment],
-    })
-    return {
-        "ok": False,
-        "kind": kind,
-        "prompt": prompt,
-        "execute": execute,
-        "noLlm": no_llm,
-        "selectedNodes": selected_nodes,
-        "selectedTargets": selected_targets,
-        "generator": generator or {},
-        "violation": violation,
-        "next": next_step,
-        "flow": selection.get("flow") or {},
-        "attachments": [attachment],
-    }
-
-
 def _attach_known_good_recall(result: dict, recall: dict | None) -> dict:
     """Attach a knownGoodRecall summary to the result when a recall suggestion was made."""
     if recall is not None:
@@ -1752,6 +1698,50 @@ def _attach_known_good_recall(result: dict, recall: dict | None) -> dict:
             "nodes": recall.get("nodes") or [],
         }
     return result
+
+
+def _chat_ask_general_plan_step(
+    mesh, twin_memory, planner_nodes, no_llm,
+    selected_nodes, selected_targets, prompt, _routes, registry,
+    discovered, db, execute, payload, deps, llm_model,
+) -> tuple:
+    """Inner planning try/except block for _chat_ask_general.
+
+    Returns (early_response, flow, generator, env_inventories, selected_nodes, selected_targets).
+    If early_response is not None, the caller should return it immediately.
+
+    Recall gate: skip LLM for known intent x environment combinations.
+    Dispatched via twin://host/flow/query/recall so the gate itself is a URI
+    (introspectable, replaceable, remoteable).  Three-tier priority inside the
+    handler: episode_id direct -> intent x env (episode_store) -> intent-only (flow_store).
+    The flow_store fallback fires even when env_fp is empty -- new install, offline node --
+    closing the loop that the episode gate alone left open.
+    """
+    try:
+        environments = _fetch_planner_environments_for_nodes(
+            mesh, planner_nodes, execute, registry, discovered, memory=twin_memory)
+        flow, generator = _try_recall_gate(twin_memory, selected_nodes, prompt, _routes, registry)
+        if flow is None:
+            retrieval = _retrieve_experience_context(twin_memory, selected_nodes, prompt, _routes)
+            flow, generator = _make_flow_with_retrieval(
+                mesh, prompt, discovered, planner_nodes, no_llm, environments, retrieval,
+                llm_model=llm_model)
+        flow = _apply_capture_preferences(flow, twin_memory)
+        selection = _resolve_env_enum_flow(flow, registry, _routes, twin_memory)
+        if not selection.get("ok"):
+            early = _chat_ask_general_needs_selection(
+                selection, db, prompt, execute, selected_nodes, selected_targets, deps,
+                no_llm=no_llm, generator=generator)
+            return early, None, None, {}, selected_nodes, selected_targets
+        flow = selection.get("flow") or flow
+        env_inventories = selection.get("inventories") or {}
+        selected_nodes, selected_targets = _apply_explicit_target_sync(
+            payload, flow, discovered, selected_nodes, selected_targets)
+    except Exception as exc:  # noqa: BLE001 - return a recovery contract instead of a raw API failure.
+        early = _chat_ask_general_planner_failure(
+            exc, db, prompt, execute, no_llm, selected_nodes, selected_targets, deps)
+        return early, None, None, {}, selected_nodes, selected_targets
+    return None, flow, generator, env_inventories, selected_nodes, selected_targets
 
 
 def _chat_ask_general(
@@ -1792,43 +1782,16 @@ def _chat_ask_general(
         _routes = discovered.get("routes") or []
         registry = mesh.registry_from_routes(_routes)
         from urirun.node.twin_store import durable_memory as _durable_memory  # noqa: PLC0415
-        planner_memory = _durable_memory()
-        execution_memory = planner_memory if execute else None
+        twin_memory = _durable_memory() if execute else None
         planner_nodes = _planner_nodes_for_targets(selected_nodes, selected_targets)
-        try:
-            environments = _fetch_planner_environments_for_nodes(
-                mesh, planner_nodes, registry, discovered, memory=planner_memory)
-            # Recall gate: skip LLM for known intent × environment combinations.
-            # Dispatched via twin://host/flow/query/recall so the gate itself is a URI
-            # (introspectable, replaceable, remoteable).  Three-tier priority inside the
-            # handler: episode_id direct → intent×env (episode_store) → intent-only (flow_store).
-            # The flow_store fallback fires even when env_fp is empty — new install, offline node —
-            # closing the loop that the episode gate alone left open.
-            flow, generator = _try_recall_gate(
-                planner_memory, selected_nodes, prompt, _routes, registry)
-            if flow is None:
-                retrieval = _retrieve_experience_context(
-                    planner_memory, selected_nodes, prompt, _routes)
-                flow, generator = _make_flow_with_retrieval(
-                    mesh, prompt, discovered, planner_nodes, no_llm, environments, retrieval,
-                    llm_model=llm_model)
-            flow = _apply_capture_preferences(flow, planner_memory)
-            selection = _resolve_env_enum_flow(flow, registry, _routes, planner_memory)
-            if not selection.get("ok"):
-                if not selection.get("needsSelection"):
-                    return _chat_ask_general_env_block(
-                        selection, db, prompt, execute, selected_nodes, selected_targets, deps,
-                        no_llm=no_llm, generator=generator)
-                return _chat_ask_general_needs_selection(
-                    selection, db, prompt, execute, selected_nodes, selected_targets, deps,
-                    no_llm=no_llm, generator=generator)
-            flow = selection.get("flow") or flow
-            env_inventories = selection.get("inventories") or {}
-            selected_nodes, selected_targets = _apply_explicit_target_sync(
-                payload, flow, discovered, selected_nodes, selected_targets)
-        except Exception as exc:  # noqa: BLE001 - return a recovery contract instead of a raw API failure.
-            return _chat_ask_general_planner_failure(exc, db, prompt, execute, no_llm, selected_nodes, selected_targets, deps)
-        _recall = _suggest_recall_for_memory(flow, planner_memory)
+        early_resp, flow, generator, env_inventories, selected_nodes, selected_targets = \
+            _chat_ask_general_plan_step(
+                mesh, twin_memory, planner_nodes, no_llm,
+                selected_nodes, selected_targets, prompt, _routes, registry,
+                discovered, db, execute, payload, deps, llm_model)
+        if early_resp is not None:
+            return early_resp
+        _recall = _suggest_recall_for_memory(flow, twin_memory)
         _run_mode = "execute" if execute else "dry-run"
         selected_nodes, selected_targets, _local_first = _apply_local_nl_override(
             prompt, selected_nodes, selected_targets)
@@ -1839,10 +1802,9 @@ def _chat_ask_general(
         _dispatch = make_local_dispatch_uri(execution_registry, _run_mode, local_first=_local_first)
         routing_report = _chat_insert_routing_preview(db, flow, execution_mesh, selected_targets, execute, deps)
         _chat_insert_twin_flow_preview(db, prompt, flow, selected_targets, routing_report, deps)
-        execution = mesh.execute_flow(flow, execution_mesh, execution_registry, execute=execute, memory=execution_memory,
+        execution = mesh.execute_flow(flow, execution_mesh, execution_registry, execute=execute, memory=twin_memory,
                                       dispatch_uri=_dispatch, router_guard=execute)
-        if execute:
-            _remember_capture_preferences(flow, execution, execution_memory)
+        _remember_capture_preferences(flow, execution, twin_memory)
     finally:
         _restore_run_credentials(old_token, old_identity)
     result = _chat_ask_general_build_result(
