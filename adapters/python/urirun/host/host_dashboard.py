@@ -1270,8 +1270,6 @@ def summary(project: str, db: str | None, config: str | None, node_urls: list[st
         "logs": logs,
     }
 
-
-
 # POST-path sub-handlers and auxiliary functions extracted to _dashboard_post_handlers.
 from ._dashboard_post_handlers import (  # noqa: E402
     node_add, node_remove,
@@ -1282,6 +1280,7 @@ from ._dashboard_post_handlers import (  # noqa: E402
     _handle_get, _handle_post_connectors, _handle_post_nodes, _handle_post_scanner,
     _handle_post_chat, _handle_post_tasks, _handle_post_artifacts, _handle_post,
 )
+
 def create_handler(
     project: str,
     db: str | None = None,
