@@ -597,21 +597,8 @@ def _find_human_node(discovered: dict) -> tuple[str, str] | tuple[None, None]:
     return None, None
 
 
-def _escalate_offline_to_human(
-    offline_nodes: list[str],
-    prompt: str,
-    discovered: dict,
-    execute: bool,
-) -> dict | None:
-    """Create a human:// task on any reachable node; routes through run_node_uri for classification.
-
-    Returns a pending-escalation envelope. If no human:// route is active, the
-    envelope still carries a local humanTask so the dashboard can show and beep
-    instead of silently falling back to host execution.
-    """
-    from urirun.host.node_dispatch import run_node_uri  # noqa: PLC0415
-
-    node_name = offline_nodes[0]
+def _offline_task_labels(node_name: str, prompt: str) -> tuple[str, str, dict]:
+    """Build title, instruction, and notify metadata for an offline-node human task."""
     title = f"Uruchom node urirun na {node_name}"
     instruction = (
         f"Node '{node_name}' jest offline.\n"
@@ -620,82 +607,87 @@ def _escalate_offline_to_human(
         f"  urirun node serve --name {node_name}\n"
         f"Naciśnij Done po uruchomieniu."
     )
-    notify = {"sound": "beep", "reason": "human-task"}
-    human_node, human_url = _find_human_node(discovered)
+    return title, instruction, {"sound": "beep", "reason": "human-task"}
 
-    if not execute:
-        return {
-            "ok": False,
-            "humanEscalation": True,
-            "kind": "human-task",
-            "dryRun": True,
-            "offlineNodes": offline_nodes,
-            "humanTask": {
-                "id": None,
-                "title": title,
-                "node": human_node or "host",
-                "targetNode": node_name,
-                "instruction": instruction,
-            },
-            "notify": notify,
-            "next": {"kind": "human-task", "instruction": instruction, "notify": notify},
-            "message": (
-                f"Node(s) {offline_nodes!r} są offline. "
-                f"W trybie execute zostałoby stworzone zadanie dla człowieka na '{human_node or 'host'}'."
-            ),
-        }
 
-    if not human_node or not human_url:
-        return {
-            "ok": False,
-            "humanEscalation": True,
-            "kind": "human-task",
-            "offlineNode": node_name,
-            "offlineNodes": offline_nodes,
-            "humanTask": {
-                "id": None,
-                "title": title,
-                "node": "host",
-                "targetNode": node_name,
-                "instruction": instruction,
-                "surfaceUrl": "",
-                "status": "pending-local",
-            },
-            "next": {"kind": "human-task", "instruction": instruction, "notify": notify},
-            "notify": notify,
-            "error": {
-                "type": "NodeOffline",
-                "message": (
-                    f"Node '{node_name}' jest offline. "
-                    "Brak aktywnej trasy human://task/create; pokaż operatorowi instrukcję z humanTask."
-                ),
-                "offlineNodes": offline_nodes,
-            },
-            "selectedTargets": [f"node:{node_name}"],
-            "timeline": [{
-                "id": "human:offline-escalation",
-                "uri": "human://host/task/create",
-                "ok": False,
-                "target": "host",
-                "reversible": False,
-            }],
-        }
-
-    task_payload = {
-        "title": title,
-        "instruction": instruction,
-        "node": human_node,
-        "kind": "action",
-        "scope": "per-instance",
-        "env": human_node,
+def _build_dryrun_offline_envelope(
+    offline_nodes: list[str], node_name: str, human_node: str | None,
+    title: str, instruction: str, notify: dict, prompt: str,
+) -> dict:
+    """Return the dry-run escalation envelope (execute=False path)."""
+    return {
+        "ok": False,
+        "humanEscalation": True,
+        "kind": "human-task",
+        "dryRun": True,
+        "offlineNodes": offline_nodes,
+        "humanTask": {
+            "id": None,
+            "title": title,
+            "node": human_node or "host",
+            "targetNode": node_name,
+            "instruction": instruction,
+        },
+        "notify": notify,
+        "next": {"kind": "human-task", "instruction": instruction, "notify": notify},
+        "message": (
+            f"Node(s) {offline_nodes!r} są offline. "
+            f"W trybie execute zostałoby stworzone zadanie dla człowieka na '{human_node or 'host'}'."
+        ),
     }
+
+
+def _build_no_route_offline_envelope(
+    offline_nodes: list[str], node_name: str, title: str, instruction: str, notify: dict,
+) -> dict:
+    """Return the local-only escalation envelope when no human:// route is reachable."""
+    return {
+        "ok": False,
+        "humanEscalation": True,
+        "kind": "human-task",
+        "offlineNode": node_name,
+        "offlineNodes": offline_nodes,
+        "humanTask": {
+            "id": None,
+            "title": title,
+            "node": "host",
+            "targetNode": node_name,
+            "instruction": instruction,
+            "surfaceUrl": "",
+            "status": "pending-local",
+        },
+        "next": {"kind": "human-task", "instruction": instruction, "notify": notify},
+        "notify": notify,
+        "error": {
+            "type": "NodeOffline",
+            "message": (
+                f"Node '{node_name}' jest offline. "
+                "Brak aktywnej trasy human://task/create; pokaż operatorowi instrukcję z humanTask."
+            ),
+            "offlineNodes": offline_nodes,
+        },
+        "selectedTargets": [f"node:{node_name}"],
+        "timeline": [{
+            "id": "human:offline-escalation",
+            "uri": "human://host/task/create",
+            "ok": False,
+            "target": "host",
+            "reversible": False,
+        }],
+    }
+
+
+def _build_executed_offline_envelope(
+    offline_nodes: list[str], node_name: str, human_node: str, human_url: str,
+    title: str, instruction: str, notify: dict, task_payload: dict, run_node_uri,
+) -> dict | None:
+    """Call run_node_uri to create a human task; return the full envelope or None on failure."""
     env = run_node_uri(
         human_url, f"human://{human_node}/task/create", task_payload, timeout=5.0,
         node_name=human_node,
     )
     if not env.get("ok"):
         return None
-
     val = (env.get("result") or {}).get("value") or {}
     task = val.get("task") or {}
     surface = val.get("surface") or {}
@@ -742,6 +734,84 @@ def _escalate_offline_to_human(
     }
 
 
+def _escalate_offline_to_human(
+    offline_nodes: list[str],
+    prompt: str,
+    discovered: dict,
+    execute: bool,
+) -> dict | None:
+    """Create a human:// task on any reachable node; routes through run_node_uri for classification.
+
+    Returns a pending-escalation envelope. If no human:// route is active, the
+    envelope still carries a local humanTask so the dashboard can show and beep
+    instead of silently falling back to host execution.
+    """
+    from urirun.host.node_dispatch import run_node_uri  # noqa: PLC0415
+
+    node_name = offline_nodes[0]
+    title, instruction, notify = _offline_task_labels(node_name, prompt)
+    human_node, human_url = _find_human_node(discovered)
+    if not execute:
+        return _build_dryrun_offline_envelope(
+            offline_nodes, node_name, human_node, title, instruction, notify, prompt,
+        )
+    if not human_node or not human_url:
+        return _build_no_route_offline_envelope(offline_nodes, node_name, title, instruction, notify)
+    task_payload = {
+        "title": title, "instruction": instruction, "node": human_node,
+        "kind": "action", "scope": "per-instance", "env": human_node,
+    }
+    return _build_executed_offline_envelope(
+        offline_nodes, node_name, human_node, human_url, title, instruction, notify, task_payload, run_node_uri,
+    )
+
+
+def _compute_offline_target_nodes(selected_nodes: list[str], discovered: dict) -> list[str]:
+    """Return the subset of selected_nodes that are unreachable; empty list when any are reachable."""
+    reachable_names = {n.get("name") for n in (discovered.get("nodes") or []) if n.get("reachable")}
+    offline = [n for n in selected_nodes if n not in reachable_names]
+    if not offline or reachable_names.intersection(selected_nodes):
+        return []
+    return offline
+
+
+def _emit_offline_escalation_message(
+    db: str | None,
+    prompt: str,
+    execute: bool,
+    no_llm: bool,
+    selected_targets: list[str],
+    offline: list[str],
+    human_result: dict,
+    deps: "ChatDeps",
+) -> None:
+    """Add a system chat message recording the offline-node human-task escalation."""
+    task = (human_result.get("humanTask") or {})
+    surface_url = task.get("surfaceUrl") or ""
+    content = (
+        f"node offline: {offline!r} — zadanie dla człowieka: {task.get('title', '')} "
+        f"({surface_url})"
+    )
+    deps.add_chat_message_fn(db, chat_message(
+        "system", content,
+        detail={
+            "kind": "human-task",
+            "prompt": prompt,
+            "execute": execute,
+            "noLlm": no_llm,
+            "ok": False,
+            "humanEscalation": True,
+            "offlineNodes": offline,
+            "selectedTargets": selected_targets,
+            "humanTask": task,
+            "next": human_result.get("next"),
+            "notify": human_result.get("notify") or {"sound": "beep", "reason": "human-task"},
+            "timeline": human_result.get("timeline") or [],
+            "error": human_result.get("error"),
+        },
+    ))
+
+
 def _chat_ask_general_check_offline(
     selected_nodes: list[str],
     discovered: dict,
@@ -755,36 +825,12 @@ def _chat_ask_general_check_offline(
     """Return a planner-failure (or human-escalation) dict when ALL targeted nodes are offline."""
     if not selected_nodes:
         return None
-    reachable_names = {n.get("name") for n in (discovered.get("nodes") or []) if n.get("reachable")}
-    offline = [n for n in selected_nodes if n not in reachable_names]
-    if not offline or reachable_names.intersection(selected_nodes):
+    offline = _compute_offline_target_nodes(selected_nodes, discovered)
+    if not offline:
         return None
     human_result = _escalate_offline_to_human(offline, prompt, discovered, execute)
     if human_result:
-        task = (human_result.get("humanTask") or {})
-        surface_url = task.get("surfaceUrl") or ""
-        content = (
-            f"node offline: {offline!r} — zadanie dla człowieka: {task.get('title', '')} "
-            f"({surface_url})"
-        )
-        deps.add_chat_message_fn(db, chat_message(
-            "system", content,
-            detail={
-                "kind": "human-task",
-                "prompt": prompt,
-                "execute": execute,
-                "noLlm": no_llm,
-                "ok": False,
-                "humanEscalation": True,
-                "offlineNodes": offline,
-                "selectedTargets": selected_targets,
-                "humanTask": task,
-                "next": human_result.get("next"),
-                "notify": human_result.get("notify") or {"sound": "beep", "reason": "human-task"},
-                "timeline": human_result.get("timeline") or [],
-                "error": human_result.get("error"),
-            },
-        ))
+        _emit_offline_escalation_message(db, prompt, execute, no_llm, selected_targets, offline, human_result, deps)
         human_result["noLlm"] = no_llm
         return human_result
     exc = ValueError(
