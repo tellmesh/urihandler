@@ -165,6 +165,29 @@ def _project_root(path: str) -> str:
     return path
 
 
+def _run_connector_install(s: str, kind: str, policy: dict, payload: dict) -> dict:
+    """Execute the pip install step for one connector source and return the raw result.
+
+    Branches on *kind* (git / local / catalog) without touching import caches or
+    annotating the result — those are the caller's responsibility."""
+    if kind == "git":
+        spec = s if s.startswith(("git+", "git@", "ssh://")) else f"git+{s}"
+        return _pip(["install", "--upgrade", spec])
+    if kind == "local":
+        try:
+            path = _project_root(os.path.expanduser(s))
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc), "source": s, "sourceKind": kind}
+        return _pip(["install", "--upgrade", *(["-e"] if payload.get("editable") else []), path])
+    # catalog: PyPI first, then if-uri GitHub fallback (only when git is permitted)
+    res = _pip(["install", "--upgrade", f"urirun-connector-{s}"])
+    if not res.get("ok"):
+        gurl = f"git+https://github.com/if-uri/urirun-connector-{s}.git"
+        if _policy_allows("git", gurl, policy)[0]:
+            res = _pip(["install", "--upgrade", gurl])
+    return res
+
+
 def connector_install(**payload: Any) -> dict:
     """Install a connector from ANY source into the node's venv:
       - a catalog id ("browser-control") → urirun-connector-<id> (PyPI, then if-uri GitHub),
@@ -180,21 +203,7 @@ def connector_install(**payload: Any) -> dict:
     ok, reason = _policy_allows(kind, s, policy)
     if not ok:
         return {"ok": False, "error": f"install blocked by policy: {reason}", "source": s, "sourceKind": kind, "policy": policy}
-    if kind == "git":
-        spec = s if s.startswith(("git+", "git@", "ssh://")) else f"git+{s}"
-        res = _pip(["install", "--upgrade", spec])
-    elif kind == "local":
-        try:
-            path = _project_root(os.path.expanduser(s))
-        except ValueError as exc:
-            return {"ok": False, "error": str(exc), "source": s, "sourceKind": kind}
-        res = _pip(["install", "--upgrade", *(["-e"] if payload.get("editable") else []), path])
-    else:
-        res = _pip(["install", "--upgrade", f"urirun-connector-{s}"])
-        if not res.get("ok"):  # if-uri GitHub fallback, only when git is permitted
-            gurl = f"git+https://github.com/if-uri/urirun-connector-{s}.git"
-            if _policy_allows("git", gurl, policy)[0]:
-                res = _pip(["install", "--upgrade", gurl])
+    res = _run_connector_install(s, kind, policy, payload)
     if res.get("ok"):
         _refresh_install_caches()
     res["connector"], res["source"], res["sourceKind"] = s, s, kind
