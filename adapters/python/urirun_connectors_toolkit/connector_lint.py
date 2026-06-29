@@ -74,19 +74,40 @@ def _connector_call_target(call: ast.Call) -> tuple[str | None, str]:
     return scheme, target
 
 
+def _func_name_from_call_func(fn: ast.AST) -> str | None:
+    """Return the bare function name from a call's func node (attribute or name), else None."""
+    if isinstance(fn, ast.Attribute):
+        return fn.attr
+    if isinstance(fn, ast.Name):
+        return fn.id
+    return None
+
+
+def _call_first_str_arg(call: ast.Call):
+    """Return the value of the first positional arg if it is a string constant, else None."""
+    if call.args and isinstance(call.args[0], ast.Constant):
+        return call.args[0].value
+    return None
+
+
+def _resolve_scheme_and_target(call: ast.Call, cid) -> tuple[str | None, str]:
+    """Resolve (scheme, target) from a connector call, falling back to cid when scheme is absent."""
+    scheme, target = _connector_call_target(call)
+    if scheme is None and isinstance(cid, str):
+        scheme = cid.replace("-", "")
+    return scheme, target
+
+
 def _connector_assignment(node: ast.AST) -> tuple[list[str], tuple[str, str]] | None:
     """Return (assigned var names, (scheme, target)) if node is a connector(...) assignment."""
     if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Call):
         return None
-    fn = node.value.func
-    fname = fn.attr if isinstance(fn, ast.Attribute) else fn.id if isinstance(fn, ast.Name) else None
+    fname = _func_name_from_call_func(node.value.func)
     if fname != "connector":
         return None
     call = node.value
-    cid = call.args[0].value if call.args and isinstance(call.args[0], ast.Constant) else None
-    scheme, target = _connector_call_target(call)
-    if scheme is None and isinstance(cid, str):
-        scheme = cid.replace("-", "")
+    cid = _call_first_str_arg(call)
+    scheme, target = _resolve_scheme_and_target(call, cid)
     if not scheme:
         return None
     return [t.id for t in node.targets if isinstance(t, ast.Name)], (scheme, target)
@@ -109,6 +130,26 @@ def _route_uri(scheme: str, target: str, path: str) -> str:
     return path if "://" in path else f"{scheme}://{target}/{path.strip('/')}"
 
 
+def _build_route_from_decorator(dec: ast.expr, node_name: str, params: list[str], objs: dict) -> dict | None:
+    """Return a route dict if *dec* is a valid connector decorator call, else None."""
+    if not (isinstance(dec, ast.Call) and isinstance(dec.func, ast.Attribute)):
+        return None
+    obj, attr = dec.func.value, dec.func.attr
+    if not (isinstance(obj, ast.Name) and obj.id in objs and attr in DECORATOR_KINDS):
+        return None
+    if not (dec.args and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, str)):
+        return None
+    scheme, target = objs[obj.id]
+    path = dec.args[0].value
+    return {
+        "uri": _route_uri(scheme, target, path),
+        "kind": attr,
+        "func": node_name,
+        "params": params,
+        "subcommand": path.strip("/").split("/")[-1],
+    }
+
+
 def _decorator_routes(tree: ast.Module, objs: dict[str, tuple[str, str]]) -> list[dict]:
     """Extract decorator-declared routes with the implementing function's signature."""
     routes: list[dict] = []
@@ -117,21 +158,9 @@ def _decorator_routes(tree: ast.Module, objs: dict[str, tuple[str, str]]) -> lis
             continue
         params = [a.arg for a in node.args.args if a.arg not in ("self", "cls")]
         for dec in node.decorator_list:
-            if not (isinstance(dec, ast.Call) and isinstance(dec.func, ast.Attribute)):
-                continue
-            obj, attr = dec.func.value, dec.func.attr
-            if not (isinstance(obj, ast.Name) and obj.id in objs and attr in DECORATOR_KINDS):
-                continue
-            if not (dec.args and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, str)):
-                continue
-            scheme, target = objs[obj.id]
-            routes.append({
-                "uri": _route_uri(scheme, target, dec.args[0].value),
-                "kind": attr,
-                "func": node.name,
-                "params": params,
-                "subcommand": dec.args[0].value.strip("/").split("/")[-1],
-            })
+            route = _build_route_from_decorator(dec, node.name, params, objs)
+            if route is not None:
+                routes.append(route)
     return routes
 
 
@@ -258,15 +287,25 @@ def _env_read_from_subscript(node: ast.Subscript) -> str | None:
     return None
 
 
+def _is_os_getenv(fn: ast.Attribute) -> bool:
+    """True when *fn* is ``os.getenv``."""
+    return fn.attr == "getenv" and _is_os_name(fn.value)
+
+
+def _is_environ_get(fn: ast.Attribute) -> bool:
+    """True when *fn* is ``os.environ.get``."""
+    return (fn.attr == "get" and isinstance(fn.value, ast.Attribute)
+            and fn.value.attr == "environ" and _is_os_name(fn.value.value))
+
+
 def _env_read_from_call(node: ast.Call) -> str | None:
     """``os.getenv("X")`` / ``os.environ.get("X")`` / bare ``getenv("X")`` → ``"X"``."""
     fn = node.func
     first = node.args[0] if node.args else None
     if isinstance(fn, ast.Attribute):
-        if fn.attr == "getenv" and _is_os_name(fn.value):
+        if _is_os_getenv(fn):
             return _const_str(first)
-        if (fn.attr == "get" and isinstance(fn.value, ast.Attribute)
-                and fn.value.attr == "environ" and _is_os_name(fn.value.value)):
+        if _is_environ_get(fn):
             return _const_str(first)
     elif isinstance(fn, ast.Name) and fn.id == "getenv":
         return _const_str(first)
