@@ -21,12 +21,15 @@ import json
 import re
 import shlex
 import sys
+from copy import deepcopy
 from importlib import metadata
 from pathlib import Path
-from typing import Any, Callable, Iterable, get_type_hints
+from types import UnionType
+from typing import Any, Callable, Iterable, Union, get_args, get_origin, get_type_hints
 
 from jsonschema import Draft202012Validator, exceptions as jsonschema_exceptions
 from pydantic import Field, create_model
+from pydantic.errors import PydanticSchemaGenerationError
 
 from urirun_runtime import _registry as reglib, _scan as scan, _runtime as runtime, errors as uri_errors, v1
 
@@ -64,15 +67,113 @@ IGNORED_DIRS = {".git", ".hg", ".svn", ".venv", "__pycache__", "build", "dist", 
 DECORATED_BINDINGS: dict[str, dict] = {}
 
 
+class _SignatureInputModel:
+    """Fallback object exposing ``model_json_schema`` for signature-derived inputs."""
+
+    def __init__(self, name: str, module: str, schema: dict):
+        self.__name__ = name
+        self.__qualname__ = name
+        self.__module__ = module
+        self._schema = schema
+
+    def model_json_schema(self) -> dict:
+        return deepcopy(self._schema)
+
+
+_PRIMITIVE_SCHEMA = {
+    str: {"type": "string"},
+    int: {"type": "integer"},
+    float: {"type": "number"},
+    bool: {"type": "boolean"},
+    dict: {"type": "object"},
+    list: {"type": "array"},
+}
+
+
+def _schema_for_sequence(args: tuple) -> dict:
+    schema: dict = {"type": "array"}
+    if args:
+        schema["items"] = _schema_for_annotation(args[0])
+    return schema
+
+
+def _schema_for_mapping(args: tuple) -> dict:
+    schema: dict = {"type": "object"}
+    if len(args) == 2 and args[1] is not Any:
+        schema["additionalProperties"] = _schema_for_annotation(args[1])
+    return schema
+
+
+def _schema_for_union(args: tuple) -> dict:
+    non_none = [arg for arg in args if arg is not type(None)]
+    schemas = [_schema_for_annotation(arg) for arg in non_none]
+    if len(schemas) == 1:
+        schema = dict(schemas[0])
+        schema["nullable"] = True
+        return schema
+    return {"anyOf": [*schemas, {"type": "null"}]}
+
+
+def _schema_for_annotation(annotation: Any) -> dict:
+    if annotation in (Any, inspect.Parameter.empty):
+        return {}
+    primitive = _PRIMITIVE_SCHEMA.get(annotation)
+    if primitive is not None:
+        return primitive
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+    if origin in (list, tuple, set):
+        return _schema_for_sequence(args)
+    if origin is dict:
+        return _schema_for_mapping(args)
+    if origin in (Union, UnionType):
+        return _schema_for_union(args)
+    return {}
+
+
+def _field_is_required(field: Any) -> bool:
+    checker = getattr(field, "is_required", None)
+    return bool(checker()) if callable(checker) else False
+
+
+def _schema_from_fields(name: str, fields: dict[str, tuple[Any, Any]], *, has_var_kw: bool) -> dict:
+    props: dict[str, dict] = {}
+    required: list[str] = []
+    for field_name, (annotation, field) in fields.items():
+        spec = _schema_for_annotation(annotation)
+        spec.setdefault("title", field_name.replace("_", " ").title().replace(" ", ""))
+        if _field_is_required(field):
+            required.append(field_name)
+        else:
+            default = getattr(field, "default", None)
+            try:
+                json.dumps(default)
+            except TypeError:
+                pass
+            else:
+                spec["default"] = default
+        props[field_name] = spec
+    schema = {
+        "properties": props,
+        "title": name,
+        "type": "object",
+        "additionalProperties": bool(has_var_kw),
+    }
+    if required:
+        schema["required"] = required
+    return schema
+
+
 def _create_input_model(name: str, module: str, fields: dict[str, tuple[Any, Any]], *, has_var_kw: bool):
-    if name == "nowInput":  # temporary diagnostic, removed after localizing the collection failure
-        print("CREATE_MODEL", name, module, has_var_kw, file=sys.stderr)
-        for _key, (_ann, _default) in fields.items():
-            print(" FIELD", _key, repr(_ann), type(_ann), file=sys.stderr)
-    if has_var_kw:
-        from pydantic import ConfigDict
-        return create_model(name, __config__=ConfigDict(extra="allow"), __module__=module, **fields)
-    return create_model(name, __module__=module, **fields)
+    from pydantic import ConfigDict
+
+    config = ConfigDict(extra="allow") if has_var_kw else None
+    try:
+        if config is not None:
+            return create_model(name, __config__=config, __module__=module, **fields)
+        return create_model(name, __module__=module, **fields)
+    except PydanticSchemaGenerationError:
+        return _SignatureInputModel(name, module, _schema_from_fields(name, fields, has_var_kw=has_var_kw))
 
 
 # --------------------------------------------------------------------------- #

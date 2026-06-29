@@ -1,7 +1,8 @@
-    const VALID_VIEWS = new Set(['overview', 'chat', 'discovery', 'artifacts', 'tasks', 'host', 'nodes', 'activity']);
+    const VALID_VIEWS = new Set(['overview', 'chat', 'artifacts', 'tasks', 'host', 'nodes', 'activity']);
     const params = new URLSearchParams(window.location.search);
     function normalizeViewName(view) {
       if (view === 'twin') return 'chat';
+      if (view === 'discovery') return 'nodes';  // Discovery folded into the Nodes view as a details panel
       return VALID_VIEWS.has(view) ? view : 'overview';
     }
     function normalizeActionName(action) {

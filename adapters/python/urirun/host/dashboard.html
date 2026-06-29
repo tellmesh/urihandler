@@ -16,7 +16,6 @@
       <div class="tabs desktop-tabs">
         <button data-view="overview">Overview</button>
         <button data-view="chat">Chat</button>
-        <button data-view="discovery">Discovery</button>
         <button data-view="artifacts">Artifacts</button>
         <button data-view="tasks">Tasks</button>
         <button data-view="host">Host</button>
@@ -32,22 +31,6 @@
   <main>
     <section class="metrics" id="metrics"></section>
     <section class="grid">
-      <section class="discovery-layout view-block" data-section="discovery">
-        <article class="panel">
-          <div class="panel-head"><h2>URI Objects</h2><span class="subtle" id="discoveryCount"></span></div>
-          <div class="panel-body"><div class="list" id="discoveryList"></div></div>
-        </article>
-        <article class="panel">
-          <div class="panel-head">
-            <div>
-              <h2 id="discoveryRouteTitle">URI Registry</h2>
-              <p class="subtle" id="discoveryRouteMeta"></p>
-            </div>
-            <span class="subtle" id="discoveryRouteCount"></span>
-          </div>
-          <div class="panel-body"><div class="list" id="discoveryRoutesList"></div></div>
-        </article>
-      </section>
       <section class="artifact-layout view-block" data-section="artifacts">
         <article class="panel">
           <div class="panel-head">
@@ -443,6 +426,25 @@
                 </details>
               </div>
             </details>
+            <details class="add-node-help" style="margin-top:10px">
+              <summary>🔎 Discovery — obiekty URI i ich rejestry</summary>
+              <div class="discovery-layout" style="margin-top:8px">
+                <article class="panel">
+                  <div class="panel-head"><h2>URI Objects</h2><span class="subtle" id="discoveryCount"></span></div>
+                  <div class="panel-body"><div class="list" id="discoveryList"></div></div>
+                </article>
+                <article class="panel">
+                  <div class="panel-head">
+                    <div>
+                      <h2 id="discoveryRouteTitle">URI Registry</h2>
+                      <p class="subtle" id="discoveryRouteMeta"></p>
+                    </div>
+                    <span class="subtle" id="discoveryRouteCount"></span>
+                  </div>
+                  <div class="panel-body"><div class="list" id="discoveryRoutesList"></div></div>
+                </article>
+              </div>
+            </details>
           </div>
         </article>
         <article class="panel">
@@ -462,7 +464,6 @@
   <nav class="bottom-nav">
     <button data-view="overview">Overview</button>
     <button data-view="chat">Chat</button>
-    <button data-view="discovery">Discovery</button>
     <button data-view="artifacts">Artifacts</button>
     <button data-view="tasks">Tasks</button>
     <button data-view="host">Host</button>
