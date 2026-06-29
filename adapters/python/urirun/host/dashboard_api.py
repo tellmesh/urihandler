@@ -147,24 +147,31 @@ def _api_tasks(
     return 200, {"ok": error is None, "tickets": tickets, "error": error}
 
 
+def _api_recent(
+    db: str | None, query: dict, *,
+    result_key: str, method_name: str, filter_key: str,
+) -> tuple[int, dict]:
+    """Shared helper for paginated recent-records endpoints (checks, logs, …)."""
+    host_db = _host_db()
+    limit = int(_first(query, "limit", "20") or 20)
+    return 200, {"ok": True, result_key: getattr(host_db, method_name)(
+        db, **{filter_key: _first(query, filter_key)}, limit=limit)}
+
+
 def _api_checks(
     project: str, db: str | None, config: str | None,
     query: dict, node_urls: list[str] | None,
 ) -> tuple[int, dict]:
-    host_db = _host_db()
-    limit = int(_first(query, "limit", "20") or 20)
-    return 200, {"ok": True, "checks": host_db.recent_checks(
-        db, subject=_first(query, "subject"), limit=limit)}
+    return _api_recent(db, query,
+        result_key="checks", method_name="recent_checks", filter_key="subject")
 
 
 def _api_logs(
     project: str, db: str | None, config: str | None,
     query: dict, node_urls: list[str] | None,
 ) -> tuple[int, dict]:
-    host_db = _host_db()
-    limit = int(_first(query, "limit", "20") or 20)
-    return 200, {"ok": True, "logs": host_db.recent_logs(
-        db, stream=_first(query, "stream"), limit=limit)}
+    return _api_recent(db, query,
+        result_key="logs", method_name="recent_logs", filter_key="stream")
 
 
 def _api_artifacts(

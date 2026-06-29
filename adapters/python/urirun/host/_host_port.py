@@ -69,34 +69,43 @@ def _free_port_from_old_dashboard(port: int) -> None:
     )
 
 
-def _free_port_from_old_scanner(port: int, *, force: bool = False, emit: bool = False) -> dict:
-    """Free a scanner-owned port before rebinding it."""
+def _free_port_for_service(
+    port: int,
+    *,
+    is_target,
+    event_prefix: str,
+    force: bool = False,
+    emit: bool = False,
+) -> dict:
+    """Shared parameterised helper: free a port held by a named urirun service."""
     return _free_port_from_matching_processes(
         port,
         force=force,
         emit=emit,
-        is_target=_is_scanner_process,
-        event_prefix="urirun.service_scanner",
+        is_target=is_target,
+        event_prefix=event_prefix,
+    )
+
+
+def _free_port_from_old_scanner(port: int, *, force: bool = False, emit: bool = False) -> dict:
+    """Free a scanner-owned port before rebinding it."""
+    return _free_port_for_service(
+        port, force=force, emit=emit,
+        is_target=_is_scanner_process, event_prefix="urirun.service_scanner",
     )
 
 
 def _free_port_from_old_chat(port: int, *, force: bool = False, emit: bool = False) -> dict:
     """Free a chat-service-owned port before rebinding it."""
-    return _free_port_from_matching_processes(
-        port,
-        force=force,
-        emit=emit,
-        is_target=_is_chat_process,
-        event_prefix="urirun.service_chat",
+    return _free_port_for_service(
+        port, force=force, emit=emit,
+        is_target=_is_chat_process, event_prefix="urirun.service_chat",
     )
 
 
 def _free_port_from_old_android_node(port: int, *, force: bool = False, emit: bool = False) -> dict:
     """Free an android-node-service-owned port before rebinding it."""
-    return _free_port_from_matching_processes(
-        port,
-        force=force,
-        emit=emit,
-        is_target=_is_android_node_process,
-        event_prefix="urirun.service_android_node",
+    return _free_port_for_service(
+        port, force=force, emit=emit,
+        is_target=_is_android_node_process, event_prefix="urirun.service_android_node",
     )
