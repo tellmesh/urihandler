@@ -261,30 +261,19 @@ EXECUTORS = {
 
 
 # --------------------------------------------------------------------------- #
-# Dispatch
+# Dispatch helpers
 # --------------------------------------------------------------------------- #
-def run(uri: str, registry: dict, payload=None, mode: str = "dry-run", policy: dict | None = None,
-        confirm: bool = False, executors: dict | None = None) -> dict:
-    policy = runtime.merge_policy(policy)
-    executor_registry = EXECUTORS if executors is None else executors
-    descriptor = reglib.parse_uri(uri)
-    translation = reglib.translate(descriptor)
-    route_entry = reglib.resolve_route(translation, registry)
-    envelope = {
+def _build_run_envelope(descriptor: dict, route_entry: dict, mode: str) -> dict:
+    return {
         "uri": descriptor["normalized"],
         "mode": mode,
         "kind": route_entry.get("kind"),
         "adapter": route_entry.get("adapter"),
     }
 
-    try:
-        params = resolve_params(route_entry, descriptor, translation, payload)
-    except ValueError as err:
-        envelope["ok"] = False
-        envelope["error"] = {"type": "params", "message": str(err)}
-        return envelope
 
-    ctx = {
+def _build_run_ctx(route_entry: dict, descriptor: dict, translation: dict, payload, params: dict) -> dict:
+    return {
         "routeEntry": route_entry,
         "descriptor": descriptor,
         "translation": translation,
@@ -293,25 +282,22 @@ def run(uri: str, registry: dict, payload=None, mode: str = "dry-run", policy: d
         "payload": payload,
         "params": params,
     }
-    decision = runtime.evaluate_policy(descriptor["normalized"], route_entry, ctx, policy)
-    envelope["decision"] = decision
 
-    executor = executor_registry.get(route_entry.get("adapter")) or executor_registry.get(route_entry.get("kind"))
-    if executor is None:
-        raise ValueError(f"Executor not found: {route_entry.get('adapter') or route_entry.get('kind')}")
 
-    if mode != "execute":
-        try:
-            envelope["result"] = executor(ctx, policy, False)
-            envelope["ok"] = True
-        except KeyError as err:
-            envelope["ok"] = False
-            envelope["error"] = {"type": "params", "message": f"unresolved placeholder: {err.args[0]}"}
-        except ValueError as err:
-            envelope["ok"] = False
-            envelope["error"] = {"type": "error", "message": str(err)}
-        return envelope
+def _run_dry_run_mode(executor, ctx: dict, policy: dict, envelope: dict) -> dict:
+    try:
+        envelope["result"] = executor(ctx, policy, False)
+        envelope["ok"] = True
+    except KeyError as err:
+        envelope["ok"] = False
+        envelope["error"] = {"type": "params", "message": f"unresolved placeholder: {err.args[0]}"}
+    except ValueError as err:
+        envelope["ok"] = False
+        envelope["error"] = {"type": "error", "message": str(err)}
+    return envelope
 
+
+def _run_execute_mode(executor, ctx: dict, policy: dict, envelope: dict, decision: dict, confirm: bool) -> dict:
     if not decision["allowed"]:
         envelope["ok"] = False
         envelope["error"] = {"type": "policy", "message": decision["reason"]}
@@ -320,7 +306,6 @@ def run(uri: str, registry: dict, payload=None, mode: str = "dry-run", policy: d
         envelope["ok"] = False
         envelope["error"] = {"type": "confirm", "message": "route requires confirmation; pass confirm=True"}
         return envelope
-
     try:
         result = executor(ctx, policy, True)
         envelope["result"] = result
@@ -332,6 +317,38 @@ def run(uri: str, registry: dict, payload=None, mode: str = "dry-run", policy: d
         envelope["ok"] = False
         envelope["error"] = {"type": type(err).__name__, "message": str(err)}
     return envelope
+
+
+# --------------------------------------------------------------------------- #
+# Dispatch
+# --------------------------------------------------------------------------- #
+def run(uri: str, registry: dict, payload=None, mode: str = "dry-run", policy: dict | None = None,
+        confirm: bool = False, executors: dict | None = None) -> dict:
+    policy = runtime.merge_policy(policy)
+    executor_registry = EXECUTORS if executors is None else executors
+    descriptor = reglib.parse_uri(uri)
+    translation = reglib.translate(descriptor)
+    route_entry = reglib.resolve_route(translation, registry)
+    envelope = _build_run_envelope(descriptor, route_entry, mode)
+
+    try:
+        params = resolve_params(route_entry, descriptor, translation, payload)
+    except ValueError as err:
+        envelope["ok"] = False
+        envelope["error"] = {"type": "params", "message": str(err)}
+        return envelope
+
+    ctx = _build_run_ctx(route_entry, descriptor, translation, payload, params)
+    decision = runtime.evaluate_policy(descriptor["normalized"], route_entry, ctx, policy)
+    envelope["decision"] = decision
+
+    executor = executor_registry.get(route_entry.get("adapter")) or executor_registry.get(route_entry.get("kind"))
+    if executor is None:
+        raise ValueError(f"Executor not found: {route_entry.get('adapter') or route_entry.get('kind')}")
+
+    if mode != "execute":
+        return _run_dry_run_mode(executor, ctx, policy, envelope)
+    return _run_execute_mode(executor, ctx, policy, envelope, decision, confirm)
 
 
 def check(uri: str, registry: dict, policy: dict | None = None) -> dict:
@@ -395,10 +412,9 @@ def load_registry_arg(arg: str, openapi_base_url: str = "") -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# CLI
+# CLI helpers
 # --------------------------------------------------------------------------- #
-def main(argv: list[str] | None = None) -> int:
-    argv = list(sys.argv[1:] if argv is None else argv)
+def _build_v1_parser() -> argparse.ArgumentParser:
     executable = Path(sys.argv[0]).name
     prog = executable if executable in {"urirun-v1", "urirun-v1"} else "urirun-v1"
     parser = argparse.ArgumentParser(prog=prog)
@@ -432,37 +448,60 @@ def main(argv: list[str] | None = None) -> int:
     compile_parser.add_argument("--on-conflict", choices=["error", "keep", "replace"], default="keep")
     compile_parser.add_argument("--generated-at")
 
+    return parser
+
+
+def _handle_compile(args) -> int:
+    bindings: list[dict] = []
+    for source in args.sources:
+        bindings.extend(expand_bindings(reglib.load_json(source))["bindings"])
+    registry = compile_registry({"bindings": bindings}, generated_at=args.generated_at, on_conflict=args.on_conflict)
+    reglib._emit_json(registry, args.out)
+    return 0
+
+
+def _handle_run(args, registry: dict, policy: dict) -> int:
+    result = run(args.uri, registry, json.loads(args.payload),
+                 mode="execute" if args.execute else "dry-run", policy=policy, confirm=args.confirm)
+    reglib._emit_json(result, "-")
+    return 0 if result.get("ok") else 1
+
+
+def _handle_check(args, registry: dict, policy: dict) -> int:
+    result = check(args.uri, registry, policy)
+    reglib._emit_json(result, "-")
+    return 0 if result["decision"]["allowed"] else 1
+
+
+def _handle_list(args, registry: dict, policy: dict) -> int:
+    items = list_routes(registry, policy)
+    if args.json:
+        reglib._emit_json(items, "-")
+    else:
+        print(runtime.format_route_table(items, show_decision=policy is not None))
+    return 0
+
+
+# --------------------------------------------------------------------------- #
+# CLI
+# --------------------------------------------------------------------------- #
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    parser = _build_v1_parser()
     args = parser.parse_args(argv)
 
     if args.command == "compile":
-        bindings: list[dict] = []
-        for source in args.sources:
-            bindings.extend(expand_bindings(reglib.load_json(source))["bindings"])
-        registry = compile_registry({"bindings": bindings}, generated_at=args.generated_at, on_conflict=args.on_conflict)
-        reglib._emit_json(registry, args.out)
-        return 0
+        return _handle_compile(args)
 
     registry = load_registry_arg(args.source or args.registry)
     policy = runtime.build_policy(getattr(args, "policy", None), args.allow, args.deny)
 
     if args.command == "run":
-        result = run(args.uri, registry, json.loads(args.payload),
-                     mode="execute" if args.execute else "dry-run", policy=policy, confirm=args.confirm)
-        reglib._emit_json(result, "-")
-        return 0 if result.get("ok") else 1
-
+        return _handle_run(args, registry, policy)
     if args.command == "check":
-        result = check(args.uri, registry, policy)
-        reglib._emit_json(result, "-")
-        return 0 if result["decision"]["allowed"] else 1
-
+        return _handle_check(args, registry, policy)
     if args.command == "list":
-        items = list_routes(registry, policy)
-        if args.json:
-            reglib._emit_json(items, "-")
-        else:
-            print(runtime.format_route_table(items, show_decision=policy is not None))
-        return 0
+        return _handle_list(args, registry, policy)
 
     return 1
 
