@@ -1254,6 +1254,108 @@ except ImportError:
         return extracted, month, archive_dir, filename, superseded_of, merged_fields
 
 
+    def _archive_extract_metadata(
+        *, display_path: "Path", original_path: "Path", ocr: dict, captured_at: "str | None",
+        metadata: "dict | None", docid_fn: "Callable | None",
+    ) -> tuple:
+        """Compute OCR text, document metadata, doc ID, and all hash fingerprints."""
+        from .document_metadata import _extract_document_metadata  # noqa: PLC0415
+        from .document_metadata import normalized_document_text as _ndt  # noqa: PLC0415
+        ocr_text = str(ocr.get("text") or "")
+        extracted = metadata if metadata is not None else _extract_document_metadata(
+            ocr_text, captured_at=captured_at, image_path=str(original_path))
+        docid_info = (docid_fn or docid_for_file)(display_path, ocr_text)
+        doc_id = str(docid_info["id"])
+        normalized_text = _ndt(ocr_text)
+        text_sha256 = hashlib.sha256(normalized_text.encode("utf-8")).hexdigest() if normalized_text else ""
+        fingerprint = _transaction_fingerprint(ocr_text)
+        dhash = _image_dhash(display_path)
+        phash = _image_phash(display_path)
+        new_completeness = _metadata_completeness(extracted)
+        return ocr_text, extracted, docid_info, doc_id, text_sha256, fingerprint, dhash, phash, new_completeness
+
+
+    def _archive_build_entry(
+        *, doc_id: str, docid_info: dict, pdf_path: "Path", json_path: "Path",
+        original_path: "Path", display_path: "Path", source_sha256: str, text_sha256: str,
+        fingerprint: str, dhash: str, phash: str, superseded_of: "str | None",
+        merged_fields: list, ocr: dict, ocr_text: str, crop: dict, extracted: dict,
+    ) -> dict:
+        """Build the index entry dict for the archived document."""
+        _schema_fields = document_schema_fields(extracted.get("type"))
+        return {
+            "docId": doc_id,
+            "docIdProvider": docid_info.get("provider"),
+            "docIdSource": docid_info.get("source"),
+            "docIdError": docid_info.get("docidError"),
+            "docIdLog": docid_info.get("docidLog"),
+            "uri": f"document://host/{quote(doc_id, safe='')}",
+            "pdfPath": str(pdf_path),
+            "jsonPath": str(json_path),
+            "originalPath": str(original_path),
+            "cropPath": str(display_path),
+            "sourceSha256": source_sha256,
+            "textSha256": text_sha256,
+            "fingerprint": fingerprint,
+            "dhash": dhash,
+            "phash": phash,
+            "supersededOf": superseded_of,
+            "mergedFields": merged_fields or None,
+            "ocrBackend": ocr.get("backend"),
+            "ocrChars": ocr.get("chars"),
+            "text": ocr_text,
+            "crop": crop,
+            "createdAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "schemaKnown": _schema_fields["schemaKnown"],
+            "schemaId": _schema_fields["schemaId"],
+            **extracted,
+        }
+
+
+    def _archive_update_index(index: dict, doc_id: str, entry: dict) -> None:
+        """Replace any existing entry for doc_id in the index and persist it."""
+        docs = [item for item in index.get("documents", []) if isinstance(item, dict) and item.get("docId") != doc_id]
+        docs.append(entry)
+        index["documents"] = docs
+        save_document_index(index)
+
+
+    def _archive_scan_log_payload(
+        *, entry: dict, doc_id: str, docid_info: dict, pdf_path: "Path", json_path: "Path",
+        original_path: "Path", display_path: "Path", source_sha256: str, text_sha256: str,
+        fingerprint: str, dhash: str, phash: str, superseded_of: "str | None",
+        merged_fields: list, ocr: dict, extracted: dict,
+    ) -> dict:
+        """Build the payload dict for append_scanned_id_log."""
+        return {
+            "version": 1,
+            "event": "superseded" if superseded_of else "scan",
+            "scannedAt": entry["createdAt"],
+            "docId": doc_id,
+            "docIdProvider": docid_info.get("provider"),
+            "docIdSource": docid_info.get("source"),
+            "docIdError": docid_info.get("docidError"),
+            "docIdLog": docid_info.get("docidLog"),
+            "duplicate": False,
+            "supersededOf": superseded_of,
+            "mergedFields": merged_fields or None,
+            "uri": entry["uri"],
+            "pdfPath": str(pdf_path),
+            "jsonPath": str(json_path),
+            "fileName": pdf_path.name,
+            "originalPath": str(original_path),
+            "cropPath": str(display_path),
+            "sourceSha256": source_sha256,
+            "textSha256": text_sha256,
+            "fingerprint": fingerprint,
+            "dhash": dhash,
+            "phash": phash,
+            "ocrBackend": ocr.get("backend"),
+            "ocrChars": ocr.get("chars"),
+            "metadata": extracted,
+        }
+
+
     def archive_scanned_document(
         *,
         display_path: "Path",
@@ -1265,19 +1367,12 @@ except ImportError:
         metadata: "dict | None" = None,
         docid_fn: "Callable | None" = None,
     ) -> dict:
-        from .document_metadata import _extract_document_metadata  # noqa: PLC0415
-        ocr_text = str(ocr.get("text") or "")
-        extracted = metadata if metadata is not None else _extract_document_metadata(
-            ocr_text, captured_at=captured_at, image_path=str(original_path))
-        docid_info = (docid_fn or docid_for_file)(display_path, ocr_text)
-        doc_id = str(docid_info["id"])
-        from .document_metadata import normalized_document_text as _normalized_doc_text3  # noqa: PLC0415
-        normalized_text = _normalized_doc_text3(ocr_text)
-        text_sha256 = hashlib.sha256(normalized_text.encode("utf-8")).hexdigest() if normalized_text else ""
-        fingerprint = _transaction_fingerprint(ocr_text)
-        dhash = _image_dhash(display_path)
-        phash = _image_phash(display_path)
-        new_completeness = _metadata_completeness(extracted)
+        ocr_text, extracted, docid_info, doc_id, text_sha256, fingerprint, dhash, phash, new_completeness = (
+            _archive_extract_metadata(
+                display_path=display_path, original_path=original_path, ocr=ocr,
+                captured_at=captured_at, metadata=metadata, docid_fn=docid_fn,
+            )
+        )
         month = archive_month(extracted)
         root = document_archive_root()
         archive_dir = root / month
@@ -1315,76 +1410,26 @@ except ImportError:
             archive_dir.mkdir(parents=True, exist_ok=True)
             pdf_path = unique_document_path(archive_dir, filename, doc_id)
             json_path = pdf_path.with_suffix(".json")
-            pdf_meta = {
-                **extracted,
-                "docId": doc_id,
-                "sourcePath": str(original_path),
-                "cropPath": str(display_path),
-            }
+            pdf_meta = {**extracted, "docId": doc_id, "sourcePath": str(original_path), "cropPath": str(display_path)}
             write_document_pdf(display_path, pdf_path, metadata=pdf_meta, ocr_text=ocr_text)
-            _schema_fields = document_schema_fields(extracted.get("type"))
-            entry = {
-                "docId": doc_id,
-                "docIdProvider": docid_info.get("provider"),
-                "docIdSource": docid_info.get("source"),
-                "docIdError": docid_info.get("docidError"),
-                "docIdLog": docid_info.get("docidLog"),
-                "uri": f"document://host/{quote(doc_id, safe='')}",
-                "pdfPath": str(pdf_path),
-                "jsonPath": str(json_path),
-                "originalPath": str(original_path),
-                "cropPath": str(display_path),
-                "sourceSha256": source_sha256,
-                "textSha256": text_sha256,
-                "fingerprint": fingerprint,
-                "dhash": dhash,
-                "phash": phash,
-                "supersededOf": superseded_of,
-                "mergedFields": merged_fields or None,
-                "ocrBackend": ocr.get("backend"),
-                "ocrChars": ocr.get("chars"),
-                "text": ocr_text,
-                "crop": crop,
-                "createdAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "schemaKnown": _schema_fields["schemaKnown"],
-                "schemaId": _schema_fields["schemaId"],
-                **extracted,
-            }
+            entry = _archive_build_entry(
+                doc_id=doc_id, docid_info=docid_info, pdf_path=pdf_path, json_path=json_path,
+                original_path=original_path, display_path=display_path, source_sha256=source_sha256,
+                text_sha256=text_sha256, fingerprint=fingerprint, dhash=dhash, phash=phash,
+                superseded_of=superseded_of, merged_fields=merged_fields, ocr=ocr, ocr_text=ocr_text,
+                crop=crop, extracted=extracted,
+            )
             json_path.write_text(
                 json.dumps({**entry, "ocr": ocr, "text": ocr_text}, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
             )
-            docs = [item for item in index.get("documents", []) if isinstance(item, dict) and item.get("docId") != doc_id]
-            docs.append(entry)
-            index["documents"] = docs
-            save_document_index(index)
-            append_scanned_id_log({
-                "version": 1,
-                "event": "superseded" if superseded_of else "scan",
-                "scannedAt": entry["createdAt"],
-                "docId": doc_id,
-                "docIdProvider": docid_info.get("provider"),
-                "docIdSource": docid_info.get("source"),
-                "docIdError": docid_info.get("docidError"),
-                "docIdLog": docid_info.get("docidLog"),
-                "duplicate": False,
-                "supersededOf": superseded_of,
-                "mergedFields": merged_fields or None,
-                "uri": entry["uri"],
-                "pdfPath": str(pdf_path),
-                "jsonPath": str(json_path),
-                "fileName": pdf_path.name,
-                "originalPath": str(original_path),
-                "cropPath": str(display_path),
-                "sourceSha256": source_sha256,
-                "textSha256": text_sha256,
-                "fingerprint": fingerprint,
-                "dhash": dhash,
-                "phash": phash,
-                "ocrBackend": ocr.get("backend"),
-                "ocrChars": ocr.get("chars"),
-                "metadata": extracted,
-            })
+            _archive_update_index(index, doc_id, entry)
+            append_scanned_id_log(_archive_scan_log_payload(
+                entry=entry, doc_id=doc_id, docid_info=docid_info, pdf_path=pdf_path, json_path=json_path,
+                original_path=original_path, display_path=display_path, source_sha256=source_sha256,
+                text_sha256=text_sha256, fingerprint=fingerprint, dhash=dhash, phash=phash,
+                superseded_of=superseded_of, merged_fields=merged_fields, ocr=ocr, extracted=extracted,
+            ))
         return {
             "ok": True,
             "duplicate": False,
