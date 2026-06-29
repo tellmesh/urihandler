@@ -96,6 +96,9 @@ SQLite odpowiada za:
 
 ## Docelowe URI
 
+Docelowy interfejs Planfile jest zwykłą powierzchnią URI: zadania, projekty,
+komentarze i egzekucja przepływu są deklarowane jako `query` albo `command`.
+
 ### Zadania
 
 ```txt
@@ -184,6 +187,9 @@ możemy użyć pola tekstowego bez łamania modelu. Wykonawca `urirun` będzie r
 ten `kind` jako flow URI.
 
 ## Plan wdrożenia
+
+Plan wdrożenia jest sekwencyjny: najpierw kompatybilność biblioteki, potem
+minimalny adapter, a dopiero na końcu sprzężenie automatyzacji hosta z tickietami.
 
 ### Sprint 0 - decyzje i kompatybilność
 

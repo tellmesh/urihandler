@@ -12,7 +12,7 @@
       "examples": [
         {"payload": {"base64": false},
          "result": {"ok": true, "connector": "kvm", "action": "capture", "kind": "screenshot",
-                    "path": "/home/u/.urirun/artifacts/s.png", "bytes": 204931,
+                    "path": "~/.urirun/artifacts/s.png", "bytes": 204931,
                     "fullSize": [2560, 1440], "via": "grim"}},
         {"payload": {},
          "result": {"ok": true, "connector": "kvm", "action": "capture", "kind": "screenshot",

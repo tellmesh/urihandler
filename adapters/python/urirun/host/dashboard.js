@@ -311,7 +311,7 @@
       const hints = {
         pip: ['Pakiet PyPI', 'urirun-connector-hash'],
         github: ['Repo GitHub (user/repo lub URL)', 'if-uri/urirun-connector-hash'],
-        local: ['Folder connectora', '/home/tom/github/if-uri/urirun-connector-hash'],
+        local: ['Folder connectora', '~/github/if-uri/urirun-connector-hash'],
         npm: ['Pakiet npm', '@urirun/connector-uuid'],
         docker: ['Obraz docker', 'ghcr.io/if-uri/connector:latest'],
         http: ['Bazowy URL API', 'https://api.example.com'],
@@ -450,25 +450,17 @@
       const lan = (state.summary && state.summary.lan) || {};
       const explicit = String(lan.dashboardBase || lan.dashboardUrl || '').trim();
       if (explicit) return explicit.replace(/\/+$/, '');
-      try {
-        const u = new URL(lanBase(false));
-        u.protocol = 'http:';
-        u.port = '8194';
-        return u.toString().replace(/\/+$/, '');
-      } catch (e) {
-        return serviceBaseFromLocation(8194, false).replace(/\/+$/, '');
-      }
+      const origin = String((window.location && window.location.origin) || '').trim();
+      return (origin || serviceBaseFromLocation(8194, false)).replace(/\/+$/, '');
+    }
+    function phoneScannerServiceContact() {
+      const services = (state.summary && Array.isArray(state.summary.services)) ? state.summary.services : [];
+      return services.find((svc) => svc && svc.id === 'service:phone-scanner' && svc.url) || null;
     }
     function phoneScannerDelegatedUrl() {
-      const params = new URLSearchParams({
-        autostart: '1',
-        auto: '1',
-        best: '1',
-        count: '6',
-        minScore: '45',
-        interval: '3',
-      });
-      return dashboardLanBase() + '/scanner?' + params.toString();
+      const contact = phoneScannerServiceContact();
+      if (contact && contact.url) return String(contact.url);
+      return dashboardLanBase() + '/scanner';
     }
     function lanNeedsSecure(s) { return /camera|webcam|scanner|getusermedia|mediadevices/i.test(String(s || '')); }
     // Build a LAN-openable URL: rebase an absolute http(s) URL onto the LAN host, or append a path.
@@ -520,6 +512,7 @@
       const kind = String((node && node.kind) || '').toLowerCase();
       if (!['webpage', 'smartphone'].includes(kind)) return '';
       const url = phoneScannerDelegatedUrl();
+      const source = phoneScannerServiceContact() ? 'host service registry' : 'fallback';
       return `<details class="qr-block delegated-phone-services" onclick="event.stopPropagation()" style="margin-top:6px" open>
         <summary class="subtle">📱 Usługi hosta na telefonie · phone-scanner</summary>
         <div class="qr-wrap"><img class="qr-img" loading="lazy" src="${qrSrc(url)}" alt="QR service:phone-scanner">
@@ -527,7 +520,7 @@
         <div class="artifact-actions" style="margin-top:6px">
           <button type="button" data-contact-action="open-url" data-url="${esc(url)}" data-target="service:phone-scanner" onclick="event.stopPropagation(); window.open(this.dataset.url, '_blank', 'noreferrer')">Open Phone Scanner</button>
         </div>
-        <div class="subtle">Deleguje hostową usługę <code>service:phone-scanner</code> na ekran telefonu; sam serwis dalej działa na hoście.</div>
+        <div class="subtle">Deleguje hostową usługę <code>service:phone-scanner</code> na ekran telefonu; sam serwis dalej działa na hoście. Źródło: ${esc(source)}.</div>
       </details>`;
     }
     // Toolbar action: show a QR of the CURRENT view (LAN base + current path) in an overlay.

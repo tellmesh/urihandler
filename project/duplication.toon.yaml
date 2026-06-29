@@ -1,12 +1,12 @@
-# redup/duplication | 14 groups | 140f 15546L | 2026-06-29
+# redup/duplication | 14 groups | 141f 15602L | 2026-06-29
 
 SUMMARY:
-  files_scanned: 140
-  total_lines:   15546
+  files_scanned: 141
+  total_lines:   15602
   dup_groups:    14
   dup_fragments: 31
   saved_lines:   105
-  scan_ms:       60037
+  scan_ms:       52846
 
 HOTSPOTS[7] (files with most duplication):
   __init__.py  dup=38L  groups=1  frags=3  (0.2%)
@@ -30,8 +30,8 @@ DUPLICATES[14] (ranked by impact):
       host/service_control.py:213-222  (is_scanner_process)
       host/service_control.py:236-245  (is_android_node_process)
   [F0005]   FUZZ  do_GET  L=11 N=2 saved=11 sim=0.87
-      host/host_dashboard.py:1795-1805  (do_GET)
-      host/host_dashboard.py:1807-1818  (do_POST)
+      host/host_dashboard.py:1630-1640  (do_GET)
+      host/host_dashboard.py:1642-1653  (do_POST)
   [b7534632e49155f1]   STRU  _host_db  L=3 N=3 saved=6 sim=1.00
       host/dashboard_api.py:29-31  (_host_db)
       host/dashboard_api.py:34-36  (_mesh)

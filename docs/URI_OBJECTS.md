@@ -13,6 +13,10 @@ Polish operator/developer overview of the same component model, see
 
 ## Object Types
 
+Object types separate runtime surfaces from their presentation and artifacts.
+The sections below define the common envelope first, then the concrete service,
+widget, artifact and node shapes that reuse it.
+
 ## Runtime URI Object Envelope
 
 Runtime objects are the controllable surfaces that own a group of URI routes.

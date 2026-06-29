@@ -264,8 +264,8 @@ to keep distinct runs distinct.
 For a fresh or reinstalled node:
 
 ```bash
-# TOKEN = the ≤7-char enrollment PIN on the node console (rotates every 10 min); once the
-# key is enrolled, later host -> node calls authorize by signing with -i / --identity (no PIN).
+: "TOKEN is the short enrollment PIN on the node console; it rotates every 10 min"
+: "after enrollment, host -> node calls authorize by signing with -i / --identity"
 uri-copy-id http://NODE:8765 -i ~/.ssh/id_ed25519 --enroll-token TOKEN
 urirun host routes --node-url laptop=http://NODE:8765 --json
 urirun host deploy --node-url laptop=http://NODE:8765 laptop \

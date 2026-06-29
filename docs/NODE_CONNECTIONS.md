@@ -489,6 +489,9 @@ Ten dokument domyka te luki.
 
 ## Plan zadan
 
+Ten plan utrzymuje granicę między skonfigurowanym node, realnym wykonaniem
+connectora i komunikatem naprawczym, który host powinien pokazać operatorowi.
+
 ### P0 - domknac niezawodnosc wykonania
 
 - [x] Wykonanie HTTP-like API z configu hosta przez `configured://`.

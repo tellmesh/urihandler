@@ -5,7 +5,7 @@
 <!-- /docs-nav -->
 
 > **NOWY CEL REFAKTORYZACJI (2026-06-28, nadrzędny względem reszty dokumentu).**
-> Aktywna kolejność prac jest w `docs/ACTIVE_REFACTOR_PLAN.md`; ten dokument opisuje
+> Aktywna kolejność prac jest w `ACTIVE_REFACTOR_PLAN.md`; ten dokument opisuje
 > model docelowy i historyczne decyzje splitu.
 > `urirun` ma zostać **maksymalnie prostym kernelem URI + CLI**, a nie
 > samodzielnym backendem aplikacyjnym. Wszystko, co jest zdolnością domenową,
@@ -40,18 +40,20 @@
 > zostać jawnie oznaczone jako tylko-kompatybilnościowe. Nie dodawać nowych
 > zdolności do core, jeśli mogą być connector/service/contract package.
 
-> **STATUS DEKOMPOZYCJI (2026-06-23).** Dwa hotspoty wymienione niżej (`urirun.v2`
-> i `urirun.mesh`) zostały rozbite — bez zmiany API, z re-eksportem dla zgodności,
-> testy zielone (334 passed):
+> **STATUS DEKOMPOZYCJI (2026-06-23; zaktualizowane 2026-06-29).** Dwa hotspoty
+> wymienione niżej (`urirun.v2` i `urirun.mesh`) zostały rozbite — bez zmiany API,
+> z re-eksportem dla zgodności, testy zielone (334 passed w pierwotnym ruchu):
 > - **`node/mesh.py` 3099 → ~2050 L** → 8 modułów warstwowych: `_util`, `_artifacts`,
 >   `paths`, `_version`, `routing`, `config`, `transport`, `flow` (re-eksport z `mesh`).
 >   Pozostają w `mesh` (na razie): server (`NodeContext`/`NodeHandler`/`serve_node`/
 >   `apply_deploy`) i kontroler CLI (`*_command`).
-> - **`runtime/v2.py` 2593 → ~1970 L** → warstwa budowy parsera (`_build_parser` +
->   pod-buildery per-komenda) wyniesiona do **`runtime/cli.py`**; `_build_parser`
->   fan-out 116 → 25. Handlery `_cmd_*` + `main()` ZOSTAJĄ w v2 — są kontrolerem
->   runtime'u (~30 zależności od wewnętrznych nazw v2); ich wyniesienie wymaga
->   najpierw czystego publicznego API runtime, więc to osobny krok.
+> - **`runtime/v2.py` 2593 → 1657 L** → warstwa budowy parsera (`_build_parser` +
+>   pod-buildery per-komenda) jest w **`urirun_runtime/cli.py`** (739 L), a handlery
+>   CLI `_cmd_*` są w **`urirun_runtime/v2_cmds.py`** (611 L). `v2.py` zostaje
+>   runtime core + kompatybilnym re-eksportem symboli przez lazy `__getattr__`;
+>   `main()` deleguje do `v2_cmds._main_impl`.
+> - **`urirun.node.flow` 1249 → 11 L** → historyczna ścieżka importu jest shimem
+>   do real-source **`urirun-flow/urirun_flow/flow.py`** (1252 L).
 > - Bezpieczeństwo: decyzja `safe` scentralizowana w `node/routing.route_is_safe`
 >   (jedno źródło prawdy) — fundament pod deny-by-default.
 
@@ -420,6 +422,10 @@ Entry point discovery laczy wszystkie connector bindings w jeden dokument,
 potem `urirun compile` tworzy registry.
 
 ## Kolejnosc migracji
+
+Kolejność migracji opisuje historyczny, bezpieczny tor przejścia od monolitu do
+slim-core: najpierw słownik i API, potem connector, a na końcu shimy i cięcie
+importów.
 
 ### Faza 0 - zamrozenie slownika
 

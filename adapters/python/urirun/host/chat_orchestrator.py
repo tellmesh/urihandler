@@ -163,7 +163,7 @@ def _build_escalation_block(remediation: dict, prompt: str, execute: bool) -> di
     # of the DEPLOYED dashboard, so the link is clickable off-host (e.g. on a phone). Make a `?`-relative
     # deep-link absolute against URIRUN_DASHBOARD_BASE (mirrors URIRUN_LAN_QR_BASE, which hardcodes the
     # same LAN host on :8195). Default points at the operator dashboard; override via the env var.
-    _dash_base = (os.environ.get("URIRUN_DASHBOARD_BASE") or "http://192.168.188.212:8797").strip().rstrip("/")
+    _dash_base = (os.environ.get("URIRUN_DASHBOARD_BASE") or "http://localhost:8797").strip().rstrip("/")
     if _dash_base and dashboard_url.startswith("?"):
         dashboard_url = f"{_dash_base}/{dashboard_url}"
     return {

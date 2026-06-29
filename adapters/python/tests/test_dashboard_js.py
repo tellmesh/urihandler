@@ -33,10 +33,13 @@ def test_qr_lan_fallback_does_not_hardcode_private_host():
 def test_webpage_node_card_exposes_delegated_phone_scanner_service():
     source = _dashboard_js()
     assert "function delegatedPhoneServicesDetails" in source
+    assert "function phoneScannerServiceContact" in source
     assert "function dashboardLanBase" in source
     assert "function phoneScannerDelegatedUrl" in source
     assert "delegatedPhoneServicesDetails(node)" in source
     assert "service:phone-scanner" in source
     assert "Usługi hosta na telefonie" in source
-    assert "u.port = '8194'" in source
-    assert "dashboardLanBase() + '/scanner?'" in source
+    assert "state.summary.services" in source
+    assert "return String(contact.url)" in source
+    assert "autostart: '1'" not in source
+    assert "minScore: '45'" not in source

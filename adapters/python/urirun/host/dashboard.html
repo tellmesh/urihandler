@@ -244,7 +244,7 @@
                 <div class="node-kind-form" id="nodeForm-server" style="display:none">
                   <p class="subtle">🖥️ <strong>Server</strong> — sterowanie przez <strong>shell/SSH</strong>. Headless maszyna; instalujesz węzeł urirun zdalnie przez SSH. Wymaga: dostęp SSH (user@host), uprawnienia do instalacji. <a href="/docs/nodes#server" target="_blank" rel="noreferrer">instrukcja</a></p>
                   <label class="stack"><span class="subtle">Nazwa node'a</span><input id="srvName" placeholder="server-01"></label>
-                  <label class="stack"><span class="subtle">Host / IP</span><input id="srvHost" oninput="srvSnippet()" placeholder="192.168.1.50"></label>
+                  <label class="stack"><span class="subtle">Host / IP</span><input id="srvHost" oninput="srvSnippet()" placeholder="192.0.2.1"></label>
                   <div class="artifact-actions">
                     <label class="stack" style="flex:1"><span class="subtle">SSH user</span><input id="srvUser" oninput="srvSnippet()" placeholder="ubuntu"></label>
                     <label class="stack"><span class="subtle">Port node'a</span><input id="srvPort" oninput="srvSnippet()" value="8765" style="width:90px"></label>
@@ -261,7 +261,7 @@
                 <div class="node-kind-form" id="nodeForm-pc" style="display:none">
                   <p class="subtle">💻 <strong>PC</strong> — sterowanie przez <strong>aplikację desktop + shell</strong>. Maszyna z GUI; uruchamiasz węzeł lokalnie (lub przez aplikację ifURI). Wymaga: dostęp do pulpitu, terminal. <a href="/docs/nodes#pc" target="_blank" rel="noreferrer">instrukcja</a></p>
                   <label class="stack"><span class="subtle">Nazwa node'a</span><input id="pcName" placeholder="lenovo"></label>
-                  <label class="stack"><span class="subtle">URL węzła (po uruchomieniu)</span><input id="pcUrl" placeholder="http://192.168.1.20:8765"></label>
+                  <label class="stack"><span class="subtle">URL węzła (po uruchomieniu)</span><input id="pcUrl" placeholder="http://192.0.2.1:8765"></label>
                   <p class="subtle">Na PC uruchom węzeł:</p>
                   <pre class="mono">curl -fsSL https://get.ifuri.com/node.sh | bash -s -- --name pc --port 8765 --background</pre>
                   <div class="artifact-actions">
@@ -275,10 +275,10 @@
                   <p class="subtle">🪟 <strong>RDP</strong> — <strong>pulpit zdalny</strong> (Windows/xrdp). Sterujesz klawiaturą/myszą/ekranem zdalnego pulpitu. Wymaga: host RDP, login, port 3389, węzeł urirun z connectorem KVM po stronie pulpitu. <a href="/docs/nodes#rdp" target="_blank" rel="noreferrer">instrukcja</a></p>
                   <label class="stack"><span class="subtle">Nazwa node'a</span><input id="rdpName" placeholder="win-desktop"></label>
                   <div class="artifact-actions">
-                    <label class="stack" style="flex:1"><span class="subtle">Host RDP</span><input id="rdpHost" oninput="rdpSnippet()" placeholder="192.168.1.30"></label>
+                    <label class="stack" style="flex:1"><span class="subtle">Host RDP</span><input id="rdpHost" oninput="rdpSnippet()" placeholder="192.0.2.1"></label>
                     <label class="stack"><span class="subtle">Port RDP</span><input id="rdpPort" oninput="rdpSnippet()" value="3389" style="width:90px"></label>
                   </div>
-                  <label class="stack"><span class="subtle">URL węzła urirun na pulpicie</span><input id="rdpUrl" placeholder="http://192.168.1.30:8765"></label>
+                  <label class="stack"><span class="subtle">URL węzła urirun na pulpicie</span><input id="rdpUrl" placeholder="http://192.0.2.1:8765"></label>
                   <p class="subtle">Połącz pulpit (przykład xfreerdp):</p>
                   <pre id="rdpSnippet" class="mono">— podaj host RDP —</pre>
                   <div class="artifact-actions">
@@ -332,7 +332,7 @@
                   <p class="subtle">🧩 <strong>Chrome Plugin</strong> — kontrola aktywnej karty przez rozszerzenie Chrome. Używa <code>browser-plugin://chrome/...</code> i może czytać DOM, listować urządzenia strony, uruchamiać kamerę oraz przekazywać inne URI do node <code>/run</code>. <a href="/docs/nodes#browser-chrome-plugin" target="_blank" rel="noreferrer">instrukcja</a></p>
                   <label class="stack"><span class="subtle">Nazwa node'a</span><input id="chromePluginName" placeholder="chrome-plugin"></label>
                   <label class="stack"><span class="subtle">Node URL dla popupu pluginu</span><input id="chromePluginUrl" placeholder="http://127.0.0.1:8765"></label>
-                  <p class="subtle">Załaduj folder <code>/home/tom/github/if-uri/chrome-plugin</code> w <code>chrome://extensions</code> jako unpacked extension.</p>
+                  <p class="subtle">Załaduj folder <code>~/github/if-uri/chrome-plugin</code> w <code>chrome://extensions</code> jako unpacked extension.</p>
                   <div class="artifact-actions">
                     <button type="button" onclick="saveTypedNode('browser-chrome-plugin','chromePluginName',document.getElementById('chromePluginUrl').value)">💾 Zapisz node</button>
                     <span id="chromePluginStatus" class="subtle"></span>
@@ -344,7 +344,7 @@
                   <p class="subtle">🧩 <strong>Firefox Plugin</strong> — kontrola aktywnej karty przez rozszerzenie Firefox. Używa <code>browser-plugin://firefox/...</code> i zachowuje kompatybilność z <code>browser://</code>. <a href="/docs/nodes#browser-firefox-plugin" target="_blank" rel="noreferrer">instrukcja</a></p>
                   <label class="stack"><span class="subtle">Nazwa node'a</span><input id="firefoxPluginName" placeholder="firefox-plugin"></label>
                   <label class="stack"><span class="subtle">Node URL dla popupu pluginu</span><input id="firefoxPluginUrl" placeholder="http://127.0.0.1:8765"></label>
-                  <p class="subtle">Załaduj folder <code>/home/tom/github/if-uri/firefox-plugin</code> w <code>about:debugging#/runtime/this-firefox</code>.</p>
+                  <p class="subtle">Załaduj folder <code>~/github/if-uri/firefox-plugin</code> w <code>about:debugging#/runtime/this-firefox</code>.</p>
                   <div class="artifact-actions">
                     <button type="button" onclick="saveTypedNode('browser-firefox-plugin','firefoxPluginName',document.getElementById('firefoxPluginUrl').value)">💾 Zapisz node</button>
                     <span id="firefoxPluginStatus" class="subtle"></span>

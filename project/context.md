@@ -5,17 +5,17 @@
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 223, json: 15, shell: 15, yaml: 5, javascript: 5
+- **Languages**: python: 224, json: 15, shell: 15, yaml: 5, javascript: 5
 - **Analysis Mode**: static
-- **Total Functions**: 2699
+- **Total Functions**: 2708
 - **Total Classes**: 61
-- **Modules**: 294
-- **Entry Points**: 1080
+- **Modules**: 295
+- **Entry Points**: 1086
 
 ## Architecture by Module
 
 ### adapters.python.urirun.host.dashboard
-- **Functions**: 618
+- **Functions**: 622
 - **File**: `dashboard.js`
 
 ### adapters.python.urirun.host.scanner
@@ -28,7 +28,7 @@
 - **File**: `v2.py`
 
 ### adapters.python.urirun.host.host_dashboard
-- **Functions**: 102
+- **Functions**: 92
 - **File**: `host_dashboard.py`
 
 ### adapters.python.urirun_node.server

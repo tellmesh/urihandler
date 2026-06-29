@@ -67,7 +67,7 @@ def _task_counts(tickets: list[dict]) -> dict[str, int]:
 
 
 def _lan_qr_profile() -> dict:
-    base = (os.environ.get("URIRUN_LAN_QR_BASE") or "http://192.168.188.212:8195").strip().rstrip("/")
+    base = (os.environ.get("URIRUN_LAN_QR_BASE") or "http://localhost:8195").strip().rstrip("/")
     secure = base.replace("http://", "https://", 1) if base.startswith("http://") else base
     return {"base": base, "secureBase": secure}
 

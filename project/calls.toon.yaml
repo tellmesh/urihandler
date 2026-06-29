@@ -1,5 +1,5 @@
-# code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.37s
+# code2llm call graph | ~/github/if-uri/urirun
+# generated in 0.26s
 # nodes: 467 | edges: 500 | modules: 54
 # CC̄=4.2
 
@@ -16,14 +16,14 @@ HUBS[20]:
     CC=5  in:0  out:29  total:29
   adapters.python.urirun_connectors_toolkit.connector_lint.verify_connector
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun_runtime.v2.validate_binding_document
-    CC=12  in:3  out:24  total:27
   adapters.python.urirun_node.server.apply_deploy
     CC=12  in:2  out:25  total:27
-  adapters.python.urirun_connectors_toolkit.connect_catalog._cmd_show
-    CC=9  in:0  out:25  total:25
+  adapters.python.urirun_runtime.v2.validate_binding_document
+    CC=12  in:3  out:24  total:27
   adapters.python.urirun_connectors_toolkit.resolver.resolve
     CC=12  in:1  out:24  total:25
+  adapters.python.urirun_connectors_toolkit.connect_catalog._cmd_show
+    CC=9  in:0  out:25  total:25
   adapters.python.urirun_twin.twin_store.environment_fingerprint
     CC=9  in:2  out:22  total:24
   adapters.python.urirun_node.server.NodeHandler._get
@@ -36,14 +36,14 @@ HUBS[20]:
     CC=7  in:1  out:20  total:21
   adapters.python.urirun.connectors.connector_smoke.smoke
     CC=6  in:1  out:20  total:21
-  examples.matrix.verify.main
-    CC=9  in:0  out:20  total:20
-  scripts.extraction_audit._selftest
-    CC=7  in:2  out:18  total:20
-  adapters.python.urirun_node.transport.discover_node
-    CC=12  in:0  out:20  total:20
   adapters.python.urirun_connectors_toolkit.connect_catalog._cmd_list
     CC=9  in:0  out:20  total:20
+  adapters.python.urirun_node.transport.copy_id
+    CC=8  in:2  out:18  total:20
+  adapters.python.urirun_node.transport.discover_node
+    CC=12  in:0  out:20  total:20
+  scripts.extraction_audit._selftest
+    CC=7  in:2  out:18  total:20
 
 MODULES:
   adapters.c.urirun  [4 funcs]

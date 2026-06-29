@@ -611,7 +611,7 @@ def copy_id_cli(argv: list[str] | None = None) -> int:
 
     p = _ap.ArgumentParser(prog="uri-copy-id",
                            description="Enroll your SSH public key on a urirun node (ssh-copy-id for urirun)")
-    p.add_argument("node", help="node URL (e.g. 192.168.188.201) or a configured node name")
+    p.add_argument("node", help="node URL (e.g. 192.0.2.1) or a configured node name")
     p.add_argument("-i", "--identity", default=DEFAULT_IDENTITY, help="SSH private key (default ~/.ssh/id_ed25519)")
     p.add_argument("-t", "--enroll-token", default=None,
                    help="the node's console TOKEN (shown in red at its startup), authorizing this enrollment")

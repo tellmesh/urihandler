@@ -180,7 +180,7 @@ def escalation_dashboard_url(node: str, fix: str) -> str:
     connection / capability failures escalate here so the link is clickable off-host (e.g. on a phone).
     Configurable base mirrors URIRUN_LAN_QR_BASE (which hardcodes the same LAN host on :8195)."""
     import os
-    base = (os.environ.get("URIRUN_DASHBOARD_BASE") or "http://192.168.188.212:8797").strip().rstrip("/")
+    base = (os.environ.get("URIRUN_DASHBOARD_BASE") or "http://localhost:8797").strip().rstrip("/")
     return f"{base}/?node={node}&fix={fix}" if node else ""
 
 

@@ -58,8 +58,8 @@ def _js_sdk_response(handler: BaseHTTPRequestHandler, project: str) -> None:
     roots.extend([
         project_path.parent / "js-urirun-com" / "urirun.js",
         project_path.parent / "js-urirun-com" / "src" / "urirun.js",
-        Path("/home/tom/github/if-uri/js-urirun-com/urirun.js"),
-        Path("/home/tom/github/if-uri/js-urirun-com/src/urirun.js"),
+        Path.home() / "github/if-uri/js-urirun-com/urirun.js",
+        Path.home() / "github/if-uri/js-urirun-com/src/urirun.js",
     ])
     for source in roots:
         try:
