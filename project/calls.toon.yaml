@@ -1,6 +1,6 @@
 # code2llm call graph | /home/tom/github/if-uri/urirun
-# generated in 0.27s
-# nodes: 467 | edges: 500 | modules: 57
+# generated in 0.37s
+# nodes: 467 | edges: 500 | modules: 54
 # CC̄=4.2
 
 HUBS[20]:
@@ -8,42 +8,42 @@ HUBS[20]:
     CC=0  in:211  out:0  total:211
   adapters.python.urirun.host.dashboard.list
     CC=8  in:103  out:4  total:107
+  adapters.python.urirun_node.server.send_json
+    CC=1  in:44  out:12  total:56
   scripts.extraction_audit.print_report
     CC=12  in:1  out:36  total:37
   scripts.transport_swap_proof.main
     CC=5  in:0  out:29  total:29
   adapters.python.urirun_connectors_toolkit.connector_lint.verify_connector
     CC=6  in:1  out:27  total:28
-  adapters.python.urirun_runtime.v1._build_v1_parser
-    CC=2  in:1  out:24  total:25
+  adapters.python.urirun_runtime.v2.validate_binding_document
+    CC=12  in:3  out:24  total:27
+  adapters.python.urirun_node.server.apply_deploy
+    CC=12  in:2  out:25  total:27
+  adapters.python.urirun_connectors_toolkit.connect_catalog._cmd_show
+    CC=9  in:0  out:25  total:25
+  adapters.python.urirun_connectors_toolkit.resolver.resolve
+    CC=12  in:1  out:24  total:25
   adapters.python.urirun_twin.twin_store.environment_fingerprint
     CC=9  in:2  out:22  total:24
-  adapters.python.urirun.connectors.connector_smoke.smoke
-    CC=6  in:1  out:20  total:21
+  adapters.python.urirun_node.server.NodeHandler._get
+    CC=12  in:4  out:19  total:23
+  adapters.python.urirun_node.transport.http_json
+    CC=8  in:11  out:11  total:22
+  adapters.python.urirun_node.server.NodeHandler._handle_enroll
+    CC=11  in:0  out:22  total:22
   adapters.python.urirun_runtime.v1._run_process_streaming
     CC=7  in:1  out:20  total:21
+  adapters.python.urirun.connectors.connector_smoke.smoke
+    CC=6  in:1  out:20  total:21
   examples.matrix.verify.main
     CC=9  in:0  out:20  total:20
   scripts.extraction_audit._selftest
     CC=7  in:2  out:18  total:20
-  adapters.python.urirun_node.formatting.format_table
-    CC=6  in:4  out:15  total:19
-  adapters.python.urirun_twin.reversible.ledger_from_execution
-    CC=10  in:1  out:18  total:19
-  adapters.python.urirun_connectors_toolkit.connector_lint.lint_kernel_symbols
-    CC=7  in:0  out:19  total:19
-  adapters.python.urirun_connectors_toolkit.connector_lint._format_report
-    CC=7  in:1  out:18  total:19
-  adapters.python.urirun_runtime.v1.run
-    CC=7  in:1  out:18  total:19
-  examples.node-file-transfer.fs_transfer.write_b64
-    CC=8  in:0  out:18  total:18
-  adapters.python.urirun_node._artifacts.materialize_base64_artifacts
-    CC=1  in:2  out:16  total:18
-  adapters.python.urirun_node.manage._install_policy
-    CC=9  in:3  out:15  total:18
-  adapters.python.urirun_runtime.agent._resolve_refs
-    CC=10  in:3  out:15  total:18
+  adapters.python.urirun_node.transport.discover_node
+    CC=12  in:0  out:20  total:20
+  adapters.python.urirun_connectors_toolkit.connect_catalog._cmd_list
+    CC=9  in:0  out:20  total:20
 
 MODULES:
   adapters.c.urirun  [4 funcs]
@@ -78,9 +78,8 @@ MODULES:
     _heal_file  CC=7  out:12
     heal  CC=6  out:7
     main  CC=5  out:9
-  adapters.python.urirun  [1 funcs]
-    validate_binding_document  CC=1  out:1
-  adapters.python.urirun._connector  [1 funcs]
+  adapters.python.urirun._connector  [2 funcs]
+    handler  CC=1  out:5
     manifest  CC=11  out:13
   adapters.python.urirun.connectors.connector_contract  [5 funcs]
     assert_reply_shape  CC=3  out:1
@@ -92,8 +91,7 @@ MODULES:
     _load  CC=3  out:4
     smoke  CC=6  out:20
     smoke_command  CC=2  out:4
-  adapters.python.urirun.host.dashboard  [2 funcs]
-    factory  CC=3  out:1
+  adapters.python.urirun.host.dashboard  [1 funcs]
     list  CC=8  out:4
   adapters.python.urirun.node.doctor  [11 funcs]
     _api_id  CC=8  out:9
@@ -132,6 +130,17 @@ MODULES:
     have_bin  CC=1  out:1
     have_mod  CC=2  out:1
     registry_report  CC=3  out:4
+  adapters.python.urirun_connectors_toolkit.connect_catalog  [19 funcs]
+    _cmd_check  CC=7  out:15
+    _cmd_install  CC=7  out:7
+    _cmd_list  CC=9  out:20
+    _cmd_show  CC=9  out:25
+    _connectors  CC=2  out:3
+    _diff_install  CC=8  out:11
+    _diff_scalar_fields  CC=5  out:6
+    _diff_set_fields  CC=7  out:7
+    _emit_json  CC=1  out:2
+    _execute_pip_install  CC=4  out:6
   adapters.python.urirun_connectors_toolkit.connector_lint  [45 funcs]
     _adapter_drift  CC=5  out:7
     _build_route_from_decorator  CC=9  out:8
@@ -157,6 +166,17 @@ MODULES:
   adapters.python.urirun_connectors_toolkit.connector_sdk  [2 funcs]
     connector_cli  CC=5  out:11
     emit  CC=1  out:2
+  adapters.python.urirun_connectors_toolkit.resolver  [14 funcs]
+    _build_connector_entry  CC=5  out:10
+    _candidate_dirs  CC=1  out:4
+    _iter_connector_dirs  CC=7  out:11
+    _read_manifest  CC=3  out:4
+    _roots_from_args  CC=2  out:2
+    _schemes_from_code  CC=9  out:10
+    _schemes_from_examples  CC=5  out:5
+    _schemes_from_manifest  CC=5  out:7
+    _schemes_from_routes  CC=5  out:6
+    _terms  CC=3  out:3
   adapters.python.urirun_node._artifacts  [5 funcs]
     _artifact_extension  CC=9  out:5
     _decode_base64_artifact  CC=6  out:6
@@ -176,15 +196,13 @@ MODULES:
     latest_version  CC=5  out:16
     version_line  CC=3  out:1
     version_status  CC=5  out:4
-  adapters.python.urirun_node.client  [8 funcs]
+  adapters.python.urirun_node.client  [6 funcs]
     __init__  CC=1  out:5
     deploy  CC=9  out:8
     get  CC=1  out:3
     routes  CC=1  out:3
     run  CC=6  out:5
     run_async  CC=4  out:5
-    _get  CC=3  out:5
-    _post  CC=8  out:12
   adapters.python.urirun_node.config  [16 funcs]
     _coerce_node_url  CC=5  out:4
     _node_name_from_url  CC=4  out:2
@@ -233,112 +251,54 @@ MODULES:
     ensure  CC=8  out:5
     report  CC=4  out:5
     status  CC=5  out:3
-  adapters.python.urirun_node.transport  [1 funcs]
+  adapters.python.urirun_node.server  [55 funcs]
+    publish  CC=3  out:4
+    _dispatch_run_response  CC=6  out:8
+    _get  CC=12  out:19
+    _get_errors  CC=8  out:15
+    _guarded  CC=3  out:3
+    _handle_adopt  CC=9  out:15
+    _handle_deploy  CC=5  out:9
+    _handle_enroll  CC=11  out:22
+    _handle_need  CC=9  out:14
+    _handle_run  CC=4  out:9
+  adapters.python.urirun_node.transport  [26 funcs]
     _annotate_deploy_allow_compat  CC=11  out:9
-  adapters.python.urirun_runtime._registry  [41 funcs]
-    _coerce_list  CC=2  out:1
-    _default_openapi_route  CC=9  out:11
-    _discover_python_module  CC=1  out:2
-    _docker_labels_config  CC=6  out:5
-    _docker_labels_route  CC=5  out:8
-    _emit_json  CC=3  out:3
-    _get_route_entry  CC=1  out:0
-    _iter_module_exports  CC=6  out:8
-    _load_sources  CC=2  out:3
-    _manifest_from_known_keys  CC=6  out:11
-  adapters.python.urirun_runtime.agent  [6 funcs]
-    _load_planner  CC=2  out:4
-    _parse_stdout  CC=9  out:8
-    _resolve_refs  CC=10  out:15
-    action_space  CC=9  out:13
-    agent_command  CC=7  out:16
-    run_plan  CC=7  out:16
-  adapters.python.urirun_runtime.compat  [6 funcs]
-    _entry_point_names  CC=4  out:5
-    _importable  CC=3  out:1
-    _print_table  CC=10  out:17
-    main  CC=4  out:12
-    module_status  CC=8  out:9
-    report  CC=8  out:7
-  adapters.python.urirun_runtime.daemon  [8 funcs]
-    _bind_socket  CC=3  out:8
-    _cleanup  CC=2  out:4
-    _handle_connection  CC=7  out:13
-    _init_runtime  CC=3  out:7
-    _log_started  CC=1  out:2
-    _main  CC=9  out:7
-    _send_error  CC=1  out:4
-    serve  CC=4  out:8
-  adapters.python.urirun_runtime.dispatch_protocol  [8 funcs]
-    _norm_mode  CC=5  out:0
-    _parse_stdout  CC=4  out:3
-    dispatch  CC=4  out:8
-    make_request  CC=2  out:3
-    normalize_request  CC=5  out:9
+    _api_routes_for_one  CC=8  out:9
+    _build_deploy_body  CC=9  out:0
+    _build_deploy_headers  CC=3  out:1
+    _configured_api_id  CC=8  out:9
+    _configured_api_kind  CC=4  out:6
+    _configured_api_routes  CC=7  out:11
+    _configured_node_kind  CC=8  out:10
+    _deploy_allow_list  CC=7  out:8
+    _fetch_before_health  CC=4  out:3
+  adapters.python.urirun_runtime.dispatch_protocol  [2 funcs]
     reply_fields  CC=9  out:10
     validate_reply  CC=6  out:8
-    validate_request  CC=10  out:9
-  adapters.python.urirun_runtime.introspect  [3 funcs]
-    _introspect_binding  CC=7  out:11
-    _introspect_list  CC=9  out:10
-    run_registry_introspect  CC=7  out:11
   adapters.python.urirun_runtime.progress  [1 funcs]
     kill  CC=3  out:3
-  adapters.python.urirun_runtime.v1  [32 funcs]
-    _binding_pairs  CC=8  out:11
-    _build_run_ctx  CC=1  out:0
-    _build_run_envelope  CC=1  out:2
-    _build_v1_parser  CC=2  out:24
+  adapters.python.urirun_runtime.v1  [10 funcs]
     _env_flags  CC=3  out:5
-    _handle_check  CC=2  out:2
-    _handle_compile  CC=2  out:5
-    _handle_list  CC=2  out:4
-    _handle_run  CC=3  out:4
     _has_placeholders  CC=2  out:3
-  adapters.python.urirun_runtime.v2_adopt  [13 funcs]
-    _build_parser  CC=1  out:17
-    _cmd_add_npm  CC=1  out:2
-    _cmd_add_python  CC=1  out:2
-    _cmd_adopt_python  CC=3  out:4
-    _cmd_init  CC=1  out:5
-    _command_binding  CC=2  out:2
-    init_project  CC=1  out:2
-    installed_python_bindings  CC=4  out:3
-    main  CC=5  out:6
-    merge_into  CC=7  out:10
-  adapters.python.urirun_runtime.v2_grpc  [12 funcs]
-    _build_parser  CC=1  out:14
-    _cmd_call  CC=3  out:4
-    _cmd_serve  CC=5  out:5
-    _method  CC=2  out:1
-    _route_list  CC=2  out:5
-    _validate  CC=5  out:4
-    call  CC=6  out:7
-    channel_target  CC=3  out:3
-    list_routes  CC=1  out:3
-    main  CC=3  out:5
-  adapters.python.urirun_runtime.v2_mcp  [12 funcs]
-    _contract_output_schema  CC=9  out:8
-    _handle_mcp_request  CC=7  out:16
-    _input_schema  CC=4  out:3
-    build_tool_index  CC=2  out:1
-    call_tool  CC=3  out:4
-    main  CC=9  out:16
-    serve_mcp  CC=9  out:8
-    to_a2a_card  CC=5  out:11
-    to_mcp_manifest  CC=4  out:2
-    to_mcp_tools  CC=5  out:9
-  adapters.python.urirun_runtime.worker  [14 funcs]
-    _run_argv  CC=10  out:10
-    run_uri  CC=4  out:9
-    _cli_ref_for_script  CC=3  out:2
-    _handle_worker_request  CC=8  out:13
-    _handler_worker_main  CC=3  out:7
-    _import_cli  CC=2  out:3
-    _invoke_cli  CC=6  out:9
-    _parse_result  CC=4  out:4
+    _params_spec  CC=4  out:3
+    _proc_env  CC=3  out:6
+    _run_process  CC=3  out:10
+    _run_process_streaming  CC=7  out:20
+    render_command  CC=2  out:1
+    render_value  CC=1  out:5
+    resolve_params  CC=11  out:13
+    run_spawn  CC=6  out:7
+  adapters.python.urirun_runtime.v2  [1 funcs]
+    validate_binding_document  CC=12  out:24
+  adapters.python.urirun_runtime.v2_service  [5 funcs]
+    _post  CC=6  out:15
+    _schema_error  CC=4  out:7
+    call  CC=10  out:11
+    make_dispatch  CC=1  out:6
+    service_base  CC=5  out:6
+  adapters.python.urirun_runtime.worker  [1 funcs]
     _pool_executors  CC=1  out:8
-    _resolve_handler_ref  CC=2  out:4
   adapters.python.urirun_twin.capture_preferences  [7 funcs]
     _apply_pref_to_step  CC=11  out:15
     apply_capture_preferences  CC=7  out:4
@@ -347,8 +307,31 @@ MODULES:
     capture_preference_from_payload  CC=8  out:6
     capture_step_node  CC=5  out:4
     remember_capture_preferences  CC=11  out:10
-  adapters.python.urirun_twin.episode  [1 funcs]
-    intent_signature  CC=1  out:4
+  adapters.python.urirun_twin.episode  [16 funcs]
+    from_dict  CC=6  out:11
+    _artifacts_from_dicts  CC=2  out:1
+    _episode_from_dict_core  CC=6  out:6
+    _make_episode_artifacts  CC=7  out:5
+    _make_episode_outcome  CC=2  out:1
+    _make_episode_plan  CC=4  out:3
+    _make_episode_reality  CC=2  out:1
+    _outcome_from_dict  CC=4  out:4
+    _plan_from_dict  CC=4  out:4
+    _proofs_from_dicts  CC=2  out:1
+  adapters.python.urirun_twin.experience_retrieval  [3 funcs]
+    _unwrap_retrieval  CC=7  out:6
+    recall_env_fingerprint  CC=6  out:4
+    retrieve_experience_context  CC=5  out:3
+  adapters.python.urirun_twin.planner  [9 funcs]
+    _action_matrix_hints  CC=11  out:9
+    _adjust_plausibility_score  CC=7  out:10
+    _best_surface_hint  CC=3  out:0
+    _infeasible_constraints  CC=6  out:3
+    _planner_facts  CC=5  out:11
+    _planner_surface_guidance  CC=6  out:10
+    _plausibility_level  CC=5  out:1
+    planner_context  CC=6  out:9
+    plausibility  CC=4  out:5
   adapters.python.urirun_twin.reversible  [19 funcs]
     execute  CC=8  out:14
     rollback_flow  CC=6  out:7
@@ -419,13 +402,11 @@ MODULES:
     timed  CC=2  out:5
   security.mesh-probe.probe  [1 funcs]
     record  CC=2  out:2
-  v1.js.urirun-v1  [1 funcs]
-    executor  CC=3  out:1
 
 EDGES:
   security.mesh-probe.probe.record → scripts.test_pypi_install.print
   examples.matrix.verify.essential → adapters.python.urirun.host.dashboard.list
-  examples.matrix.verify.main → adapters.python.urirun.validate_binding_document
+  examples.matrix.verify.main → adapters.python.urirun_runtime.v2.validate_binding_document
   examples.matrix.verify.main → examples.matrix.verify.essential
   examples.matrix.verify.main → scripts.test_pypi_install.print
   examples.node-file-transfer.fs_transfer.read_b64 → examples.node-file-transfer.fs_transfer._expand_path
