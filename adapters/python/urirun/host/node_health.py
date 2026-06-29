@@ -84,6 +84,91 @@ def _probe_version(health_data: dict) -> tuple[str, str]:
 # Doctor
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _build_reachable_check(node_url: str, node: str, reachable: bool) -> tuple[dict[str, Any], dict | None]:
+    """Build the reachable check dict; return (check, early_result) where early_result is set
+    only when the node is unreachable (callers should return it immediately)."""
+    check: dict[str, Any] = {
+        "class": RemediationClass.UNREACHABLE.value,
+        "ok": reachable,
+        "detail": f"GET {node_url}/health → {'ok' if reachable else 'no response'}",
+    }
+    if not reachable:
+        r = Remediation(
+            cls=RemediationClass.UNREACHABLE, node=node,
+            human_action=f"Node '{node}' offline. Uruchom: urirun node serve --name {node}",
+            command=f"urirun node serve --name {node}",
+            dashboard_url=f"?node={node}&fix=unreachable",
+        )
+        check["remediation"] = r.to_dict()
+        return check, _result(node, node_url, ok=False, checks=[check],
+                              summary=f"unreachable — {node_url}")
+    return check, None
+
+
+def _build_auth_check(node: str, node_url: str, auth_status: str) -> dict[str, Any]:
+    """Build the authentication check dict, attaching remediation when denied."""
+    check: dict[str, Any] = {
+        "class": RemediationClass.UNAUTHENTICATED.value,
+        "ok": auth_status != "denied",
+        "detail": auth_status,
+    }
+    if auth_status == "denied":
+        r = Remediation(
+            cls=RemediationClass.UNAUTHENTICATED, node=node,
+            human_action=(
+                f"Node '{node}' odrzucił token. Enroll: "
+                f"uri-copy-id {node_url} -i ~/.ssh/id_ed25519 --enroll-token <PIN>"
+            ),
+            command=f"uri-copy-id {node_url} -i ~/.ssh/id_ed25519 --enroll-token <PIN>",
+            dashboard_url=f"?node={node}&fix=unauthenticated",
+        )
+        check["remediation"] = r.to_dict()
+    return check
+
+
+def _build_routes_check(node: str, node_url: str, schemes: list[str]) -> dict[str, Any]:
+    """Build the route-presence check dict, attaching remediation when no schemes are found."""
+    detail = (
+        f"{len(schemes)} scheme(s): {', '.join(schemes[:8])}"
+        f"{'…' if len(schemes) > 8 else ''}"
+    )
+    check: dict[str, Any] = {
+        "class": RemediationClass.ROUTE_MISSING.value,
+        "ok": bool(schemes),
+        "detail": detail,
+        "schemes": schemes,
+    }
+    if not schemes:
+        r = Remediation(
+            cls=RemediationClass.ROUTE_MISSING, node=node,
+            human_action=f"Node '{node}' ma 0 tras. Zainstaluj connectors i zrestartuj node.",
+            command="pip install urirun-connector-fs urirun-connector-browser-control",
+            dashboard_url=f"?node={node}&fix=route-missing",
+        )
+        check["remediation"] = r.to_dict()
+    return check
+
+
+def _build_version_check(health_data: dict) -> tuple[dict[str, Any], str]:
+    """Build the version check dict; return (check, version_str) for use in the summary."""
+    version_str, version_status = _probe_version(health_data)
+    check: dict[str, Any] = {
+        "class": RemediationClass.VERSION_SKEW.value,
+        "ok": version_status == "ok",
+        "detail": version_str or "no version info in /health",
+    }
+    return check, version_str
+
+
+def _build_doctor_summary(auth_status: str, version_str: str, schemes: list[str], failed: list[dict]) -> str:
+    """Format the one-line summary for ``node_doctor``."""
+    issues = f", issues: {[c['class'] for c in failed]}" if failed else ""
+    return (
+        f"reachable=yes, auth={auth_status}, version={version_str or '?'}, "
+        f"schemes={len(schemes)}{issues}"
+    )
+
+
 def node_doctor(
     node_url: str,
     *,
@@ -112,89 +197,29 @@ def node_doctor(
     (reachable first — if unreachable, subsequent probes are skipped).
     """
     node = node_name or _node_from_url(node_url)
-    checks: list[dict[str, Any]] = []
 
     # 1 ── Reachable ──────────────────────────────────────────────────────────
     reachable, health_data = _probe_reachable(node_url)
-    c1: dict[str, Any] = {
-        "class": RemediationClass.UNREACHABLE.value,
-        "ok": reachable,
-        "detail": f"GET {node_url}/health → {'ok' if reachable else 'no response'}",
-    }
-    if not reachable:
-        r = Remediation(
-            cls=RemediationClass.UNREACHABLE, node=node,
-            human_action=f"Node '{node}' offline. Uruchom: urirun node serve --name {node}",
-            command=f"urirun node serve --name {node}",
-            dashboard_url=f"?node={node}&fix=unreachable",
-        )
-        c1["remediation"] = r.to_dict()
-        checks.append(c1)
-        return _result(node, node_url, ok=False, checks=checks,
-                       summary=f"unreachable — {node_url}")
-    checks.append(c1)
+    c1, early = _build_reachable_check(node_url, node, reachable)
+    if early is not None:
+        return early
 
     # 2 ── Authenticated ───────────────────────────────────────────────────────
     auth_status = _probe_auth(node_url, token, identity)
-    c2: dict[str, Any] = {
-        "class": RemediationClass.UNAUTHENTICATED.value,
-        "ok": auth_status != "denied",
-        "detail": auth_status,
-    }
-    if auth_status == "denied":
-        r = Remediation(
-            cls=RemediationClass.UNAUTHENTICATED, node=node,
-            human_action=(
-                f"Node '{node}' odrzucił token. Enroll: "
-                f"uri-copy-id {node_url} -i ~/.ssh/id_ed25519 --enroll-token <PIN>"
-            ),
-            command=f"uri-copy-id {node_url} -i ~/.ssh/id_ed25519 --enroll-token <PIN>",
-            dashboard_url=f"?node={node}&fix=unauthenticated",
-        )
-        c2["remediation"] = r.to_dict()
-    checks.append(c2)
+    c2 = _build_auth_check(node, node_url, auth_status)
 
     # 3 ── Version ─────────────────────────────────────────────────────────────
-    version_str, version_status = _probe_version(health_data)
-    c3: dict[str, Any] = {
-        "class": RemediationClass.VERSION_SKEW.value,
-        "ok": version_status == "ok",
-        "detail": version_str or "no version info in /health",
-    }
-    checks.append(c3)
+    c3, version_str = _build_version_check(health_data)
 
     # 4 ── Routes ──────────────────────────────────────────────────────────────
     schemes = _probe_schemes(node_url, token, identity)
-    c4: dict[str, Any] = {
-        "class": RemediationClass.ROUTE_MISSING.value,
-        "ok": bool(schemes),
-        "detail": (
-            f"{len(schemes)} scheme(s): {', '.join(schemes[:8])}"
-            f"{'…' if len(schemes) > 8 else ''}"
-        ),
-        "schemes": schemes,
-    }
-    if not schemes:
-        r = Remediation(
-            cls=RemediationClass.ROUTE_MISSING, node=node,
-            human_action=f"Node '{node}' ma 0 tras. Zainstaluj connectors i zrestartuj node.",
-            command="pip install urirun-connector-fs urirun-connector-browser-control",
-            dashboard_url=f"?node={node}&fix=route-missing",
-        )
-        c4["remediation"] = r.to_dict()
-    checks.append(c4)
+    c4 = _build_routes_check(node, node_url, schemes)
 
     # ── Summary ───────────────────────────────────────────────────────────────
+    checks = [c1, c2, c3, c4]
     failed = [c for c in checks if not c["ok"]]
-    all_ok = not failed
-    summary = (
-        f"reachable=yes, "
-        f"auth={auth_status}, "
-        f"version={version_str or '?'}, "
-        f"schemes={len(schemes)}"
-        + (f", issues: {[c['class'] for c in failed]}" if failed else "")
-    )
-    return _result(node, node_url, ok=all_ok, checks=checks, summary=summary,
+    summary = _build_doctor_summary(auth_status, version_str, schemes, failed)
+    return _result(node, node_url, ok=not failed, checks=checks, summary=summary,
                    health=health_data, schemes=schemes)
 
 

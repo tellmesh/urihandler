@@ -60,21 +60,39 @@ def apply_auth_header(headers: dict, auth: dict, auth_type: str, secret: str) ->
     return None
 
 
-def configured_api_headers(api: dict, payload: dict) -> tuple[dict, str | None]:
-    from .object_registry import normalize_node_api_auth as _nna  # noqa: PLC0415 — lazy to avoid circular
-    headers = {str(k): str(v) for k, v in (api.get("headers") or {}).items()} if isinstance(api.get("headers"), dict) else {}
-    headers.update({str(k): str(v) for k, v in (payload.get("headers") or {}).items()} if isinstance(payload.get("headers"), dict) else {})
+def _merge_api_headers(api: dict, payload: dict) -> dict:
+    """Merge static headers from api config and per-call payload headers."""
+    headers: dict = (
+        {str(k): str(v) for k, v in (api.get("headers") or {}).items()}
+        if isinstance(api.get("headers"), dict) else {}
+    )
+    if isinstance(payload.get("headers"), dict):
+        headers.update({str(k): str(v) for k, v in (payload.get("headers") or {}).items()})
+    return headers
+
+
+def _apply_configured_auth(headers: dict, api: dict) -> str | None:
+    """Resolve auth secret and attach the appropriate Authorization header in-place.
+
+    Returns an error string on failure, or ``None`` on success / no-auth-needed.
+    """
     auth = api.get("auth") if isinstance(api.get("auth"), dict) else {}
     auth_type = str(auth.get("type") or "").strip().lower()
     if not auth_type or auth_type in {"none", "no", "false"}:
-        return headers, None
+        return None
     try:
         secret = configured_api_secret(auth)
     except Exception as exc:  # noqa: BLE001
-        return headers, str(exc)
+        return str(exc)
     if not secret:
-        return headers, None
-    error = apply_auth_header(headers, auth, auth_type, secret)
+        return None
+    return apply_auth_header(headers, auth, auth_type, secret)
+
+
+def configured_api_headers(api: dict, payload: dict) -> tuple[dict, str | None]:
+    from .object_registry import normalize_node_api_auth as _nna  # noqa: PLC0415 — lazy to avoid circular
+    headers = _merge_api_headers(api, payload)
+    error = _apply_configured_auth(headers, api)
     return headers, error
 
 

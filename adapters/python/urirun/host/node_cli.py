@@ -723,6 +723,26 @@ def host_command(args: argparse.Namespace) -> int:
     return result if result is not None else 1
 
 
+def _build_probe_body(uri: str, required: list, etag0: Any, execute: bool) -> dict:
+    """Assemble the /run request body for a single route probe."""
+    body: dict = {"uri": uri, "payload": {k: "" for k in required}, "expectEtag": etag0}
+    if not execute:
+        body["mode"] = "dry-run"
+    return body
+
+
+def _parse_probe_response(env: dict, uri: str, execute: bool) -> dict:
+    """Classify a successful /run HTTP response as ok / degraded / fail."""
+    import urirun
+    degraded = urirun.result_degraded(env) if (env.get("ok") and execute) else None
+    return {
+        "uri": uri,
+        "ok": bool(env.get("ok")),
+        "degraded": degraded,
+        "error": (env.get("error") or {}) if not env.get("ok") else None,
+    }
+
+
 def _probe_one_route(url: str, route: dict, etag0: Any, execute: bool, timeout: float) -> dict:
     """Test one route pinned to the snapshot etag; classify as ok / degraded / churn (409) / fail.
     Dry-run unless `execute`. `degraded` is only meaningful with --execute (a dry-run result is
@@ -730,21 +750,15 @@ def _probe_one_route(url: str, route: dict, etag0: Any, execute: bool, timeout: 
     import urllib.error
     import urllib.request
 
-    import urirun
-
     uri = route["uri"]
     required = (route.get("inputSchema") or {}).get("required") or []
-    body = {"uri": uri, "payload": {k: "" for k in required}, "expectEtag": etag0}
-    if not execute:
-        body["mode"] = "dry-run"
+    body = _build_probe_body(uri, required, etag0, execute)
     request = urllib.request.Request(f"{url}/run", data=json.dumps(body).encode("utf-8"),
                                      headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(request, timeout=timeout) as resp:
             env = json.loads(resp.read() or b"{}")
-        degraded = urirun.result_degraded(env) if (env.get("ok") and execute) else None
-        return {"uri": uri, "ok": bool(env.get("ok")), "degraded": degraded,
-                "error": (env.get("error") or {}) if not env.get("ok") else None}
+        return _parse_probe_response(env, uri, execute)
     except urllib.error.HTTPError as exc:
         if exc.code == 409:
             return {"uri": uri, "ok": False, "churn": True}

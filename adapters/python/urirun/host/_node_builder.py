@@ -7,20 +7,28 @@ from typing import Any
 from .node_types import node_type_profile, normalize_node_type
 
 
+def _api_caps_from_kind(api_kind: str, role: str) -> list[str]:
+    """Return the capability names implied by a single API entry's kind and role."""
+    caps = []
+    if api_kind in {"rtsp", "rtmp", "rtmps", "hls", "onvif"} or role == "camera":
+        caps.append("camera")
+    if api_kind in {"smb", "nfs", "nas", "sftp"}:
+        caps.append("files")
+    if api_kind in {"ssh", "sftp"}:
+        caps.append("shell")
+    if api_kind in {"http", "https", "rest", "openapi", "web", "panel"}:
+        caps.append("api")
+    return caps
+
+
 def derive_node_capabilities(payload: dict, apis: list[dict]) -> list[str]:
     raw = payload.get("capabilities")
     caps = [str(item).strip() for item in raw] if isinstance(raw, list) else []
     for api in apis:
-        api_kind = str(api.get("kind") or "").lower()
-        role = str(api.get("role") or "").lower()
-        if api_kind in {"rtsp", "rtmp", "rtmps", "hls", "onvif"} or role == "camera":
-            caps.append("camera")
-        if api_kind in {"smb", "nfs", "nas", "sftp"}:
-            caps.append("files")
-        if api_kind in {"ssh", "sftp"}:
-            caps.append("shell")
-        if api_kind in {"http", "https", "rest", "openapi", "web", "panel"}:
-            caps.append("api")
+        caps.extend(_api_caps_from_kind(
+            str(api.get("kind") or "").lower(),
+            str(api.get("role") or "").lower(),
+        ))
     return sorted({cap for cap in caps if cap})
 
 
