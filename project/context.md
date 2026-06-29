@@ -5,17 +5,17 @@
 
 - **Project**: /home/tom/github/if-uri/urirun
 - **Primary Language**: python
-- **Languages**: python: 219, json: 15, shell: 15, yaml: 5, javascript: 5
+- **Languages**: python: 223, json: 15, shell: 15, yaml: 5, javascript: 5
 - **Analysis Mode**: static
-- **Total Functions**: 2557
-- **Total Classes**: 60
-- **Modules**: 290
-- **Entry Points**: 1069
+- **Total Functions**: 2696
+- **Total Classes**: 61
+- **Modules**: 294
+- **Entry Points**: 1077
 
 ## Architecture by Module
 
 ### adapters.python.urirun.host.dashboard
-- **Functions**: 598
+- **Functions**: 609
 - **File**: `dashboard.js`
 
 ### adapters.python.urirun.host.scanner
@@ -23,16 +23,16 @@
 - **File**: `scanner.js`
 
 ### adapters.python.urirun_runtime.v2
-- **Functions**: 124
-- **Classes**: 2
+- **Functions**: 102
+- **Classes**: 3
 - **File**: `v2.py`
 
 ### adapters.python.urirun.host.host_dashboard
-- **Functions**: 100
+- **Functions**: 102
 - **File**: `host_dashboard.py`
 
 ### adapters.python.urirun_node.server
-- **Functions**: 70
+- **Functions**: 75
 - **Classes**: 3
 - **File**: `server.py`
 
@@ -40,14 +40,14 @@
 - **Functions**: 68
 - **File**: `urirun-v1.js`
 
-### adapters.python.urirun.host.node_cli
-- **Functions**: 58
-- **File**: `node_cli.py`
-
 ### adapters.python.urirun.host.chat_orchestrator
-- **Functions**: 55
+- **Functions**: 64
 - **Classes**: 1
 - **File**: `chat_orchestrator.py`
+
+### adapters.python.urirun.host.node_cli
+- **Functions**: 60
+- **File**: `node_cli.py`
 
 ### adapters.python.urirun_connectors_toolkit.connector_lint
 - **Functions**: 48
@@ -62,9 +62,22 @@
 - **Classes**: 3
 - **File**: `twin_store.py`
 
+### adapters.python.urirun.host.object_registry
+- **Functions**: 45
+- **File**: `object_registry.py`
+
 ### adapters.python.urirun_runtime._scan
 - **Functions**: 41
 - **File**: `_scan.py`
+
+### adapters.python.urirun_runtime.v2_cmds
+- **Functions**: 41
+- **File**: `v2_cmds.py`
+
+### adapters.python.urirun_runtime._runtime
+- **Functions**: 39
+- **Classes**: 1
+- **File**: `_runtime.py`
 
 ### adapters.python.urirun_node.manage
 - **Functions**: 37
@@ -75,29 +88,16 @@
 - **Classes**: 1
 - **File**: `client.py`
 
-### adapters.python.urirun_runtime._runtime
+### adapters.python.urirun.host.discovery
 - **Functions**: 35
-- **Classes**: 1
-- **File**: `_runtime.py`
+- **File**: `discovery.py`
 
 ### adapters.python.urirun_runtime.v1
 - **Functions**: 34
 - **File**: `v1.py`
 
-### adapters.python.urirun.host.host_db
-- **Functions**: 33
-- **File**: `host_db.py`
-
-### adapters.python.urirun.host.object_registry
-- **Functions**: 31
-- **File**: `object_registry.py`
-
-### adapters.python.urirun.host.twin_bridge
-- **Functions**: 31
-- **File**: `twin_bridge.py`
-
 ### adapters.python.urirun
-- **Functions**: 30
+- **Functions**: 34
 - **File**: `__init__.py`
 
 ## Key Entry Points
@@ -112,10 +112,6 @@ Main execution flows into the system:
 
 ### scripts.transport_swap_proof.main
 - **Calls**: CallableTransport, subprocess.Popen, CallableTransport, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.transport_swap_proof.timed, scripts.transport_swap_proof.timed
-
-### adapters.python.urirun.host.connector_admin.connector_install
-> Install a URI connector on the host or a node from a chosen source.
-- **Calls**: None.strip, target.startswith, None.lower, None.strip, adapters.python.urirun.host.connector_admin.connector_pip_tail, isinstance, adapters.python.urirun.host.connector_admin._connector_install_node, subprocess.run
 
 ### adapters.python.urirun.host.scanner_chat.chat_ask_phone_scanner
 > Handle phone-scanner chat requests (start scanner, queue camera/torch actions).
@@ -133,46 +129,46 @@ Main execution flows into the system:
 > Chain steps: replace "$ref:<i>.<field.path>" with an earlier step's output.
 - **Calls**: isinstance, isinstance, isinstance, re.match, re.sub, NodeClient.resolve_refs, NodeClient.resolve_refs, int
 
-### adapters.python.urirun.connectors.connect_catalog._cmd_show
-- **Calls**: adapters.python.urirun.connectors.connect_catalog.fetch_connector, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, document.get, adapters.python.urirun.connectors.connect_catalog._emit_json
-
-### adapters.python.urirun_runtime.v2.run_local_function_subprocess
-> Run a ``local-function`` handler in a fresh process via the shared
-``python -m urirun.exec`` runner — for routes that want isolation (untrusted
-code, 
-- **Calls**: subprocess.run, None.get, py.get, py.get, runtime.PolicyError, isinstance, ctx.get, isinstance
+### adapters.python.urirun_connectors_toolkit.connect_catalog._cmd_show
+- **Calls**: adapters.python.urirun_connectors_toolkit.connect_catalog.fetch_connector, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, document.get, adapters.python.urirun_connectors_toolkit.connect_catalog._emit_json
 
 ### adapters.python.urirun_runtime.secrets._provider_oauth
 > ``secret://oauth/<provider>/<account>`` — a cached OAuth access token, with
 refresh. The token bundle lives in the keyring under ``oauth:<provider>`` 
 - **Calls**: location.partition, keyring.get_password, json.loads, urllib.request.Request, refreshed.get, keyring.set_password, str, KeyError
 
+### adapters.python.urirun_runtime.v2.run_local_function_subprocess
+> Run a ``local-function`` handler in a fresh process via the shared
+``python -m urirun.exec`` runner — for routes that want isolation (untrusted
+code, 
+- **Calls**: adapters.python.urirun_runtime.v2._subprocess_resolve_ref, adapters.python.urirun_runtime.v2._subprocess_resolve_cwd, None.strip, subprocess.run, adapters.python.urirun_runtime.v2._subprocess_parse_output, isinstance, ctx.get, isinstance
+
 ### adapters.python.urirun.host.node_cli.watch_command
 > `urirun host watch <node>` — stream the node's live events (run/error) as URIs.
 Reconnects automatically, replaying missed events via Last-Event-ID.
 - **Calls**: adapters.python.urirun_node.config.host_config_for_args, adapters.python.urirun_node.config.node_url, getattr, getattr, bool, bool, sys.stderr.write, sys.stderr.flush
 
-### adapters.python.urirun.host.node_health.node_doctor
-> Run all health probes for a urirun node; return a structured per-class report.
-
-Result shape::
-
-    {
-      ok: bool,            # True only when ever
-- **Calls**: adapters.python.urirun.host.node_health._probe_reachable, checks.append, adapters.python.urirun.host.node_health._probe_auth, checks.append, adapters.python.urirun.host.node_health._probe_version, checks.append, adapters.python.urirun.host.node_health._probe_schemes, checks.append
-
-### adapters.python.urirun.runtime.errors.problem
-> Project an error envelope to RFC 9457 ``application/problem+json``.
-- **Calls**: dict, adapters.python.urirun.runtime.errors.category_meta, err.get, adapters.python.urirun.runtime.errors.classify, err.get, adapters.python.urirun.runtime.errors.error_code, err.get, err.get
-
 ### adapters.python.urirun_node.server.NodeHandler._handle_enroll
 - **Calls**: adapters.python.urirun_node.server.read_raw, keyauth.verify_request, keyauth.token_matches, scripts.test_pypi_install.print, adapters.python.urirun_node.server.send_json, adapters.python.urirun_node.server.send_json, keyauth.available, adapters.python.urirun_node.server.send_json
 
-### examples.matrix.verify.main
-- **Calls**: contracts.get, sorted, None.removesuffix, adapters.python.urirun_runtime.v2.validate_binding_document, examples.matrix.verify.essential, contracts.items, json.load, scripts.test_pypi_install.print
+### adapters.python.urirun_runtime.errors.problem
+> Project an error envelope to RFC 9457 ``application/problem+json``.
+- **Calls**: dict, adapters.python.urirun_runtime.errors.category_meta, err.get, adapters.python.urirun_runtime.errors.classify, err.get, adapters.python.urirun_runtime.errors.error_code, err.get, err.get
 
-### adapters.python.urirun.connectors.connect_catalog._cmd_list
-- **Calls**: adapters.python.urirun.connectors.connect_catalog.fetch_catalog, adapters.python.urirun.connectors.connect_catalog._connectors, getattr, max, adapters.python.urirun.connectors.connect_catalog._emit_json, scripts.test_pypi_install.print, None.join, scripts.test_pypi_install.print
+### examples.matrix.verify.main
+- **Calls**: contracts.get, sorted, None.removesuffix, adapters.python.urirun.validate_binding_document, examples.matrix.verify.essential, contracts.items, json.load, scripts.test_pypi_install.print
+
+### adapters.python.urirun.host.contracts.file_transfer_verification
+> Return the standard verification contract for file-copy style URI flows.
+
+`uploaded` means the remote write acknowledged the file. `verified` means th
+- **Calls**: adapters.python.urirun.host.dashboard.list, set, set, adapters.python.urirun.host.contracts.verification_check, adapters.python.urirun.host.contracts.verification_check, all, len, len
+
+### adapters.python.urirun_node.transport.discover_node
+- **Calls**: None.rstrip, adapters.python.urirun_node.transport._configured_node_kind, node.get, adapters.python.urirun_node.transport._configured_api_routes, info.update, adapters.python.urirun_node.transport.http_json, None.get, adapters.python.urirun_node.transport.http_json
+
+### adapters.python.urirun_connectors_toolkit.connect_catalog._cmd_list
+- **Calls**: adapters.python.urirun_connectors_toolkit.connect_catalog.fetch_catalog, adapters.python.urirun_connectors_toolkit.connect_catalog._connectors, getattr, max, adapters.python.urirun_connectors_toolkit.connect_catalog._emit_json, scripts.test_pypi_install.print, None.join, scripts.test_pypi_install.print
 
 ### adapters.python.urirun_runtime.codegen.gen_command
 - **Calls**: v2.load_registry_arg, getattr, scripts.test_pypi_install.print, adapters.python.urirun_runtime.codegen.proto_from_registry, getattr, None.write_text, None.write_text, scripts.test_pypi_install.print
@@ -181,12 +177,6 @@ Result shape::
 > `urirun host run <node> <uri> [--payload JSON] [--stream]` — dispatch a URI to a
 node; with --stream, start it async and print the node's live progres
 - **Calls**: adapters.python.urirun_node.config.host_config_for_args, adapters.python.urirun_node.config.node_url, NodeClient, client.concretize, float, adapters.python.urirun.host.node_cli._maybe_ensure_scheme, adapters.python.urirun.host.node_cli._run_streamed, getattr
-
-### adapters.python.urirun.host.contracts.file_transfer_verification
-> Return the standard verification contract for file-copy style URI flows.
-
-`uploaded` means the remote write acknowledged the file. `verified` means th
-- **Calls**: adapters.python.urirun.host.dashboard.list, set, set, adapters.python.urirun.host.contracts.verification_check, adapters.python.urirun.host.contracts.verification_check, all, len, len
 
 ### adapters.python.urirun_connectors_toolkit.connector_lint.lint_kernel_symbols
 > Static-scan a connector package for calls to kernel symbols absent from the contract.
@@ -203,32 +193,31 @@ Falls back to full discovery (and refreshes the index) when the schem
 ### adapters.python.urirun.host.twin_bridge.api_twin_state
 - **Calls**: _durable_memory, int, mem.known_good_flows, adapters.python.urirun.host.twin_bridge._nodes_from_store, getattr, adapters.python.urirun.host.twin_bridge._split_episodes, hasattr, mem.degraded_flows
 
-### adapters.python.urirun.host.fs_transfer.ensure_node_uri_routes
-> Preflight exact URI routes needed by a node-side workflow.
-
-Scheme-level checks are insufficient for split connectors such as fs://:
-a node may expose
-- **Calls**: adapters.python.urirun.host.fs_transfer.node_client, client.routes, set, adapters.python.urirun.host.fs_transfer.route_key, attempted_route_keys.add, ensured.append, client.routes, all
-
 ### adapters.python.urirun_node.server.NodeHandler._get
 - **Calls**: self.path.partition, adapters.python.urirun_node.server.send_json, adapters.python.urirun_node.server.send_json, adapters.python.urirun_node.server.send_json, self.path.startswith, self._stream_events, adapters.python.urirun_node.server.send_json, adapters.python.urirun_node.server.send_json
 
 ### examples.node-file-transfer.fs_transfer.write_b64
 - **Calls**: examples.node-file-transfer.fs_transfer._expand_path, final.with_name, tmp.write_bytes, tmp.replace, target.parent.mkdir, examples.node-file-transfer.fs_transfer._unique_path, base64.b64decode, str
 
-### adapters.python.urirun_runtime.v2._cmd_doctor
-> Report the resolved urirun binary, version and interpreter, plus connector
-health — the fastest way to diagnose a version split (stale binary on PATH)
-- **Calls**: getattr, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, adapters.python.urirun_runtime.v2.connector_health, adapters.python.urirun_runtime.v2._package_version, reglib._emit_json
-
-### adapters.python.urirun.host.node_cli.node_command
-- **Calls**: adapters.python.urirun_node.config.load_node_config, dict, adapters.python.urirun.host.node_cli._resolve_registry_source, v2.load_registry_arg, reglib._emit_json, adapters.python.urirun.host.node_cli.node_list_command, adapters.python.urirun.host.node_cli.node_stop_command, reglib._emit_json
+### xlang.gate.main
+- **Calls**: xlang.gate.Abs, xlang.gate.Dir, xlang.gate.Getenv, xlang.gate.ReadFile, xlang.gate.Join, xlang.gate.Fprintln, xlang.gate.Exit, xlang.gate.Unmarshal
 
 ### adapters.python.urirun.host.android_node.restart_android_node_service
 - **Calls**: adapters.python.urirun.host.host_dashboard._service_restart_argv, meta.setdefault, int, adapters.python.urirun.host.android_node.start_android_node_service, isinstance, None.lower, _schedule_restart_command, free_port_fn
 
 ### adapters.python.urirun.host.node_api.configured_api_call
 - **Calls**: None.lower, adapters.python.urirun.host.node_api.resolve_http_method_and_url, adapters.python.urirun.host.node_api.configured_api_headers, adapters.python.urirun.host.node_api.build_request_body, float, adapters.python.urirun.host.node_api.execute_http_request, adapters.python.urirun.host.node_api._with_remediation, adapters.python.urirun.host.node_api._with_remediation
+
+### adapters.python.urirun_runtime.v2_cmds._cmd_doctor
+> Report the resolved urirun binary, version and interpreter, plus connector
+health — the fastest way to diagnose a version split (stale binary on PATH)
+- **Calls**: getattr, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, scripts.test_pypi_install.print, adapters.python.urirun_runtime.v2.connector_health, adapters.python.urirun_runtime.v2_cmds._package_version, reglib._emit_json
+
+### adapters.python.urirun.host.node_cli.node_command
+- **Calls**: adapters.python.urirun_node.config.load_node_config, dict, adapters.python.urirun.host.node_cli._resolve_registry_source, v2.load_registry_arg, reglib._emit_json, adapters.python.urirun.host.node_cli.node_list_command, adapters.python.urirun.host.node_cli.node_stop_command, reglib._emit_json
+
+### adapters.python.urirun.host.host_dashboard.summary
+- **Calls**: adapters.python.urirun.host.host_dashboard._summary_infra, adapters.python.urirun.host.host_dashboard._summary_task_data, adapters.python.urirun.host.host_dashboard._summary_db_records, adapters.python.urirun.host.host_dashboard._summary_annotated_nodes, adapters.python.urirun.host.host_dashboard._service_contacts, adapters.python.urirun.host.host_dashboard._summary_host_data, discovered.get, str
 
 ## Process Flows
 
@@ -241,23 +230,17 @@ main [adapters.python.urirun_runtime._scan]
       └─> routesForNode
 ```
 
-### Flow 2: connector_install
-```
-connector_install [adapters.python.urirun.host.connector_admin]
-  └─> connector_pip_tail
-```
-
-### Flow 3: chat_ask_phone_scanner
+### Flow 2: chat_ask_phone_scanner
 ```
 chat_ask_phone_scanner [adapters.python.urirun.host.scanner_chat]
 ```
 
-### Flow 4: _build_cli_parser
+### Flow 3: _build_cli_parser
 ```
 _build_cli_parser [adapters.python.urirun._connector.Connector]
 ```
 
-### Flow 5: chat_ask_document_sync
+### Flow 4: chat_ask_document_sync
 ```
 chat_ask_document_sync [adapters.python.urirun.host.document_sync_chat]
   └─> document_sync_node_from_prompt
@@ -267,31 +250,33 @@ chat_ask_document_sync [adapters.python.urirun.host.document_sync_chat]
       └─> routesForNode
 ```
 
-### Flow 6: resolve_refs
+### Flow 5: resolve_refs
 ```
 resolve_refs [adapters.python.urirun_node.client.NodeClient]
 ```
 
-### Flow 7: _cmd_show
+### Flow 6: _cmd_show
 ```
-_cmd_show [adapters.python.urirun.connectors.connect_catalog]
+_cmd_show [adapters.python.urirun_connectors_toolkit.connect_catalog]
   └─> fetch_connector
       └─> _get_json
   └─ →> print
   └─ →> print
 ```
 
-### Flow 8: run_local_function_subprocess
-```
-run_local_function_subprocess [adapters.python.urirun_runtime.v2]
-```
-
-### Flow 9: _provider_oauth
+### Flow 7: _provider_oauth
 ```
 _provider_oauth [adapters.python.urirun_runtime.secrets]
 ```
 
-### Flow 10: watch_command
+### Flow 8: run_local_function_subprocess
+```
+run_local_function_subprocess [adapters.python.urirun_runtime.v2]
+  └─> _subprocess_resolve_ref
+  └─> _subprocess_resolve_cwd
+```
+
+### Flow 9: watch_command
 ```
 watch_command [adapters.python.urirun.host.node_cli]
   └─ →> host_config_for_args
@@ -299,6 +284,14 @@ watch_command [adapters.python.urirun.host.node_cli]
           └─> host_config_path
           └─ →> json_load
   └─ →> node_url
+```
+
+### Flow 10: _handle_enroll
+```
+_handle_enroll [adapters.python.urirun_node.server.NodeHandler]
+  └─ →> read_raw
+  └─ →> send_json
+  └─ →> print
 ```
 
 ## Key Classes
@@ -461,12 +454,6 @@ Key functions that process and transform data:
 ### adapters.python.urirun_node.formatting.format_tickets
 - **Output to**: adapters.python.urirun_node.formatting.format_table, ticket.get, ticket.get, None.get, None.get
 
-### adapters.python.urirun_node.transport.parse_ports
-- **Output to**: spec.split, part.strip, part.partition, out.extend, range
-
-### adapters.python.urirun_node.transport._parse_sse_line
-- **Output to**: line.startswith, ev.setdefault, json.loads, line.startswith, None.strip
-
 ### adapters.python.urirun_twin.reversible.parse
 > ``scheme://node/path`` -> (scheme, node, path).
 - **Output to**: uri.split, rest.partition
@@ -504,27 +491,15 @@ verify/new/smoke/from-spe
 > The `node` command tree (init/config/list/stop/routes/serve). Extracted from _build_parser to cut fa
 - **Output to**: subparsers.add_parser, node_parser.add_subparsers, argparse.ArgumentParser, node_common.add_argument, node_sub.add_parser
 
+### adapters.python.urirun_runtime.cli._add_host_task_subparser
+> The `host task` tree (planfile ticket lifecycle: plan/bindings/schedule/list/show/next/create/claim/
+- **Output to**: host_sub.add_parser, host_task.add_subparsers, argparse.ArgumentParser, task_common.add_argument, argparse.ArgumentParser
+
+### adapters.python.urirun_runtime.cli._add_host_data_subparser
+> `host data` tree (SQLite context: bindings/init/dataset-create/datasets/record-upsert/records).
+- **Output to**: host_sub.add_parser, host_data.add_subparsers, argparse.ArgumentParser, data_common.add_argument, data_sub.add_parser
+
 ## Behavioral Patterns
-
-### recursion__field_type
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun_runtime.codegen._field_type
-
-### recursion__apply_defaults
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun_runtime.v2._apply_defaults
-
-### recursion__placeholders_in
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun_runtime.v2._placeholders_in
-
-### recursion__fetch_render
-- **Type**: recursion
-- **Confidence**: 0.90
-- **Functions**: adapters.python.urirun_runtime._runtime._fetch_render
 
 ### recursion__resolve_refs
 - **Type**: recursion
@@ -541,10 +516,30 @@ verify/new/smoke/from-spe
 - **Confidence**: 0.90
 - **Functions**: adapters.python.urirun_runtime.secrets.redact
 
+### recursion__fetch_render
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun_runtime._runtime._fetch_render
+
 ### recursion_short_value
 - **Type**: recursion
 - **Confidence**: 0.90
 - **Functions**: adapters.python.urirun.host.fs_transfer.short_value
+
+### recursion__schema_allows_null
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun_runtime.v2._schema_allows_null
+
+### recursion__apply_defaults
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun_runtime.v2._apply_defaults
+
+### recursion__placeholders_in
+- **Type**: recursion
+- **Confidence**: 0.90
+- **Functions**: adapters.python.urirun_runtime.v2._placeholders_in
 
 ### recursion__uri_action_lookup
 - **Type**: recursion
@@ -590,41 +585,41 @@ Functions exposed as public API (no underscore prefix):
 - `scripts.extraction_audit.print_report` - 36 calls
 - `adapters.python.urirun.host.node_cli.copy_id_command` - 30 calls
 - `scripts.transport_swap_proof.main` - 29 calls
-- `adapters.python.urirun.host.connector_admin.connector_install` - 29 calls
 - `adapters.python.urirun.host.scanner_chat.chat_ask_phone_scanner` - 28 calls
 - `adapters.python.urirun_connectors_toolkit.connector_lint.verify_connector` - 27 calls
-- `adapters.python.urirun.runtime.errors.info` - 27 calls
 - `adapters.python.urirun.host.document_sync_chat.chat_ask_document_sync` - 27 calls
 - `adapters.python.urirun_node.client.NodeClient.resolve_refs` - 26 calls
 - `adapters.python.urirun.host.node_api.execute_http_request` - 26 calls
-- `adapters.python.urirun.host.discovery.node_alias_map_from_env` - 26 calls
-- `adapters.python.urirun_runtime.codegen.proto_from_registry` - 25 calls
 - `adapters.python.urirun_node.server.apply_deploy` - 25 calls
 - `adapters.python.urirun_connectors_toolkit.resolver.resolve` - 24 calls
 - `adapters.python.urirun_runtime.v2.run_local_function_subprocess` - 24 calls
 - `adapters.python.urirun_runtime.v2.validate_binding_document` - 24 calls
 - `adapters.python.urirun.host.node_cli.watch_command` - 24 calls
-- `adapters.python.urirun.host.object_registry.probe_node_token` - 24 calls
 - `adapters.python.urirun.testing.smoke` - 23 calls
-- `adapters.python.urirun.host.node_api.configured_api_headers` - 23 calls
-- `adapters.python.urirun.host.node_health.node_doctor` - 23 calls
 - `adapters.python.urirun.node.doctor.format_doctor_report` - 22 calls
 - `adapters.python.urirun_twin.twin_store.environment_fingerprint` - 22 calls
-- `adapters.python.urirun.runtime.errors.problem` - 22 calls
 - `adapters.python.urirun_runtime._runtime.run` - 22 calls
+- `adapters.python.urirun_runtime.errors.problem` - 22 calls
 - `adapters.python.urirun.host.host_dashboard.serve` - 22 calls
 - `adapters.python.urirun.host.host_db.search_records` - 21 calls
 - `adapters.python.urirun.host.dashboard_api.chat_history` - 21 calls
 - `examples.matrix.verify.main` - 20 calls
 - `adapters.python.urirun.connectors.connector_smoke.smoke` - 20 calls
-- `adapters.python.urirun_runtime.codegen.gen_command` - 20 calls
 - `adapters.python.urirun_runtime.tree.collect_uris` - 20 calls
-- `adapters.python.urirun.host.node_cli.run_command` - 20 calls
 - `adapters.python.urirun.host.contracts.file_transfer_verification` - 20 calls
+- `adapters.python.urirun_node.transport.discover_node` - 20 calls
+- `adapters.python.urirun_runtime.codegen.gen_command` - 20 calls
+- `adapters.python.urirun.host.node_cli.run_command` - 20 calls
 - `adapters.python.urirun_connectors_toolkit.connector_lint.lint_kernel_symbols` - 19 calls
-- `adapters.python.urirun_runtime.v2.scan_artifacts` - 19 calls
 - `adapters.python.urirun_runtime.discovery.build_index` - 19 calls
 - `adapters.python.urirun_runtime.discovery.registry_for_uri` - 19 calls
+- `adapters.python.urirun.host.twin_bridge.api_twin_state` - 19 calls
+- `adapters.python.urirun.host.node_dispatch.classify_error` - 19 calls
+- `adapters.python.urirun_runtime.v2.scan_artifacts` - 19 calls
+- `examples.node-file-transfer.fs_transfer.write_b64` - 18 calls
+- `adapters.python.urirun_twin.reversible.ledger_from_execution` - 18 calls
+- `adapters.python.urirun_runtime.v1.run` - 18 calls
+- `xlang.gate.main` - 18 calls
 
 ## System Interactions
 
@@ -640,10 +635,6 @@ graph TD
     main --> CallableTransport
     main --> Popen
     main --> print
-    connector_install --> strip
-    connector_install --> startswith
-    connector_install --> lower
-    connector_install --> connector_pip_tail
     chat_ask_phone_scann --> ensure_phone_scanner
     chat_ask_phone_scann --> torch_enabled_from_p
     chat_ask_phone_scann --> is_autonomous_scanne
@@ -662,6 +653,10 @@ graph TD
     resolve_refs --> sub
     _cmd_show --> fetch_connector
     _cmd_show --> print
+    _provider_oauth --> partition
+    _provider_oauth --> get_password
+    _provider_oauth --> loads
+    _provider_oauth --> Request
 ```
 
 ## Reverse Engineering Guidelines

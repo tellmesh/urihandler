@@ -527,7 +527,15 @@ def discover_node(node: dict, timeout: float = _DISCOVER_TIMEOUT) -> dict:
         routes = http_json("GET", f"{base}/routes", timeout=timeout).get("routes", [])
         mcp = http_json("GET", f"{base}/mcp/tools", timeout=timeout)
         a2a = http_json("GET", f"{base}/a2a/card", timeout=timeout)
-        info.update({"reachable": True, "health": health, "routes": routes, "mcp": mcp, "a2a": a2a})
+        health_ok = not (isinstance(health, dict) and health.get("ok") is False)
+        info.update({
+            "reachable": health_ok,
+            "health": health,
+            "routes": routes if health_ok else [],
+            "mcp": mcp,
+            "a2a": a2a,
+            "error": None if health_ok else str(health.get("error") or "health check failed"),
+        })
     except Exception as exc:  # noqa: BLE001 - discovery should report partial/offline nodes.
         info["error"] = str(exc)
     return info

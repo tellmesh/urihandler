@@ -587,7 +587,6 @@ def startup_phone_qr(project: str, db: str | None, *, scheme: str, host: str, po
         preview_url_fn=_preview_url,
         chat_message_fn=_chat_message,
         add_chat_message_fn=_add_chat_message,
-        ensure_android_node_fn=start_android_node_service,
     )
 
 
@@ -1341,6 +1340,7 @@ def phone_node_qr(project: str, db: str | None, payload: dict) -> dict:
         preview_url_fn=_preview_url,
         chat_message_fn=_chat_message,
         add_chat_message_fn=_add_chat_message,
+        ensure_android_node_fn=start_android_node_service,
     )
 
 

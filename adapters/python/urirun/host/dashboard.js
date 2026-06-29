@@ -406,7 +406,7 @@
         </div>
         <div class="mono">${esc(node.url)}</div>
         <div class="subtle">${(node.routes || []).length} routes${node.error ? ` · ${esc(node.error)}` : ''}</div>
-        ${qrDetails(node.url, `node:${node.name}`, node.kind)}
+        ${qrDetails(nodeQrTarget(node), `node:${node.name}`, node.kind)}
         <details class="node-token-form" onclick="event.stopPropagation()" style="margin-top:6px">
           <summary class="subtle">🔑 Token zarządzania (X-Urirun-Token) · ${node.hasToken ? '✓ ustawiony' : 'brak'}</summary>
           <div class="stack" style="margin-top:6px">
@@ -435,9 +435,14 @@
     // ---- Phone QR codes: open a plugin / webpage / view on a smartphone by scanning ----
     // Phones cannot reach the 127.0.0.1 dashboard, so QR targets use the LAN base from summary.lan
     // (env URIRUN_LAN_QR_BASE, default the android-node on :8195); camera-type targets use https.
+    function serviceBaseFromLocation(port, secure) {
+      const proto = secure ? 'https:' : 'http:';
+      const host = (window.location && window.location.hostname) || '127.0.0.1';
+      return proto + '//' + host + ':' + port;
+    }
     function lanBase(secure) {
       const lan = (state.summary && state.summary.lan) || {};
-      const base = (secure ? lan.secureBase : lan.base) || 'http://192.168.188.212:8195';
+      const base = (secure ? lan.secureBase : lan.base) || serviceBaseFromLocation(8195, secure);
       return base.replace(/\/+$/, '');
     }
     function lanNeedsSecure(s) { return /camera|webcam|scanner|getusermedia|mediadevices/i.test(String(s || '')); }
@@ -462,6 +467,21 @@
       return base + (value.startsWith('/') ? value : '/' + value);
     }
     function qrSrc(url) { return '/api/nodes/qr?url=' + encodeURIComponent(url); }
+    function webpageReconnectUrl(node) {
+      const meta = (node && node.meta) || {};
+      const pageUrl = node.pageUrl || meta.pageUrl || '';
+      if (pageUrl) return pageUrl;
+      const url = String((node && node.url) || '');
+      const marker = '/api/webpage-node/relay/';
+      const idx = url.indexOf(marker);
+      if (idx >= 0) return url.slice(0, idx + 1);
+      return lanBase(false) + '/';
+    }
+    function nodeQrTarget(node) {
+      return String((node && node.kind) || '') === 'webpage'
+        ? webpageReconnectUrl(node)
+        : ((node && node.url) || '');
+    }
     // Collapsible QR block reused by node cards and widget cards.
     function qrDetails(pathOrUrl, label, kind) {
       const url = lanUrl(pathOrUrl);
@@ -695,7 +715,7 @@
           box.innerHTML = '<strong>Podłączone przeglądarki/telefony (webpage node):</strong>' + devs.map((d) =>
             '<div class="device" style="margin:4px 0">📱 <code>' + esc(d.name || d.id) + '</code> '
             + '<span class="subtle">' + esc(d.platform || '') + ' · ' + (d.online ? 'online' : 'offline') + '</span> '
-            + '<button type="button" onclick="saveWebNode(' + JSON.stringify(d.id) + ',' + JSON.stringify(d.name || d.id) + ',' + JSON.stringify(d.nodeUrl || '') + ')">💾 zapisz jako node</button>'
+            + '<button type="button" onclick="saveWebNode(' + JSON.stringify(d.id) + ',' + JSON.stringify(d.name || d.id) + ',' + JSON.stringify(d.nodeUrl || '') + ',' + JSON.stringify(d.pageUrl || '') + ',' + JSON.stringify(d.clientIp || '') + ',' + JSON.stringify(d.clientUrl || '') + ',' + JSON.stringify(d.relayUrl || '') + ',' + JSON.stringify(d.platform || '') + ')">💾 zapisz jako node</button>'
             + '</div>'
           ).join('');
         } catch (e) { /* service may be down; ignore */ }
@@ -705,10 +725,19 @@
     }
 
     // Persist a connected webpage-node phone/browser as a node (kind=webpage). Its URL is the service relay endpoint.
-    async function saveWebNode(id, name, nodeUrl) {
+    function webpageNodeMeta(id, pageUrl, clientIp, clientUrl, relayUrl, platform) {
+      const meta = { id, pageUrl, clientIp, clientUrl, relayUrl, platform };
+      Object.keys(meta).forEach((key) => { if (!meta[key]) delete meta[key]; });
+      return meta;
+    }
+
+    async function saveWebNode(id, name, nodeUrl, pageUrl, clientIp, clientUrl, relayUrl, platform) {
       try {
         const url = nodeUrl || (($('phoneNodeUrl') || {}).textContent || '');
-        const res = await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url, kind: 'webpage' }) });
+        const res = await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({
+          name, url, kind: 'webpage',
+          meta: webpageNodeMeta(id, pageUrl, clientIp, clientUrl, relayUrl || nodeUrl, platform)
+        }) });
         if (typeof load === 'function') load().catch(() => {});
       } catch (e) {}
     }
@@ -783,7 +812,7 @@
           box.innerHTML = '<strong>Podłączone strony (webpage node):</strong>' + devs.map((d) =>
             '<div class="device" style="margin:4px 0">📄 <code>' + esc(d.name || d.id) + '</code> '
             + '<span class="subtle">' + esc(d.platform || '') + ' · ' + (d.online ? 'online' : 'offline') + '</span> '
-            + '<button type="button" onclick="saveOneWebpageNode(' + JSON.stringify(d.id) + ',' + JSON.stringify(d.name || d.id) + ',' + JSON.stringify(d.nodeUrl || '') + ')">💾 zapisz</button>'
+            + '<button type="button" onclick="saveOneWebpageNode(' + JSON.stringify(d.id) + ',' + JSON.stringify(d.name || d.id) + ',' + JSON.stringify(d.nodeUrl || '') + ',' + JSON.stringify(d.pageUrl || '') + ',' + JSON.stringify(d.clientIp || '') + ',' + JSON.stringify(d.clientUrl || '') + ',' + JSON.stringify(d.relayUrl || '') + ',' + JSON.stringify(d.platform || '') + ')">💾 zapisz</button>'
             + '</div>').join('');
         } catch (e) { /* service down */ }
       };
@@ -791,9 +820,12 @@
       _webpageTimer = setInterval(tick, 4000);
     }
 
-    async function saveOneWebpageNode(id, name, nodeUrl) {
+    async function saveOneWebpageNode(id, name, nodeUrl, pageUrl, clientIp, clientUrl, relayUrl, platform) {
       try {
-        await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url: nodeUrl, kind: 'webpage' }) });
+        await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({
+          name, url: nodeUrl, kind: 'webpage',
+          meta: webpageNodeMeta(id, pageUrl, clientIp, clientUrl, relayUrl || nodeUrl, platform)
+        }) });
         if (typeof load === 'function') load().catch(() => {});
       } catch (e) {}
     }
@@ -807,7 +839,10 @@
         const res = await api('/api/nodes/phone-web');
         const dev = ((res && res.devices) || [])[0];
         if (!dev) { if (status) status.textContent = 'najpierw otwórz QR na urządzeniu (brak podłączonych stron)'; return; }
-        await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({ name, url: dev.nodeUrl, kind: 'webpage' }) });
+        await api('/api/nodes/add', { method: 'POST', body: JSON.stringify({
+          name, url: dev.nodeUrl, kind: 'webpage',
+          meta: webpageNodeMeta(dev.id, dev.pageUrl, dev.clientIp, dev.clientUrl, dev.relayUrl || dev.nodeUrl, dev.platform)
+        }) });
         if (status) status.textContent = 'zapisano: ' + name + ' → ' + dev.nodeUrl;
         if (typeof load === 'function') load().catch(() => {});
       } catch (e) { if (status) status.textContent = 'błąd: ' + e.message; }

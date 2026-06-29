@@ -84,6 +84,12 @@ def _probe_version(health_data: dict) -> tuple[str, str]:
 # Doctor
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _webpage_reconnect_url(node_url: str) -> str:
+    marker = "/api/webpage-node/relay/"
+    idx = node_url.find(marker)
+    return node_url[:idx + 1] if idx >= 0 else ""
+
+
 def _build_reachable_check(node_url: str, node: str, reachable: bool) -> tuple[dict[str, Any], dict | None]:
     """Build the reachable check dict; return (check, early_result) where early_result is set
     only when the node is unreachable (callers should return it immediately)."""
@@ -93,10 +99,15 @@ def _build_reachable_check(node_url: str, node: str, reachable: bool) -> tuple[d
         "detail": f"GET {node_url}/health → {'ok' if reachable else 'no response'}",
     }
     if not reachable:
+        reconnect_url = _webpage_reconnect_url(node_url)
+        human_action = (
+            f"Webpage node '{node}' offline albo relay utracił sesję. "
+            f"Otwórz ponownie na telefonie: {reconnect_url}"
+        ) if reconnect_url else f"Node '{node}' offline. Uruchom: urirun node serve --name {node}"
         r = Remediation(
             cls=RemediationClass.UNREACHABLE, node=node,
-            human_action=f"Node '{node}' offline. Uruchom: urirun node serve --name {node}",
-            command=f"urirun node serve --name {node}",
+            human_action=human_action,
+            command="" if reconnect_url else f"urirun node serve --name {node}",
             dashboard_url=f"?node={node}&fix=unreachable",
         )
         check["remediation"] = r.to_dict()

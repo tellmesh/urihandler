@@ -6,6 +6,7 @@ from urirun.node.transport import (
     _annotate_deploy_allow_compat,
     _deploy_allow_list,
     _parse_sse_line,
+    discover_node,
     event_topic,
     parse_ports,
 )
@@ -136,3 +137,27 @@ def test_event_topic_uses_service_when_no_node():
     ev = {"service": "dashboard", "event": "error"}
     topic = event_topic("urirun/events", ev)
     assert "dashboard" in topic
+
+
+# ─── discover_node ──────────────────────────────────────────────────────────
+
+def test_discover_node_treats_health_ok_false_as_unreachable(monkeypatch):
+    def fake_http_json(method, url, **kwargs):
+        if url.endswith("/health"):
+            return {"ok": False, "error": "unknown device"}
+        if url.endswith("/routes"):
+            return {"routes": [{"uri": "webpage://web1/page/query/info"}]}
+        return {"ok": False, "error": "not found"}
+
+    monkeypatch.setattr("urirun.node.transport.http_json", fake_http_json)
+
+    node = discover_node({
+        "name": "android-web1",
+        "url": "http://host:8195/api/webpage-node/relay/web1",
+        "kind": "webpage",
+    })
+
+    assert node["reachable"] is False
+    assert node["health"] == {"ok": False, "error": "unknown device"}
+    assert node["routes"] == []
+    assert node["error"] == "unknown device"

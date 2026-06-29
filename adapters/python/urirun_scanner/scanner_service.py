@@ -13,6 +13,7 @@ except ImportError:
 
     import hashlib
     import os
+    import time
     import threading
     from http.server import ThreadingHTTPServer
     from pathlib import Path
@@ -134,7 +135,11 @@ except ImportError:
             except Exception as exc:  # noqa: BLE001
                 service_start = {"ok": False, "error": str(exc)}
             if isinstance(service_start, dict) and service_start.get("ok"):
-                service_reachable = _probe_scanner_url(setup_url, timeout=2.0)
+                for _ in range(8):
+                    service_reachable = _probe_scanner_url(setup_url, timeout=2.0)
+                    if service_reachable:
+                        break
+                    time.sleep(0.5)
         meta = {
             "url": setup_url,
             "port": port,
