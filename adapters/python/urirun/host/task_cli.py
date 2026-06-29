@@ -86,33 +86,66 @@ def _resolves_locally(args: argparse.Namespace, handler: str) -> bool:
         return False
 
 
+def _resolve_ticket_handler(args: argparse.Namespace, ticket: dict) -> tuple:
+    """Return (handler, use_handler) from the ticket executor config."""
+    raw = (ticket.get("executor") or {}).get("handler")
+    handler = str(raw) if raw else None
+    return handler, _resolves_locally(args, handler)
+
+
+def _claim_and_start_ticket(planfile_adapter, args: argparse.Namespace, ticket: dict) -> None:
+    """Claim and start a ticket (mutating step before execution)."""
+    planfile_adapter.claim_ticket(args.project, ticket["id"], assigned_to=args.assigned_to, lease_seconds=args.lease_seconds)
+    planfile_adapter.start_ticket(args.project, ticket["id"], assigned_to=args.assigned_to)
+
+
+def _run_mesh_flow(args: argparse.Namespace, prompt: str) -> tuple:
+    """Discover mesh, build flow from prompt, and execute it. Returns (flow, generator, execution)."""
+    config = host_config_for_args(args)
+    mesh = discover_mesh(config)
+    flow, generator = make_flow(prompt, mesh, selected_nodes=args.node, use_llm=not args.no_llm)
+    registry = registry_from_routes(mesh["routes"])
+    _run_mode = "execute" if args.execute else "dry-run"
+    _dispatch = lambda _uri, _payload: v2_service.call(_uri, _payload, registry, mode=_run_mode)  # noqa: E731
+    execution = execute_flow(flow, mesh, registry, execute=args.execute, dispatch_uri=_dispatch)
+    return flow, generator, execution
+
+
+def _write_ticket_outcome(planfile_adapter, args: argparse.Namespace, ticket: dict, execution: dict, generator: dict, flow: dict, result: dict) -> dict:
+    """Persist the ticket outcome (complete or fail/retry) and return the updated result."""
+    if execution["ok"]:
+        updated = planfile_adapter.complete_ticket(
+            args.project,
+            ticket["id"],
+            note=args.note or "urirun host task run completed",
+            result={"generator": generator, "flow": flow, "timeline": execution.get("timeline"), "results": execution.get("results")},
+            artifacts=args.artifact,
+        )
+    else:
+        updated = planfile_adapter.fail_or_retry(args.project, ticket["id"], json.dumps(execution, ensure_ascii=False, default=str))
+        if updated:
+            result["retry"] = updated.get("retry")
+    result["updatedTicket"] = updated
+    return result
+
+
 def _run_task_flow(args: argparse.Namespace, ticket: dict, *, mutate: bool) -> dict:
     from urirun import planfile_adapter
 
-    handler = (ticket.get("executor") or {}).get("handler")
-    handler = str(handler) if handler else None
-    use_handler = _resolves_locally(args, handler)
-
+    handler, use_handler = _resolve_ticket_handler(args, ticket)
     prompt = _task_prompt(ticket)
     if not use_handler and not prompt:
         raise ValueError(f"ticket {ticket.get('id')} has no executor.handler, inputs.prompt, description or name")
 
     if mutate:
-        planfile_adapter.claim_ticket(args.project, ticket["id"], assigned_to=args.assigned_to, lease_seconds=args.lease_seconds)
-        planfile_adapter.start_ticket(args.project, ticket["id"], assigned_to=args.assigned_to)
+        _claim_and_start_ticket(planfile_adapter, args, ticket)
 
     if use_handler:
         execution = _run_executor_handler(args, ticket, handler)
         generator = {"kind": "executor-handler", "handler": handler}
         flow = {"handler": handler}
     else:
-        config = host_config_for_args(args)
-        mesh = discover_mesh(config)
-        flow, generator = make_flow(prompt, mesh, selected_nodes=args.node, use_llm=not args.no_llm)
-        registry = registry_from_routes(mesh["routes"])
-        _run_mode = "execute" if args.execute else "dry-run"
-        _dispatch = lambda _uri, _payload: v2_service.call(_uri, _payload, registry, mode=_run_mode)
-        execution = execute_flow(flow, mesh, registry, execute=args.execute, dispatch_uri=_dispatch)
+        flow, generator, execution = _run_mesh_flow(args, prompt)
 
     result = {
         "ok": execution["ok"],
@@ -124,19 +157,7 @@ def _run_task_flow(args: argparse.Namespace, ticket: dict, *, mutate: bool) -> d
     }
 
     if mutate:
-        if execution["ok"]:
-            updated = planfile_adapter.complete_ticket(
-                args.project,
-                ticket["id"],
-                note=args.note or "urirun host task run completed",
-                result={"generator": generator, "flow": flow, "timeline": execution.get("timeline"), "results": execution.get("results")},
-                artifacts=args.artifact,
-            )
-        else:
-            updated = planfile_adapter.fail_or_retry(args.project, ticket["id"], json.dumps(execution, ensure_ascii=False, default=str))
-            if updated:
-                result["retry"] = updated.get("retry")
-        result["updatedTicket"] = updated
+        result = _write_ticket_outcome(planfile_adapter, args, ticket, execution, generator, flow, result)
     return result
 
 
