@@ -145,24 +145,21 @@ def _acquire_dict(name: str, rec: dict | None = None, reason: str = "") -> dict:
     }
 
 
-def ensure(name: str, ctx: dict | None = None) -> dict:
-    providers = _legacy_sorted(name)
-    if providers:
-        for rec in providers:
-            if bool(rec["check"](ctx or {})):
-                return {"ok": True, "satisfied": True, "provider": rec["provider"]}
-        rec = providers[0]
-        if rec.get("humanGated"):
-            return _acquire_dict(name, rec, "human-gated")
-        if rec.get("satisfy") is not None:
-            rec["satisfy"](ctx or {})
-            if bool(rec["check"](ctx or {})):
-                return {"ok": True, "satisfied": True, "acquired": True, "provider": rec["provider"]}
-        return _acquire_dict(name, rec, "not satisfied")
+def _ensure_legacy(name: str, providers: list, ctx: dict | None) -> dict:
+    for rec in providers:
+        if bool(rec["check"](ctx or {})):
+            return {"ok": True, "satisfied": True, "provider": rec["provider"]}
+    rec = providers[0]
+    if rec.get("humanGated"):
+        return _acquire_dict(name, rec, "human-gated")
+    if rec.get("satisfy") is not None:
+        rec["satisfy"](ctx or {})
+        if bool(rec["check"](ctx or {})):
+            return {"ok": True, "satisfied": True, "acquired": True, "provider": rec["provider"]}
+    return _acquire_dict(name, rec, "not satisfied")
 
-    pc = _REGISTRY.get(name)
-    if pc is None:
-        return {"ok": False, "satisfied": False, "reason": f"no provider for {name!r}"}
+
+def _ensure_registry(name: str, pc: "Precondition", ctx: dict | None) -> dict:
     r = check(name)
     if r.get("satisfied"):
         return {"ok": True, "satisfied": True, "provider": name}
@@ -172,6 +169,16 @@ def ensure(name: str, ctx: dict | None = None) -> dict:
     if sr.get("ok") and check(name).get("satisfied"):
         return {"ok": True, "satisfied": True, "acquired": True, "provider": name}
     return _acquire_dict(name, {"provider": name, "hint": pc.hint, "humanGated": False}, sr.get("error", "not satisfied"))
+
+
+def ensure(name: str, ctx: dict | None = None) -> dict:
+    providers = _legacy_sorted(name)
+    if providers:
+        return _ensure_legacy(name, providers, ctx)
+    pc = _REGISTRY.get(name)
+    if pc is None:
+        return {"ok": False, "satisfied": False, "reason": f"no provider for {name!r}"}
+    return _ensure_registry(name, pc, ctx)
 
 
 def register(name: str, *, description: str = "", mode: str = "automatic",
