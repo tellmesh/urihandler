@@ -562,6 +562,7 @@ def _chat_ask_general_planner_failure(
     db: str | None,
     prompt: str,
     execute: bool,
+    no_llm: bool,
     selected_nodes: list[str],
     selected_targets: list[str],
     deps: ChatDeps,
@@ -571,6 +572,7 @@ def _chat_ask_general_planner_failure(
 
     result = planner_failure(exc, prompt=prompt, selected_nodes=selected_nodes, selected_targets=selected_targets)
     result["execute"] = execute
+    result["noLlm"] = no_llm
     result["generator"] = {
         "provider": "host-dashboard",
         "intent": "planner-recovery",
@@ -591,6 +593,7 @@ def _chat_ask_general_planner_failure(
         detail={
             "prompt": prompt,
             "execute": execute,
+            "noLlm": no_llm,
             "ok": False,
             "selectedTargets": selected_targets,
             "generator": result["generator"],
@@ -607,6 +610,7 @@ def _chat_ask_general_planner_failure(
         deps.host_db_fn().add_log(db, "chat", "ask", {
             "prompt": prompt,
             "execute": execute,
+            "noLlm": no_llm,
             "ok": False,
             "selectedNodes": selected_nodes,
             "selectedTargets": selected_targets,
@@ -680,28 +684,34 @@ def _resolve_artifact_value(sr: dict) -> "dict | None":
     return None
 
 
+def _process_remote_path_entry(
+    sr: dict, path_to_node: dict, path_inline: dict, path_artifact: dict
+) -> None:
+    node_url = str(sr.get("url") or "").removesuffix("/run")
+    if not node_url or "localhost" in node_url or "127.0.0.1" in node_url:
+        return
+    val = _resolve_artifact_value(sr)
+    if val is None:
+        return
+    p = str(val.get("path") or "")
+    if not p:
+        return
+    path_to_node[p] = node_url
+    png = val.get("pngBase64")
+    if isinstance(png, str) and png:
+        path_inline[p] = png
+    elif isinstance(png, dict) and png.get("artifactPath"):
+        path_artifact[p] = str(png.get("artifactPath") or "")
+
+
 def _build_remote_path_maps(results: dict) -> tuple[dict, dict, dict]:
     """Build remote path maps from step results for attachment enrichment."""
     path_to_node: dict[str, str] = {}
     path_inline: dict[str, str] = {}
     path_artifact: dict[str, str] = {}
     for sr in results.values():
-        if not isinstance(sr, dict):
-            continue
-        node_url = str(sr.get("url") or "").removesuffix("/run")
-        if not node_url or "localhost" in node_url or "127.0.0.1" in node_url:
-            continue
-        val = _resolve_artifact_value(sr)
-        if val is None:
-            continue
-        p = str(val.get("path") or "")
-        if p:
-            path_to_node[p] = node_url
-            png = val.get("pngBase64")
-            if isinstance(png, str) and png:
-                path_inline[p] = png
-            elif isinstance(png, dict) and png.get("artifactPath"):
-                path_artifact[p] = str(png.get("artifactPath") or "")
+        if isinstance(sr, dict):
+            _process_remote_path_entry(sr, path_to_node, path_inline, path_artifact)
     return path_to_node, path_inline, path_artifact
 
 
@@ -833,6 +843,7 @@ def _emit_general_chat_message(
         detail={
             "prompt": prompt,
             "execute": execute,
+            "noLlm": result.get("noLlm"),
             "ok": steps_all_ok,
             "degraded": result.get("degraded", False),
             "degradedReason": result.get("degradedReason"),
@@ -851,6 +862,7 @@ def _emit_general_chat_message(
         deps.host_db_fn().add_log(db, "chat", "ask", {
             "prompt": prompt,
             "execute": execute,
+            "noLlm": result.get("noLlm"),
             "ok": steps_all_ok,
             "selectedNodes": selected_nodes,
             "selectedTargets": selected_targets,
@@ -1258,6 +1270,7 @@ def _chat_ask_general_check_offline(
     db: str | None,
     prompt: str,
     execute: bool,
+    no_llm: bool,
     selected_targets: list[str],
     deps: ChatDeps,
 ) -> dict | None:
@@ -1282,6 +1295,7 @@ def _chat_ask_general_check_offline(
                 "kind": "human-task",
                 "prompt": prompt,
                 "execute": execute,
+                "noLlm": no_llm,
                 "ok": False,
                 "humanEscalation": True,
                 "offlineNodes": offline,
@@ -1293,6 +1307,7 @@ def _chat_ask_general_check_offline(
                 "error": human_result.get("error"),
             },
         ))
+        human_result["noLlm"] = no_llm
         return human_result
     exc = ValueError(
         f"NL flow generated no URI steps. Discovered 0 safe route(s) on node(s) []; "
@@ -1300,7 +1315,7 @@ def _chat_ask_general_check_offline(
         f"Node(s) {offline!r} are offline or unreachable. "
         "Check the mesh config or pass --node-url [NAME=]URL. Sample routes: []"
     )
-    return _chat_ask_general_planner_failure(exc, db, prompt, execute, selected_nodes, selected_targets, deps)
+    return _chat_ask_general_planner_failure(exc, db, prompt, execute, no_llm, selected_nodes, selected_targets, deps)
 
 
 def _chat_ask_general_build_result(
@@ -1312,6 +1327,7 @@ def _chat_ask_general_build_result(
     selected_targets: list[str],
     prompt: str,
     execute: bool,
+    no_llm: bool,
     payload: dict,
     project: str,
     db: str | None,
@@ -1328,6 +1344,7 @@ def _chat_ask_general_build_result(
         "ok": bool(execution.get("ok")),
         "prompt": prompt,
         "execute": execute,
+        "noLlm": no_llm,
         "selectedNodes": selected_nodes,
         "selectedTargets": selected_targets,
         "generator": generator,
@@ -1361,6 +1378,12 @@ def _unwrap_recall(recalled) -> dict | None:
     return recalled if (recalled.get("steps") or []) else None
 
 
+def _recall_routes_replan_required(flow: dict, routes: list[dict], registry: dict) -> bool:
+    from urirun_flow.env_selection import recall_env_enum_replan_required  # noqa: PLC0415
+    inventories = _env_enum_inventories(flow, registry, routes)
+    return bool(recall_env_enum_replan_required(flow, routes, inventories).get("required"))
+
+
 def _try_recall_gate(twin_memory, selected_nodes: list, prompt: str,
                      routes: list[dict] | None = None, registry: dict | None = None) -> tuple:
     """Check the episode recall gate; return (flow, generator) or (None, None) on miss."""
@@ -1377,13 +1400,11 @@ def _try_recall_gate(twin_memory, selected_nodes: list, prompt: str,
     flow = {"steps": _rec_steps,
             "task": {"id": "recall", "source": _recalled.get("source", "recall"), "title": prompt}}
     from urirun_flow.flow_planner import prepare_screenshot_capture_flow  # noqa: PLC0415
-    flow = prepare_screenshot_capture_flow(flow, prompt, {str(s.get("uri") or "") for s in _rec_steps if isinstance(s, dict)})
-    if routes:
-        from urirun_flow.env_selection import recall_env_enum_replan_required  # noqa: PLC0415
-        inventories = _env_enum_inventories(flow, registry or {}, routes)
-        replan = recall_env_enum_replan_required(flow, routes, inventories)
-        if replan.get("required"):
-            return None, None
+    allowed_uris = {str(s.get("uri") or "") for s in _rec_steps if isinstance(s, dict)}
+    allowed_uris.update(str(r.get("uri") or "") for r in (routes or []) if isinstance(r, dict))
+    flow = prepare_screenshot_capture_flow(flow, prompt, allowed_uris)
+    if routes and _recall_routes_replan_required(flow, routes, registry or {}):
+        return None, None
     generator = {"provider": "recall", "fallback": False, "cached": True,
                  "episodeId": _recalled.get("episode_id"),
                  "flowKey": _recalled.get("flow_key"),
@@ -1528,7 +1549,7 @@ def _apply_host_default_when_no_node_in_prompt(
 
 def _target_selection_explicit(payload: dict) -> bool:
     if "target_explicit" not in payload and "targetExplicit" not in payload:
-        return True
+        return False
     raw = payload.get("target_explicit", payload.get("targetExplicit"))
     if isinstance(raw, str):
         return raw.strip().lower() not in {"0", "false", "no", "off"}
@@ -1622,7 +1643,9 @@ def _resolve_env_enum_flow(flow: dict, registry: dict, routes: list[dict], memor
 
 def _chat_ask_general_needs_selection(selection: dict, db: str | None, prompt: str, execute: bool,
                                       selected_nodes: list[str], selected_targets: list[str],
-                                      deps: ChatDeps) -> dict:
+                                      deps: ChatDeps,
+                                      *, no_llm: bool = False,
+                                      generator: dict | None = None) -> dict:
     need = selection.get("needsSelection") or {}
     options = need.get("options") or []
     label = need.get("parameter") or "option"
@@ -1631,7 +1654,8 @@ def _chat_ask_general_needs_selection(selection: dict, db: str | None, prompt: s
     deps.add_chat_message_fn(db, {
         "role": "system",
         "content": content,
-        "detail": selection,
+        "detail": {**selection, "prompt": prompt, "execute": execute,
+                   "noLlm": no_llm, "generator": generator or {}},
         "attachments": [attachment],
     })
     return {
@@ -1639,8 +1663,10 @@ def _chat_ask_general_needs_selection(selection: dict, db: str | None, prompt: s
         "kind": "needs-selection",
         "prompt": prompt,
         "execute": execute,
+        "noLlm": no_llm,
         "selectedNodes": selected_nodes,
         "selectedTargets": selected_targets,
+        "generator": generator or {},
         "needsSelection": need,
         "next": selection.get("next") or {"kind": "needs-selection"},
         "notify": {"sound": "beep"},
@@ -1678,12 +1704,13 @@ def _chat_ask_general(
     deps: ChatDeps,
 ) -> dict:
     """Handle general LLM-to-URI mesh chat requests."""
+    llm_model = _payload_llm_model(payload)
     mesh = deps.mesh_fn()
     old_token, old_identity = _apply_run_credentials(token, identity)
     try:
         full_discovered = mesh.discover_mesh(deps.host_config_fn(config, node_urls))
         offline_fail = _chat_ask_general_check_offline(
-            selected_nodes, full_discovered, db, prompt, execute, selected_targets, deps)
+            selected_nodes, full_discovered, db, prompt, execute, no_llm, selected_targets, deps)
         if offline_fail is not None:
             return offline_fail
         discovered = _with_local_host_routes(
@@ -1716,18 +1743,20 @@ def _chat_ask_general(
                 retrieval = _retrieve_experience_context(
                     twin_memory, selected_nodes, prompt, _routes)
                 flow, generator = _make_flow_with_retrieval(
-                    mesh, prompt, discovered, planner_nodes, no_llm, environments, retrieval)
+                    mesh, prompt, discovered, planner_nodes, no_llm, environments, retrieval,
+                    llm_model=llm_model)
             flow = _apply_capture_preferences(flow, twin_memory)
             selection = _resolve_env_enum_flow(flow, registry, _routes, twin_memory)
             if not selection.get("ok"):
                 return _chat_ask_general_needs_selection(
-                    selection, db, prompt, execute, selected_nodes, selected_targets, deps)
+                    selection, db, prompt, execute, selected_nodes, selected_targets, deps,
+                    no_llm=no_llm, generator=generator)
             flow = selection.get("flow") or flow
             env_inventories = selection.get("inventories") or {}
             selected_nodes, selected_targets = _apply_explicit_target_sync(
                 payload, flow, discovered, selected_nodes, selected_targets)
         except Exception as exc:  # noqa: BLE001 - return a recovery contract instead of a raw API failure.
-            return _chat_ask_general_planner_failure(exc, db, prompt, execute, selected_nodes, selected_targets, deps)
+            return _chat_ask_general_planner_failure(exc, db, prompt, execute, no_llm, selected_nodes, selected_targets, deps)
         _recall = _suggest_recall_for_memory(flow, twin_memory)
         _run_mode = "execute" if execute else "dry-run"
         selected_nodes, selected_targets, _local_first = _apply_local_nl_override(
@@ -1747,14 +1776,15 @@ def _chat_ask_general(
     result = _chat_ask_general_build_result(
         execution, flow, discovered, generator,
         selected_nodes, selected_targets,
-        prompt, execute, payload, project, db, deps,
+        prompt, execute, no_llm, payload, project, db, deps,
     )
     return _attach_known_good_recall(result, _recall)
 
 
 def _add_chat_user_message(db: str | None, prompt: str, config: str | None, node_urls: list[str] | None,
                            *, execute: bool, no_llm: bool, requested_nodes: list, requested_targets: list,
-                           selected_nodes: list, selected_targets: list, deps: ChatDeps) -> None:
+                           selected_nodes: list, selected_targets: list, deps: ChatDeps,
+                           llm_model: str | None = None) -> None:
     """Record the user's chat turn, previewing the resolved document-sync target when detected."""
     user_selected_nodes = list(selected_nodes)
     user_selected_targets = list(selected_targets)
@@ -1784,6 +1814,7 @@ def _add_chat_user_message(db: str | None, prompt: str, config: str | None, node
             "selectedTargets": user_selected_targets,
             "resolvedNodes": user_selected_nodes,
             "resolvedTargets": user_selected_targets,
+            **({"model": llm_model} if llm_model else {}),
             **({"intent": user_intent} if user_intent else {}),
         },
     ))
@@ -1889,6 +1920,10 @@ def _parse_chat_nodes_targets(payload: dict) -> tuple[list[str], list[str]]:
     return requested_nodes, requested_targets
 
 
+def _payload_llm_model(payload: dict) -> str | None:
+    return str(payload.get("model") or payload.get("llm_model") or payload.get("llmModel") or "").strip() or None
+
+
 def _init_selected_targets(requested_nodes: list[str], requested_targets: list[str]) -> list[str]:
     if requested_targets:
         return list(requested_targets)
@@ -1925,6 +1960,7 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
     selected_nodes = selected_nodes_from_targets(list(requested_nodes) if target_explicit else [], selected_targets)
     execute = bool(payload.get("execute"))
     no_llm = bool(payload.get("no_llm") or payload.get("noLlm"))
+    llm_model = _payload_llm_model(payload)
     # Rule: if the prompt doesn't mention which node to use, default to host.
     # The chat prompt is the routing command; stale contact/URL selections must
     # not make a host-local command run on a remote laptop. But do NOT override an
@@ -1937,10 +1973,11 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
         db, prompt, config, node_urls, execute=execute, no_llm=no_llm,
         requested_nodes=requested_nodes, requested_targets=requested_targets,
         selected_nodes=selected_nodes, selected_targets=selected_targets,
-        deps=deps,
+        deps=deps, llm_model=llm_model,
     )
     if is_phone_scanner_prompt(prompt):
         return _chat_ask_phone_scanner(project, db, config, node_urls, token, identity, prompt, execute, selected_nodes, selected_targets, deps)
     if _is_document_sync_prompt(prompt, selected_nodes, selected_targets, config, node_urls, deps):
         return _chat_ask_document_sync(project, db, config, payload, node_urls, token, identity, prompt, execute, no_llm, selected_nodes, selected_targets, deps)
-    return _chat_ask_general(project, db, config, payload, node_urls, token, identity, prompt, execute, no_llm, selected_nodes, selected_targets, deps)
+    return _chat_ask_general(project, db, config, payload, node_urls, token, identity, prompt,
+                             execute, no_llm, selected_nodes, selected_targets, deps)

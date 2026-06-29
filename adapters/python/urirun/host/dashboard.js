@@ -33,7 +33,8 @@
       humanTaskAudioContext: null,
       chatFullscreen: initialChatFull,
       discoveryTarget: initialDiscoveryTarget,
-      selectedTargets: initialTargets.length ? initialTargets : ['host']
+      selectedTargets: initialTargets.length ? initialTargets : ['host'],
+      llmConfig: null
     };
     const $ = (id) => document.getElementById(id);
 
@@ -54,6 +55,23 @@
       } finally {
         clearTimeout(timer);
       }
+    }
+
+    function chatExplicitModel(search = new URLSearchParams(window.location.search)) {
+      const fromInput = $('chatModel') && $('chatModel').value ? $('chatModel').value.trim() : '';
+      return fromInput || (search.get('model') || search.get('llm_model') || search.get('llmModel') || '').trim();
+    }
+
+    async function loadChatRuntimeConfig() {
+      const config = await api('/api/chat/config', { timeoutMs: 5000 });
+      state.llmConfig = config || {};
+      return state.llmConfig;
+    }
+
+    async function chatRequestModel() {
+      const explicit = chatExplicitModel();
+      const config = await loadChatRuntimeConfig();
+      return explicit || ((config && config.model) || '');
     }
 
     function text(value, fallback = '') {
@@ -102,6 +120,7 @@
         no_llm: $('chatNoLlm') && $('chatNoLlm').checked ? '1' : '',
         targets: state.selectedTargets.join(','),
         discovery: state.discoveryTarget || '',
+        model: chatExplicitModel(),
         prompt: $('chatPrompt') ? $('chatPrompt').value.trim() : ''
       };
     }
@@ -133,6 +152,7 @@
       setParam(search, 'no_llm', controls.no_llm);
       setParam(search, 'targets', controls.targets || 'host');
       setParam(search, 'discovery', controls.discovery);
+      setParam(search, 'model', controls.model);
       setParam(search, 'prompt', controls.prompt);
       Object.entries(changes).forEach(([key, value]) => setParam(search, key, value));
       const query = search.toString();
@@ -2047,13 +2067,25 @@
       });
     }
 
-    function humanTaskBanner(detail) {
+    function _humanTaskFields(detail) {
       const escalation = detail.escalation || {};
-      const task = detail.humanTask || escalation.humanTask || {};
-      const next = detail.next || escalation.next || {};
-      const notify = detail.notify || escalation.notify || {};
-      const active = detail.kind === 'human-task' || detail.humanEscalation === true || task.id || notify.sound === 'beep';
-      if (!active) return '';
+      return {
+        task: detail.humanTask || escalation.humanTask || {},
+        next: detail.next || escalation.next || {},
+        notify: detail.notify || escalation.notify || {},
+      };
+    }
+
+    function _humanTaskActive(detail, task, notify) {
+      return detail.kind === 'human-task'
+        || detail.humanEscalation === true
+        || Boolean(task.id)
+        || notify.sound === 'beep';
+    }
+
+    function humanTaskBanner(detail) {
+      const { task, next, notify } = _humanTaskFields(detail);
+      if (!_humanTaskActive(detail, task, notify)) return '';
       const title = task.title || detail.humanAction || next.instruction || 'Human action required';
       const url = task.surfaceUrl || detail.dashboardUrl || next.dashboardUrl || '';
       return `<div class="human-task-alert" style="border:1px solid var(--warn,#f59e0b);background:rgba(245,158,11,.10);border-radius:4px;padding:8px 10px;margin:6px 0">
@@ -2073,23 +2105,27 @@
       return env;
     }
 
+    function _windowQueryFacts(value, parts) {
+      const selected = value.selected || {};
+      if (selected.monitor !== undefined && selected.monitor !== null) parts.push(`monitor=${text(selected.monitor)}`);
+      if (selected.monitorConnector) parts.push(`output=${selected.monitorConnector}`);
+      if (selected.app) parts.push(`app=${selected.app}`);
+    }
+
+    function _screenCaptureFacts(value, parts) {
+      if (value.monitor !== undefined && value.monitor !== null) parts.push(`monitor=${text(value.monitor)}`);
+      if (value.outputConnector) parts.push(`output=${value.outputConnector}`);
+      if (value.scope) parts.push(`scope=${value.scope}`);
+      if (value.width && value.height) parts.push(`${value.width}x${value.height}`);
+    }
+
     function timelineStepFacts(step, detail) {
       const uri = String((step && step.uri) || '');
       const results = (detail && detail.results) || {};
       const value = resultValue(results[(step && step.id) || '']);
       const parts = [];
-      if (uri.includes('/window/query/list') && value && value.selected) {
-        const selected = value.selected || {};
-        if (selected.monitor !== undefined && selected.monitor !== null) parts.push(`monitor=${text(selected.monitor)}`);
-        if (selected.monitorConnector) parts.push(`output=${selected.monitorConnector}`);
-        if (selected.app) parts.push(`app=${selected.app}`);
-      }
-      if (uri.includes('/screen/query/capture') && value && typeof value === 'object') {
-        if (value.monitor !== undefined && value.monitor !== null) parts.push(`monitor=${text(value.monitor)}`);
-        if (value.outputConnector) parts.push(`output=${value.outputConnector}`);
-        if (value.scope) parts.push(`scope=${value.scope}`);
-        if (value.width && value.height) parts.push(`${value.width}x${value.height}`);
-      }
+      if (uri.includes('/window/query/list') && value && value.selected) _windowQueryFacts(value, parts);
+      if (uri.includes('/screen/query/capture') && value && typeof value === 'object') _screenCaptureFacts(value, parts);
       return parts.length ? ` · ${parts.join(' · ')}` : '';
     }
 
@@ -2588,16 +2624,20 @@
         // Send empty targets when nothing was explicitly checked — lets the orchestrator
         // infer the target node from the prompt text (e.g. "screenshot na lenovo").
         const explicitTargets = [...document.querySelectorAll('input[name="chatTarget"]:checked')].map(el => el.value);
+        const noLlm = $('chatNoLlm').checked;
+        const model = noLlm ? '' : await chatRequestModel();
+        const body = {
+          prompt,
+          nodes,
+          targets: explicitTargets,
+          target_explicit: targetExplicit,
+          execute,
+          no_llm: noLlm,
+        };
+        if (model) body.model = model;
         const result = await api('/api/chat/ask', {
           method: 'POST',
-          body: JSON.stringify({
-            prompt,
-            nodes,
-            targets: explicitTargets,
-            target_explicit: targetExplicit,
-            execute,
-            no_llm: $('chatNoLlm').checked,
-          }),
+          body: JSON.stringify(body),
         });
         await loadChatHistory();
         $('chatStatus').textContent = result.ok ? 'ok' : 'failed';
@@ -2619,7 +2659,8 @@
     }
 
     function chatAutoRunKey(search) {
-      return ['prompt', 'message', 'nodes', 'targets', 'target_explicit', 'targetExplicit', 'execute', 'no_llm', 'noLlm']
+      return ['prompt', 'message', 'nodes', 'targets', 'target_explicit', 'targetExplicit',
+        'execute', 'no_llm', 'noLlm', 'model', 'llm_model', 'llmModel']
         .map((name) => `${name}=${search.get(name) || ''}`).join('&');
     }
 
@@ -2668,7 +2709,8 @@
       // (which includes the LLM-inferred node). Empty = let the orchestrator re-infer.
       const targets = detail.requestedTargets || [];
       const execute = detail.execute !== undefined ? !!detail.execute : $('chatExecute').checked;
-      return { prompt, nodes, targets, execute };
+      const model = detail.model || detail.llm_model || detail.llmModel || '';
+      return { prompt, nodes, targets, execute, model };
     }
 
     async function repeatChatMessage(id) {
@@ -2676,15 +2718,19 @@
       if (!msg) return;
       const req = repeatRequestFromMessage(msg);
       if (!req) return;
-      const { prompt, nodes, targets, execute } = req;
+      const { prompt, nodes, targets, execute, model } = req;
       if ($('chatPrompt')) $('chatPrompt').value = prompt;
       state.view = 'chat';
-      writeUrlState({ action: 'chat:repeat', prompt, nodes: (nodes || []).join(','), targets: (targets || []).join(',') });
+      writeUrlState({ action: 'chat:repeat', prompt, nodes: (nodes || []).join(','), targets: (targets || []).join(','), model });
       $('chatStatus').textContent = 'repeating...';
       try {
+        const noLlm = $('chatNoLlm') ? $('chatNoLlm').checked : false;
+        const requestModel = noLlm ? '' : (model || await chatRequestModel());
+        const body = { prompt, nodes, targets, execute, no_llm: noLlm };
+        if (requestModel) body.model = requestModel;
         const result = await api('/api/chat/ask', {
           method: 'POST',
-          body: JSON.stringify({ prompt, nodes, targets, execute, no_llm: $('chatNoLlm') ? $('chatNoLlm').checked : false }),
+          body: JSON.stringify(body),
         });
         await loadChatHistory();
         $('chatStatus').textContent = result.ok ? 'ok' : 'failed';

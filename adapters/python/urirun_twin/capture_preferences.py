@@ -48,32 +48,38 @@ def capture_preference_fingerprint(memory: object | None, node: str) -> str:
     return str((rec or {}).get("fingerprint") or "")
 
 
+def _apply_pref_to_step(step: dict, memory: object) -> tuple[dict, bool]:
+    new_step = dict(step)
+    uri = str(new_step.get("uri") or "")
+    payload = dict(new_step.get("payload") or {})
+    if (
+        "/screen/query/capture" not in uri
+        or capture_payload_has_result_reference(payload)
+        or capture_preference_from_payload(payload)
+    ):
+        return new_step, False
+    node = capture_step_node(new_step)
+    fingerprint = capture_preference_fingerprint(memory, node)
+    if not fingerprint:
+        return new_step, False
+    pref = memory.recall_preference(node, "screen.capture.default", fingerprint)
+    value = (pref or {}).get("value") if isinstance(pref, dict) else None
+    if isinstance(value, dict) and capture_preference_from_payload(value):
+        payload.update(value)
+        new_step["payload"] = payload
+        return new_step, True
+    return new_step, False
+
+
 def apply_capture_preferences(flow: dict, memory: object | None) -> dict:
     if memory is None or not hasattr(memory, "recall_preference"):
         return flow
     out = []
     changed = False
     for step in flow.get("steps") or []:
-        new_step = dict(step)
-        uri = str(new_step.get("uri") or "")
-        payload = dict(new_step.get("payload") or {})
-        if (
-            "/screen/query/capture" in uri
-            and not capture_payload_has_result_reference(payload)
-            and not capture_preference_from_payload(payload)
-        ):
-            node = capture_step_node(new_step)
-            fingerprint = capture_preference_fingerprint(memory, node)
-            if not fingerprint:
-                out.append(new_step)
-                continue
-            pref = memory.recall_preference(node, "screen.capture.default", fingerprint)
-            value = (pref or {}).get("value") if isinstance(pref, dict) else None
-            if isinstance(value, dict) and capture_preference_from_payload(value):
-                payload.update(value)
-                new_step["payload"] = payload
-                changed = True
+        new_step, step_changed = _apply_pref_to_step(step, memory)
         out.append(new_step)
+        changed = changed or step_changed
     return {**flow, "steps": out} if changed else flow
 
 
