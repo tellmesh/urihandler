@@ -2,10 +2,14 @@
 from __future__ import annotations
 
 from urirun.host.screen_capability import (
+    collect_target_names,
+    host_only_with_local_kvm,
     route_in_selected_targets,
     has_screen_capture_route,
     screen_document_capability_gap,
     selected_nodes_from_targets,
+    try_auto_ensure_screen_capture,
+    try_ensure_kvm_for_node,
 )
 
 
@@ -44,6 +48,10 @@ def test_explicit_nodes_plus_node_targets_merged_deduped():
 def test_whitespace_stripped():
     result = selected_nodes_from_targets(["  laptop  "], [])
     assert result == ["laptop"]
+
+
+def test_collect_target_names_discards_host_and_merges_nodes():
+    assert collect_target_names(["host", "node:lenovo"], ["kiosk"]) == {"lenovo", "kiosk"}
 
 
 # ── route_in_selected_targets ─────────────────────────────────────────────────
@@ -120,6 +128,69 @@ def test_node_filter_restricts_routes():
     # Route is on nas, but we only care about laptop
     assert has_screen_capture_route(routes, ["laptop"], []) is False
     assert has_screen_capture_route(routes, ["nas"], []) is True
+
+
+# ── auto-ensure / local fast path ─────────────────────────────────────────────
+
+def test_host_only_with_local_kvm_uses_injected_scheme_probe():
+    seen = []
+
+    assert host_only_with_local_kvm(
+        ["host"],
+        local_scheme_installed=lambda uri: seen.append(uri) or True,
+    ) is True
+    assert seen == ["kvm://host/screen/query/capture"]
+
+
+def test_host_only_with_local_kvm_only_for_host_target():
+    assert host_only_with_local_kvm(
+        ["node:lenovo"],
+        local_scheme_installed=lambda uri: True,
+    ) is False
+
+
+def test_try_ensure_kvm_for_node_uses_adopt_before_install():
+    calls = []
+
+    class Client:
+        def ensure_scheme(self, scheme, *, install, route):
+            calls.append((scheme, install, route))
+            return {"ok": install}
+
+    assert try_ensure_kvm_for_node(
+        {"name": "lenovo", "url": "http://lenovo:8765"},
+        {"lenovo"},
+        lambda url, token=None, identity=None: Client(),
+        token="tok",
+        identity=None,
+    ) is True
+    assert calls == [
+        ("kvm", False, "kvm://host/screen/query/capture"),
+        ("kvm", True, "kvm://host/screen/query/capture"),
+    ]
+
+
+def test_try_auto_ensure_screen_capture_targets_selected_nodes_only(monkeypatch):
+    calls = []
+
+    class Client:
+        def __init__(self, url, token=None, identity=None):
+            calls.append((url, token, identity))
+
+        def ensure_scheme(self, scheme, *, install, route):
+            return {"ok": True}
+
+    monkeypatch.setenv("URIRUN_RUN_TOKEN", "env-token")
+    assert try_auto_ensure_screen_capture(
+        {"nodes": [
+            {"name": "lenovo", "url": "http://lenovo:8765"},
+            {"name": "kiosk", "url": "http://kiosk:8765"},
+        ]},
+        [],
+        ["node:lenovo"],
+        node_client=Client,
+    ) is True
+    assert calls == [("http://lenovo:8765", "env-token", None)]
 
 
 # ── screen_document_capability_gap ────────────────────────────────────────────

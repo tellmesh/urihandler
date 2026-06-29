@@ -1,6 +1,8 @@
 """Tests for _apply_host_default_when_no_node_in_prompt — 'if prompt doesn't say which node, use host'."""
 from __future__ import annotations
 
+import ast
+from pathlib import Path
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -16,6 +18,26 @@ def _deps(alias_map: dict) -> MagicMock:
 
 
 ALIAS = {"lenovo": "lenovo", "laptop": "lenovo"}
+
+
+def test_chat_orchestrator_does_not_define_target_payload_resolution_helpers():
+    path = Path(__file__).resolve().parents[1] / "urirun" / "host" / "chat_orchestrator.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    defined = {
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+
+    for moved in (
+        "_parse_chat_nodes_targets",
+        "_target_selection_explicit",
+        "_init_selected_targets",
+        "_infer_node_targets",
+        "_has_explicit_remote_selection",
+        "_resolve_selected_targets",
+    ):
+        assert moved not in defined
 
 
 class TestHostDefault(unittest.TestCase):

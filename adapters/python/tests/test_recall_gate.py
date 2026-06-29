@@ -179,6 +179,7 @@ class RecallGateShortCircuitsLLMTests(unittest.TestCase):
     def test_recall_with_ambiguous_env_enum_does_not_short_circuit_planner(self):
         import urirun.host.chat_orchestrator as CO
         import urirun.host.dispatch as D
+        import urirun_flow.env_selection as ES
 
         recalled = {"ok": True, "found": True, "source": "episode", "episode_id": "ep-1", "steps": [
             {"id": "cap", "uri": "kvm://host/screen/query/capture",
@@ -202,15 +203,15 @@ class RecallGateShortCircuitsLLMTests(unittest.TestCase):
                                 ]}}}
 
         d_orig = D.inprocess_fallback
-        inv_orig = CO._env_enum_inventories
+        inv_orig = ES.build_env_enum_inventories
         D.inprocess_fallback = lambda uri, payload=None: recalled
-        CO._env_enum_inventories = lambda flow, registry, route_list: inventories
+        ES.build_env_enum_inventories = lambda flow, route_list, **kwargs: inventories
         try:
             mem = type("M", (), {"known_good": lambda self, n: {"fingerprint": "env-x"}})()
             flow, gen = CO._try_recall_gate(mem, ["host"], "zrob zrzut 3 monitora", routes, {})
         finally:
             D.inprocess_fallback = d_orig
-            CO._env_enum_inventories = inv_orig
+            ES.build_env_enum_inventories = inv_orig
 
         self.assertEqual((flow, gen), (None, None))
 

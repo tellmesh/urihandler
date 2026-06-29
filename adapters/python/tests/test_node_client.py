@@ -331,7 +331,7 @@ class LocalConnectorDeployPayloadTests(unittest.TestCase):
 
 
 class TryEnsureKvmTests(unittest.TestCase):
-    """Unit tests for _try_ensure_kvm_for_node (the two-phase auto-deploy logic).
+    """Unit tests for try_ensure_kvm_for_node (the two-phase auto-deploy logic).
 
     All HTTP calls are stubbed — no live node required.  The test verifies:
     - Phase 1 (adopt-only) returns ok=True → function returns True immediately.
@@ -353,7 +353,7 @@ class TryEnsureKvmTests(unittest.TestCase):
         return stub
 
     def test_phase1_adopt_succeeds_returns_true(self):
-        from urirun.host.chat_orchestrator import _try_ensure_kvm_for_node
+        from urirun.host.screen_capability import try_ensure_kvm_for_node
         node = {"name": "lenovo", "url": "http://192.168.188.201:8765"}
         called = []
 
@@ -361,32 +361,32 @@ class TryEnsureKvmTests(unittest.TestCase):
             called.append(url)
             return self._make_client(phase1_ok=True, phase2_ok=False)
 
-        result = _try_ensure_kvm_for_node(node, {"lenovo"}, make_client, None, None)
+        result = try_ensure_kvm_for_node(node, {"lenovo"}, make_client, None, None)
         self.assertTrue(result)
         self.assertIn("http://192.168.188.201:8765", called)
 
     def test_phase1_miss_phase2_deploy_succeeds_returns_true(self):
-        from urirun.host.chat_orchestrator import _try_ensure_kvm_for_node
+        from urirun.host.screen_capability import try_ensure_kvm_for_node
         node = {"name": "lenovo", "url": "http://192.168.188.201:8765"}
 
         def make_client(url, token=None, identity=None):
             return self._make_client(phase1_ok=False, phase2_ok=True)
 
-        result = _try_ensure_kvm_for_node(node, {"lenovo"}, make_client, None, None)
+        result = try_ensure_kvm_for_node(node, {"lenovo"}, make_client, None, None)
         self.assertTrue(result)
 
     def test_both_phases_fail_returns_false(self):
-        from urirun.host.chat_orchestrator import _try_ensure_kvm_for_node
+        from urirun.host.screen_capability import try_ensure_kvm_for_node
         node = {"name": "lenovo", "url": "http://192.168.188.201:8765"}
 
         def make_client(url, token=None, identity=None):
             return self._make_client(phase1_ok=False, phase2_ok=False)
 
-        result = _try_ensure_kvm_for_node(node, {"lenovo"}, make_client, None, None)
+        result = try_ensure_kvm_for_node(node, {"lenovo"}, make_client, None, None)
         self.assertFalse(result)
 
     def test_node_not_in_targets_skipped(self):
-        from urirun.host.chat_orchestrator import _try_ensure_kvm_for_node
+        from urirun.host.screen_capability import try_ensure_kvm_for_node
         node = {"name": "other-node", "url": "http://10.0.0.1:8765"}
         called = []
 
@@ -394,18 +394,18 @@ class TryEnsureKvmTests(unittest.TestCase):
             called.append(url)
             return self._make_client(phase1_ok=True, phase2_ok=True)
 
-        result = _try_ensure_kvm_for_node(node, {"lenovo"}, make_client, None, None)
+        result = try_ensure_kvm_for_node(node, {"lenovo"}, make_client, None, None)
         self.assertFalse(result)
         self.assertEqual(called, [], "client must not be created for non-target nodes")
 
     def test_exception_in_client_returns_false(self):
-        from urirun.host.chat_orchestrator import _try_ensure_kvm_for_node
+        from urirun.host.screen_capability import try_ensure_kvm_for_node
         node = {"name": "lenovo", "url": "http://192.168.188.201:8765"}
 
         def make_client(url, token=None, identity=None):
             raise ConnectionError("node unreachable")
 
-        result = _try_ensure_kvm_for_node(node, {"lenovo"}, make_client, None, None)
+        result = try_ensure_kvm_for_node(node, {"lenovo"}, make_client, None, None)
         self.assertFalse(result)
 
 

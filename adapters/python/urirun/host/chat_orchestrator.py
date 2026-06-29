@@ -7,26 +7,23 @@ from __future__ import annotations
 
 import dataclasses
 import os
-import re
 from typing import Any, Callable
 
-from .screen_capability import selected_nodes_from_targets, screen_document_capability_gap
-from .urifix_bridge import try_urifix_repair
-from .document_sync import (
-    DOCUMENT_SYNC_URI,
-    document_sync_auto_retry_enabled,
-    document_sync_dest_from_prompt,
-    document_sync_retry_payload_from_urifix,
-    document_sync_default_node,
+from .screen_capability import (
+    host_only_with_local_kvm as _host_only_with_local_kvm_impl,
+    screen_document_capability_gap,
+    try_auto_ensure_screen_capture as _try_auto_ensure_screen_capture_impl,
 )
-from .decision_loop import decision_loop_for_document_sync, general_path_next_intent
+from .document_sync_chat import (
+    chat_ask_document_sync as _chat_ask_document_sync,
+    document_sync_node_from_prompt as _document_sync_node_from_prompt,
+    is_document_sync_prompt as _is_document_sync_prompt,
+)
+from .decision_loop import general_path_next_intent
 from .dispatch import make_local_dispatch_uri
 from .artifacts_admin import collect_attachments
-from .scanner_bridge import (
-    scanner_flow_result,
-    torch_enabled_from_prompt,
-    is_autonomous_scanner_prompt,
-    is_camera_start_prompt,
+from .scanner_chat import (
+    chat_ask_phone_scanner as _chat_ask_phone_scanner,
     is_phone_scanner_prompt,
 )
 from .twin_bridge import (
@@ -38,13 +35,11 @@ from .twin_bridge import (
     twin_plan_summary,
     is_desktop_task_prompt,
 )
-from .discovery import prompt_node_match
 from .object_registry import local_entry_point_host_routes
 from urirun_twin.capture_preferences import (
     apply_capture_preferences as _apply_capture_preferences,
     capture_preference_fingerprint as _capture_preference_fingerprint,
     capture_preference_from_payload as _capture_preference_from_payload,
-    capture_step_node as _capture_step_node,
     remember_capture_preferences as _remember_capture_preferences,
 )
 from urirun_twin.experience_retrieval import (
@@ -54,14 +49,17 @@ from urirun_twin.experience_retrieval import (
 )
 from urirun_connector_router.target_resolution import (
     apply_host_default_when_no_node_in_prompt as _router_apply_host_default_when_no_node_in_prompt,
-    explicit_node_name_from_prompt as _explicit_node_name_from_prompt,
     filter_mesh_for_targets as _filter_mesh_for_targets,
     inactive_node_urls as _inactive_node_urls,
     prompt_says_local as _prompt_says_local,
     rebuild_node_targets as _rebuild_node_targets,
+    resolve_selected_targets as _router_resolve_selected_targets,
     route_targets_active as _route_targets_active,
+    selected_nodes_from_targets,
+    target_selection_explicit as _target_selection_explicit,
     with_local_host_routes as _with_local_host_routes_impl,
 )
+from urirun_flow.env_selection import resolve_flow_env_enums
 from ._chat_attachments import (
     _resolve_artifact_value,
     _process_remote_path_entry,
@@ -108,401 +106,6 @@ def compact_chat_result(result: dict, payload: dict) -> dict:
         compacted = dict(compacted)
         compacted["artifacts"] = artifacts
     return compacted
-
-
-def _is_document_sync_prompt(prompt: str, selected_nodes: list[str] | None = None,
-                             selected_targets: list[str] | None = None, config: str | None = None,
-                             node_urls: list[str] | None = None, deps: ChatDeps = None) -> bool:
-    text_value = prompt.casefold()
-    wants_transfer = any(word in text_value for word in (
-        "wyślij", "wyslij", "prześlij", "przeslij", "skopiuj", "kopiuj",
-        "przenieś", "przenies", "sync", "synchroniz",
-    ))
-    wants_documents = any(word in text_value for word in (
-        "artifact", "artefakt", "documents", "dokument", "pdf",
-        "faktur", "rachunek", "paragon", "scan", "skan",
-    ))
-    alias_map = deps.node_alias_map_fn(config, node_urls)
-    target_nodes = selected_nodes_from_targets(selected_nodes or [], selected_targets or [])
-    wants_node = bool(
-        target_nodes
-        or document_sync_default_node()
-        or prompt_node_match(prompt, alias_map)
-        or re.search(r"(?<![\w.-])node(?![\w.-])", text_value)
-    )
-    return wants_transfer and wants_documents and wants_node
-
-
-def _document_sync_node_from_prompt(prompt: str, selected_nodes: list[str],
-                                    selected_targets: list[str] | None = None,
-                                    config: str | None = None, node_urls: list[str] | None = None,
-                                    deps: ChatDeps = None) -> str:
-    if selected_nodes:
-        return selected_nodes[0]
-    target_nodes = selected_nodes_from_targets([], selected_targets or [])
-    if target_nodes:
-        return target_nodes[0]
-    matched = prompt_node_match(prompt, deps.node_alias_map_fn(config, node_urls))
-    if matched:
-        return matched
-    return document_sync_default_node()
-
-
-def _chat_ask_phone_scanner(
-    project: str,
-    db: str | None,
-    config: str | None,
-    node_urls: list[str] | None,
-    token: str | None,
-    identity: str | None,
-    prompt: str,
-    execute: bool,
-    selected_nodes: list[str],
-    selected_targets: list[str],
-    deps: ChatDeps,
-) -> dict:
-    """Handle phone-scanner chat requests (start scanner, queue camera/torch actions)."""
-    service = deps.ensure_phone_scanner_fn(
-        project, db, config=config, node_urls=node_urls, token=token, identity=identity,
-    )
-    queued_camera: dict | None = None
-    queued_torch: dict | None = None
-    camera_click_uri = "scanner://page/ui/button/start-camera/command/click"
-    camera_autonomous_uri = "scanner://page/camera/command/autonomous"
-    torch_click_uri = "scanner://page/ui/button/torch/command/click"
-    torch_enabled = torch_enabled_from_prompt(prompt)
-    autonomous_scan = is_autonomous_scanner_prompt(prompt)
-    camera_action_uri = camera_autonomous_uri if autonomous_scan else camera_click_uri
-    camera_payload = {
-        "target": "scanner",
-        "startBest": torch_enabled is None,
-        "auto": bool(autonomous_scan),
-        "count": int(os.environ.get("URIRUN_PHONE_SCANNER_BEST_COUNT", "6")),
-        "minScore": float(os.environ.get("URIRUN_PHONE_SCANNER_MIN_SCORE", "45")),
-        "interval": float(os.environ.get("URIRUN_PHONE_SCANNER_INTERVAL", "3")),
-    }
-    if autonomous_scan or is_camera_start_prompt(prompt) or torch_enabled is not None:
-        queued_camera = deps.page_action_enqueue_fn(
-            db, target="scanner", uri=camera_action_uri, payload=camera_payload,
-            mode="execute", source="chat",
-        )
-        deps.add_chat_message_fn(db, chat_message(
-            "system",
-            "Autonomous scanner queued for the open scanner page. Open the scanner URL and accept the browser camera permission if prompted."
-            if autonomous_scan else
-            "Camera start queued for the open scanner page. Open the scanner URL and accept the browser camera permission if prompted.",
-            detail={
-                "uri": camera_action_uri,
-                "selectedTargets": ["service:phone-scanner"],
-                "queued": queued_camera,
-                "scannerUrl": service.get("url"),
-                "autonomous": bool(autonomous_scan),
-            },
-        ))
-    if torch_enabled is not None:
-        queued_torch = deps.page_action_enqueue_fn(
-            db, target="scanner", uri=torch_click_uri,
-            payload={"target": "scanner", "enabled": bool(torch_enabled)},
-            mode="execute", source="chat",
-        )
-        deps.add_chat_message_fn(db, chat_message(
-            "system",
-            f"Camera light {'on' if torch_enabled else 'off'} queued for the open scanner page.",
-            detail={
-                "uri": torch_click_uri,
-                "selectedTargets": ["service:phone-scanner"],
-                "enabled": bool(torch_enabled),
-                "queued": queued_torch,
-                "scannerUrl": service.get("url"),
-            },
-        ))
-    result = scanner_flow_result(
-        service, autonomous_scan, camera_action_uri, camera_payload,
-        torch_click_uri, torch_enabled, queued_camera, queued_torch,
-        prompt, selected_nodes, selected_targets,
-    )
-    try:
-        deps.host_db_fn().add_log(db, "chat", "ask", {
-            "prompt": prompt,
-            "execute": True,
-            "ok": result.get("ok"),
-            "selectedNodes": selected_nodes,
-            "selectedTargets": selected_targets,
-            "generator": result.get("generator"),
-            "timeline": result.get("timeline") or [],
-        })
-    except Exception:
-        pass
-    return result
-
-
-def _sync_execute_initial(
-    project: str,
-    db: str | None,
-    config: str | None,
-    node_urls: list[str] | None,
-    token: str | None,
-    identity: str | None,
-    sync_payload: dict,
-    deps: ChatDeps,
-) -> tuple[dict | None, dict | None]:
-    """Run the first sync attempt. Returns (sync_result, error)."""
-    try:
-        sync_result = deps.sync_documents_fn(
-            project, db, config, sync_payload, node_urls=node_urls, token=token, identity=identity,
-        )
-    except Exception as exc:  # noqa: BLE001
-        return None, {"type": type(exc).__name__, "message": str(exc), "uri": DOCUMENT_SYNC_URI}
-    if sync_result is not None and not sync_result.get("ok"):
-        failed_reasons = sync_result.get("failedReasons") if isinstance(sync_result.get("failedReasons"), dict) else {}
-        top_reason = max(failed_reasons.items(), key=lambda item: item[1])[0] if failed_reasons else "document sync contract failed"
-        return sync_result, {
-            "type": "ContractError",
-            "message": str(top_reason),
-            "uri": DOCUMENT_SYNC_URI,
-            "verification": sync_result.get("verification"),
-        }
-    return sync_result, None
-
-
-def _sync_ok_and_status(sync_result: dict | None, error: dict | None, execute: bool) -> tuple[bool, str]:
-    """Compute (ok, timeline_status) for the document-sync path."""
-    ok = bool((sync_result or {}).get("ok")) if execute and not error else not bool(error)
-    status = "done" if execute and ok else ("failed" if error else "dry-run")
-    return ok, status
-
-
-def _apply_urifix_recovery(
-    result: dict,
-    timeline: list[dict],
-    *,
-    project: str,
-    db: str | None,
-    config: str | None,
-    node_urls: list[str] | None,
-    token: str | None,
-    identity: str | None,
-    prompt: str,
-    execute: bool,
-    no_llm: bool,
-    payload: dict,
-    sync_node: str,
-    selected_nodes: list[str],
-    selected_targets: list[str],
-    error: dict,
-    sync_result: dict | None,
-    deps: ChatDeps,
-) -> tuple[dict | None, dict | None, dict | None, bool, bool]:
-    """Diagnose the failed sync with urifix and, if possible, auto-retry.
-
-    Mutates result and timeline in place. Returns (urifix, final_error, initial_error, recovered, retry_attempted).
-    Single source of truth is decisionLoop (built by caller from urifix); raw urifix stays in
-    result only for the DB debug log — not promoted to recovery/patch/retry copies in chat.
-    """
-    initial_error = dict(error)
-    host_config_snapshot = None
-    try:
-        host_config_snapshot = deps.host_config_fn(config, node_urls)
-    except Exception:  # noqa: BLE001
-        pass
-    urifix = try_urifix_repair(
-        prompt,
-        {"nodes": selected_nodes, "targets": selected_targets, "execute": execute, "no_llm": no_llm},
-        result,
-        node_urls=node_urls,
-        host_config=host_config_snapshot,
-    )
-    if not urifix:
-        return None, error, initial_error, False, False
-    result["urifix"] = urifix
-    timeline[0]["recoverable"] = bool(urifix.get("recovery"))
-    retry_payload = (
-        document_sync_retry_payload_from_urifix(urifix, sync_node=sync_node)
-        if execute and document_sync_auto_retry_enabled(payload) else None
-    )
-    if not retry_payload:
-        return urifix, error, initial_error, False, False
-    retry_step = {
-        "id": "sync-documents-to-node.retry",
-        "uri": DOCUMENT_SYNC_URI,
-        "target": retry_payload.get("node") or sync_node,
-        "ok": False,
-        "status": "failed",
-        "recoveredFrom": "sync-documents-to-node",
-        "generatedBy": "urifix://host/chain/command/repair",
-    }
-    recovered = False
-    try:
-        retry_result = deps.sync_documents_fn(
-            project, db, config, retry_payload, node_urls=node_urls, token=token, identity=identity,
-        )
-        retry_ok = bool(retry_result.get("ok"))
-        sync_result = retry_result
-        retry_step["ok"] = retry_ok
-        retry_step["status"] = "done" if retry_ok else "failed"
-        if retry_ok:
-            recovered = True
-            error = None
-            result["initialError"] = initial_error
-            result["recovered"] = True
-            result["recoveredBy"] = "urifix://host/chain/command/repair"
-        else:
-            error = {
-                "type": "RecoveryError",
-                "message": "document sync retry returned ok=false",
-                "uri": DOCUMENT_SYNC_URI,
-                "initialError": initial_error,
-            }
-    except Exception as exc:  # noqa: BLE001
-        error = {
-            "type": type(exc).__name__,
-            "message": str(exc),
-            "uri": DOCUMENT_SYNC_URI,
-            "initialError": initial_error,
-        }
-    timeline.append(retry_step)
-    ok = bool((sync_result or {}).get("ok")) if execute and not error else False
-    result["ok"] = ok
-    result["timeline"] = timeline
-    result["results"] = {"sync-documents-to-node": sync_result} if sync_result else {}
-    result["error"] = error
-    return urifix, error, initial_error, recovered, True
-
-
-def _chat_ask_document_sync(
-    project: str,
-    db: str | None,
-    config: str | None,
-    payload: dict,
-    node_urls: list[str] | None,
-    token: str | None,
-    identity: str | None,
-    prompt: str,
-    execute: bool,
-    no_llm: bool,
-    selected_nodes: list[str],
-    selected_targets: list[str],
-    deps: ChatDeps,
-) -> dict:
-    """Handle document-sync chat requests."""
-    sync_node = _document_sync_node_from_prompt(prompt, selected_nodes, selected_targets, config, node_urls, deps)
-    sync_selected_nodes = selected_nodes_from_targets([*selected_nodes, sync_node], selected_targets)
-    sync_selected_targets = list(selected_targets)
-    node_target = f"node:{sync_node}"
-    if node_target not in sync_selected_targets:
-        sync_selected_targets.append(node_target)
-    sync_payload = {"node": sync_node, "dest_root": document_sync_dest_from_prompt(prompt)}
-    step = {
-        "id": "sync-documents-to-node",
-        "uri": "document://host/archive/command/sync-to-node",
-        "payload": sync_payload,
-        "depends_on": [],
-    }
-    flow = {
-        "task": {"id": "document-sync-to-node", "title": "Copy archived document PDFs to URI node"},
-        "steps": [step],
-    }
-    generator = {"provider": "host-dashboard", "intent": "document-sync", "fallback": True}
-    sync_result: dict | None = None
-    error: dict | None = None
-    initial_error: dict | None = None
-    recovered = False
-    retry_attempted = False
-    if execute:
-        sync_result, error = _sync_execute_initial(project, db, config, node_urls, token, identity, sync_payload, deps)
-    ok, status = _sync_ok_and_status(sync_result, error, execute)
-    timeline: list[dict] = [{
-        "id": "sync-documents-to-node",
-        "uri": DOCUMENT_SYNC_URI,
-        "target": sync_node,
-        "ok": ok,
-        "status": status,
-    }]
-    result: dict = {
-        "ok": ok,
-        "prompt": prompt,
-        "execute": execute,
-        "selectedNodes": sync_selected_nodes,
-        "selectedTargets": sync_selected_targets,
-        "generator": generator,
-        "flow": flow,
-        "timeline": timeline,
-        "results": {"sync-documents-to-node": sync_result} if sync_result else {},
-        "error": error,
-    }
-    if error:
-        _, error, initial_error, recovered, retry_attempted = _apply_urifix_recovery(
-            result,
-            timeline,
-            project=project,
-            db=db,
-            config=config,
-            node_urls=node_urls,
-            token=token,
-            identity=identity,
-            prompt=prompt,
-            execute=execute,
-            no_llm=no_llm,
-            payload=payload,
-            sync_node=sync_node,
-            selected_nodes=selected_nodes,
-            selected_targets=selected_targets,
-            error=error,
-            sync_result=sync_result,
-            deps=deps,
-        )
-    result["decisionLoop"] = decision_loop_for_document_sync(
-        prompt,
-        execute=execute,
-        sync_node=sync_node,
-        selected_nodes=sync_selected_nodes,
-        selected_targets=sync_selected_targets,
-        flow=flow,
-        timeline=result.get("timeline") or timeline,
-        error=error,
-        urifix=result.get("urifix"),
-        sync_result=(result.get("results") or {}).get("sync-documents-to-node"),
-        initial_error=initial_error,
-        recovered=recovered,
-        retry_attempted=retry_attempted,
-        auto_retry_enabled=document_sync_auto_retry_enabled(payload),
-    )
-    if recovered:
-        deps.add_chat_message_fn(db, chat_message(
-            "system",
-            "recovered: document sync URI step",
-            detail={
-                "schema": "urirun.decision-loop.v1",
-                "ok": result.get("ok"),
-                "decisionLoop": result.get("decisionLoop"),
-            },
-        ))
-    elif not execute or error:
-        deps.add_chat_message_fn(db, chat_message(
-            "system",
-            ("failed: document sync URI step" if error else "dry-run: document sync URI step"),
-            # The decision-loop object is self-contained (intent → flow → execution →
-            # observation → nextIntent), so the chat message carries just it (+ ok) instead
-            # of the former duplicated recovery/patch/retry/urifix/flow/timeline copies.
-            detail={
-                "schema": "urirun.decision-loop.v1",
-                "ok": result.get("ok"),
-                "decisionLoop": result.get("decisionLoop"),
-            },
-        ))
-    try:
-        deps.host_db_fn().add_log(db, "chat", "ask", {
-            "prompt": prompt,
-            "execute": execute,
-            "ok": result.get("ok"),
-            "selectedNodes": sync_selected_nodes,
-            "selectedTargets": sync_selected_targets,
-            "decisionLoop": result.get("decisionLoop"),
-            "urifix": result.get("urifix"),
-        })
-    except Exception:
-        pass
-    return result
 
 
 def _classify_exc_remediation(exc: BaseException, selected_nodes: list[str]) -> dict | None:
@@ -799,39 +402,6 @@ def _general_path_complete(
                                generator, flow, result, attachments, content, steps_all_ok, deps)
 
 
-def _collect_target_names(selected_targets: list[str], selected_nodes: list[str]) -> set[str]:
-    names: set[str] = {t.removeprefix("node:") for t in selected_targets if t.startswith("node:")}
-    names.update(selected_nodes)
-    names.discard("host")
-    return names
-
-
-def _try_ensure_kvm_for_node(
-    node: dict, target_names: set[str], node_client: Any,
-    token: str | None, identity: str | None,
-) -> bool:
-    name = str(node.get("name") or "")
-    url = str(node.get("url") or "")
-    if name not in target_names or not url:
-        return False
-    try:
-        client = node_client(url, token=token, identity=identity)
-        # Phase 1 (no-op if kvm is already adopted): adopt bindings already in node venv via
-        # node://*/registry/command/adopt.  Requires --manage on the node; returns ok=False fast if not.
-        r = client.ensure_scheme("kvm", install=False, route="kvm://host/screen/query/capture")
-        if r.get("ok"):
-            return True
-        # Phase 2 (HTTP host-deploy): push the host's kvm connector bindings to the node via
-        # /deploy (signed, no SSH needed). Works on any node with --deploy enabled (the default).
-        # _ensure_via_discovery_install (the only slow path) needs --manage to reach
-        # node://*/connector/query/discover; without it, discovery returns empty and is skipped
-        # immediately, so this call is fast on managed-deploy-only nodes like lenovo.
-        r = client.ensure_scheme("kvm", install=True, route="kvm://host/screen/query/capture")
-        return bool(r.get("ok"))
-    except Exception:  # noqa: BLE001
-        return False
-
-
 def _try_auto_ensure_screen_capture(
     discovered: dict,
     selected_nodes: list[str],
@@ -839,20 +409,14 @@ def _try_auto_ensure_screen_capture(
     token: str | None,
     identity: str | None,
 ) -> bool:
-    """Ensure a kvm connector is live on each targeted node.
-
-    Fast path: adopt-only (install=False) when the package is already in the venv.
-    Slow path: discover + install + adopt (install=True) when the package is absent.
-    Falls back to CapabilityGap when installation also fails (e.g. signed-deploy required)."""
     from .fs_transfer import node_client as _mk_client  # noqa: PLC0415
-    eff_id = identity or os.environ.get("URIRUN_RUN_IDENTITY")
-    eff_tok = token or os.environ.get("URIRUN_RUN_TOKEN")
-    target_names = _collect_target_names(selected_targets, selected_nodes)
-    if not target_names:
-        return False
-    return any(
-        _try_ensure_kvm_for_node(node, target_names, _mk_client, eff_tok, eff_id)
-        for node in (discovered.get("nodes") or [])
+    return _try_auto_ensure_screen_capture_impl(
+        discovered,
+        selected_nodes,
+        selected_targets,
+        node_client=_mk_client,
+        token=token,
+        identity=identity,
     )
 
 
@@ -1299,9 +863,14 @@ def _unwrap_recall(recalled) -> dict | None:
 
 
 def _recall_routes_replan_required(flow: dict, routes: list[dict], registry: dict) -> bool:
-    from urirun_flow.env_selection import recall_env_enum_replan_required  # noqa: PLC0415
-    inventories = _env_enum_inventories(flow, registry, routes)
-    return bool(recall_env_enum_replan_required(flow, routes, inventories).get("required"))
+    from urirun_flow import env_selection as _env_selection  # noqa: PLC0415
+    from urirun_flow.flow import _build_env_inventory  # noqa: PLC0415
+    inventories = _env_selection.build_env_enum_inventories(
+        flow,
+        routes,
+        inventory_builder=lambda node: _build_env_inventory(node, registry),
+    )
+    return bool(_env_selection.recall_env_enum_replan_required(flow, routes, inventories).get("required"))
 
 
 def _recalled_to_flow(recalled: dict, prompt: str, routes: list[dict] | None, registry: dict) -> dict | None:
@@ -1402,18 +971,11 @@ def _screen_capability_gap_or_recall(prompt, discovered, selected_nodes, selecte
 
 
 def _is_host_only_with_local_kvm(selected_targets: list[str]) -> bool:
-    """True when targeting only the host AND the kvm connector is installed locally.
-
-    discover_mesh only aggregates routes from remote nodes; the host's own
-    installed connectors are invisible to the route catalogue.  When the user
-    targets 'host' (no remote node), the capability gap fires because there
-    are no kvm:// routes in the mesh — but make_local_dispatch_uri with
-    local_first=True will find the connector via entry-point discovery.
-    Returning True here suppresses the false-positive gap."""
-    if sorted(selected_targets) != ["host"]:
-        return False
     from urirun.host.dispatch import _local_scheme_installed  # noqa: PLC0415
-    return _local_scheme_installed("kvm://host/screen/query/capture")
+    return _host_only_with_local_kvm_impl(
+        selected_targets,
+        local_scheme_installed=_local_scheme_installed,
+    )
 
 
 def _apply_host_default_when_no_node_in_prompt(
@@ -1423,25 +985,6 @@ def _apply_host_default_when_no_node_in_prompt(
     alias_map = deps.node_alias_map_fn(config, node_urls)
     return _router_apply_host_default_when_no_node_in_prompt(
         prompt, selected_nodes, selected_targets, alias_map)
-
-
-def _target_selection_explicit(payload: dict) -> bool:
-    if "target_explicit" not in payload and "targetExplicit" not in payload:
-        return False
-    raw = payload.get("target_explicit", payload.get("targetExplicit"))
-    if isinstance(raw, str):
-        return raw.strip().lower() not in {"0", "false", "no", "off"}
-    return bool(raw)
-
-
-def _has_explicit_remote_selection(requested_nodes: list[str], requested_targets: list[str],
-                                   target_explicit: bool = True) -> bool:
-    """True when the request already contains a deliberate remote node selection from the UI/API."""
-    if not target_explicit:
-        return False
-    if any(str(node).strip() for node in requested_nodes or []):
-        return True
-    return any(str(target).strip().startswith("node:") for target in requested_targets or [])
 
 
 def _apply_explicit_target_sync(payload, flow, discovered, selected_nodes, selected_targets):
@@ -1485,38 +1028,14 @@ def _planner_nodes_for_targets(selected_nodes: list[str], selected_targets: list
     return out
 
 
-def _flow_route_domains(flow: dict, routes: list[dict]) -> dict[str, dict]:
-    by_uri = {str(r.get("uri") or ""): r for r in routes or []}
-    out: dict[str, dict] = {}
-    for step in flow.get("steps") or []:
-        uri = str(step.get("uri") or "")
-        contract = (by_uri.get(uri, {}).get("meta") or {}).get("contract") or {}
-        domains = contract.get("domains") or {}
-        if domains:
-            out[uri] = domains
-    return out
-
-
-def _env_enum_inventories(flow: dict, registry: dict, routes: list[dict]) -> dict[str, dict]:
-    if not _flow_route_domains(flow, routes):
-        return {}
-    from urirun_flow.flow import _build_env_inventory  # noqa: PLC0415
-    nodes = sorted({
-        _capture_step_node(step)
-        for step in flow.get("steps") or []
-        if str(step.get("uri") or "").startswith("kvm://")
-    })
-    return {node: _build_env_inventory(node, registry) for node in nodes}
-
-
 def _resolve_env_enum_flow(flow: dict, registry: dict, routes: list[dict], memory: object | None) -> dict:
-    domains = _flow_route_domains(flow, routes)
-    if not domains:
-        return {"ok": True, "flow": flow, "inventories": {}}
-    from urirun_flow.env_selection import resolve_env_enums  # noqa: PLC0415
-    inventories = _env_enum_inventories(flow, registry, routes)
-    result = resolve_env_enums(flow, routes, inventories, memory=memory)
-    return {**result, "inventories": inventories}
+    from urirun_flow.flow import _build_env_inventory  # noqa: PLC0415
+    return resolve_flow_env_enums(
+        flow,
+        routes,
+        memory=memory,
+        inventory_builder=lambda node: _build_env_inventory(node, registry),
+    )
 
 
 def _chat_ask_general_needs_selection(selection: dict, db: str | None, prompt: str, execute: bool,
@@ -1853,63 +1372,8 @@ def _chat_insert_routing_preview(
     return report
 
 
-def _parse_chat_nodes_targets(payload: dict) -> tuple[list[str], list[str]]:
-    requested_nodes = [str(i).strip() for i in (payload.get("nodes") or []) if str(i).strip()]
-    requested_targets = [str(i).strip() for i in (payload.get("targets") or []) if str(i).strip()]
-    return requested_nodes, requested_targets
-
-
 def _payload_llm_model(payload: dict) -> str | None:
     return str(payload.get("model") or payload.get("llm_model") or payload.get("llmModel") or "").strip() or None
-
-
-def _init_selected_targets(requested_nodes: list[str], requested_targets: list[str]) -> list[str]:
-    if requested_targets:
-        return list(requested_targets)
-    return ["host", *[f"node:{name}" for name in requested_nodes]]
-
-
-def _infer_node_targets(prompt: str, requested_nodes: list[str], requested_targets: list[str],
-                        config: str | None, node_urls: list[str] | None, deps: "ChatDeps") -> list[str] | None:
-    """NL node inference — route to a named mesh node when not explicitly picked."""
-    if requested_nodes:
-        return None
-    target_set = {str(target).strip() for target in (requested_targets or []) if str(target).strip()}
-    if target_set and target_set != {"host"}:
-        return None
-    matched = _explicit_node_name_from_prompt(prompt, deps.node_alias_map_fn(config, node_urls))
-    return [f"node:{matched}"] if matched and matched != "host" else None
-
-
-def _resolve_selected_targets(
-        payload: dict, prompt: str, config: str | None,
-        node_urls: list[str] | None, deps: "ChatDeps",
-) -> tuple[list[str], list[str], list[str], list[str]]:
-    """Resolve requested_nodes, requested_targets, selected_nodes, selected_targets from payload.
-
-    Applies NL node inference and the host-default rule.  Returns a 4-tuple:
-    (requested_nodes, requested_targets, selected_nodes, selected_targets).
-    """
-    requested_nodes, requested_targets = _parse_chat_nodes_targets(payload)
-    target_explicit = _target_selection_explicit(payload)
-    selected_targets = _init_selected_targets(requested_nodes, requested_targets)
-    inferred = _infer_node_targets(
-        prompt,
-        requested_nodes if target_explicit else [],
-        requested_targets if target_explicit else [],
-        config, node_urls, deps)
-    if inferred is not None:
-        selected_targets = inferred
-    selected_nodes = selected_nodes_from_targets(list(requested_nodes) if target_explicit else [], selected_targets)
-    # Rule: if the prompt doesn't mention which node to use, default to host.
-    # The chat prompt is the routing command; stale contact/URL selections must
-    # not make a host-local command run on a remote laptop. But do NOT override an
-    # explicit UI/API node target — URL tab autorun can mark targets non-explicit
-    # (copied UI state), whereas an explicit node:/nodes= selection IS a routing command.
-    if not _has_explicit_remote_selection(requested_nodes, requested_targets, target_explicit):
-        selected_nodes, selected_targets = _apply_host_default_when_no_node_in_prompt(
-            prompt, selected_nodes, selected_targets, config, node_urls, deps)
-    return requested_nodes, requested_targets, selected_nodes, selected_targets
 
 
 def _extract_chat_flags(payload: dict) -> tuple[bool, bool, str | None]:
@@ -1944,8 +1408,8 @@ def chat_ask(project: str, db: str | None, config: str | None, payload: dict, no
     prompt = str(payload.get("prompt") or "").strip()
     if not prompt:
         raise ValueError("prompt is required")
-    requested_nodes, requested_targets, selected_nodes, selected_targets = _resolve_selected_targets(
-        payload, prompt, config, node_urls, deps)
+    requested_nodes, requested_targets, selected_nodes, selected_targets = _router_resolve_selected_targets(
+        payload, prompt, deps.node_alias_map_fn(config, node_urls))
     execute, no_llm, llm_model = _extract_chat_flags(payload)
     _add_chat_user_message(
         db, prompt, config, node_urls, execute=execute, no_llm=no_llm,

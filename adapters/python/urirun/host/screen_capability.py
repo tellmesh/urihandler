@@ -7,6 +7,11 @@ needs a screenshot has a usable capture route and how to explain a missing one.
 """
 from __future__ import annotations
 
+import os
+from typing import Any, Callable
+
+from urirun_connector_router.target_resolution import selected_nodes_from_targets
+
 from .document_sync import needs_screen_document_capture as _needs_screen_document_capture
 
 _SCREEN_WORDS = ("zrzut", "screenshot", "screen capture", "zrzuty ekranu", "screenshoot")
@@ -45,24 +50,77 @@ def _connector_hint_for_nodes(selected_nodes: list[str], selected_targets: list[
     }
 
 
-def selected_nodes_from_targets(selected_nodes: list[str], selected_targets: list[str]) -> list[str]:
-    """Keep API callers and the browser form consistent: node targets imply selected nodes."""
-    out: list[str] = []
-    seen: set[str] = set()
-    for node in selected_nodes:
-        clean = str(node).strip()
-        if clean and clean not in seen:
-            out.append(clean)
-            seen.add(clean)
-    for target in selected_targets:
-        clean = str(target).strip()
-        if not clean.startswith("node:"):
-            continue
-        node = clean.split(":", 1)[1].strip()
-        if node and node not in seen:
-            out.append(node)
-            seen.add(node)
-    return out
+def collect_target_names(selected_targets: list[str], selected_nodes: list[str]) -> set[str]:
+    names: set[str] = {t.removeprefix("node:") for t in selected_targets if t.startswith("node:")}
+    names.update(selected_nodes)
+    names.discard("host")
+    return names
+
+
+def try_ensure_kvm_for_node(
+    node: dict,
+    target_names: set[str],
+    node_client: Callable[..., Any],
+    token: str | None,
+    identity: str | None,
+) -> bool:
+    name = str(node.get("name") or "")
+    url = str(node.get("url") or "")
+    if name not in target_names or not url:
+        return False
+    try:
+        client = node_client(url, token=token, identity=identity)
+        # Phase 1 (no-op if kvm is already adopted): adopt bindings already in node venv via
+        # node://*/registry/command/adopt.  Requires --manage on the node; returns ok=False fast if not.
+        r = client.ensure_scheme("kvm", install=False, route="kvm://host/screen/query/capture")
+        if r.get("ok"):
+            return True
+        # Phase 2 (HTTP host-deploy): push the host's kvm connector bindings to the node via
+        # /deploy (signed, no SSH needed). Works on any node with --deploy enabled (the default).
+        # _ensure_via_discovery_install (the only slow path) needs --manage to reach
+        # node://*/connector/query/discover; without it, discovery returns empty and is skipped
+        # immediately, so this call is fast on managed-deploy-only nodes like lenovo.
+        r = client.ensure_scheme("kvm", install=True, route="kvm://host/screen/query/capture")
+        return bool(r.get("ok"))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def try_auto_ensure_screen_capture(
+    discovered: dict,
+    selected_nodes: list[str],
+    selected_targets: list[str],
+    *,
+    node_client: Callable[..., Any],
+    token: str | None = None,
+    identity: str | None = None,
+) -> bool:
+    """Ensure a kvm connector is live on each targeted node.
+
+    Fast path: adopt-only (install=False) when the package is already in the venv.
+    Slow path: discover + install + adopt (install=True) when the package is absent.
+    Falls back to CapabilityGap when installation also fails (e.g. signed-deploy required).
+    """
+    eff_id = identity or os.environ.get("URIRUN_RUN_IDENTITY")
+    eff_tok = token or os.environ.get("URIRUN_RUN_TOKEN")
+    target_names = collect_target_names(selected_targets, selected_nodes)
+    if not target_names:
+        return False
+    return any(
+        try_ensure_kvm_for_node(node, target_names, node_client, eff_tok, eff_id)
+        for node in (discovered.get("nodes") or [])
+    )
+
+
+def host_only_with_local_kvm(
+    selected_targets: list[str],
+    *,
+    local_scheme_installed: Callable[[str], bool],
+) -> bool:
+    """True when targeting only the host AND the kvm connector is installed locally."""
+    if sorted(selected_targets) != ["host"]:
+        return False
+    return bool(local_scheme_installed("kvm://host/screen/query/capture"))
 
 
 def route_in_selected_targets(route: dict, selected_nodes: list[str], selected_targets: list[str]) -> bool:
