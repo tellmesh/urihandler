@@ -364,25 +364,29 @@ def _maybe_ensure_scheme(client: Any, uri: str, ensure: bool, roots: Any) -> Non
         reglib._emit_json({"ensure": client.ensure_scheme(scheme, roots=roots)}, "-")
 
 
+def _watch_stream_events(client: Any, run_id: str, stop: threading.Event, done: dict, timeout: float) -> None:
+    """Thread target: consume SSE events for *run_id* until a result arrives or *stop* is set.
+
+    Resilient: stream_run reconnects from the last event id after a drop, so a long
+    run's progress isn't lost mid-stream.
+    """
+    for ev in client.stream_run(run_id, stop=stop, timeout=timeout + 10):
+        if ev.get("event") == "progress":
+            extra = {k: v for k, v in ev.items() if k not in ("event", "run", "uri", "at", "service", "_id")}
+            sys.stdout.write(f"  ░ {extra.get('line', json.dumps(extra, ensure_ascii=False))}\n")
+            sys.stdout.flush()
+        elif ev.get("event") == "result":
+            done["env"] = ev
+            return
+
+
 def _run_streamed(client: Any, uri: str, payload: dict, args: argparse.Namespace, timeout: float) -> int:
     """Start the URI async and print the node's live progress until a result arrives,
     falling back to a blocking run against a node too old for async."""
     run_id = getattr(args, "run_id", None) or f"cli-{int(time.time() * 1000)}"
     stop, done = threading.Event(), {"env": None}
 
-    def watch() -> None:
-        # resilient: stream_run reconnects from the last event id after a drop, so a long
-        # run's progress isn't lost mid-stream.
-        for ev in client.stream_run(run_id, stop=stop, timeout=timeout + 10):
-            if ev.get("event") == "progress":
-                extra = {k: v for k, v in ev.items() if k not in ("event", "run", "uri", "at", "service", "_id")}
-                sys.stdout.write(f"  ░ {extra.get('line', json.dumps(extra, ensure_ascii=False))}\n")
-                sys.stdout.flush()
-            elif ev.get("event") == "result":
-                done["env"] = ev
-                return
-
-    tw = threading.Thread(target=watch, daemon=True)
+    tw = threading.Thread(target=_watch_stream_events, args=(client, run_id, stop, done, timeout), daemon=True)
     tw.start()
     time.sleep(0.3)  # let the SSE subscriber attach before we start the run
     started = client.run_async(uri, payload, run_id=run_id)
