@@ -354,14 +354,16 @@ _ERROR_PATTERNS: list[tuple[str, list[str]]] = [
 ]
 
 
-def need_from_backend_error(msg: str) -> dict | None:
-    """Parse a BackendError message into a precondition need dict, or None.
+def _apply_install_hint(need: dict, msg: str) -> None:
+    """If *msg* contains an ``install: ...`` clause, record packages and clear humanGated."""
+    install = re.findall(r"install:\s*([^)]+)", msg, flags=re.IGNORECASE)
+    if install:
+        need["acquire"]["install"] = [part.strip() for part in install[0].split(",") if part.strip()]
+        need["acquire"]["humanGated"] = False
 
-    When a BackendError maps to a known precondition, the caller can include
-    ``need=need_from_backend_error(msg)`` in a degraded result. The flow
-    preflight gate catches this and routes the precondition through the
-    acquisition loop instead of leaving it as a dead degradation."""
-    lower = msg.lower()
+
+def _need_from_known_pattern(msg: str, lower: str) -> dict | None:
+    """Return a need dict if *msg* matches a known _ERROR_PATTERNS entry, else None."""
     for name, keywords in _ERROR_PATTERNS:
         if any(k.lower() in lower for k in keywords):
             pc = _REGISTRY.get(name)
@@ -371,22 +373,35 @@ def need_from_backend_error(msg: str) -> dict | None:
                 "hint": (pc.hint if pc else "") or msg[:120],
                 "humanGated": human,
             }, "backend precondition")
-            install = re.findall(r"install:\s*([^)]+)", msg, flags=re.IGNORECASE)
-            if install:
-                need["acquire"]["install"] = [part.strip() for part in install[0].split(",") if part.strip()]
-                need["acquire"]["humanGated"] = False
+            _apply_install_hint(need, msg)
             return need
-    if "all backends failed" in lower or "no available backend" in lower:
-        need = _acquire_dict("backend-available", {
-            "provider": "backend",
-            "hint": msg[:120],
-            "humanGated": "grant:" in lower or "permission" in lower or "portal" in lower,
-        }, "backend precondition")
-        install = re.findall(r"install:\s*([^)]+)", msg, flags=re.IGNORECASE)
-        if install:
-            need["acquire"]["install"] = [part.strip() for part in install[0].split(",") if part.strip()]
-            need["acquire"]["humanGated"] = False
+    return None
+
+
+def _need_from_all_backends_failed(msg: str, lower: str) -> dict:
+    """Return a need dict for generic 'all backends failed' / 'no available backend' messages."""
+    need = _acquire_dict("backend-available", {
+        "provider": "backend",
+        "hint": msg[:120],
+        "humanGated": "grant:" in lower or "permission" in lower or "portal" in lower,
+    }, "backend precondition")
+    _apply_install_hint(need, msg)
+    return need
+
+
+def need_from_backend_error(msg: str) -> dict | None:
+    """Parse a BackendError message into a precondition need dict, or None.
+
+    When a BackendError maps to a known precondition, the caller can include
+    ``need=need_from_backend_error(msg)`` in a degraded result. The flow
+    preflight gate catches this and routes the precondition through the
+    acquisition loop instead of leaving it as a dead degradation."""
+    lower = msg.lower()
+    need = _need_from_known_pattern(msg, lower)
+    if need is not None:
         return need
+    if "all backends failed" in lower or "no available backend" in lower:
+        return _need_from_all_backends_failed(msg, lower)
     return None
 
 
