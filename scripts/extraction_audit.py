@@ -64,6 +64,8 @@ PRESETS: dict[str, dict] = {
         "name": "domain-monitor",
         "package": {"urirun.host.domain_monitor"},
         "package_prefixes": (),
+        # A capability connector depends DOWN on runtime/node/connectors + the data layer;
+        # any OTHER host.* import is a sideways coupling to surface for the lift.
         "allow_outward": ("urirun.host.host_db", "urirun.runtime.", "urirun.node.",
                           "urirun.connectors."),
     },
@@ -71,96 +73,8 @@ PRESETS: dict[str, dict] = {
         "name": "cdp-surface",
         "package": {"urirun.connectors.surfaces.cdp"},
         "package_prefixes": (),
+        # The CDP browser primitive should sit on runtime/node only — no host, no sibling connectors.
         "allow_outward": ("urirun.runtime.", "urirun.node."),
-    },
-    "E": {
-        "name": "connectors toolkit",
-        "package": set(),
-        "package_prefixes": ("urirun.connectors.",),
-        # The connector toolkit sits DOWN on the kernel only — node/host edges are blockers.
-        # The bare `urirun` umbrella is the public-API facade (urirun.ok/connector/run), allowed.
-        "allow_outward": ("urirun.runtime.",),
-        "allow_exact": ("urirun",),
-    },
-    "F": {
-        "name": "node layer",
-        "package": set(),
-        "package_prefixes": ("urirun.node.",),
-        # node sits on the kernel + connector toolkit + public facade; host edges are blockers.
-        # allow_exact includes "urirun.runtime" (the package __init__, e.g. result_data) — see G/H.
-        "allow_outward": ("urirun.runtime.", "urirun.connectors."),
-        "allow_exact": ("urirun", "urirun.runtime"),
-    },
-    "G": {
-        "name": "flow",
-        "package": {"urirun.node.flow", "urirun.node.flow_planner", "urirun.node.flow_thin",
-                    "urirun.node.flow_verify", "urirun.node.recovery", "urirun.node.diagnostics"},
-        "package_prefixes": (),
-        # flow sits on kernel + connectors + the node substrate; HOST edges + cycles are blockers.
-        # (Whether it reaches TWIN by import vs URI is checked separately by grep.)
-        # allow_exact includes "urirun.runtime" (the package __init__, e.g. result_data) alongside
-        # the submodule prefix "urirun.runtime." so both `from urirun.runtime import X` and
-        # `from urirun.runtime.v2_service import Y` are allowed.
-        "allow_outward": ("urirun.runtime.", "urirun.connectors.", "urirun.node."),
-        "allow_exact": ("urirun", "urirun.runtime"),
-    },
-    "H": {
-        "name": "pure node substrate",
-        # node_cli and task_cli are CLI integration entry-points that intentionally wire
-        # into host.*; they belong in the host layer and are excluded from this preset.
-        # Preset F covers the full node.* namespace (including CLIs, deliberately RED).
-        # Preset H proves the node substrate itself is liftable without CLIs.
-        "package": set(),
-        "package_prefixes": ("urirun.node.",),
-        "exclude_exact": {"urirun.node.node_cli", "urirun.node.task_cli"},
-        # allow_exact includes "urirun.runtime" (the package __init__) — see Preset G comment.
-        "allow_outward": ("urirun.runtime.", "urirun.connectors."),
-        "allow_exact": ("urirun", "urirun.runtime"),
-    },
-    "I": {
-        "name": "twin (episodic memory + reversible engine)",
-        # Candidate for urirun-twin: the reversible-process engine + episodic memory store.
-        # twin_store + episode are pure-Python (no urirun.* imports).
-        # reversible re-exports TwinMemory/environment_fingerprint from twin_store.
-        # twin_bridge is the host-side integration shim — it imports from host.* so it
-        # stays behind; the candidate is only the three node-layer modules.
-        "package": {
-            "urirun.node.twin_store",
-            "urirun.node.episode",
-            "urirun.node.reversible",
-        },
-        "package_prefixes": (),
-        # reversible may reference urirun.node.* data-layer utilities (routing, recovery);
-        # allow the full node substrate as a downward dep.
-        "allow_outward": ("urirun.runtime.", "urirun.node.", "urirun.connectors."),
-        "allow_exact": ("urirun", "urirun.runtime"),
-    },
-    "J": {
-        "name": "contracts (event schema)",
-        # Candidate for urirun-contracts: pure-data event/node schema with zero urirun.* imports.
-        # dispatch_protocol stays in urirun-runtime (it imports urirun.runtime.v2).
-        "package": {
-            "urirun.node.event_schema",
-        },
-        "package_prefixes": (),
-        "allow_outward": (),
-        "allow_exact": (),
-    },
-    "K": {
-        "name": "flow engine (bundled as urirun_flow)",
-        # Post-extraction verification: the shim stubs in urirun/node/* have zero real code,
-        # so OUTWARD and CYCLE should be 0 for these addresses. Real code is in urirun_flow/.
-        "package": {
-            "urirun.node.flow",
-            "urirun.node.flow_thin",
-            "urirun.node.flow_planner",
-            "urirun.node.flow_verify",
-            "urirun.node.diagnostics",
-            "urirun.node.recovery",
-        },
-        "package_prefixes": (),
-        "allow_outward": ("urirun.runtime.", "urirun.node.", "urirun.connectors.", "urirun_flow."),
-        "allow_exact": ("urirun", "urirun.runtime"),
     },
 }
 
@@ -249,9 +163,7 @@ def edges_in_file(path: Path, cur_mod: str, known: set[str]) -> list[Edge]:
 
 # ───────────────────────────────────────────────────────── classification ──── #
 
-def _allowed_down(target: str, allow: tuple[str, ...], allow_exact: tuple[str, ...] = ()) -> bool:
-    if target in allow_exact:
-        return True
+def _allowed_down(target: str, allow: tuple[str, ...]) -> bool:
     for a in allow:
         if a.endswith("."):
             if target.startswith(a):
@@ -265,12 +177,11 @@ def resolve_package(modules: set[str], spec: dict) -> set[str]:
     pkg = set(spec.get("package") or set())
     for prefix in spec.get("package_prefixes") or ():
         pkg |= {m for m in modules if m.startswith(prefix)}
-    pkg -= set(spec.get("exclude_exact") or set())
     return pkg
 
 
 def classify(edges: list[Edge], package: set[str], allow: tuple[str, ...],
-             known: set[str], allow_exact: tuple[str, ...] = ()) -> Report:
+             known: set[str]) -> Report:
     """Classify import edges. A target is a STAYING project module iff it is in ``known``
     (the discovered module set) — namespace-agnostic, so the same logic audits any package."""
     rep = Report(package=package)
@@ -280,7 +191,7 @@ def classify(edges: list[Edge], package: set[str], allow: tuple[str, ...],
                 continue                                   # intra-package
             if e.target not in known:
                 rep.external_deps.add(e.target.split(".")[0])   # third-party / stdlib
-            elif _allowed_down(e.target, allow, allow_exact):
+            elif _allowed_down(e.target, allow):
                 rep.allowed.append(e)                      # allowed downward dep
             else:
                 rep.outward.append(e)                      # blocking
@@ -295,21 +206,14 @@ def classify(edges: list[Edge], package: set[str], allow: tuple[str, ...],
 def audit(root: Path, spec: dict) -> Report:
     mods = discover_modules(root)
     known = set(mods)
-    # Excluded modules are removed from `known` so that edges targeting them are treated
-    # as external (neither blocking outward nor inward shims).
-    excluded = set(spec.get("exclude_exact") or set())
-    known -= excluded
-    package = resolve_package(set(mods), spec)
-    missing = (spec.get("package") or set()) - set(mods)
+    package = resolve_package(known, spec)
+    missing = (spec.get("package") or set()) - known
     if missing:
         print(f"WARNING: configured package modules not found: {sorted(missing)}", file=sys.stderr)
     edges: list[Edge] = []
     for mod, path in mods.items():
-        if mod in excluded:
-            continue
         edges.extend(edges_in_file(path, mod, known))
-    return classify(edges, package, tuple(spec.get("allow_outward") or ()), known,
-                    tuple(spec.get("allow_exact") or ()))
+    return classify(edges, package, tuple(spec.get("allow_outward") or ()), known)
 
 
 # ───────────────────────────────────────────────────────── reporting ──── #
