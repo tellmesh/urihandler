@@ -1181,24 +1181,47 @@ def _service_contacts() -> list[dict]:
     )
 
 
-def summary(project: str, db: str | None, config: str | None, node_urls: list[str] | None = None) -> dict:
-    tickets, task_error = _safe_tickets(project, sprint="all")
+def _summary_infra(
+    config: str | None, node_urls: list[str] | None, db: str | None
+) -> tuple:
+    """Initialise host_db and mesh, run discovery; return infrastructure objects and resolved paths."""
     host_db = _host_db()
     mesh = _mesh()
     try:
         discovered = mesh.discover_mesh(_host_config(config, node_urls))
     except Exception as exc:  # noqa: BLE001
         discovered = {"nodes": [], "routes": [], "serviceMap": {}, "error": str(exc)}
+    db_path = str(host_db.db_path(db))
+    config_path = str(mesh.host_config_path(config))
+    return host_db, discovered, db_path, config_path
+
+
+def _summary_task_data(project: str) -> tuple:
+    """Load sprint tickets; return (task_error, task_counts, ticket_count)."""
+    tickets, task_error = _safe_tickets(project, sprint="all")
+    return task_error, _task_counts(tickets), len(tickets)
+
+
+def _summary_db_records(host_db, db: str | None, project: str) -> tuple:
+    """Fetch recent checks, artifacts and logs from the host DB."""
     checks = host_db.recent_checks(db, limit=10)
     artifacts = _public_artifacts(host_db.list_artifacts(db, limit=10), project)
     logs = host_db.recent_logs(db, limit=10)
+    return checks, artifacts, logs
+
+
+def _summary_annotated_nodes(discovered: dict) -> list:
+    """Extract nodes from discovery result and apply all annotation passes."""
     nodes = discovered.get("nodes") or []
     _annotate_node_tokens_impl(nodes, _node_token_for)
     _annotate_node_kinds(nodes)
     _annotate_node_types_impl(nodes)
     _merge_live_webpage_nodes(nodes)
-    routes = discovered.get("routes") or []
-    services = _service_contacts()
+    return nodes
+
+
+def _summary_host_data(project: str, nodes: list, services: list, routes: list) -> tuple:
+    """Build host route list, host object and URI objects dict."""
     host_routes = _host_registry_routes_impl(_uri_action_catalog())
     host_routes.extend(_local_entry_point_host_routes_impl())
     host = _host_object_impl(project, host_routes)
@@ -1209,14 +1232,25 @@ def summary(project: str, db: str | None, config: str | None, node_urls: list[st
         services=services,
         routes=routes,
     )
+    return host_routes, host, objects
+
+
+def summary(project: str, db: str | None, config: str | None, node_urls: list[str] | None = None) -> dict:
+    host_db, discovered, db_path, config_path = _summary_infra(config, node_urls, db)
+    task_error, task_counts, ticket_count = _summary_task_data(project)
+    checks, artifacts, logs = _summary_db_records(host_db, db, project)
+    nodes = _summary_annotated_nodes(discovered)
+    routes = discovered.get("routes") or []
+    services = _service_contacts()
+    host_routes, host, objects = _summary_host_data(project, nodes, services, routes)
     return {
         "ok": True,
         "project": str(Path(project).expanduser().resolve()),
-        "db": str(host_db.db_path(db)),
-        "config": str(mesh.host_config_path(config)),
+        "db": db_path,
+        "config": config_path,
         "taskError": task_error,
-        "taskCounts": _task_counts(tickets),
-        "ticketCount": len(tickets),
+        "taskCounts": task_counts,
+        "ticketCount": ticket_count,
         "nodeCount": len(nodes),
         "nodesOnline": len([node for node in nodes if node.get("reachable")]),
         "routeCount": len(routes),
