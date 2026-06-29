@@ -44,7 +44,8 @@ _TYP_ROUTE = frozenset(("route",))
 
 _KW_VERSION = frozenset((
     "version", "allow list", "allow-list", "mismatch", "compat",
-    "merge_mismatch", "deploy_allow",
+    "merge_mismatch", "deploy_allow", "module not found", "modulenotfounderror",
+    "no module named 'core'", 'no module named "core"',
 ))
 
 _KW_DEGRADED = frozenset((
@@ -147,11 +148,15 @@ def _build_remediation(
             command=install_cmd,
         )
     if cls == RemediationClass.VERSION_SKEW:
+        connector_hint = f" urirun-connector-{scheme}" if scheme else ""
         return Remediation(
             cls=cls, node=node, raw_error=error, retry_uri=uri,
             auto_fix_uri=f"node://{node}/registry/command/deploy-allow",
-            human_action=f"Node '{node}' ma starą allow-listę. Zaktualizuj: pip install -U urirun na {node}",
-            command="pip install -U urirun",
+            human_action=(
+                f"Node '{node}' ma niezgodny runtime/connector deploy. "
+                f"Zaktualizuj runtime i connector na {node}, potem ponów zadanie."
+            ),
+            command=f"pip install -U urirun{connector_hint}",
         )
     if cls == RemediationClass.DEGRADED_BACKEND:
         return Remediation(

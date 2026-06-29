@@ -76,6 +76,39 @@ def _registry(tmp_path, fn):
     return urirun.compile_registry(doc)
 
 
+def test_legacy_flat_core_ref_uses_connector_package(tmp_path, monkeypatch):
+    pkg = tmp_path / "urirun_connector_kvm"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "core.py").write_text(
+        "import urirun\n"
+        "def capture(monitor: int = 0):\n"
+        "    return urirun.ok(source='package-core', monitor=monitor)\n",
+        encoding="utf-8",
+    )
+    env = _fixture_env(tmp_path)
+    monkeypatch.setenv("PYTHONPATH", env["PYTHONPATH"])
+    doc = {"version": "urirun.bindings.v2", "bindings": {
+        "kvm://host/screen/query/capture": {
+            "uri": "kvm://host/screen/query/capture",
+            "adapter": "local-function-subprocess",
+            "kind": "local-function-subprocess",
+            "python": {"type": "python", "module": "core", "export": "capture"},
+            "meta": {"connector": "kvm"},
+            "inputSchema": {"type": "object", "properties": {"monitor": {"type": "integer"}}},
+            "policy": {"allowExecute": True},
+        }}}
+    reg = urirun.compile_registry(doc)
+    pol = _runtime.build_policy(None, ["kvm://*"], None)
+
+    r = urirun.run("kvm://host/screen/query/capture", reg, {"monitor": 2}, mode="execute", policy=pol)
+
+    assert r["ok"] is True
+    assert r["result"]["ref"] == "core:capture"
+    assert r["result"]["value"]["source"] == "package-core"
+    assert r["result"]["value"]["monitor"] == 2
+
+
 def test_executor_runs_in_subprocess(tmp_path, monkeypatch):
     env = _fixture_env(tmp_path)
     monkeypatch.setenv("PYTHONPATH", env["PYTHONPATH"])

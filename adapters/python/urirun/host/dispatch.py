@@ -178,6 +178,27 @@ def _local_scheme_installed(uri: str) -> bool:
         return False
 
 
+def _annotate_remote_remediation(env: "dict | None", uri: str) -> "dict | None":
+    """Attach host-layer remediation to failed remote /run envelopes.
+
+    ``v2_service`` lives in the runtime layer and intentionally does not import
+    host remediation code. The chat/dashboard dispatch seam is the correct place
+    to translate a remote worker failure into a human/actionable node task.
+    """
+    if not isinstance(env, dict) or env.get("ok") or env.get("remediation"):
+        return env
+    response = env.get("response") if isinstance(env.get("response"), dict) else {}
+    error = env.get("error") or response.get("error")
+    if not isinstance(error, dict):
+        return env
+    node = str(response.get("service") or env.get("service") or env.get("node") or "").strip()
+    if not node:
+        return env
+    from urirun.host.node_dispatch import classify_error
+    env["remediation"] = classify_error(error, node=node, uri=uri).to_dict()
+    return env
+
+
 def make_local_dispatch_uri(registry: dict, run_mode: str, fallback=None, local_first: bool = False):
     """Return a dispatch callable with in-process fallback.
 
@@ -205,6 +226,7 @@ def make_local_dispatch_uri(registry: dict, run_mode: str, fallback=None, local_
                 result = _call_fallback(_fallback, uri, payload, run_mode)
                 if result is not None:
                     return result
-            return _mesh(uri, payload)
+            return _annotate_remote_remediation(_mesh(uri, payload), uri)
         return _local_first_dispatch
-    return _v2.make_dispatch(registry, run_mode, fallback=_bound_fallback)
+    _mesh = _v2.make_dispatch(registry, run_mode, fallback=_bound_fallback)
+    return lambda uri, payload=None: _annotate_remote_remediation(_mesh(uri, payload), uri)

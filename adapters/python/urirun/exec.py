@@ -17,16 +17,59 @@ from __future__ import annotations
 
 import contextlib
 import importlib
+import importlib.util
 import inspect
 import json
+import os
+import pkgutil
 import sys
+
+
+def _connector_module_candidates(module_name: str, export: str) -> list[str]:
+    """Return canonical package modules for a legacy flat ref.
+
+    Older/deployed nodes may advertise isolated handlers as ``core:capture``
+    because the route was originally generated from a flat deploy. Installed
+    connector packages expose the same handler at
+    ``urirun_connector_<id>.core:capture``. Keep this fallback generic and
+    deterministic: prefer ``URIRUN_EXEC_CONNECTOR`` when present, otherwise use
+    exactly one installed connector package that has the requested export.
+    """
+    if "." in module_name or module_name != "core":
+        return []
+    connector = os.environ.get("URIRUN_EXEC_CONNECTOR", "").strip().replace("-", "_")
+    if connector:
+        pkg = connector if connector.startswith("urirun_connector_") else f"urirun_connector_{connector}"
+        return [f"{pkg}.core"]
+    matches: list[str] = []
+    for mod in pkgutil.iter_modules():
+        name = mod.name
+        if not name.startswith("urirun_connector_"):
+            continue
+        candidate = f"{name}.core"
+        if importlib.util.find_spec(candidate) is None:
+            continue
+        try:
+            module = importlib.import_module(candidate)
+        except Exception:  # noqa: BLE001 - a broken connector is not a candidate
+            continue
+        if hasattr(module, export):
+            matches.append(candidate)
+    return matches if len(matches) == 1 else []
 
 
 def _resolve(ref: str):
     module_name, _, export = ref.partition(":")
     if not module_name or not export:
         raise ValueError(f"expected '<module>:<export>', got {ref!r}")
-    return getattr(importlib.import_module(module_name), export)
+    try:
+        return getattr(importlib.import_module(module_name), export)
+    except ModuleNotFoundError as exc:
+        if exc.name != module_name:
+            raise
+        for candidate in _connector_module_candidates(module_name, export):
+            return getattr(importlib.import_module(candidate), export)
+        raise
 
 
 def main(argv: list[str] | None = None) -> int:

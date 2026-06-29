@@ -95,7 +95,21 @@ def make_flow_with_retrieval(
     return mesh.make_flow(prompt, discovered, **kwargs)
 
 
+def attach_known_good_recall(result: dict, recall: dict | None) -> dict:
+    """Attach a knownGoodRecall summary to the result when a recall suggestion was made."""
+    if recall is not None:
+        result["knownGoodRecall"] = {
+            "flowKey": recall.get("flowKey"),
+            "ts": recall.get("ts"),
+            "prompt": recall.get("prompt"),
+            "stepCount": len(recall.get("steps") or []),
+            "nodes": recall.get("nodes") or [],
+        }
+    return result
+
+
 __all__ = [
+    "attach_known_good_recall",
     "make_flow_with_retrieval",
     "recall_env_fingerprint",
     "retrieve_experience_context",

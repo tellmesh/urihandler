@@ -43,6 +43,7 @@ from urirun_twin.capture_preferences import (
     remember_capture_preferences as _remember_capture_preferences,
 )
 from urirun_twin.experience_retrieval import (
+    attach_known_good_recall as _attach_known_good_recall,
     make_flow_with_retrieval as _make_flow_with_retrieval,
     recall_env_fingerprint as _recall_env_fp,
     retrieve_experience_context as _retrieve_experience_context,
@@ -60,7 +61,7 @@ from urirun_connector_router.target_resolution import (
     with_local_host_routes as _with_local_host_routes_impl,
 )
 from urirun_connector_router.routing import diagnose_targets as _router_diagnose_targets
-from urirun_flow.env_selection import resolve_flow_env_enums
+from urirun_flow.env_selection import resolve_flow_env_enums, resolve_flow_env_enums_with_registry
 from ._chat_attachments import (
     _resolve_artifact_value,
     _process_remote_path_entry,
@@ -1160,21 +1161,7 @@ def _planner_nodes_for_targets(selected_nodes: list[str], selected_targets: list
     return out
 
 
-def _resolve_env_enum_flow(
-    flow: dict,
-    registry: dict,
-    routes: list[dict],
-    memory: object | None,
-    prompt: str = "",
-) -> dict:
-    from urirun_flow.flow import _build_env_inventory  # noqa: PLC0415
-    return resolve_flow_env_enums(
-        flow,
-        routes,
-        memory=memory,
-        prompt=prompt,
-        inventory_builder=lambda node: _build_env_inventory(node, registry),
-    )
+
 
 
 def _chat_ask_general_needs_selection(selection: dict, db: str | None, prompt: str, execute: bool,
@@ -1250,19 +1237,6 @@ def _chat_ask_general_env_block(selection: dict, db: str | None, prompt: str, ex
     }
 
 
-def _attach_known_good_recall(result: dict, recall: dict | None) -> dict:
-    """Attach a knownGoodRecall summary to the result when a recall suggestion was made."""
-    if recall is not None:
-        result["knownGoodRecall"] = {
-            "flowKey": recall.get("flowKey"),
-            "ts": recall.get("ts"),
-            "prompt": recall.get("prompt"),
-            "stepCount": len(recall.get("steps") or []),
-            "nodes": recall.get("nodes") or [],
-        }
-    return result
-
-
 def _chat_ask_general_plan_step(
     mesh, twin_memory, planner_nodes, no_llm,
     selected_nodes, selected_targets, prompt, _routes, registry,
@@ -1290,7 +1264,7 @@ def _chat_ask_general_plan_step(
                 mesh, prompt, discovered, planner_nodes, no_llm, environments, retrieval,
                 llm_model=llm_model)
         flow = _apply_capture_preferences(flow, twin_memory)
-        selection = _resolve_env_enum_flow(flow, registry, _routes, twin_memory, prompt=prompt)
+        selection = resolve_flow_env_enums_with_registry(flow, _routes, registry, memory=twin_memory, prompt=prompt)
         if not selection.get("ok"):
             early = _chat_ask_general_needs_selection(
                 selection, db, prompt, execute, selected_nodes, selected_targets, deps,

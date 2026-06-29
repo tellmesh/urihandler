@@ -831,10 +831,17 @@ def run_local_function_subprocess(ctx: dict, policy: dict, execute: bool) -> dic
     route_entry = ctx.get("routeEntry") if isinstance(ctx.get("routeEntry"), dict) else {}
     config = route_entry.get("config") if isinstance(route_entry.get("config"), dict) else {}
     runner_cwd = _subprocess_resolve_cwd(py, config)
+    env = None
+    meta = route_entry.get("meta") if isinstance(route_entry.get("meta"), dict) else {}
+    connector = str(meta.get("connector") or "").strip()
+    if connector:
+        import os
+        env = dict(os.environ)
+        env.setdefault("URIRUN_EXEC_CONNECTOR", connector)
     proc = subprocess.run(
         [sys.executable, "-m", "urirun.exec", ref],
         input=json.dumps(payload), capture_output=True, text=True,
-        timeout=policy.get("timeout", 30), cwd=str(runner_cwd),
+        timeout=policy.get("timeout", 30), cwd=str(runner_cwd), env=env,
     )
     value = _subprocess_parse_output(proc)
     return {"type": "function-subprocess", "ref": ref, "isolated": True,
