@@ -112,41 +112,47 @@ def _worker_main(cli_ref: str) -> int:
     return 0
 
 
+def _resolve_handler_ref(ref: str, cache: dict):
+    """Import a handler function by ``module:export`` ref, caching the result."""
+    fn = cache.get(ref)
+    if fn is None:
+        module_name, _, export = ref.partition(":")
+        fn = getattr(importlib.import_module(module_name), export)
+        cache[ref] = fn
+    return fn
+
+
+def _handle_worker_request(request: dict, cache: dict) -> dict:
+    """Parse one request dict, call the handler, and return a response dict."""
+    import inspect
+
+    ref, payload = request.get("ref", ""), request.get("payload") or {}
+    try:
+        fn = _resolve_handler_ref(ref, cache)
+        params = inspect.signature(fn).parameters
+        if not any(p.kind == p.VAR_KEYWORD for p in params.values()):
+            payload = {k: v for k, v in payload.items() if k in params}
+        result = fn(**payload)
+        ok = result.get("ok", True) if isinstance(result, dict) else True
+        return {"ok": bool(ok), "result": result}
+    except Exception as exc:  # noqa: BLE001 - report, keep the worker alive
+        return {"ok": False, "error": str(exc), "result": {"ok": False, "error": str(exc)}}
+
+
 def _handler_worker_main() -> int:
     """Warm runner for ``local-function`` handlers — the pooled twin of
     ``python -m urirun.exec``. Reads ``{"ref": "module:export", "payload": {...}}``
     line by line, imports each ref **once** (cached), and calls the handler
     in-process, so a flow with many steps pays the connector import only once."""
-    import inspect
-
     cache: dict = {}
-
-    def resolve(ref: str):
-        fn = cache.get(ref)
-        if fn is None:
-            module_name, _, export = ref.partition(":")
-            fn = getattr(importlib.import_module(module_name), export)
-            cache[ref] = fn
-        return fn
-
-    sys.stdout.write(json.dumps({"ready": True}) + "\n")
-    sys.stdout.flush()
+    _signal_ready()
     for line in sys.stdin:
         line = line.strip()
         if not line:
             continue
         request = json.loads(line)
-        ref, payload = request.get("ref", ""), request.get("payload") or {}
-        try:
-            fn = resolve(ref)
-            params = inspect.signature(fn).parameters
-            if not any(p.kind == p.VAR_KEYWORD for p in params.values()):
-                payload = {k: v for k, v in payload.items() if k in params}
-            result = fn(**payload)
-            ok = result.get("ok", True) if isinstance(result, dict) else True
-            sys.stdout.write(json.dumps({"ok": bool(ok), "result": result}) + "\n")
-        except Exception as exc:  # noqa: BLE001 - report, keep the worker alive
-            sys.stdout.write(json.dumps({"ok": False, "error": str(exc), "result": {"ok": False, "error": str(exc)}}) + "\n")
+        response = _handle_worker_request(request, cache)
+        sys.stdout.write(json.dumps(response) + "\n")
         sys.stdout.flush()
     return 0
 
