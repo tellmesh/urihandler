@@ -179,47 +179,89 @@ def _config_manifest(cfg: dict, base: Path, name: str | None) -> dict | None:
     return None
 
 
+def _adopt_file(path: Path) -> dict:
+    """Adopt a single file — package.json or a raw manifest."""
+    if path.name == "package.json":
+        return _document(_package_json_manifest(path))
+    return adopt_document(path)
+
+
+def _adopt_from_pyproject(path: Path) -> dict | None:
+    """Try [tool.urirun] in pyproject.toml; return None if absent or no URI config."""
+    pyproject = path / "pyproject.toml"
+    if not pyproject.exists():
+        return None
+    manifest = _config_manifest(_tool_urirun(pyproject), path, path.name)
+    if manifest is None:
+        return None
+    return _document(manifest)
+
+
+def _adopt_from_package_json_dir(path: Path) -> dict | None:
+    """Try package.json in a directory; return None if missing or no urirun key."""
+    package_json = path / "package.json"
+    if not package_json.exists():
+        return None
+    try:
+        return _document(_package_json_manifest(package_json))
+    except FileNotFoundError:
+        return None
+
+
+def _adopt_manifest_glob(path: Path) -> dict:
+    """Glob for manifest.yaml files (depth 1-2) under a directory and merge them.
+
+    Matches the tellmesh layout where each capability pack lives in its own
+    sub-directory.  Adopting a whole library tree is a single command instead
+    of a per-pack loop + compile.
+    """
+    manifests = sorted(set(path.glob("*/manifest.yaml")) | set(path.glob("*/*/manifest.yaml")))
+    if not manifests:
+        raise FileNotFoundError(f"no [tool.urirun]/urirun config or */manifest.yaml under {path}")
+    if len(manifests) == 1:
+        return adopt_document(manifests[0])
+    from urirun_runtime import v2
+
+    merged: dict = {"version": v2.VERSION, "bindings": {}}
+    for manifest in manifests:
+        try:
+            merged["bindings"].update(adopt_document(manifest).get("bindings", {}))
+        except Exception:  # noqa: BLE001 - skip non-connector / invalid pack, adopt the rest
+            continue
+    return merged
+
+
+def _adopt_dir(path: Path) -> dict:
+    """Adopt from a directory: tries pyproject.toml, package.json, then manifest glob."""
+    result = _adopt_from_pyproject(path)
+    if result is not None:
+        return result
+    result = _adopt_from_package_json_dir(path)
+    if result is not None:
+        return result
+    return _adopt_manifest_glob(path)
+
+
+def _adopt_installed(target: str | Path) -> dict:
+    """Adopt an installed package by name (looks up the urirun.packs entry point)."""
+    manifest = installed_manifest_path(str(target))
+    if manifest is None:
+        raise FileNotFoundError(
+            f"no manifest for installed package {target!r} "
+            "(urirun.packs entry point or <pkg>/manifest.yaml)"
+        )
+    return adopt_document(manifest)
+
+
 def adopt(target: str | Path) -> dict:
     """Adopt a manifest file, a package.json, a project dir ([tool.urirun] for
     Python or a ``urirun`` key for node), or an installed package name."""
     path = Path(target)
     if path.is_file():
-        if path.name == "package.json":
-            return _document(_package_json_manifest(path))
-        return adopt_document(path)
+        return _adopt_file(path)
     if path.is_dir():
-        pyproject = path / "pyproject.toml"
-        if pyproject.exists():
-            manifest = _config_manifest(_tool_urirun(pyproject), path, path.name)
-            if manifest is not None:
-                return _document(manifest)
-        package_json = path / "package.json"
-        if package_json.exists():
-            try:
-                return _document(_package_json_manifest(package_json))
-            except FileNotFoundError:
-                pass
-        # A tree of packs: adopt EVERY manifest.yaml (depth 1-2, matching the
-        # tellmesh layout) and MERGE into one document, so adopting a whole library
-        # tree is a single command instead of a per-pack loop + compile.
-        manifests = sorted(set(path.glob("*/manifest.yaml")) | set(path.glob("*/*/manifest.yaml")))
-        if not manifests:
-            raise FileNotFoundError(f"no [tool.urirun]/urirun config or */manifest.yaml under {path}")
-        if len(manifests) == 1:
-            return adopt_document(manifests[0])
-        from urirun_runtime import v2
-
-        merged: dict = {"version": v2.VERSION, "bindings": {}}
-        for manifest in manifests:
-            try:
-                merged["bindings"].update(adopt_document(manifest).get("bindings", {}))
-            except Exception:  # noqa: BLE001 - skip a non-connector / invalid pack, adopt the rest
-                continue
-        return merged
-    manifest = installed_manifest_path(str(target))
-    if manifest is None:
-        raise FileNotFoundError(f"no manifest for installed package {target!r} (urirun.packs entry point or <pkg>/manifest.yaml)")
-    return adopt_document(manifest)
+        return _adopt_dir(path)
+    return _adopt_installed(target)
 
 
 def main(argv: list[str] | None = None) -> int:
