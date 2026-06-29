@@ -60,7 +60,7 @@ def _classify_source(s: str) -> str:
         return "git"
     if s.startswith(("http://", "https://")):
         return "git" if s.endswith(".git") else "catalog"
-    if s.startswith(("~", "/", ".")) or os.sep in s or os.path.exists(os.path.expanduser(s)):
+    if s.startswith(("~", "/", ".")) or os.sep in s:
         return "local"
     return "catalog"
 
