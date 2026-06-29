@@ -1098,11 +1098,46 @@ def _sync_targets_from_flow(
     return new_nodes, _rebuild_node_targets(selected_targets, actual, has_local, existing_remote)
 
 
-def _fetch_planner_environments_for_nodes(mesh: Any, selected_nodes: list[str], execute: bool,
-                                          registry: Any, discovered: dict, *, memory: Any = None) -> list:
+def _build_reachable_set(discovered: dict) -> set:
+    """Build the set of reachable node names from a discovery dict."""
+    reachable = {n["name"] for n in (discovered.get("nodes") or []) if n.get("reachable")}
+    reachable.update(str(r.get("node") or "") for r in (discovered.get("routes") or []) if r.get("node"))
+    reachable.add("host")
+    return reachable
+
+
+def _compat_normalize_args(
+    execute: Any,
+    registry: Any,
+    discovered: dict | None,
+) -> tuple:
+    """Normalize (execute, registry, discovered) from older call conventions.
+
+    Older call sites passed (mesh, nodes, registry, discovered) where ``execute``
+    was positional and defaulted to ``True``.  Detect by checking whether the
+    value passed for ``execute`` is actually a bool; if not, shift arguments.
+    """
+    if not isinstance(execute, bool):
+        discovered = registry if isinstance(registry, dict) else {}
+        registry = execute
+        execute = True
+    discovered = discovered or {}
+    return execute, registry, discovered
+
+
+def _fetch_planner_environments_for_nodes(
+    mesh: Any,
+    selected_nodes: list[str],
+    execute: bool | Any,
+    registry: Any | None = None,
+    discovered: dict | None = None,
+    *,
+    memory: Any = None,
+) -> list:
     """Fetch grounded env/surface contexts for reachable selected nodes (only when executing).
     ``memory`` threads the durable TwinMemory into planner_context so drift guidance is live."""
-    reachable = {n["name"] for n in (discovered.get("nodes") or []) if n.get("reachable")}
+    execute, registry, discovered = _compat_normalize_args(execute, registry, discovered)
+    reachable = _build_reachable_set(discovered)
     ground = [n for n in (selected_nodes or []) if n in reachable]
     return mesh.fetch_planner_environments(ground, registry, discovered, memory=memory) if (execute and ground) else []
 
@@ -1682,6 +1717,45 @@ def _chat_ask_general_needs_selection(selection: dict, db: str | None, prompt: s
         "needsSelection": need,
         "next": selection.get("next") or {"kind": "needs-selection"},
         "notify": {"sound": "beep"},
+        "flow": selection.get("flow") or {},
+        "attachments": [attachment],
+    }
+
+
+def _chat_ask_general_env_block(selection: dict, db: str | None, prompt: str, execute: bool,
+                                selected_nodes: list[str], selected_targets: list[str],
+                                deps: ChatDeps,
+                                *, no_llm: bool = False,
+                                generator: dict | None = None) -> dict:
+    kind = str(selection.get("kind") or "env-domain-invalid")
+    violation = selection.get("violation") or {}
+    param = violation.get("parameter") or "parameter"
+    value = violation.get("value")
+    allowed = violation.get("allowed") or []
+    attachment = {
+        "kind": kind,
+        "path": "Environment domain",
+        "violation": violation,
+        "next": selection.get("next") or {"kind": "replan", "reason": kind},
+    }
+    deps.add_chat_message_fn(db, {
+        "role": "system",
+        "content": f"Nieprawidlowa wartosc srodowiska: {param}={value!r}; dozwolone: {allowed}",
+        "detail": {**selection, "prompt": prompt, "execute": execute,
+                   "noLlm": no_llm, "generator": generator or {}},
+        "attachments": [attachment],
+    })
+    return {
+        "ok": False,
+        "kind": kind,
+        "prompt": prompt,
+        "execute": execute,
+        "noLlm": no_llm,
+        "selectedNodes": selected_nodes,
+        "selectedTargets": selected_targets,
+        "generator": generator or {},
+        "violation": violation,
+        "next": selection.get("next") or {"kind": "replan", "reason": kind},
         "flow": selection.get("flow") or {},
         "attachments": [attachment],
     }
